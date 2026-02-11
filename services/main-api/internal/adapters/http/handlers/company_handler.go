@@ -1,13 +1,15 @@
 package handlers
 
-import "github.com/gofiber/fiber/v2"
+import (
+	"github.com/gofiber/fiber/v2"
+)
 
-type CompanyHandler struct {
-	// TODO: add dependencies (use cases, repositories)
+type CompanyHandler struct{}
+
+func NewCompanyHandler() *CompanyHandler {
+	return &CompanyHandler{}
 }
 
-func (h *CompanyHandler) RegisterRoutes(r fiber.Router) {
-	// TODO: implement company settings endpoints
+func (h *CompanyHandler) UpdateSettings(c *fiber.Ctx) error {
+	return c.JSON(fiber.Map{"message": "Settings updated (mock)"})
 }
-
-
