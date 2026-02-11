@@ -48,15 +48,15 @@ func (r *callRepository) Create(ctx context.Context, call *domain.Call) error {
 	return err
 }
 
-func (r *callRepository) GetByID(ctx context.Context, id string) (*domain.Call, error) {
+func (r *callRepository) GetByID(ctx context.Context, companyID, id string) (*domain.Call, error) {
 	query := `
 		SELECT id, company_id, manager_id, manager_name, client_phone, client_id, duration, call_link, chat_link, call_date, call_time, status, source, created_at, updated_at
 		FROM calls_schema.calls
-		WHERE id = $1
+		WHERE id = $1 AND company_id = $2
 	`
 
 	call := &domain.Call{}
-	err := r.db.QueryRowContext(ctx, query, id).Scan(
+	err := r.db.QueryRowContext(ctx, query, id, companyID).Scan(
 		&call.ID,
 		&call.CompanyID,
 		&call.ManagerID,

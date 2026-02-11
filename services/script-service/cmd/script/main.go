@@ -52,6 +52,8 @@ func main() {
 	api := app.Group("/api/v1")
 	scripts := api.Group("/scripts")
 	scripts.Post("/", scriptHandler.Upload)
+	scripts.Get("/:company_id", scriptHandler.List)
+	scripts.Delete("/:id", scriptHandler.Delete)
 
 	port := os.Getenv("PORT")
 	if port == "" {
