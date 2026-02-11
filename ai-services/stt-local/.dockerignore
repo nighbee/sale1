@@ -1,0 +1,18 @@
+# не отправляем мусор в контекст сборки stt-local
+__pycache__/
+*.pyc
+*.pyo
+*.log
+.cache/
+tmp/
+data/
+hf-cache/
+tests/
+.vscode/
+.idea/
+.DS_Store
+
+# не игнорим эти файлы — они нужны для сборки образа
+!app.py
+!requirements.txt
+!Dockerfile
