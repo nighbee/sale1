@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/salesai/sipuni-listener/internal/adapters/queue"
@@ -96,6 +97,21 @@ func main() {
 		}
 	}()
 
+	// HTTP Server for AmoCRM Webhooks
+	app := fiber.New()
+	app.Post("/api/v1/webhooks/amocrm/call-finished", handleAmoCRMWebhook)
+
+	go func() {
+		port := os.Getenv("PORT")
+		if port == "" {
+			port = "8081"
+		}
+		log.Printf("Webhook server starting on port %s", port)
+		if err := app.Listen(":" + port); err != nil {
+			log.Printf("Webhook server error: %v", err)
+		}
+	}()
+
 	for {
 		select {
 		case <-done:
@@ -107,6 +123,7 @@ func main() {
 				log.Println("write close:", err)
 				return
 			}
+			app.Shutdown()
 			select {
 			case <-done:
 			case <-time.After(time.Second):
@@ -114,6 +131,47 @@ func main() {
 			return
 		}
 	}
+}
+
+type AmoCRMPayload struct {
+	EventType   string `json:"event_type"`
+	ManagerID   string `json:"manager_id"`
+	ManagerName string `json:"manager_name"`
+	ClientPhone string `json:"client_phone"`
+	ClientID    string `json:"client_id"`
+	Duration    int    `json:"duration"`
+	CallLink    string `json:"call_link"`
+	ChatLink    string `json:"chat_link"`
+	Timestamp   string `json:"timestamp"`
+}
+
+func handleAmoCRMWebhook(c *fiber.Ctx) error {
+	var payload AmoCRMPayload
+	if err := c.BodyParser(&payload); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid payload"})
+	}
+
+	callID := uuid.New().String()
+	log.Printf("Received AmoCRM webhook for manager %s, call %s", payload.ManagerID, callID)
+
+	job := queue.AudioProcessingJob{
+		CallID:    callID,
+		CompanyID: "550e8400-e29b-41d4-a716-446655440000", // Default test company
+		AudioURL:  payload.CallLink,
+		ManagerID: payload.ManagerID,
+	}
+
+	err := publisher.EnqueueAudioProcessing(context.Background(), job)
+	if err != nil {
+		log.Println("enqueue job error:", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to enqueue"})
+	}
+
+	return c.JSON(fiber.Map{
+		"status":  "received",
+		"call_id": callID,
+		"message": "Call queued for processing",
+	})
 }
 
 func handleNotify(request json.RawMessage) {

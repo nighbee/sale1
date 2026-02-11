@@ -14,6 +14,7 @@ import (
 	"github.com/salesai/main-api/internal/adapters/repositories"
 	"github.com/salesai/main-api/internal/core/usecases/auth"
 	"github.com/salesai/main-api/internal/core/usecases/calls"
+	"github.com/salesai/main-api/internal/core/usecases/users"
 	"github.com/salesai/main-api/internal/infrastructure/config"
 	"github.com/salesai/main-api/internal/infrastructure/security"
 )
@@ -31,6 +32,8 @@ func main() {
 	userRepo := repositories.NewUserRepository(db)
 	companyRepo := repositories.NewCompanyRepository(db)
 	callRepo := repositories.NewCallRepository(db)
+	transcriptRepo := repositories.NewTranscriptRepository(db)
+	analysisRepo := repositories.NewAnalysisRepository(db)
 
 	// Services
 	jwtService := security.NewJWTService(cfg.JWTSecret, cfg.JWTExpiry)
@@ -38,18 +41,24 @@ func main() {
 	// Use Cases
 	registerUC := auth.NewRegisterUseCase(userRepo, companyRepo, jwtService)
 	loginUC := auth.NewLoginUseCase(userRepo, jwtService)
+	refreshTokenUC := auth.NewRefreshTokenUseCase(userRepo, jwtService)
 	listCallsUC := calls.NewListCallsUseCase(callRepo)
+	getCallDetailsUC := calls.NewGetCallDetailsUseCase(callRepo, transcriptRepo, analysisRepo)
+	listUsersUC := users.NewListUsersUseCase(userRepo)
+	inviteUserUC := users.NewInviteUserUseCase(userRepo)
+	updateUserUC := users.NewUpdateUserUseCase(userRepo)
 
 	// Handlers
-	authHandler := handlers.NewAuthHandler(registerUC, loginUC)
-	callHandler := handlers.NewCallHandler(listCallsUC, callRepo)
-	analyticsHandler := handlers.NewAnalyticsHandler()
-	companyHandler := handlers.NewCompanyHandler()
+	authHandler := handlers.NewAuthHandler(registerUC, loginUC, refreshTokenUC)
+	userHandler := handlers.NewUserHandler(listUsersUC, inviteUserUC, updateUserUC, userRepo)
+	callHandler := handlers.NewCallHandler(listCallsUC, getCallDetailsUC, callRepo)
+	analyticsHandler := handlers.NewAnalyticsHandler(analysisRepo)
+	companyHandler := handlers.NewCompanyHandler(companyRepo)
 
 	app := fiber.New()
 	app.Use(logger.New())
 
-	http.SetupRoutes(app, authHandler, callHandler, analyticsHandler, companyHandler, jwtService)
+	http.SetupRoutes(app, authHandler, userHandler, callHandler, analyticsHandler, companyHandler, jwtService)
 
 	port := os.Getenv("PORT")
 	if port == "" {

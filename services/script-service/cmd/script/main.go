@@ -12,6 +12,7 @@ import (
 	_ "github.com/lib/pq"
 
 	"github.com/salesai/script-service/internal/adapters/http/handlers"
+	"github.com/salesai/script-service/internal/adapters/http/middleware"
 	"github.com/salesai/script-service/internal/adapters/repositories"
 )
 
@@ -49,9 +50,19 @@ func main() {
 	app := fiber.New()
 	app.Use(logger.New())
 
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		jwtSecret = "mysecret"
+	}
+
 	api := app.Group("/api/v1")
-	scripts := api.Group("/scripts")
-	scripts.Post("/", scriptHandler.Upload)
+	scripts := api.Group("/scripts", middleware.JWTAuth(jwtSecret))
+	scripts.Post("/", middleware.RequireRole("tenant_admin", "super_admin"), scriptHandler.Upload)
+	scripts.Get("/", scriptHandler.ListScripts)
+	scripts.Get("/:id", scriptHandler.GetScript)
+	scripts.Get("/:id/content", scriptHandler.GetScriptContent)
+	scripts.Put("/:id", middleware.RequireRole("tenant_admin", "super_admin"), scriptHandler.UpdateScript)
+	scripts.Delete("/:id", middleware.RequireRole("tenant_admin", "super_admin"), scriptHandler.DeleteScript)
 
 	port := os.Getenv("PORT")
 	if port == "" {

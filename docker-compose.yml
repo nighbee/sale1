@@ -88,6 +88,15 @@ services:
       - postgres
       - redis
 
+  sheets-sync:
+    build: ./services/sheets-sync
+    environment:
+      DATABASE_URL: "host=postgres port=5432 user=salesai_user password=strong_password dbname=salesai sslmode=disable"
+      REDIS_URL: "redis://redis:6379"
+    depends_on:
+      - postgres
+      - redis
+
   stt-local:
     build: ./ai-services/stt-local
     ports:

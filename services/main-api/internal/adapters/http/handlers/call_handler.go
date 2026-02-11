@@ -8,14 +8,20 @@ import (
 )
 
 type CallHandler struct {
-	listCallsUC *calls.ListCallsUseCase
-	callRepo    ports.CallRepository
+	listCallsUC      *calls.ListCallsUseCase
+	getCallDetailsUC *calls.GetCallDetailsUseCase
+	callRepo         ports.CallRepository
 }
 
-func NewCallHandler(listCallsUC *calls.ListCallsUseCase, callRepo ports.CallRepository) *CallHandler {
+func NewCallHandler(
+	listCallsUC *calls.ListCallsUseCase,
+	getCallDetailsUC *calls.GetCallDetailsUseCase,
+	callRepo ports.CallRepository,
+) *CallHandler {
 	return &CallHandler{
-		listCallsUC: listCallsUC,
-		callRepo:    callRepo,
+		listCallsUC:      listCallsUC,
+		getCallDetailsUC: getCallDetailsUC,
+		callRepo:         callRepo,
 	}
 }
 
@@ -49,5 +55,64 @@ func (h *CallHandler) GetCall(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Call not found"})
 	}
+	if call.CompanyID != c.Locals("company_id").(string) {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Forbidden"})
+	}
 	return c.JSON(call)
+}
+
+func (h *CallHandler) GetTranscript(c *fiber.Ctx) error {
+	id := c.Params("id")
+	// Verify call ownership
+	call, err := h.callRepo.GetByID(c.Context(), id)
+	if err != nil || call.CompanyID != c.Locals("company_id").(string) {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Call not found"})
+	}
+
+	transcript, err := h.getCallDetailsUC.GetTranscript(c.Context(), id)
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Transcript not found"})
+	}
+	return c.JSON(transcript)
+}
+
+func (h *CallHandler) GetAnalysis(c *fiber.Ctx) error {
+	id := c.Params("id")
+	// Verify call ownership
+	call, err := h.callRepo.GetByID(c.Context(), id)
+	if err != nil || call.CompanyID != c.Locals("company_id").(string) {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Call not found"})
+	}
+
+	analysis, err := h.getCallDetailsUC.GetAnalysis(c.Context(), id)
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Analysis not found"})
+	}
+	return c.JSON(analysis)
+}
+
+func (h *CallHandler) GetAudio(c *fiber.Ctx) error {
+	// For now, redirect to the call_link (mocking MinIO streaming)
+	id := c.Params("id")
+	call, err := h.callRepo.GetByID(c.Context(), id)
+	if err != nil || call.CompanyID != c.Locals("company_id").(string) {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Call not found"})
+	}
+	return c.Redirect(call.CallLink)
+}
+
+func (h *CallHandler) ReprocessCall(c *fiber.Ctx) error {
+	id := c.Params("id")
+	// Verify call ownership
+	call, err := h.callRepo.GetByID(c.Context(), id)
+	if err != nil || call.CompanyID != c.Locals("company_id").(string) {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Call not found"})
+	}
+
+	// In production, this would re-enqueue the job to Redis
+	return c.JSON(fiber.Map{
+		"call_id": id,
+		"status":  "queued",
+		"message": "Call re-queued for processing (mock)",
+	})
 }

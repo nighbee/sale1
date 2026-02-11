@@ -6,17 +6,20 @@ import (
 )
 
 type AuthHandler struct {
-	registerUC *auth.RegisterUseCase
-	loginUC    *auth.LoginUseCase
+	registerUC     *auth.RegisterUseCase
+	loginUC        *auth.LoginUseCase
+	refreshTokenUC *auth.RefreshTokenUseCase
 }
 
 func NewAuthHandler(
 	registerUC *auth.RegisterUseCase,
 	loginUC *auth.LoginUseCase,
+	refreshTokenUC *auth.RefreshTokenUseCase,
 ) *AuthHandler {
 	return &AuthHandler{
-		registerUC: registerUC,
-		loginUC:    loginUC,
+		registerUC:     registerUC,
+		loginUC:        loginUC,
+		refreshTokenUC: refreshTokenUC,
 	}
 }
 
@@ -56,4 +59,30 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(resp)
+}
+
+func (h *AuthHandler) RefreshToken(c *fiber.Ctx) error {
+	var req auth.RefreshTokenRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request body"})
+	}
+
+	resp, err := h.refreshTokenUC.Execute(c.Context(), req)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	return c.JSON(resp)
+}
+
+func (h *AuthHandler) Logout(c *fiber.Ctx) error {
+	return c.SendStatus(fiber.StatusNoContent)
+}
+
+func (h *AuthHandler) ForgotPassword(c *fiber.Ctx) error {
+	return c.JSON(fiber.Map{"message": "Password reset email sent (mock)"})
+}
+
+func (h *AuthHandler) ResetPassword(c *fiber.Ctx) error {
+	return c.JSON(fiber.Map{"message": "Password has been reset (mock)"})
 }

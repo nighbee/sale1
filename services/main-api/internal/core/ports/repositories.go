@@ -26,3 +26,13 @@ type CallRepository interface {
 	ListByCompany(ctx context.Context, companyID string, filters map[string]interface{}) ([]*domain.Call, int, error)
 	UpdateStatus(ctx context.Context, id string, status domain.CallStatus) error
 }
+
+type TranscriptRepository interface {
+	GetByCallID(ctx context.Context, callID string) (*domain.Transcript, error)
+}
+
+type AnalysisRepository interface {
+	GetByCallID(ctx context.Context, callID string) (*domain.AnalysisReport, error)
+	GetTeamPerformance(ctx context.Context, companyID string) (interface{}, error)
+	GetLeaderboard(ctx context.Context, companyID string) (interface{}, error)
+}
