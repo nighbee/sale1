@@ -32,7 +32,7 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                         CLIENT LAYER                                 │
+│                         CLIENT LAYER                               │
 │  ┌──────────────┐     ┌──────────────┐      ┌──────────────┐       │
 │  │   Web App    │     │  Mobile App  │      │ External CRM │       │
 │  │ (Next.js)    │     │  (React)     │      │  (AmoCRM)    │       │
@@ -41,47 +41,47 @@
           │                    │                     │
           ▼                    ▼                     ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│                      API GATEWAY (NGINX)                             │
+│                      API GATEWAY (NGINX)                           │
 └─────────────────────────────────────────────────────────────────────┘
           │
-          ├──────────────┬──────────────┬──────────────┬──────────────┐
-          ▼              ▼              ▼              ▼              ▼
-┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐
-│  Main API    │ │  Webhook &   │ │ Google Sheets│ │   Script     │ │              │
-│  Service     │ │  Ingestion   │ │ Sync Service │ │  Management  │ │  (Golang)    │
-│  (Golang)    │ │  (Golang)    │ │  (Golang)    │ │  (Go+Python) │ │              │
-└──────┬───────┘ └──────┬───────┘ └──────┬───────┘ └──────┬───────┘ └──────────────┘
-       │                │                │                │
-       │                └────────────────┴────────────────┘
-       │                             │
-       │                             ▼
-       │                    ┌──────────────────┐
-       │                    │   BullMQ Queue   │
-       │                    │     (Redis)      │
-       │                    └────────┬─────────┘
-       │                             │
-       │                ┌────────────┴────────────┐
-       │                ▼                         ▼
-       │         ┌──────────────┐         ┌──────────────┐
-       │         │ STT Service  │         │ AI Analytics │
-       │         │  (Python)    │────────▶│   Service    │
-       │         │              │  Event  │  (Python)    │
-       │         └──────┬───────┘         └──────┬───────┘
-       │                │                        │
-       │                │                        │
-       └────────────────┴────────────────────────┘
-                        │
-                        ▼
-            ┌───────────────────────┐
-            │    PostgreSQL DB      │
-            │  (Multi-Schema)       │
-            └───────────────────────┘
+          ├──────────────┬──────────────────────────────┬────────────┐
+          ▼              ▼                              ▼            ▼
+┌──────────────┐ ┌──────────────────┐           ┌──────────────┐ ┌──────────────┐
+│  Main API    │ │ Sipuni WS        │           │   Script     │ │              │
+│  Service     │ │ Listener Service │           │  Management  │ │  (Golang)    │
+│  (Golang)    │ │  (Golang)        │           │  (Python) │ │              │
+└──────┬───────┘ └──────────┬───────┘           └──────┬───────┘ └──────────────┘
+       │                    │                          │
+       │                    └──────────────┬───────────┘
+       │                                   │
+       │                                   ▼
+       │                          ┌──────────────────┐
+       │                          │   BullMQ Queue   │
+       │                          │     (Redis)      │
+       │                          └────────┬─────────┘
+       │                                   │
+       │                        ┌──────────┴──────────┐
+       │                        ▼                     ▼
+       │                 ┌──────────────┐     ┌──────────────┐
+       │                 │ STT Service  │     │ AI Analytics │
+       │                 │  (Python)    │────▶│   Service    │
+       │                 │              │Event│  (Python)    │
+       │                 └──────┬───────┘     └──────┬───────┘
+       │                        │                    │
+       │                        │                    │
+       └────────────────────────┴────────────────────┘
+                                │
+                                ▼
+                    ┌───────────────────────┐
+                    │    PostgreSQL DB      │
+                    │  (Multi-Schema)       │
+                    └───────────────────────┘
 
-            ┌───────────────────────┐
-            │      MinIO (S3)       │
-            │  - Audio Files        │
-            │  - Script Files       │
-            └───────────────────────┘
+                    ┌───────────────────────┐
+                    │      MinIO (S3)       │
+                    │  - Audio Files        │
+                    │  - Script Files       │
+                    └───────────────────────┘
 ```
 
 ---
@@ -90,14 +90,13 @@
 
 ### 2.1 Service Inventory
 
-| Service               | Language    | Port | Responsibility                | Clean Architecture |
-| --------------------- | ----------- | ---- | ----------------------------- | ------------------ |
-| **Main API**          | Golang      | 8080 | Auth, CRUD, Analytics APIs    | ✅                 |
-| **Webhook Ingestion** | Golang      | 8081 | AmoCRM webhook receiver       | ✅                 |
-| **Sheets Sync**       | Golang      | 8082 | Poll Google Sheets every 5min | ✅                 |
-| **Script Management** | Go + Python | 8083 | Upload, parse, store scripts  | ✅                 |
-| **STT Service**       | Python      | 5001 | Speech-to-Text processing     | ✅                 |
-| **AI Analytics**      | Python      | 5002 | LLM-based call analysis       | ✅                 |
+| Service               | Language    | Port | Responsibility                                   | Clean Architecture |
+| --------------------- | ----------- | ---- | ------------------------------------------------ | ------------------ |
+| **Main API**          | Golang      | 8080 | Auth, CRUD, Analytics APIs                       | ✅                 |
+| **Sipuni Listener**   | Golang      | 8081 | Maintain WS to Sipuni, enqueue call jobs         | ✅                 |
+| **Script Management** | Python | 8082 | Upload, parse, store scripts                     | ✅                 |
+| **STT Service**       | Python      | 5001 | Speech-to-Text processing                        | ✅                 |
+| **AI Analytics**      | Python      | 5002 | LLM-based call analysis and KPI computation      | ✅                 |
 
 ---
 
@@ -155,58 +154,59 @@ main-api/
 
 ---
 
-#### **Service 2: Webhook & Ingestion (Golang)**
+#### **Service 2: Sipuni Listener (Golang)**
 
 **Responsibilities:**
 
-- Receive AmoCRM webhooks (call finished events)
-- Validate payload
-- Push to BullMQ queue (fast response <100ms)
-- Return 200 OK immediately
+- Maintain a persistent WebSocket connection to Sipuni at `wss://wss.sipuni.com/api`.
+- Send an AUTH message after connect in the format: `{"type":"auth","body":{"key":"<SIPUNI_API_KEY>"}}`.
+- Receive call events with `"action":"notify"` and `"namespace":"api"`, parse call metadata (direction, manager, phone, Sipuni `call_id`, recording URL, etc.).
+- For completed calls, create or update the base call record in PostgreSQL and push an `audio_processing` job to the BullMQ queue.
 
 **Clean Architecture:**
 
 ```
-webhook-service/
+sipuni-listener/
 ├── cmd/
-│   └── webhook/
+│   └── listener/
 │       └── main.go
 ├── internal/
 │   ├── adapters/
-│   │   ├── http/
-│   │   │   └── handlers/
-│   │   │       └── amocrm_webhook.go
-│   │   └── queue/          # BullMQ publisher
-│   │       └── bullmq.go
+│   │   ├── websocket/      # Sipuni WS client
+│   │   │   └── sipuni_client.go
+│   │   └── queue/          # BullMQ / Redis publisher
+│   │       └── audio_queue.go
 │   ├── core/
 │   │   ├── domain/
-│   │   │   └── webhook_event.go
+│   │   │   └── sipuni_event.go
 │   │   └── usecases/
-│   │       └── process_webhook.go
+│   │       └── handle_event.go
 │   └── infrastructure/
-│       └── redis/
+│       └── config/
 └── pkg/
     └── dto/
-        └── amocrm_payload.go
+        └── sipuni_payload.go
 ```
 
-**Webhook Payload (AmoCRM):**
+**Incoming Event (Sipuni, simplified):**
 
 ```json
 {
-  "event_type": "call_finished",
-  "manager_id": "222",
-  "manager_name": "Anzhelika",
-  "client_phone": "77081996454",
-  "client_id": "33817535",
-  "duration": 1321,
-  "call_link": "https://files.salebot.pro/.../file.mp3",
-  "chat_link": "https://...",
-  "timestamp": "2025-09-12T17:43:00Z"
+  "type": "event",
+  "action": "notify",
+  "namespace": "api",
+  "request": {
+    "call_id": "external-sipuni-id",
+    "direction": "inbound",
+    "from": "77081996454",
+    "to": "222",
+    "record_url": "https://files.sipuni.com/.../record.mp3",
+    "timestamp": "2025-09-12T17:43:00Z"
+  }
 }
 ```
 
-**BullMQ Queue Job:**
+**BullMQ Queue Job (unchanged):**
 
 ```json
 {
@@ -222,73 +222,7 @@ webhook-service/
 
 ---
 
-#### **Service 3: Google Sheets Sync (Golang)**
-
-**Responsibilities:**
-
-- Poll Google Sheets every 5 minutes
-- Detect new rows (compare timestamps or row count)
-- Transform sheet data to internal format
-- Push to same BullMQ queue as webhooks
-
-**Clean Architecture:**
-
-```
-sheets-sync/
-├── cmd/
-│   └── sync/
-│       └── main.go
-├── internal/
-│   ├── adapters/
-│   │   ├── sheets/         # Google Sheets API client
-│   │   │   └── client.go
-│   │   └── queue/
-│   │       └── bullmq.go
-│   ├── core/
-│   │   ├── domain/
-│   │   │   └── call_entry.go
-│   │   └── usecases/
-│   │       └── sync_calls.go
-│   └── infrastructure/
-│       ├── cron/           # 5-minute scheduler
-│       └── cache/          # Redis for last sync state
-└── pkg/
-    └── parsers/
-        └── sheet_row.go
-```
-
-**Sheet Row Mapping:**
-
-```go
-type SheetCallEntry struct {
-    Date         string  // "12.09.2025"
-    Time         string  // "17:43"
-    ManagerID    string  // "222"
-    ManagerName  string  // "Anzhelika"
-    ClientPhone  string  // "77081996454"
-    ClientID     string  // "33817535"
-    Duration     int     // 1321
-    CallLink     string  // "https://..."
-    ChatLink     string  // Optional
-    // Metrics (if pre-filled, skip processing)
-    QualityScore *int
-    ScriptMatch  *int
-    // ... other fields
-}
-```
-
-**Sync Logic:**
-
-1. Fetch all rows from Sheets
-2. Compare with `last_sync_timestamp` in Redis
-3. Filter new entries
-4. For each new entry:
-   - If metrics are empty → push to BullMQ
-   - If metrics exist → insert directly to DB (manual upload)
-
----
-
-#### **Service 4: Script Management (Golang + Python)**
+#### **Service 4: Script Management (Python)**
 
 **Responsibilities:**
 
@@ -303,26 +237,26 @@ type SheetCallEntry struct {
 script-service/
 ├── cmd/
 │   └── script/
-│       └── main.go
+│       └── main.py
 ├── internal/
 │   ├── adapters/
 │   │   ├── http/
 │   │   │   └── handlers/
-│   │   │       ├── upload.go
-│   │   │       ├── list.go
-│   │   │       └── delete.go
+│   │   │       ├── upload.py
+│   │   │       ├── list.py
+│   │   │       └── delete.py
 │   │   ├── storage/
-│   │   │   └── minio.go
+│   │   │   └── minio.py
 │   │   ├── parser/         # Calls Python script
-│   │   │   └── document_parser.go
+│   │   │   └── document_parser.py
 │   │   └── repositories/
-│   │       └── script_repo.go
+│   │       └── script_repo.py
 │   ├── core/
 │   │   ├── domain/
-│   │   │   └── script.go
+│   │   │   └── script.py
 │   │   └── usecases/
-│   │       ├── upload_script.go
-│   │       └── parse_script.go
+│   │       ├── upload_script.py
+│   │       └── parse_script.py
 │   └── infrastructure/
 └── scripts/                # Python parsers
     ├── parse_docx.py
@@ -576,12 +510,12 @@ def calculate_kpi(quality: int, script_match: int, errors_free: int, duration: i
 
 ```
 ┌─────────────┐
-│  AmoCRM     │ (Webhook: call finished)
+│  Sipuni     │ (WebSocket events)
 └──────┬──────┘
        │
        ▼
 ┌──────────────────────┐
-│ Webhook Service (Go) │ (Validate, generate call_id)
+│ Sipuni Listener (Go) │ (Auth, normalize event, generate call_id)
 └──────┬───────────────┘
        │
        ▼
@@ -620,35 +554,6 @@ def calculate_kpi(quality: int, script_match: int, errors_free: int, duration: i
 │  PostgreSQL          │ (analysis_reports table)
 └──────────────────────┘
 ```
-
-### 3.2 Google Sheets Sync Flow
-
-```
-┌──────────────────────┐
-│  Cron Job (5 min)    │
-└──────┬───────────────┘
-       │
-       ▼
-┌──────────────────────┐
-│ Sheets Sync (Go)     │ (Fetch all rows)
-└──────┬───────────────┘
-       │
-       ├─────────────────────┐
-       │                     │
-       ▼                     ▼
-┌─────────────┐      ┌──────────────┐
-│ New rows    │      │ Existing     │
-│ (no metrics)│      │ (has metrics)│
-└──────┬──────┘      └──────┬───────┘
-       │                     │
-       ▼                     ▼
-┌─────────────┐      ┌──────────────┐
-│ Push to     │      │ Insert to DB │
-│ BullMQ      │      │ directly     │
-└─────────────┘      └──────────────┘
-```
-
----
 
 ## 4. Database Schema
 

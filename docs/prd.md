@@ -9,7 +9,7 @@
 
 ## 1. Executive Summary
 
-**SalesAI** is a B2B SaaS platform designed to automate Quality Assurance (QA) for sales teams. It ingests communication data (voice calls, chats) from CRMs (AmoCRM), analyzes them using Speech-to-Text (STT) and Large Language Models (LLM), and provides actionable insights.
+**SalesAI** is a B2B SaaS platform designed to automate Quality Assurance (QA) for sales teams. It ingests communication data (voice calls, chats) from telephony providers (e.g., Sipuni) and CRMs, analyzes them using Speech-to-Text (STT) and Large Language Models (LLM), and provides actionable insights.
 
 **Primary Goal:** To move sales analysis from "random sampling" to "100% coverage," giving Managers a God-mode view of performance and Representatives an automated AI Coach.
 
@@ -39,12 +39,13 @@
 
 ### 3.2 Data Ingestion & Integrations
 
-- **AmoCRM Webhook Listener:**
-  - Endpoint: `POST /api/v1/webhooks/amocrm/call-finished`
-  - Payload: Call link, Manager ID, Client Phone, Deal ID.
-  - **Performance:** Must respond `200 OK` within 100ms (handled by Golang).
+- **Sipuni WebSocket Listener:**
+  - Persistent WebSocket connection to `wss://wss.sipuni.com/api`.
+  - After connect, the service sends an AUTH message in the format: `{"type":"auth","body":{"key":"<SIPUNI_API_KEY>"}}`.
+  - On messages with `"action":"notify"` and `"namespace":"api"`, the service receives call metadata (direction, manager, phone, Sipuni `call_id`, etc.).
+  - For completed calls, it enqueues an internal `audio_processing` job and stores/updates the base call record in PostgreSQL.
 - **File Handling:**
-  - Download audio files from external links (Salebot/CRM).
+  - Download audio recordings from URLs provided by Sipuni events.
   - **Storage:** Save files to **MinIO** (Self-hosted S3) for permanence.
 
 ### 3.3 The Analysis Pipeline (AI Module)
@@ -98,7 +99,7 @@ To maximize the **Diploma Complexity Score**, we use a hybrid stack.
 
 ### 4.1 High-Level Diagram
 
-`[AmoCRM]` -> `[Nginx]` -> `[Golang API]` -> `[Redis Queue]` -> `[Python AI Worker]` -> `[PostgreSQL]`
+`[Sipuni Telephony]` -> `[Ingestion Service (WebSocket)]` -> `[Nginx/Main Golang API]` -> `[Redis Queue]` -> `[Python AI Worker]` -> `[PostgreSQL]`
 
 ### 4.2 Tech Stack
 
@@ -141,7 +142,6 @@ The system will have **>15 Endpoints**.
 
 **Calls Group:**
 
-- `POST /webhooks/amocrm` (Ingest)
 - `GET /calls` (List with pagination & filters)
 - `GET /calls/{id}` (Details)
 - `GET /calls/{id}/audio` (Stream from MinIO)
@@ -190,7 +190,7 @@ The system will have **>15 Endpoints**.
 ## 9. Implementation Phases
 
 1.  **Phase 1 (Infrastructure):** Docker setup (Go, Postgres, Redis, MinIO).
-2.  **Phase 2 (Core Backend):** Golang API for Auth and Webhook ingestion.
+2.  **Phase 2 (Core Backend):** Golang API for Auth and a dedicated Sipuni WebSocket ingestion service.
 3.  **Phase 3 (AI Pipeline):** Python worker to fetch audio, transcribe, and analyze.
 4.  **Phase 4 (Frontend):** React Dashboard and "Karaoke" Player.
 5.  **Phase 5 (Integration):** AmoCRM connection and Notification logic.
