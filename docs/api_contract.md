@@ -988,41 +988,53 @@ curl -X PUT https://api.salesai.com/api/v1/companies/uuid/settings \
 
 ---
 
-### 3.7 Webhook Endpoints (External)
+### 3.7 Ingestion: Sipuni WebSocket (External)
 
-#### `POST /webhooks/amocrm/call-finished`
+> Note: This section documents how the system connects to Sipuni. It is **not** an HTTP REST endpoint on SalesAI, but an outgoing WebSocket client connection from the Sipuni Listener service.
 
-**Auth:** API Key in header `X-API-Key: <amocrm_key>`
+**WebSocket URL:** `wss://wss.sipuni.com/api`
 
-**Description:** Receive call finished events from AmoCRM
-
-**Request Body:**
+**AUTH Message (sent by SalesAI after connect):**
 
 ```json
 {
-  "event_type": "call_finished",
-  "manager_id": "222",
-  "manager_name": "Anzhelika",
-  "client_phone": "77081996454",
-  "client_id": "33817535",
-  "duration": 1321,
-  "call_link": "https://files.salebot.pro/.../file.mp3",
-  "chat_link": "https://...",
-  "timestamp": "2025-09-12T17:43:00Z"
+  "type": "auth",
+  "body": {
+    "key": "SIPUNI_API_KEY"
+  }
 }
 ```
 
-**Response:** `200 OK`
+**Incoming Call Event (simplified example):**
 
 ```json
 {
-  "status": "received",
-  "call_id": "uuid",
-  "message": "Call queued for processing"
+  "type": "event",
+  "action": "notify",
+  "namespace": "api",
+  "request": {
+    "call_id": "external-sipuni-id",
+    "direction": "inbound",
+    "from": "77081996454",
+    "to": "222",
+    "record_url": "https://files.sipuni.com/.../record.mp3",
+    "timestamp": "2025-09-12T17:43:00Z"
+  }
 }
 ```
 
-**Performance Requirement:** Must respond within 100ms
+**Behavior in SalesAI:**
+
+- On successful AUTH, the Sipuni Listener service keeps the connection open and listens for `action: "notify", namespace: "api"` events.
+- For completed calls, the listener:
+  - Normalizes the payload into internal DTOs.
+  - Creates/updates the `calls` row in PostgreSQL.
+  - Enqueues an `audio_processing` job in BullMQ with the `audio_url`, `call_id`, `company_id`, and `manager_id`.
+
+**Reconnection & Reliability (implementation detail):**
+
+- The listener should automatically reconnect on network errors, with exponential backoff.
+- On reconnect, it re-sends the AUTH message.
 
 ---
 
@@ -1178,68 +1190,46 @@ GET /calls?manager_id=222&status=completed&page=2&limit=50
 
 ---
 
-## 6. Webhook Payloads
+## 6. Ingestion Event Format (Sipuni)
 
-### 6.1 AmoCRM Call Finished
+### 6.1 Sipuni Call Event
 
-**URL:** `POST /webhooks/amocrm/call-finished`
+**WebSocket URL (client-side):** `wss://wss.sipuni.com/api`
 
-**Headers:**
-
-```
-Content-Type: application/json
-X-API-Key: <amocrm_secret_key>
-```
-
-**Payload:**
+**AUTH Message (sent by SalesAI after connect):**
 
 ```json
 {
-  "event_type": "call_finished",
-  "manager_id": "222",
-  "manager_name": "Anzhelika",
-  "client_phone": "77081996454",
-  "client_id": "33817535",
-  "duration": 1321,
-  "call_link": "https://files.salebot.pro/uploads/file_item/51965265/file/698408/2024_09_21-09_12_37_from_222_to_87023503754.mp3",
-  "chat_link": "https://example.com/chat/123",
-  "timestamp": "2025-09-12T17:43:00Z"
-}
-```
-
-**Response:**
-
-```json
-{
-  "status": "received",
-  "call_id": "550e8400-e29b-41d4-a716-446655440000",
-  "message": "Call queued for processing"
-}
-```
-
----
-
-### 6.2 Google Sheets Webhook (Optional Future)
-
-**URL:** `POST /webhooks/google-sheets`
-
-**Payload:**
-
-```json
-{
-  "event_type": "row_added",
-  "sheet_id": "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms",
-  "row_data": {
-    "Date": "12.09.2025",
-    "Time": "17:43",
-    "Man id": "222",
-    "Man name": "Anzhelika",
-    "Client phone": "77081996454",
-    "Duration": 1321,
-    "Call Link": "https://..."
+  "type": "auth",
+  "body": {
+    "key": "SIPUNI_API_KEY"
   }
 }
 ```
+
+**Notify Event (call-related, simplified):**
+
+```json
+{
+  "type": "event",
+  "action": "notify",
+  "namespace": "api",
+  "request": {
+    "call_id": "external-sipuni-id",
+    "direction": "inbound",
+    "from": "77081996454",
+    "to": "222",
+    "record_url": "https://files.sipuni.com/.../record.mp3",
+    "timestamp": "2025-09-12T17:43:00Z"
+  }
+}
+```
+
+**Internal Mapping (conceptual):**
+
+- `request.call_id` → external call identifier (stored on `calls.external_id` or metadata).
+- `request.from` / `request.to` → mapped to `client_phone` / `manager_id` depending on direction.
+- `request.record_url` → stored as `call_link` and used as `audio_url` in `audio_processing` jobs.
 
 ---
 
