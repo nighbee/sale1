@@ -1,15 +1,59 @@
 package handlers
 
-import "github.com/gofiber/fiber/v2"
+import (
+	"github.com/gofiber/fiber/v2"
+	"github.com/salesai/main-api/internal/core/usecases/auth"
+)
 
-// AuthHandler will contain dependencies for auth-related HTTP handlers.
 type AuthHandler struct {
-	// TODO: add use cases / services
+	registerUC *auth.RegisterUseCase
+	loginUC    *auth.LoginUseCase
 }
 
-// RegisterRoutes registers auth-related routes.
-func (h *AuthHandler) RegisterRoutes(r fiber.Router) {
-	// TODO: implement auth endpoints (register, login, refresh, etc.)
+func NewAuthHandler(
+	registerUC *auth.RegisterUseCase,
+	loginUC *auth.LoginUseCase,
+) *AuthHandler {
+	return &AuthHandler{
+		registerUC: registerUC,
+		loginUC:    loginUC,
+	}
 }
 
+func (h *AuthHandler) Register(c *fiber.Ctx) error {
+	var req auth.RegisterRequest
 
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid request body",
+		})
+	}
+
+	resp, err := h.registerUC.Execute(c.Context(), &req)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(resp)
+}
+
+func (h *AuthHandler) Login(c *fiber.Ctx) error {
+	var req auth.LoginRequest
+
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid request body",
+		})
+	}
+
+	resp, err := h.loginUC.Execute(c.Context(), &req)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Invalid credentials",
+		})
+	}
+
+	return c.JSON(resp)
+}
