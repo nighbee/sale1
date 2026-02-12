@@ -63,12 +63,12 @@ func (h *ScriptHandler) Upload(c *fiber.Ctx) error {
 	parsedText := string(out)
 
 	// Upload to MinIO
-	_, err = h.minioClient.FPutObject(context.Background(), "salesai", objectName, tmpPath, minio.PutObjectOptions{
+	_, err = h.minioClient.FPutObject(context.Background(), "scripts", objectName, tmpPath, minio.PutObjectOptions{
 		ContentType: "application/octet-stream",
 	})
 	if err != nil {
-		// return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to upload to MinIO"})
-		fmt.Printf("MinIO upload skipped (mock): %v\n", err)
+		fmt.Printf("MinIO upload failed: %v\n", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to upload to MinIO"})
 	}
 
 	// Save to DB
@@ -81,4 +81,21 @@ func (h *ScriptHandler) Upload(c *fiber.Ctx) error {
 		"message":   "Script uploaded and parsed successfully",
 		"script_id": scriptID,
 	})
+}
+
+func (h *ScriptHandler) List(c *fiber.Ctx) error {
+	companyID := c.Params("company_id")
+	scripts, err := h.repo.List(c.Context(), companyID)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(scripts)
+}
+
+func (h *ScriptHandler) Delete(c *fiber.Ctx) error {
+	id := c.Params("id")
+	if err := h.repo.Delete(c.Context(), id); err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.SendStatus(204)
 }

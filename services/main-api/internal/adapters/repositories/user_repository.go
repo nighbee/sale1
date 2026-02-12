@@ -41,16 +41,16 @@ func (r *userRepository) Create(ctx context.Context, user *domain.User) error {
 	return err
 }
 
-func (r *userRepository) GetByID(ctx context.Context, id string) (*domain.User, error) {
+func (r *userRepository) GetByID(ctx context.Context, companyID, id string) (*domain.User, error) {
 	query := `
 		SELECT id, company_id, email, password_hash, role, manager_id, manager_name,
 		       is_active, last_login, created_at, updated_at
 		FROM auth_schema.users
-		WHERE id = $1
+		WHERE id = $1 AND company_id = $2
 	`
 
 	user := &domain.User{}
-	err := r.db.QueryRowContext(ctx, query, id).Scan(
+	err := r.db.QueryRowContext(ctx, query, id, companyID).Scan(
 		&user.ID,
 		&user.CompanyID,
 		&user.Email,
@@ -112,9 +112,9 @@ func (r *userRepository) Update(ctx context.Context, user *domain.User) error {
 	return err
 }
 
-func (r *userRepository) Delete(ctx context.Context, id string) error {
-	query := `DELETE FROM auth_schema.users WHERE id = $1`
-	_, err := r.db.ExecContext(ctx, query, id)
+func (r *userRepository) Delete(ctx context.Context, companyID, id string) error {
+	query := `DELETE FROM auth_schema.users WHERE id = $1 AND company_id = $2`
+	_, err := r.db.ExecContext(ctx, query, id, companyID)
 	return err
 }
 

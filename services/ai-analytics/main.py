@@ -1,5 +1,16 @@
 import asyncio
+import logging
 from src.adapters.events.redis_consumer import start_consumer
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+async def main():
+    logger.info("Starting AI Analytics Service...")
+    await start_consumer()
+
 if __name__ == "__main__":
-    asyncio.run(start_consumer())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        logger.info("Service stopped by user")

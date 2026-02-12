@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"log"
 	"net/url"
@@ -11,7 +12,10 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	_ "github.com/lib/pq"
 	"github.com/salesai/sipuni-listener/internal/adapters/queue"
+	"github.com/salesai/sipuni-listener/internal/adapters/repositories"
+	"github.com/salesai/sipuni-listener/internal/core/domain"
 )
 
 type SipuniAuthBody struct {
@@ -38,7 +42,11 @@ type SipuniNotifyRequest struct {
 	RecordURL string `json:"record_url"`
 }
 
-var publisher *queue.BullMQPublisher
+var (
+	publisher *queue.BullMQPublisher
+	callRepo  repositories.CallRepository
+	companyID string
+)
 
 func main() {
 	interrupt := make(chan os.Signal, 1)
@@ -49,7 +57,26 @@ func main() {
 		redisURL = "redis://redis:6379"
 	}
 
-	var err error
+	dbURL := os.Getenv("DATABASE_URL")
+	if dbURL == "" {
+		dbURL = "host=postgres port=5432 user=salesai_user password=strong_password dbname=salesai sslmode=disable"
+	}
+
+	db, err := sql.Open("postgres", dbURL)
+	if err != nil {
+		log.Fatal("database connection:", err)
+	}
+	defer db.Close()
+
+	callRepo = repositories.NewCallRepository(db)
+
+	// Resolve company ID from environment
+	companyID = os.Getenv("COMPANY_ID")
+	if companyID == "" {
+		// Fallback to test company for development
+		companyID = "550e8400-e29b-41d4-a716-446655440000"
+	}
+
 	publisher, err = queue.NewBullMQPublisher(redisURL)
 	if err != nil {
 		log.Fatal("redis publisher:", err)
@@ -125,11 +152,35 @@ func handleNotify(request json.RawMessage) {
 
 	// We only care about completed calls with a record URL
 	if notify.RecordURL != "" {
-		log.Printf("Enqueuing job for call %s", notify.CallID)
+		log.Printf("Received notify for call %s", notify.CallID)
+
+		callID := uuid.New().String()
+		now := time.Now()
+
+		call := &domain.Call{
+			ID:          callID,
+			CompanyID:   companyID,
+			ManagerID:   notify.To, // Assuming 'to' is the manager for inbound
+			ManagerName: "Sipuni Manager",
+			ClientPhone: notify.From,
+			Duration:    60, // Mock duration if not provided
+			CallLink:    notify.RecordURL,
+			CallDate:    now,
+			CallTime:    now,
+			Status:      domain.StatusPending,
+			Source:      "webhook",
+		}
+
+		if err := callRepo.Create(context.Background(), call); err != nil {
+			log.Println("save call:", err)
+			return
+		}
+
+		log.Printf("Enqueuing job for call %s", callID)
 
 		job := queue.AudioProcessingJob{
-			CallID:    uuid.New().String(),
-			CompanyID: "550e8400-e29b-41d4-a716-446655440000", // Default test company
+			CallID:    callID,
+			CompanyID: companyID,
 			AudioURL:  notify.RecordURL,
 			ManagerID: notify.To,
 		}

@@ -6,17 +6,59 @@ import (
 	"errors"
 
 	"github.com/salesai/main-api/internal/core/domain"
+	"github.com/salesai/main-api/internal/core/ports"
 )
 
 type scriptRepository struct {
 	db *sql.DB
 }
 
-func NewScriptRepository(db *sql.DB) *scriptRepository {
+func NewScriptRepository(db *sql.DB) ports.ScriptRepository {
 	return &scriptRepository{db: db}
 }
 
-func (r *scriptRepository) GetByCompany(ctx context.Context, companyID string) ([]*domain.Script, error) {
+func (r *scriptRepository) Create(ctx context.Context, s *domain.Script) error {
+	query := `
+		INSERT INTO scripts_schema.scripts (id, company_id, name, file_path_minio, parsed_text, version, is_active)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		RETURNING created_at, updated_at
+	`
+	return r.db.QueryRowContext(ctx, query, s.ID, s.CompanyID, s.Name, s.FilePathMinio, s.ParsedText, s.Version, s.IsActive).Scan(&s.CreatedAt, &s.UpdatedAt)
+}
+
+func (r *scriptRepository) Update(ctx context.Context, s *domain.Script) error {
+	query := `
+		UPDATE scripts_schema.scripts SET name = $2, is_active = $3, updated_at = NOW()
+		WHERE id = $1
+	`
+	_, err := r.db.ExecContext(ctx, query, s.ID, s.Name, s.IsActive)
+	return err
+}
+
+func (r *scriptRepository) Delete(ctx context.Context, companyID, id string) error {
+	query := `UPDATE scripts_schema.scripts SET is_active = false, updated_at = NOW() WHERE id = $1 AND company_id = $2`
+	_, err := r.db.ExecContext(ctx, query, id, companyID)
+	return err
+}
+
+func (r *scriptRepository) GetActiveByCompany(ctx context.Context, companyID string) (*domain.Script, error) {
+	query := `
+		SELECT id, company_id, name, file_path_minio, parsed_text, version, is_active, created_at, updated_at
+		FROM scripts_schema.scripts
+		WHERE company_id = $1 AND is_active = true
+		ORDER BY version DESC LIMIT 1
+	`
+	s := &domain.Script{}
+	err := r.db.QueryRowContext(ctx, query, companyID).Scan(
+		&s.ID, &s.CompanyID, &s.Name, &s.FilePathMinio, &s.ParsedText, &s.Version, &s.IsActive, &s.CreatedAt, &s.UpdatedAt,
+	)
+	if err == sql.ErrNoRows {
+		return nil, errors.New("active script not found")
+	}
+	return s, err
+}
+
+func (r *scriptRepository) ListByCompany(ctx context.Context, companyID string) ([]*domain.Script, error) {
 	query := `
 		SELECT id, company_id, name, file_path_minio, parsed_text, version, is_active, created_at, updated_at
 		FROM scripts_schema.scripts
@@ -53,15 +95,15 @@ func (r *scriptRepository) GetByCompany(ctx context.Context, companyID string) (
 	return scripts, nil
 }
 
-func (r *scriptRepository) GetByID(ctx context.Context, id string) (*domain.Script, error) {
+func (r *scriptRepository) GetByID(ctx context.Context, companyID, id string) (*domain.Script, error) {
 	query := `
 		SELECT id, company_id, name, file_path_minio, parsed_text, version, is_active, created_at, updated_at
 		FROM scripts_schema.scripts
-		WHERE id = $1
+		WHERE id = $1 AND company_id = $2
 	`
 
 	s := &domain.Script{}
-	err := r.db.QueryRowContext(ctx, query, id).Scan(
+	err := r.db.QueryRowContext(ctx, query, id, companyID).Scan(
 		&s.ID,
 		&s.CompanyID,
 		&s.Name,
