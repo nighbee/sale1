@@ -2,9 +2,11 @@ package http
 
 import (
 	"github.com/gofiber/fiber/v2"
+	_ "github.com/salesai/main-api/docs"
 	"github.com/salesai/main-api/internal/adapters/http/handlers"
 	"github.com/salesai/main-api/internal/adapters/http/middleware"
 	"github.com/salesai/main-api/internal/core/ports"
+	"github.com/gofiber/swagger"
 )
 
 func SetupRoutes(
@@ -18,6 +20,9 @@ func SetupRoutes(
 	jwtService ports.JWTService,
 ) {
 	api := app.Group("/api/v1")
+
+	// Swagger
+	api.Get("/docs/*", swagger.HandlerDefault)
 
 	// Public routes
 	auth := api.Group("/auth")

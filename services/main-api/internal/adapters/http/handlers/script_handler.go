@@ -23,6 +23,15 @@ func NewScriptHandler(scriptRepo ports.ScriptRepository, scriptServiceURL string
 	}
 }
 
+// ListScripts godoc
+// @Summary List all scripts
+// @Description Get a list of all sales scripts for the company
+// @Tags Scripts
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} map[string]interface{}
+// @Router /scripts [get]
 func (h *ScriptHandler) ListScripts(c *fiber.Ctx) error {
 	companyID := c.Locals("company_id").(string)
 	scripts, err := h.scriptRepo.ListByCompany(c.Context(), companyID)
@@ -32,6 +41,16 @@ func (h *ScriptHandler) ListScripts(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"scripts": scripts})
 }
 
+// GetScript godoc
+// @Summary Get script metadata
+// @Description Get metadata for a specific script
+// @Tags Scripts
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Script ID"
+// @Success 200 {object} domain.Script
+// @Router /scripts/{id} [get]
 func (h *ScriptHandler) GetScript(c *fiber.Ctx) error {
 	id := c.Params("id")
 	companyID := c.Locals("company_id").(string)
@@ -42,6 +61,16 @@ func (h *ScriptHandler) GetScript(c *fiber.Ctx) error {
 	return c.JSON(script)
 }
 
+// GetScriptContent godoc
+// @Summary Get script text content
+// @Description Get the parsed plain text content of a script
+// @Tags Scripts
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Script ID"
+// @Success 200 {object} map[string]interface{}
+// @Router /scripts/{id}/content [get]
 func (h *ScriptHandler) GetScriptContent(c *fiber.Ctx) error {
 	id := c.Params("id")
 	companyID := c.Locals("company_id").(string)
@@ -57,6 +86,17 @@ func (h *ScriptHandler) GetScriptContent(c *fiber.Ctx) error {
 	})
 }
 
+// CreateScript godoc
+// @Summary Upload and parse a new script
+// @Description Upload a DOCX or PDF file to create a new sales script. Logic is proxied to script-service.
+// @Tags Scripts
+// @Accept multipart/form-data
+// @Produce json
+// @Security BearerAuth
+// @Param name formData string true "Script name"
+// @Param file formData file true "Script file (DOCX/PDF)"
+// @Success 201 {object} map[string]interface{}
+// @Router /scripts [post]
 func (h *ScriptHandler) CreateScript(c *fiber.Ctx) error {
 	companyID := c.Locals("company_id").(string)
 
@@ -102,6 +142,17 @@ func (h *ScriptHandler) CreateScript(c *fiber.Ctx) error {
 	})
 }
 
+// UpdateScript godoc
+// @Summary Update script metadata
+// @Description Update the name or status of an existing script
+// @Tags Scripts
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Script ID"
+// @Param request body map[string]interface{} true "Update Script Request (name, is_active)"
+// @Success 200 {object} domain.Script
+// @Router /scripts/{id} [put]
 func (h *ScriptHandler) UpdateScript(c *fiber.Ctx) error {
 	id := c.Params("id")
 	companyID := c.Locals("company_id").(string)
@@ -129,6 +180,14 @@ func (h *ScriptHandler) UpdateScript(c *fiber.Ctx) error {
 	return c.JSON(script)
 }
 
+// DeleteScript godoc
+// @Summary Soft delete a script
+// @Description Set a script as inactive
+// @Tags Scripts
+// @Security BearerAuth
+// @Param id path string true "Script ID"
+// @Success 204
+// @Router /scripts/{id} [delete]
 func (h *ScriptHandler) DeleteScript(c *fiber.Ctx) error {
 	id := c.Params("id")
 	companyID := c.Locals("company_id").(string)

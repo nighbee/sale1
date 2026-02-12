@@ -23,6 +23,16 @@ func NewAuthHandler(
 	}
 }
 
+// Register godoc
+// @Summary Register a new company and admin user
+// @Description Register a new company and its first tenant_admin user
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body auth.RegisterRequest true "Registration Request"
+// @Success 201 {object} auth.RegisterResponse
+// @Failure 400 {object} map[string]string
+// @Router /auth/register [post]
 func (h *AuthHandler) Register(c *fiber.Ctx) error {
 	var req auth.RegisterRequest
 
@@ -42,6 +52,16 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(resp)
 }
 
+// Login godoc
+// @Summary Login to the platform
+// @Description Authenticate user and return JWT tokens
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body auth.LoginRequest true "Login Request"
+// @Success 200 {object} auth.LoginResponse
+// @Failure 401 {object} map[string]string
+// @Router /auth/login [post]
 func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	var req auth.LoginRequest
 
@@ -61,6 +81,16 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	return c.JSON(resp)
 }
 
+// Refresh godoc
+// @Summary Refresh access token
+// @Description Get a new access token using a valid refresh token
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body map[string]string true "Refresh Request (refresh_token)"
+// @Success 200 {object} ports.TokenPair
+// @Failure 401 {object} map[string]string
+// @Router /auth/refresh [post]
 func (h *AuthHandler) Refresh(c *fiber.Ctx) error {
 	var req struct {
 		RefreshToken string `json:"refresh_token"`
@@ -82,6 +112,12 @@ func (h *AuthHandler) Refresh(c *fiber.Ctx) error {
 	return c.JSON(resp)
 }
 
+// Logout godoc
+// @Summary Logout user
+// @Description Invalidate the session (client-side action, server returns 204)
+// @Tags Auth
+// @Success 204
+// @Router /auth/logout [post]
 func (h *AuthHandler) Logout(c *fiber.Ctx) error {
 	// In a stateless JWT implementation, logout usually happens on the client side
 	// by deleting the token. Server-side logout would require a blacklist.

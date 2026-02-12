@@ -1,0 +1,890 @@
+basePath: /api/v1
+definitions:
+  auth.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    type: object
+  auth.LoginResponse:
+    properties:
+      tokens:
+        $ref: '#/definitions/ports.TokenPair'
+      user:
+        $ref: '#/definitions/domain.User'
+    type: object
+  auth.RegisterRequest:
+    properties:
+      company_name:
+        type: string
+      email:
+        type: string
+      manager_id:
+        type: string
+      manager_name:
+        type: string
+      password:
+        type: string
+    type: object
+  auth.RegisterResponse:
+    properties:
+      company:
+        $ref: '#/definitions/domain.Company'
+      tokens:
+        $ref: '#/definitions/ports.TokenPair'
+      user:
+        $ref: '#/definitions/domain.User'
+    type: object
+  calls.ListCallsResponse:
+    properties:
+      calls:
+        items:
+          $ref: '#/definitions/domain.Call'
+        type: array
+      limit:
+        type: integer
+      page:
+        type: integer
+      total:
+        type: integer
+    type: object
+  domain.AnalysisReport:
+    properties:
+      brief:
+        type: string
+      call_id:
+        type: string
+      errors_free:
+        type: integer
+      id:
+        type: string
+      kpi:
+        type: number
+      llm_provider:
+        type: string
+      next_best_action:
+        type: string
+      overall_rating:
+        type: number
+      processed_at:
+        type: string
+      quality_score:
+        type: integer
+      recommendation:
+        type: string
+      script_id:
+        type: string
+      script_match:
+        type: integer
+    type: object
+  domain.Call:
+    properties:
+      call_date:
+        type: string
+      call_link:
+        type: string
+      call_time:
+        type: string
+      chat_link:
+        type: string
+      client_id:
+        type: string
+      client_phone:
+        type: string
+      company_id:
+        type: string
+      created_at:
+        type: string
+      duration:
+        type: integer
+      id:
+        type: string
+      manager_id:
+        type: string
+      manager_name:
+        type: string
+      source:
+        type: string
+      status:
+        $ref: '#/definitions/domain.CallStatus'
+      updated_at:
+        type: string
+    type: object
+  domain.CallStatus:
+    enum:
+    - pending
+    - processing
+    - completed
+    - error
+    type: string
+    x-enum-varnames:
+    - StatusPending
+    - StatusProcessing
+    - StatusCompleted
+    - StatusError
+  domain.Company:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      llm_provider:
+        $ref: '#/definitions/domain.LLMProvider'
+      name:
+        type: string
+      stt_model_preference:
+        $ref: '#/definitions/domain.STTModel'
+      subscription_tier:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  domain.LLMProvider:
+    enum:
+    - openai
+    - gemini
+    type: string
+    x-enum-varnames:
+    - LLMOpenAI
+    - LLMGemini
+  domain.STTModel:
+    enum:
+    - whisperx_local
+    - openai
+    - gemini
+    type: string
+    x-enum-varnames:
+    - STTWhisperXLocal
+    - STTOpenAI
+    - STTGemini
+  domain.Script:
+    properties:
+      company_id:
+        type: string
+      created_at:
+        type: string
+      file_path_minio:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      name:
+        type: string
+      parsed_text:
+        type: string
+      updated_at:
+        type: string
+      version:
+        type: integer
+    type: object
+  domain.Transcript:
+    properties:
+      call_id:
+        type: string
+      id:
+        type: string
+      processed_at:
+        type: string
+      processing_time_seconds:
+        type: integer
+      speaker_diarized_json:
+        items:
+          $ref: '#/definitions/domain.TranscriptSegment'
+        type: array
+      stt_provider:
+        type: string
+    type: object
+  domain.TranscriptSegment:
+    properties:
+      end:
+        type: number
+      speaker:
+        type: string
+      start:
+        type: number
+      text:
+        type: string
+    type: object
+  domain.User:
+    properties:
+      company_id:
+        type: string
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      last_login:
+        type: string
+      manager_id:
+        type: string
+      manager_name:
+        type: string
+      role:
+        $ref: '#/definitions/domain.UserRole'
+      updated_at:
+        type: string
+    type: object
+  domain.UserRole:
+    enum:
+    - super_admin
+    - tenant_admin
+    - sales_rep
+    type: string
+    x-enum-varnames:
+    - RoleSuperAdmin
+    - RoleTenantAdmin
+    - RoleSalesRep
+  ports.TokenPair:
+    properties:
+      access_token:
+        type: string
+      expires_in:
+        type: integer
+      refresh_token:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@salesai.com
+    name: API Support
+  description: Central API for SalesAI Intelligent Revenue Intelligence & Coaching
+    SaaS
+  title: SalesAI API
+  version: "1.0"
+paths:
+  /analytics/leaderboard:
+    get:
+      consumes:
+      - application/json
+      description: Rank managers by overall quality and KPI
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get sales representative leaderboard
+      tags:
+      - Analytics
+  /analytics/team-performance:
+    get:
+      consumes:
+      - application/json
+      description: Aggregate KPIs and quality scores for all managers in the company
+      parameters:
+      - description: Time period (last_7_days, last_30_days, etc.)
+        in: query
+        name: period
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get team performance metrics
+      tags:
+      - Analytics
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate user and return JWT tokens
+      parameters:
+      - description: Login Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.LoginResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Login to the platform
+      tags:
+      - Auth
+  /auth/logout:
+    post:
+      description: Invalidate the session (client-side action, server returns 204)
+      responses:
+        "204":
+          description: No Content
+      summary: Logout user
+      tags:
+      - Auth
+  /auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Get a new access token using a valid refresh token
+      parameters:
+      - description: Refresh Request (refresh_token)
+        in: body
+        name: request
+        required: true
+        schema:
+          additionalProperties:
+            type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/ports.TokenPair'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Refresh access token
+      tags:
+      - Auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Register a new company and its first tenant_admin user
+      parameters:
+      - description: Registration Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/auth.RegisterResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Register a new company and admin user
+      tags:
+      - Auth
+  /calls:
+    get:
+      consumes:
+      - application/json
+      description: Get a paginated list of calls for the company
+      parameters:
+      - description: Filter by manager ID
+        in: query
+        name: manager_id
+        type: string
+      - description: Filter by status
+        in: query
+        name: status
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/calls.ListCallsResponse'
+      security:
+      - BearerAuth: []
+      summary: List calls with filters
+      tags:
+      - Calls
+  /calls/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get detailed information about a call, including transcript and
+        analysis
+      parameters:
+      - description: Call ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get call details
+      tags:
+      - Calls
+  /calls/{id}/analysis:
+    get:
+      consumes:
+      - application/json
+      description: Get the AI-generated analysis report for a call
+      parameters:
+      - description: Call ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.AnalysisReport'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get call analysis
+      tags:
+      - Calls
+  /calls/{id}/audio:
+    get:
+      description: Stream the audio recording of a call from MinIO
+      parameters:
+      - description: Call ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - audio/mpeg
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Stream call audio
+      tags:
+      - Calls
+  /calls/{id}/reprocess:
+    post:
+      consumes:
+      - application/json
+      description: Manually trigger STT and AI analysis for a failed or old call
+      parameters:
+      - description: Call ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Re-queue call for processing
+      tags:
+      - Calls
+  /calls/{id}/transcript:
+    get:
+      consumes:
+      - application/json
+      description: Get the diarized transcript of a call
+      parameters:
+      - description: Call ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Transcript'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get call transcript
+      tags:
+      - Calls
+  /companies/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get preferences and settings for the company
+      parameters:
+      - description: Company ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Company'
+      security:
+      - BearerAuth: []
+      summary: Get company settings
+      tags:
+      - Company
+  /companies/{id}/settings:
+    put:
+      consumes:
+      - application/json
+      description: Update STT and LLM provider preferences
+      parameters:
+      - description: Company ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update Settings Request (stt_model_preference, llm_provider)
+        in: body
+        name: request
+        required: true
+        schema:
+          additionalProperties:
+            type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update company preferences
+      tags:
+      - Company
+  /scripts:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of all sales scripts for the company
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List all scripts
+      tags:
+      - Scripts
+    post:
+      consumes:
+      - multipart/form-data
+      description: Upload a DOCX or PDF file to create a new sales script. Logic is
+        proxied to script-service.
+      parameters:
+      - description: Script name
+        in: formData
+        name: name
+        required: true
+        type: string
+      - description: Script file (DOCX/PDF)
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Upload and parse a new script
+      tags:
+      - Scripts
+  /scripts/{id}:
+    delete:
+      description: Set a script as inactive
+      parameters:
+      - description: Script ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+      security:
+      - BearerAuth: []
+      summary: Soft delete a script
+      tags:
+      - Scripts
+    get:
+      consumes:
+      - application/json
+      description: Get metadata for a specific script
+      parameters:
+      - description: Script ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Script'
+      security:
+      - BearerAuth: []
+      summary: Get script metadata
+      tags:
+      - Scripts
+    put:
+      consumes:
+      - application/json
+      description: Update the name or status of an existing script
+      parameters:
+      - description: Script ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update Script Request (name, is_active)
+        in: body
+        name: request
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Script'
+      security:
+      - BearerAuth: []
+      summary: Update script metadata
+      tags:
+      - Scripts
+  /scripts/{id}/content:
+    get:
+      consumes:
+      - application/json
+      description: Get the parsed plain text content of a script
+      parameters:
+      - description: Script ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get script text content
+      tags:
+      - Scripts
+  /users:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of all users belonging to the company
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List all users in company
+      tags:
+      - Users
+  /users/{id}:
+    delete:
+      description: Permanently remove a user from the company
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+      security:
+      - BearerAuth: []
+      summary: Delete a user
+      tags:
+      - Users
+    get:
+      consumes:
+      - application/json
+      description: Get information about a specific user
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.User'
+      security:
+      - BearerAuth: []
+      summary: Get user details
+      tags:
+      - Users
+    put:
+      consumes:
+      - application/json
+      description: Update the role or manager name of a user
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update User Request (manager_name, role)
+        in: body
+        name: request
+        required: true
+        schema:
+          additionalProperties:
+            type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.User'
+      security:
+      - BearerAuth: []
+      summary: Update user information
+      tags:
+      - Users
+  /users/invite:
+    post:
+      consumes:
+      - application/json
+      description: Create a new user record and send an invitation
+      parameters:
+      - description: Invite User Request (email, role, manager_name, manager_id)
+        in: body
+        name: request
+        required: true
+        schema:
+          additionalProperties:
+            type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Invite a new user
+      tags:
+      - Users
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

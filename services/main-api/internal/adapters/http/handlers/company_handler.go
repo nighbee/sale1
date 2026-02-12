@@ -16,6 +16,16 @@ func NewCompanyHandler(companyRepo ports.CompanyRepository) *CompanyHandler {
 	}
 }
 
+// GetCompany godoc
+// @Summary Get company settings
+// @Description Get preferences and settings for the company
+// @Tags Company
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Company ID"
+// @Success 200 {object} domain.Company
+// @Router /companies/{id} [get]
 func (h *CompanyHandler) GetCompany(c *fiber.Ctx) error {
 	id := c.Params("id")
 	company, err := h.companyRepo.GetByID(c.Context(), id)
@@ -25,6 +35,17 @@ func (h *CompanyHandler) GetCompany(c *fiber.Ctx) error {
 	return c.JSON(company)
 }
 
+// UpdateSettings godoc
+// @Summary Update company preferences
+// @Description Update STT and LLM provider preferences
+// @Tags Company
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Company ID"
+// @Param request body map[string]string true "Update Settings Request (stt_model_preference, llm_provider)"
+// @Success 200 {object} map[string]interface{}
+// @Router /companies/{id}/settings [put]
 func (h *CompanyHandler) UpdateSettings(c *fiber.Ctx) error {
 	id := c.Params("id")
 

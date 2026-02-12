@@ -15,6 +15,16 @@ func NewAnalyticsHandler(teamPerformanceUC *analytics.TeamPerformanceUseCase) *A
 	}
 }
 
+// GetTeamPerformance godoc
+// @Summary Get team performance metrics
+// @Description Aggregate KPIs and quality scores for all managers in the company
+// @Tags Analytics
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param period query string false "Time period (last_7_days, last_30_days, etc.)"
+// @Success 200 {object} map[string]interface{}
+// @Router /analytics/team-performance [get]
 func (h *AnalyticsHandler) GetTeamPerformance(c *fiber.Ctx) error {
 	companyID := c.Locals("company_id").(string)
 
@@ -33,6 +43,15 @@ func (h *AnalyticsHandler) GetTeamPerformance(c *fiber.Ctx) error {
 	})
 }
 
+// GetLeaderboard godoc
+// @Summary Get sales representative leaderboard
+// @Description Rank managers by overall quality and KPI
+// @Tags Analytics
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} map[string]interface{}
+// @Router /analytics/leaderboard [get]
 func (h *AnalyticsHandler) GetLeaderboard(c *fiber.Ctx) error {
 	// For simplicity, we use same data for leaderboard but sorted by KPI in repo if needed
 	// or just reusing team performance for now as per contract similarities

@@ -21,6 +21,19 @@ import (
 	"github.com/salesai/main-api/internal/infrastructure/security"
 )
 
+// @title SalesAI API
+// @version 1.0
+// @description Central API for SalesAI Intelligent Revenue Intelligence & Coaching SaaS
+
+// @contact.name API Support
+// @contact.email support@salesai.com
+
+// @host localhost:8080
+// @BasePath /api/v1
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
 func main() {
 	cfg := config.Load()
 

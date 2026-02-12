@@ -35,6 +35,19 @@ func NewCallHandler(
 	}
 }
 
+// ListCalls godoc
+// @Summary List calls with filters
+// @Description Get a paginated list of calls for the company
+// @Tags Calls
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param manager_id query string false "Filter by manager ID"
+// @Param status query string false "Filter by status"
+// @Param page query int false "Page number" default(1)
+// @Param limit query int false "Items per page" default(20)
+// @Success 200 {object} calls.ListCallsResponse
+// @Router /calls [get]
 func (h *CallHandler) ListCalls(c *fiber.Ctx) error {
 	companyID := c.Locals("company_id").(string)
 
@@ -59,6 +72,17 @@ func (h *CallHandler) ListCalls(c *fiber.Ctx) error {
 	return c.JSON(resp)
 }
 
+// GetCall godoc
+// @Summary Get call details
+// @Description Get detailed information about a call, including transcript and analysis
+// @Tags Calls
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Call ID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 404 {object} map[string]string
+// @Router /calls/{id} [get]
 func (h *CallHandler) GetCall(c *fiber.Ctx) error {
 	id := c.Params("id")
 	companyID := c.Locals("company_id").(string)
@@ -77,6 +101,17 @@ func (h *CallHandler) GetCall(c *fiber.Ctx) error {
 	})
 }
 
+// GetTranscript godoc
+// @Summary Get call transcript
+// @Description Get the diarized transcript of a call
+// @Tags Calls
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Call ID"
+// @Success 200 {object} domain.Transcript
+// @Failure 404 {object} map[string]string
+// @Router /calls/{id}/transcript [get]
 func (h *CallHandler) GetTranscript(c *fiber.Ctx) error {
 	id := c.Params("id")
 	transcript, err := h.transcriptRepo.GetByCallID(c.Context(), id)
@@ -86,6 +121,17 @@ func (h *CallHandler) GetTranscript(c *fiber.Ctx) error {
 	return c.JSON(transcript)
 }
 
+// GetAnalysis godoc
+// @Summary Get call analysis
+// @Description Get the AI-generated analysis report for a call
+// @Tags Calls
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Call ID"
+// @Success 200 {object} domain.AnalysisReport
+// @Failure 404 {object} map[string]string
+// @Router /calls/{id}/analysis [get]
 func (h *CallHandler) GetAnalysis(c *fiber.Ctx) error {
 	id := c.Params("id")
 	analysis, err := h.analysisRepo.GetByCallID(c.Context(), id)
@@ -95,6 +141,16 @@ func (h *CallHandler) GetAnalysis(c *fiber.Ctx) error {
 	return c.JSON(analysis)
 }
 
+// ReprocessCall godoc
+// @Summary Re-queue call for processing
+// @Description Manually trigger STT and AI analysis for a failed or old call
+// @Tags Calls
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Call ID"
+// @Success 200 {object} map[string]string
+// @Router /calls/{id}/reprocess [post]
 func (h *CallHandler) ReprocessCall(c *fiber.Ctx) error {
 	id := c.Params("id")
 	// Logic to re-enqueue job would go here
@@ -105,6 +161,16 @@ func (h *CallHandler) ReprocessCall(c *fiber.Ctx) error {
 	})
 }
 
+// GetAudio godoc
+// @Summary Stream call audio
+// @Description Stream the audio recording of a call from MinIO
+// @Tags Calls
+// @Produce audio/mpeg
+// @Security BearerAuth
+// @Param id path string true "Call ID"
+// @Success 200 {file} binary
+// @Failure 404 {object} map[string]string
+// @Router /calls/{id}/audio [get]
 func (h *CallHandler) GetAudio(c *fiber.Ctx) error {
 	id := c.Params("id")
 	companyID := c.Locals("company_id").(string)

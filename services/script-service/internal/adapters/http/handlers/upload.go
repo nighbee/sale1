@@ -25,6 +25,19 @@ func NewScriptHandler(minioClient *minio.Client, repo *repositories.ScriptReposi
 	}
 }
 
+// Upload godoc
+// @Summary Upload and parse a sales script
+// @Description Upload a DOCX or PDF file, extract text, and save metadata
+// @Tags Scripts
+// @Accept multipart/form-data
+// @Produce json
+// @Param name formData string true "Script name"
+// @Param company_id formData string true "Company ID"
+// @Param file formData file true "Script file (DOCX/PDF)"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /scripts [post]
 func (h *ScriptHandler) Upload(c *fiber.Ctx) error {
 	file, err := c.FormFile("file")
 	if err != nil {
@@ -83,6 +96,15 @@ func (h *ScriptHandler) Upload(c *fiber.Ctx) error {
 	})
 }
 
+// List godoc
+// @Summary List scripts for a company
+// @Description Get a list of script metadata for a specific company
+// @Tags Scripts
+// @Accept json
+// @Produce json
+// @Param company_id path string true "Company ID"
+// @Success 200 {array} map[string]interface{}
+// @Router /scripts/{company_id} [get]
 func (h *ScriptHandler) List(c *fiber.Ctx) error {
 	companyID := c.Params("company_id")
 	scripts, err := h.repo.List(c.Context(), companyID)
@@ -92,6 +114,13 @@ func (h *ScriptHandler) List(c *fiber.Ctx) error {
 	return c.JSON(scripts)
 }
 
+// Delete godoc
+// @Summary Delete a script
+// @Description Mark a script as inactive
+// @Tags Scripts
+// @Param id path string true "Script ID"
+// @Success 204
+// @Router /scripts/{id} [delete]
 func (h *ScriptHandler) Delete(c *fiber.Ctx) error {
 	id := c.Params("id")
 	if err := h.repo.Delete(c.Context(), id); err != nil {
