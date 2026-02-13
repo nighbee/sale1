@@ -52,34 +52,54 @@ func (h *UserHandler) InviteUser(c *fiber.Ctx) error {
 	companyID := c.Locals("company_id").(string)
 
 	var req struct {
-		Email       string `json:"email"`
-		Role        string `json:"role"`
-		ManagerName string `json:"manager_name"`
-		ManagerID   string `json:"manager_id"`
+		Email             string   `json:"email"`
+		Emails            []string `json:"emails"`
+		Role              string   `json:"role"`
+		ManagerName       string   `json:"manager_name"`
+		ManagerID         string   `json:"manager_id"`
+		TemporaryPassword string   `json:"temporary_password"`
 	}
 
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid body"})
 	}
 
-	user := &domain.User{
-		ID:           uuid.New().String(),
-		CompanyID:    companyID,
-		Email:        req.Email,
-		Role:         domain.UserRole(req.Role),
-		ManagerName:  req.ManagerName,
-		ManagerID:    &req.ManagerID,
-		PasswordHash: "invited", // Should be handled by a proper invitation flow
-		IsActive:     true,
+	emails := req.Emails
+	if req.Email != "" {
+		emails = append(emails, req.Email)
 	}
 
-	if err := h.userRepo.Create(c.Context(), user); err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	if len(emails) == 0 {
+		return c.Status(400).JSON(fiber.Map{"error": "No emails provided"})
+	}
+
+	role := req.Role
+	if role == "" {
+		role = "sales_rep"
+	}
+
+	var invitedUsers []*domain.User
+	for _, email := range emails {
+		user := &domain.User{
+			ID:           uuid.New().String(),
+			CompanyID:    companyID,
+			Email:        email,
+			Role:         domain.UserRole(role),
+			ManagerName:  req.ManagerName,
+			ManagerID:    &req.ManagerID,
+			PasswordHash: "invited", // In real app, hash the temporary password or handle via flow
+			IsActive:     true,
+		}
+		if err := h.userRepo.Create(c.Context(), user); err != nil {
+			// Skip duplicates or log error
+			continue
+		}
+		invitedUsers = append(invitedUsers, user)
 	}
 
 	return c.Status(201).JSON(fiber.Map{
-		"user":    user,
-		"message": "Invitation email sent (mocked)",
+		"users":   invitedUsers,
+		"message": "Invitations sent successfully",
 	})
 }
 

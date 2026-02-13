@@ -42,6 +42,8 @@ import (
 	"github.com/salesai/main-api/internal/core/usecases/analytics"
 	"github.com/salesai/main-api/internal/core/usecases/auth"
 	"github.com/salesai/main-api/internal/core/usecases/calls"
+	"github.com/salesai/main-api/internal/core/usecases/integrations"
+	"github.com/salesai/main-api/internal/core/usecases/teams"
 	"github.com/salesai/main-api/internal/infrastructure/config"
 	"github.com/salesai/main-api/internal/infrastructure/security"
 )
@@ -63,6 +65,8 @@ func main() {
 	analysisRepo := repositories.NewAnalysisRepository(db)
 	scriptRepo := repositories.NewScriptRepository(db)
 	notificationRepo := repositories.NewNotificationRepository(db)
+	teamRepo := repositories.NewTeamRepository(db)
+	integrationRepo := repositories.NewIntegrationRepository(db)
 
 	// Services
 	jwtService := security.NewJWTService(cfg.JWTSecret, cfg.JWTExpiry)
@@ -86,6 +90,8 @@ func main() {
 	refreshUC := auth.NewRefreshUseCase(userRepo, jwtService)
 	listCallsUC := calls.NewListCallsUseCase(callRepo)
 	teamPerformanceUC := analytics.NewTeamPerformanceUseCase(analysisRepo)
+	teamUC := teams.NewTeamUseCase(teamRepo)
+	integrationUC := integrations.NewIntegrationUseCase(integrationRepo)
 
 	// Redis client
 	rdb := redis.NewClient(&redis.Options{
@@ -111,6 +117,8 @@ func main() {
 	analyticsHandler := handlers.NewAnalyticsHandler(teamPerformanceUC)
 	companyHandler := handlers.NewCompanyHandler(companyRepo)
 	userHandler := handlers.NewUserHandler(userRepo)
+	teamHandler := handlers.NewTeamHandler(teamUC)
+	integrationHandler := handlers.NewIntegrationHandler(integrationUC)
 	scriptHandler := handlers.NewScriptHandler(scriptRepo, cfg.ScriptServiceURL)
 	notificationHandler := handlers.NewNotificationHandler(notificationRepo)
 	wsHandler := handlers.NewWSHandler(hub)
@@ -118,7 +126,7 @@ func main() {
 	app := fiber.New()
 	app.Use(logger.New())
 
-	http.SetupRoutes(app, authHandler, callHandler, analyticsHandler, companyHandler, userHandler, scriptHandler, notificationHandler, wsHandler, jwtService)
+	http.SetupRoutes(app, authHandler, callHandler, analyticsHandler, companyHandler, userHandler, teamHandler, integrationHandler, scriptHandler, notificationHandler, wsHandler, jwtService)
 
 	port := os.Getenv("PORT")
 	if port == "" {
