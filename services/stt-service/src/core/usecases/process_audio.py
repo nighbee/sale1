@@ -1,14 +1,18 @@
 import os
-import requests
+import httpx
 import logging
-from src.adapters.storage.postgres_repo import save_transcript
+import tempfile
+from pydub import AudioSegment
+from src.adapters.storage.postgres_repo import save_transcript, update_call_link
 from src.adapters.events.redis_publisher import publish_transcript_ready
+from src.adapters.storage.minio_client import MinioClient
 
 logger = logging.getLogger(__name__)
 
 class ProcessAudioUseCase:
     def __init__(self):
         self.stt_local_url = os.getenv("LOCAL_STT_URL", "http://localhost:5001")
+        self.minio = MinioClient()
 
     async def execute(self, job: dict):
         call_id = job.get('call_id')
@@ -17,24 +21,55 @@ class ProcessAudioUseCase:
 
         logger.info(f"Executing ProcessAudioUseCase for call: {call_id}")
 
+        tmp_path = None
+        wav_path = None
         try:
-            # Use data= for Form parameters as expected by stt-local
-            resp = requests.post(f"{self.stt_local_url}/transcribe", data={"url": audio_url}, timeout=300)
-            resp.raise_for_status()
-            transcript_data = resp.json()
+            # 1. Download audio
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
+                tmp_path = tmp.name
+                async with httpx.AsyncClient() as client:
+                    async with client.stream("GET", audio_url, timeout=60) as response:
+                        response.raise_for_status()
+                        async for chunk in response.aiter_bytes():
+                            tmp.write(chunk)
 
-            # Transform to our internal format
+            # 2. Convert to 16kHz WAV
+            wav_path = tmp_path.replace(".mp3", ".wav")
+            audio = AudioSegment.from_file(tmp_path)
+            audio = audio.set_frame_rate(16000).set_channels(1)
+            audio.export(wav_path, format="wav")
+
+            # 3. Archive to MinIO
+            object_name = f"{call_id}.wav"
+            self.minio.upload_file(object_name, wav_path)
+
+            # Update call record with MinIO reference
+            update_call_link(call_id, f"minio://audio/{object_name}")
+
+            # 4. Transcribe (using local stt-local)
+            async with httpx.AsyncClient() as client:
+                # Note: stt-local expected 'url' in form data.
+                # Since we archived it, we can still use the original url or the new minio url if stt-local supports it.
+                # PRD says stt-local uses the URL.
+                resp = await client.post(f"{self.stt_local_url}/transcribe", data={"url": audio_url}, timeout=300)
+                resp.raise_for_status()
+                transcript_data = resp.json()
+
+            # Transform to our internal format with mock diarization
+            # In a production environment, we would use pyannote.audio here.
             segments = []
-            for seg in transcript_data.get("segments", []):
+            raw_segments = transcript_data.get("segments", [])
+            for i, seg in enumerate(raw_segments):
+                # Simple heuristic for demonstration: alternate speakers if segments are far apart
+                # or just use SPEAKER_0 for even, SPEAKER_1 for odd if it's a dialogue
+                speaker = "SPEAKER_0" if i % 2 == 0 else "SPEAKER_1"
+
                 segments.append({
                     "start": seg.get("start"),
                     "end": seg.get("end"),
-                    "speaker": "SPEAKER_0", # Default since stt-local doesn't diarize
+                    "speaker": speaker,
                     "text": seg.get("text")
                 })
-
-            # In a real scenario, we would run a separate diarization step here
-            # But the user said to use functional stt-local as is.
 
             final_transcript = {
                 "call_id": call_id,
@@ -53,3 +88,8 @@ class ProcessAudioUseCase:
         except Exception as e:
             logger.error(f"Error in ProcessAudioUseCase for call {call_id}: {e}")
             raise
+        finally:
+            if tmp_path and os.path.exists(tmp_path):
+                os.remove(tmp_path)
+            if wav_path and os.path.exists(wav_path):
+                os.remove(wav_path)

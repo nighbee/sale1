@@ -3,6 +3,7 @@ import os
 import logging
 import redis.asyncio as redis
 from src.core.usecases.analyze_call import AnalyzeCallUseCase
+from src.adapters.storage.postgres_repo import log_processing_event
 
 logger = logging.getLogger(__name__)
 
@@ -36,13 +37,16 @@ async def start_consumer():
                         company_id = payload.get(b'company_id').decode('utf-8')
 
                         logger.info(f"Received transcript_ready for call: {call_id}")
+                        log_processing_event(call_id, "ai-analytics", "processing")
 
                         try:
                             await use_case.execute(call_id, company_id)
+                            log_processing_event(call_id, "ai-analytics", "completed")
                             # Acknowledge message
                             await r.xack(stream_name, group_name, msg_id)
                         except Exception as e:
                             logger.error(f"Failed to analyze call {call_id}: {e}")
+                            log_processing_event(call_id, "ai-analytics", "error", error_message=str(e))
 
         except Exception as e:
             logger.error(f"Consumer error: {e}")

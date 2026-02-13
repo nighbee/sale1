@@ -105,10 +105,10 @@ func (r *userRepository) Update(ctx context.Context, user *domain.User) error {
 	query := `
 		UPDATE auth_schema.users
 		SET email = $2, role = $3, manager_id = $4, manager_name = $5, is_active = $6, updated_at = NOW()
-		WHERE id = $1
+		WHERE id = $1 AND company_id = $7
 	`
 
-	_, err := r.db.ExecContext(ctx, query, user.ID, user.Email, user.Role, user.ManagerID, user.ManagerName, user.IsActive)
+	_, err := r.db.ExecContext(ctx, query, user.ID, user.Email, user.Role, user.ManagerID, user.ManagerName, user.IsActive, user.CompanyID)
 	return err
 }
 

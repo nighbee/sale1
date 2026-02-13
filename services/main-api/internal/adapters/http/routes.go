@@ -30,7 +30,7 @@ func SetupRoutes(
 	protected := api.Group("", middleware.JWTAuth(jwtService))
 
 	// Users
-	users := protected.Group("/users")
+	users := protected.Group("/users", middleware.RequireRole("super_admin", "tenant_admin"))
 	users.Get("/", userHandler.ListUsers)
 	users.Post("/invite", userHandler.InviteUser)
 	users.Get("/:id", userHandler.GetUser)
@@ -44,24 +44,24 @@ func SetupRoutes(
 	calls.Get("/:id/transcript", callHandler.GetTranscript)
 	calls.Get("/:id/analysis", callHandler.GetAnalysis)
 	calls.Get("/:id/audio", callHandler.GetAudio)
-	calls.Post("/:id/reprocess", callHandler.ReprocessCall)
+	calls.Post("/:id/reprocess", middleware.RequireRole("super_admin", "tenant_admin"), callHandler.ReprocessCall)
 
 	// Scripts
 	scripts := protected.Group("/scripts")
-	scripts.Post("/", scriptHandler.CreateScript)
+	scripts.Post("/", middleware.RequireRole("super_admin", "tenant_admin"), scriptHandler.CreateScript)
 	scripts.Get("/", scriptHandler.ListScripts)
 	scripts.Get("/:id", scriptHandler.GetScript)
 	scripts.Get("/:id/content", scriptHandler.GetScriptContent)
-	scripts.Put("/:id", scriptHandler.UpdateScript)
-	scripts.Delete("/:id", scriptHandler.DeleteScript)
+	scripts.Put("/:id", middleware.RequireRole("super_admin", "tenant_admin"), scriptHandler.UpdateScript)
+	scripts.Delete("/:id", middleware.RequireRole("super_admin", "tenant_admin"), scriptHandler.DeleteScript)
 
 	// Analytics
 	analytics := protected.Group("/analytics")
-	analytics.Get("/team-performance", analyticsHandler.GetTeamPerformance)
+	analytics.Get("/team-performance", middleware.RequireRole("super_admin", "tenant_admin"), analyticsHandler.GetTeamPerformance)
 	analytics.Get("/leaderboard", analyticsHandler.GetLeaderboard)
 
 	// Company
-	companies := protected.Group("/companies")
+	companies := protected.Group("/companies", middleware.RequireRole("super_admin", "tenant_admin"))
 	companies.Get("/:id", companyHandler.GetCompany)
 	companies.Put("/:id/settings", companyHandler.UpdateSettings)
 }

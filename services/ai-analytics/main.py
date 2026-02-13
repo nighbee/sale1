@@ -1,12 +1,15 @@
 import asyncio
 import logging
 from src.adapters.events.redis_consumer import start_consumer
+from src.infrastructure.grpc.server import serve
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 async def main():
     logger.info("Starting AI Analytics Service...")
+    # Start gRPC server in background
+    grpc_server = serve()
     await start_consumer()
 
 if __name__ == "__main__":

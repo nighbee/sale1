@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package analytics;
+
+option go_package = "github.com/salesai/main-api/pkg/analytics";
+
+service AnalyticsService {
+  rpc GetAnalysis(AnalysisRequest) returns (AnalysisResponse);
+}
+
+message AnalysisRequest {
+  string call_id = 1;
+}
+
+message AnalysisResponse {
+  string call_id = 1;
+  int32 quality_score = 2;
+  int32 script_match = 3;
+  int32 errors_free = 4;
+  double overall_rating = 5;
+  double kpi = 6;
+  string recommendation = 7;
+  string brief = 8;
+  string next_best_action = 9;
+}

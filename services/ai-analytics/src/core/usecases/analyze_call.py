@@ -1,5 +1,8 @@
 import logging
-from src.adapters.storage.postgres_repo import get_transcript, get_call, get_active_script, save_analysis
+from src.adapters.storage.postgres_repo import (
+    get_transcript, get_call, get_active_script, save_analysis,
+    create_notification, get_company_admin
+)
 from src.infrastructure.llm.openai_client import MockLLMClient
 
 logger = logging.getLogger(__name__)
@@ -28,6 +31,10 @@ class AnalyzeCallUseCase:
 
         # 2. Prepare prompt
         transcript_text = self._format_transcript(transcript['speaker_diarized_json'])
+        if not transcript_text:
+            logger.warning(f"Empty transcript for call {call_id}")
+            # Still proceed or skip? Let's proceed with an empty transcript but it might yield poor results.
+
         user_prompt = f"TRANSCRIPT:\n{transcript_text}\n\nSCRIPT:\n{script_text}"
         system_prompt = "You are a sales analyst. Analyze the transcript against the script."
 
@@ -61,6 +68,24 @@ class AnalyzeCallUseCase:
 
         save_analysis(report)
         logger.info(f"Analysis saved for call {call_id}")
+
+        # 6. Check for Critical Errors
+        self._check_critical_errors(call_id, company_id, transcript_text)
+
+    def _check_critical_errors(self, call_id, company_id, transcript_text):
+        critical_keywords = ["sue", "litigation", "lawyer", "court", "legal action"]
+        found = [kw for kw in critical_keywords if kw in transcript_text.lower()]
+
+        if found:
+            logger.warning(f"CRITICAL ERROR DETECTED in call {call_id}: {found}")
+            admin = get_company_admin(company_id)
+            if admin:
+                create_notification(
+                    user_id=admin['id'],
+                    n_type="in_app",
+                    subject="Critical Error Detected",
+                    message=f"A critical error (mentions of {', '.join(found)}) was detected in call {call_id}."
+                )
 
     def _format_transcript(self, segments):
         if not segments:
