@@ -43,7 +43,7 @@ func (h *CompanyHandler) GetCompany(c *fiber.Ctx) error {
 // @Accept json
 // @Produce json
 // @Param id path string true "Company ID"
-// @Param request body map[string]string true "Settings Update Request"
+// @Param request body map[string]interface{} true "Settings Update Request"
 // @Success 200 {object} fiber.Map
 // @Failure 400 {object} fiber.Map
 // @Failure 404 {object} fiber.Map

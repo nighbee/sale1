@@ -83,19 +83,62 @@ definitions:
         type: string
       id:
         type: string
+      industry:
+        type: string
       is_active:
         type: boolean
       llm_provider:
         $ref: '#/definitions/github_com_salesai_main-api_internal_core_domain.LLMProvider'
       name:
         type: string
+      size:
+        type: string
       stt_model_preference:
         $ref: '#/definitions/github_com_salesai_main-api_internal_core_domain.STTModel'
       subscription_tier:
         type: string
+      time_zone:
+        type: string
       updated_at:
         type: string
     type: object
+  github_com_salesai_main-api_internal_core_domain.Integration:
+    properties:
+      company_id:
+        type: string
+      config:
+        items:
+          type: integer
+        type: array
+      created_at:
+        type: string
+      credentials:
+        items:
+          type: integer
+        type: array
+      id:
+        type: string
+      integration_type:
+        $ref: '#/definitions/github_com_salesai_main-api_internal_core_domain.IntegrationType'
+      is_active:
+        type: boolean
+      last_sync:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  github_com_salesai_main-api_internal_core_domain.IntegrationType:
+    enum:
+    - amocrm
+    - google_sheets
+    - telegram
+    - slack
+    type: string
+    x-enum-varnames:
+    - IntegrationAmoCRM
+    - IntegrationGoogleSheets
+    - IntegrationTelegram
+    - IntegrationSlack
   github_com_salesai_main-api_internal_core_domain.LLMProvider:
     enum:
     - openai
@@ -137,6 +180,23 @@ definitions:
         type: string
       version:
         type: integer
+    type: object
+  github_com_salesai_main-api_internal_core_domain.Team:
+    properties:
+      auto_assign:
+        type: boolean
+      company_id:
+        type: string
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      updated_at:
+        type: string
     type: object
   github_com_salesai_main-api_internal_core_domain.Transcript:
     properties:
@@ -612,8 +672,7 @@ paths:
         name: request
         required: true
         schema:
-          additionalProperties:
-            type: string
+          additionalProperties: true
           type: object
       produces:
       - application/json
@@ -635,6 +694,111 @@ paths:
       summary: Update company settings
       tags:
       - companies
+  /integrations:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of all integrations for the company
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/fiber.Map'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/fiber.Map'
+      security:
+      - BearerAuth: []
+      summary: List company integrations
+      tags:
+      - integrations
+    post:
+      consumes:
+      - application/json
+      description: Create or update a third-party integration (AmoCRM, Google Sheets,
+        etc.)
+      parameters:
+      - description: Integration Save Request
+        in: body
+        name: request
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_salesai_main-api_internal_core_domain.Integration'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/fiber.Map'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/fiber.Map'
+      security:
+      - BearerAuth: []
+      summary: Create or update an integration
+      tags:
+      - integrations
+  /integrations/{type}:
+    delete:
+      consumes:
+      - application/json
+      description: Remove a third-party integration from the company
+      parameters:
+      - description: Integration Type
+        in: path
+        name: type
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/fiber.Map'
+      security:
+      - BearerAuth: []
+      summary: Delete an integration
+      tags:
+      - integrations
+    get:
+      consumes:
+      - application/json
+      description: Get details of a specific integration by type
+      parameters:
+      - description: Integration Type (amocrm, google_sheets, telegram, slack)
+        in: path
+        name: type
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_salesai_main-api_internal_core_domain.Integration'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/fiber.Map'
+      security:
+      - BearerAuth: []
+      summary: Get integration details
+      tags:
+      - integrations
   /notifications:
     get:
       consumes:
@@ -853,6 +1017,146 @@ paths:
       summary: Get parsed script text
       tags:
       - scripts
+  /teams:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of all sales teams within the company
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/fiber.Map'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/fiber.Map'
+      security:
+      - BearerAuth: []
+      summary: List company teams
+      tags:
+      - teams
+    post:
+      consumes:
+      - application/json
+      description: Create a new sales team within the company
+      parameters:
+      - description: Team Creation Request
+        in: body
+        name: request
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_salesai_main-api_internal_core_domain.Team'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/fiber.Map'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/fiber.Map'
+      security:
+      - BearerAuth: []
+      summary: Create a new sales team
+      tags:
+      - teams
+  /teams/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Remove a sales team from the company
+      parameters:
+      - description: Team ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/fiber.Map'
+      security:
+      - BearerAuth: []
+      summary: Delete a team
+      tags:
+      - teams
+    get:
+      consumes:
+      - application/json
+      description: Get details of a specific sales team
+      parameters:
+      - description: Team ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_salesai_main-api_internal_core_domain.Team'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/fiber.Map'
+      security:
+      - BearerAuth: []
+      summary: Get team details
+      tags:
+      - teams
+    put:
+      consumes:
+      - application/json
+      description: Update name or description for a sales team
+      parameters:
+      - description: Team ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Team Update Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_salesai_main-api_internal_core_domain.Team'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_salesai_main-api_internal_core_domain.Team'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/fiber.Map'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/fiber.Map'
+      security:
+      - BearerAuth: []
+      summary: Update team details
+      tags:
+      - teams
   /users:
     get:
       consumes:

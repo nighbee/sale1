@@ -15,6 +15,18 @@ func NewIntegrationHandler(integrationUC *integrations.IntegrationUseCase) *Inte
 	return &IntegrationHandler{integrationUC: integrationUC}
 }
 
+// Save godoc
+// @Summary Create or update an integration
+// @Description Create or update a third-party integration (AmoCRM, Google Sheets, etc.)
+// @Tags integrations
+// @Accept json
+// @Produce json
+// @Param request body map[string]interface{} true "Integration Save Request"
+// @Success 200 {object} domain.Integration
+// @Failure 400 {object} fiber.Map
+// @Failure 500 {object} fiber.Map
+// @Security BearerAuth
+// @Router /integrations [post]
 func (h *IntegrationHandler) Save(c *fiber.Ctx) error {
 	companyID := c.Locals("company_id").(string)
 	var req struct {
@@ -33,6 +45,16 @@ func (h *IntegrationHandler) Save(c *fiber.Ctx) error {
 	return c.JSON(integration)
 }
 
+// List godoc
+// @Summary List company integrations
+// @Description Get a list of all integrations for the company
+// @Tags integrations
+// @Accept json
+// @Produce json
+// @Success 200 {object} fiber.Map
+// @Failure 500 {object} fiber.Map
+// @Security BearerAuth
+// @Router /integrations [get]
 func (h *IntegrationHandler) List(c *fiber.Ctx) error {
 	companyID := c.Locals("company_id").(string)
 	integrations, err := h.integrationUC.ListByCompany(c.Context(), companyID)
@@ -42,6 +64,17 @@ func (h *IntegrationHandler) List(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"integrations": integrations})
 }
 
+// Get godoc
+// @Summary Get integration details
+// @Description Get details of a specific integration by type
+// @Tags integrations
+// @Accept json
+// @Produce json
+// @Param type path string true "Integration Type (amocrm, google_sheets, telegram, slack)"
+// @Success 200 {object} domain.Integration
+// @Failure 404 {object} fiber.Map
+// @Security BearerAuth
+// @Router /integrations/{type} [get]
 func (h *IntegrationHandler) Get(c *fiber.Ctx) error {
 	companyID := c.Locals("company_id").(string)
 	it := c.Params("type")
@@ -52,6 +85,17 @@ func (h *IntegrationHandler) Get(c *fiber.Ctx) error {
 	return c.JSON(integration)
 }
 
+// Delete godoc
+// @Summary Delete an integration
+// @Description Remove a third-party integration from the company
+// @Tags integrations
+// @Accept json
+// @Produce json
+// @Param type path string true "Integration Type"
+// @Success 204
+// @Failure 500 {object} fiber.Map
+// @Security BearerAuth
+// @Router /integrations/{type} [delete]
 func (h *IntegrationHandler) Delete(c *fiber.Ctx) error {
 	companyID := c.Locals("company_id").(string)
 	it := c.Params("type")
