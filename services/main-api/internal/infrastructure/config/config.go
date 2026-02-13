@@ -13,6 +13,8 @@ type Config struct {
 	MinioEndpoint    string
 	MinioAccessKey   string
 	MinioSecretKey   string
+	STTServiceGRPC   string
+	AnalyticsGRPC    string
 }
 
 func Load() *Config {
@@ -36,6 +38,16 @@ func Load() *Config {
 		minioEndpoint = "minio:9000"
 	}
 
+	sttGRPC := os.Getenv("STT_SERVICE_GRPC")
+	if sttGRPC == "" {
+		sttGRPC = "stt-service:50051"
+	}
+
+	analyticsGRPC := os.Getenv("ANALYTICS_SERVICE_GRPC")
+	if analyticsGRPC == "" {
+		analyticsGRPC = "ai-analytics:50052"
+	}
+
 	return &Config{
 		DatabaseURL:      dbURL,
 		JWTSecret:        secret,
@@ -44,5 +56,7 @@ func Load() *Config {
 		MinioEndpoint:    minioEndpoint,
 		MinioAccessKey:   os.Getenv("MINIO_ACCESS_KEY"),
 		MinioSecretKey:   os.Getenv("MINIO_SECRET_KEY"),
+		STTServiceGRPC:   sttGRPC,
+		AnalyticsGRPC:    analyticsGRPC,
 	}
 }

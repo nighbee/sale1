@@ -111,16 +111,22 @@ func (h *ScriptHandler) UpdateScript(c *fiber.Ctx) error {
 	}
 
 	var update struct {
-		Name     string `json:"name"`
-		IsActive bool   `json:"is_active"`
+		Name      string                 `json:"name"`
+		IsActive  bool                   `json:"is_active"`
+		Structure map[string]interface{} `json:"structure"`
 	}
 
 	if err := c.BodyParser(&update); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid body"})
 	}
 
-	script.Name = update.Name
+	if update.Name != "" {
+		script.Name = update.Name
+	}
 	script.IsActive = update.IsActive
+	if update.Structure != nil {
+		script.Structure = update.Structure
+	}
 
 	if err := h.scriptRepo.Update(c.Context(), script); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})

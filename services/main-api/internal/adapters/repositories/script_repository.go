@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 
 	"github.com/salesai/main-api/internal/core/domain"
@@ -18,20 +19,22 @@ func NewScriptRepository(db *sql.DB) ports.ScriptRepository {
 }
 
 func (r *scriptRepository) Create(ctx context.Context, s *domain.Script) error {
+	structureJSON, _ := json.Marshal(s.Structure)
 	query := `
-		INSERT INTO scripts_schema.scripts (id, company_id, name, file_path_minio, parsed_text, version, is_active)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		INSERT INTO scripts_schema.scripts (id, company_id, name, file_path_minio, parsed_text, structure, version, is_active)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		RETURNING created_at, updated_at
 	`
-	return r.db.QueryRowContext(ctx, query, s.ID, s.CompanyID, s.Name, s.FilePathMinio, s.ParsedText, s.Version, s.IsActive).Scan(&s.CreatedAt, &s.UpdatedAt)
+	return r.db.QueryRowContext(ctx, query, s.ID, s.CompanyID, s.Name, s.FilePathMinio, s.ParsedText, structureJSON, s.Version, s.IsActive).Scan(&s.CreatedAt, &s.UpdatedAt)
 }
 
 func (r *scriptRepository) Update(ctx context.Context, s *domain.Script) error {
+	structureJSON, _ := json.Marshal(s.Structure)
 	query := `
-		UPDATE scripts_schema.scripts SET name = $2, is_active = $3, updated_at = NOW()
-		WHERE id = $1
+		UPDATE scripts_schema.scripts SET name = $2, is_active = $3, structure = $4, updated_at = NOW()
+		WHERE id = $1 AND company_id = $5
 	`
-	_, err := r.db.ExecContext(ctx, query, s.ID, s.Name, s.IsActive)
+	_, err := r.db.ExecContext(ctx, query, s.ID, s.Name, s.IsActive, structureJSON, s.CompanyID)
 	return err
 }
 
@@ -43,24 +46,31 @@ func (r *scriptRepository) Delete(ctx context.Context, companyID, id string) err
 
 func (r *scriptRepository) GetActiveByCompany(ctx context.Context, companyID string) (*domain.Script, error) {
 	query := `
-		SELECT id, company_id, name, file_path_minio, parsed_text, version, is_active, created_at, updated_at
+		SELECT id, company_id, name, file_path_minio, parsed_text, structure, version, is_active, created_at, updated_at
 		FROM scripts_schema.scripts
 		WHERE company_id = $1 AND is_active = true
 		ORDER BY version DESC LIMIT 1
 	`
 	s := &domain.Script{}
+	var structureJSON []byte
 	err := r.db.QueryRowContext(ctx, query, companyID).Scan(
-		&s.ID, &s.CompanyID, &s.Name, &s.FilePathMinio, &s.ParsedText, &s.Version, &s.IsActive, &s.CreatedAt, &s.UpdatedAt,
+		&s.ID, &s.CompanyID, &s.Name, &s.FilePathMinio, &s.ParsedText, &structureJSON, &s.Version, &s.IsActive, &s.CreatedAt, &s.UpdatedAt,
 	)
 	if err == sql.ErrNoRows {
 		return nil, errors.New("active script not found")
 	}
-	return s, err
+	if err != nil {
+		return nil, err
+	}
+	if structureJSON != nil {
+		json.Unmarshal(structureJSON, &s.Structure)
+	}
+	return s, nil
 }
 
 func (r *scriptRepository) ListByCompany(ctx context.Context, companyID string) ([]*domain.Script, error) {
 	query := `
-		SELECT id, company_id, name, file_path_minio, parsed_text, version, is_active, created_at, updated_at
+		SELECT id, company_id, name, file_path_minio, parsed_text, structure, version, is_active, created_at, updated_at
 		FROM scripts_schema.scripts
 		WHERE company_id = $1
 		ORDER BY created_at DESC
@@ -75,12 +85,14 @@ func (r *scriptRepository) ListByCompany(ctx context.Context, companyID string) 
 	scripts := []*domain.Script{}
 	for rows.Next() {
 		s := &domain.Script{}
+		var structureJSON []byte
 		err := rows.Scan(
 			&s.ID,
 			&s.CompanyID,
 			&s.Name,
 			&s.FilePathMinio,
 			&s.ParsedText,
+			&structureJSON,
 			&s.Version,
 			&s.IsActive,
 			&s.CreatedAt,
@@ -88,6 +100,9 @@ func (r *scriptRepository) ListByCompany(ctx context.Context, companyID string) 
 		)
 		if err != nil {
 			return nil, err
+		}
+		if structureJSON != nil {
+			json.Unmarshal(structureJSON, &s.Structure)
 		}
 		scripts = append(scripts, s)
 	}
@@ -97,18 +112,20 @@ func (r *scriptRepository) ListByCompany(ctx context.Context, companyID string) 
 
 func (r *scriptRepository) GetByID(ctx context.Context, companyID, id string) (*domain.Script, error) {
 	query := `
-		SELECT id, company_id, name, file_path_minio, parsed_text, version, is_active, created_at, updated_at
+		SELECT id, company_id, name, file_path_minio, parsed_text, structure, version, is_active, created_at, updated_at
 		FROM scripts_schema.scripts
 		WHERE id = $1 AND company_id = $2
 	`
 
 	s := &domain.Script{}
+	var structureJSON []byte
 	err := r.db.QueryRowContext(ctx, query, id, companyID).Scan(
 		&s.ID,
 		&s.CompanyID,
 		&s.Name,
 		&s.FilePathMinio,
 		&s.ParsedText,
+		&structureJSON,
 		&s.Version,
 		&s.IsActive,
 		&s.CreatedAt,
@@ -118,6 +135,12 @@ func (r *scriptRepository) GetByID(ctx context.Context, companyID, id string) (*
 	if err == sql.ErrNoRows {
 		return nil, errors.New("script not found")
 	}
+	if err != nil {
+		return nil, err
+	}
+	if structureJSON != nil {
+		json.Unmarshal(structureJSON, &s.Structure)
+	}
 
-	return s, err
+	return s, nil
 }

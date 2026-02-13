@@ -11,6 +11,7 @@ import (
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 
+	"github.com/salesai/main-api/internal/adapters/grpc"
 	"github.com/salesai/main-api/internal/adapters/http"
 	"github.com/salesai/main-api/internal/adapters/http/handlers"
 	"github.com/salesai/main-api/internal/adapters/repositories"
@@ -49,6 +50,11 @@ func main() {
 		log.Printf("Warning: Failed to connect to MinIO: %v", err)
 	}
 
+	grpcClient, err := grpc.NewGRPCClient(cfg.STTServiceGRPC, cfg.AnalyticsGRPC)
+	if err != nil {
+		log.Printf("Warning: Failed to connect to gRPC services: %v", err)
+	}
+
 	// Use Cases
 	registerUC := auth.NewRegisterUseCase(userRepo, companyRepo, jwtService)
 	loginUC := auth.NewLoginUseCase(userRepo, jwtService)
@@ -58,7 +64,7 @@ func main() {
 
 	// Handlers
 	authHandler := handlers.NewAuthHandler(registerUC, loginUC, refreshUC)
-	callHandler := handlers.NewCallHandler(listCallsUC, callRepo, transcriptRepo, analysisRepo, minioClient)
+	callHandler := handlers.NewCallHandler(listCallsUC, callRepo, transcriptRepo, analysisRepo, minioClient, grpcClient)
 	analyticsHandler := handlers.NewAnalyticsHandler(teamPerformanceUC)
 	companyHandler := handlers.NewCompanyHandler(companyRepo)
 	userHandler := handlers.NewUserHandler(userRepo)

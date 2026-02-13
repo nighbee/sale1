@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package stt;
+
+option go_package = "github.com/salesai/main-api/pkg/stt";
+
+service STTService {
+  rpc GetTranscript(TranscriptRequest) returns (TranscriptResponse);
+}
+
+message TranscriptRequest {
+  string call_id = 1;
+}
+
+message TranscriptResponse {
+  string call_id = 1;
+  string transcript_json = 2;
+  string stt_provider = 3;
+  int32 processing_time = 4;
+}

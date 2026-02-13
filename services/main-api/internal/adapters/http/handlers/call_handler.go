@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/minio/minio-go/v7"
+	"github.com/salesai/main-api/internal/adapters/grpc"
 	"github.com/salesai/main-api/internal/core/ports"
 	"github.com/salesai/main-api/internal/core/usecases/calls"
 )
@@ -17,6 +19,7 @@ type CallHandler struct {
 	transcriptRepo ports.TranscriptRepository
 	analysisRepo   ports.AnalysisRepository
 	minioClient    *minio.Client
+	grpcClient     *grpc.GRPCClient
 }
 
 func NewCallHandler(
@@ -25,6 +28,7 @@ func NewCallHandler(
 	transcriptRepo ports.TranscriptRepository,
 	analysisRepo ports.AnalysisRepository,
 	minioClient *minio.Client,
+	grpcClient *grpc.GRPCClient,
 ) *CallHandler {
 	return &CallHandler{
 		listCallsUC:    listCallsUC,
@@ -32,6 +36,7 @@ func NewCallHandler(
 		transcriptRepo: transcriptRepo,
 		analysisRepo:   analysisRepo,
 		minioClient:    minioClient,
+		grpcClient:     grpcClient,
 	}
 }
 
@@ -79,6 +84,15 @@ func (h *CallHandler) GetCall(c *fiber.Ctx) error {
 
 func (h *CallHandler) GetTranscript(c *fiber.Ctx) error {
 	id := c.Params("id")
+
+	// Try gRPC first if client is available
+	if h.grpcClient != nil {
+		resp, err := h.grpcClient.GetTranscript(c.Context(), id)
+		if err == nil {
+			return c.JSON(resp)
+		}
+	}
+
 	transcript, err := h.transcriptRepo.GetByCallID(c.Context(), id)
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Transcript not found"})
@@ -88,6 +102,15 @@ func (h *CallHandler) GetTranscript(c *fiber.Ctx) error {
 
 func (h *CallHandler) GetAnalysis(c *fiber.Ctx) error {
 	id := c.Params("id")
+
+	// Try gRPC first if client is available
+	if h.grpcClient != nil {
+		resp, err := h.grpcClient.GetAnalysis(c.Context(), id)
+		if err == nil {
+			return c.JSON(resp)
+		}
+	}
+
 	analysis, err := h.analysisRepo.GetByCallID(c.Context(), id)
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Analysis not found"})
@@ -113,22 +136,33 @@ func (h *CallHandler) GetAudio(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Call not found"})
 	}
 
-	// The call record should have a reference to the MinIO object name.
-	// If it doesn't, we can try to find it in the 'audio' bucket.
-	// For now, let's assume the object name is "audio/<call_id>.mp3"
-	objectName := fmt.Sprintf("audio/%s.mp3", id)
+	var bucketName, objectName string
+	if strings.HasPrefix(call.CallLink, "minio://") {
+		parts := strings.Split(strings.TrimPrefix(call.CallLink, "minio://"), "/")
+		if len(parts) >= 2 {
+			bucketName = parts[0]
+			objectName = strings.Join(parts[1:], "/")
+		}
+	}
 
-	reader, err := h.minioClient.GetObject(context.Background(), "audio", objectName, minio.GetObjectOptions{})
+	if bucketName == "" {
+		// Fallback to old behavior or direct redirect
+		bucketName = "audio"
+		objectName = fmt.Sprintf("%s.mp3", id)
+	}
+
+	reader, err := h.minioClient.GetObject(context.Background(), bucketName, objectName, minio.GetObjectOptions{})
 	if err != nil {
-		// Fallback to redirect if not found in MinIO
 		return c.Redirect(call.CallLink)
 	}
 	defer reader.Close()
 
-	// Check if object exists by calling Stat
 	_, err = reader.Stat()
 	if err != nil {
-		return c.Redirect(call.CallLink)
+		if strings.HasPrefix(call.CallLink, "http") {
+			return c.Redirect(call.CallLink)
+		}
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Audio file not found in storage"})
 	}
 
 	c.Set("Content-Type", "audio/mpeg")
