@@ -17,6 +17,16 @@ func NewUserHandler(userRepo ports.UserRepository) *UserHandler {
 	}
 }
 
+// ListUsers godoc
+// @Summary List company users
+// @Description Get a list of all users within the company
+// @Tags users
+// @Accept json
+// @Produce json
+// @Success 200 {object} fiber.Map
+// @Failure 500 {object} fiber.Map
+// @Security BearerAuth
+// @Router /users [get]
 func (h *UserHandler) ListUsers(c *fiber.Ctx) error {
 	companyID := c.Locals("company_id").(string)
 	users, err := h.userRepo.ListByCompany(c.Context(), companyID)
@@ -26,6 +36,18 @@ func (h *UserHandler) ListUsers(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"users": users})
 }
 
+// InviteUser godoc
+// @Summary Invite a new user
+// @Description Invite a new user to the company and assign a role
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param request body map[string]string true "User Invitation Request"
+// @Success 201 {object} fiber.Map
+// @Failure 400 {object} fiber.Map
+// @Failure 500 {object} fiber.Map
+// @Security BearerAuth
+// @Router /users/invite [post]
 func (h *UserHandler) InviteUser(c *fiber.Ctx) error {
 	companyID := c.Locals("company_id").(string)
 
@@ -61,6 +83,17 @@ func (h *UserHandler) InviteUser(c *fiber.Ctx) error {
 	})
 }
 
+// GetUser godoc
+// @Summary Get user details
+// @Description Get details of a specific user
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param id path string true "User ID"
+// @Success 200 {object} domain.User
+// @Failure 404 {object} fiber.Map
+// @Security BearerAuth
+// @Router /users/{id} [get]
 func (h *UserHandler) GetUser(c *fiber.Ctx) error {
 	id := c.Params("id")
 	companyID := c.Locals("company_id").(string)
@@ -71,6 +104,19 @@ func (h *UserHandler) GetUser(c *fiber.Ctx) error {
 	return c.JSON(user)
 }
 
+// UpdateUser godoc
+// @Summary Update user details
+// @Description Update role or manager name for a user
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param id path string true "User ID"
+// @Param request body map[string]string true "User Update Request"
+// @Success 200 {object} domain.User
+// @Failure 400 {object} fiber.Map
+// @Failure 404 {object} fiber.Map
+// @Security BearerAuth
+// @Router /users/{id} [put]
 func (h *UserHandler) UpdateUser(c *fiber.Ctx) error {
 	id := c.Params("id")
 	companyID := c.Locals("company_id").(string)
@@ -102,6 +148,17 @@ func (h *UserHandler) UpdateUser(c *fiber.Ctx) error {
 	return c.JSON(user)
 }
 
+// DeleteUser godoc
+// @Summary Delete a user
+// @Description Remove a user from the company
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param id path string true "User ID"
+// @Success 204
+// @Failure 500 {object} fiber.Map
+// @Security BearerAuth
+// @Router /users/{id} [delete]
 func (h *UserHandler) DeleteUser(c *fiber.Ctx) error {
 	id := c.Params("id")
 	companyID := c.Locals("company_id").(string)

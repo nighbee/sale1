@@ -1,15 +1,19 @@
 import logging
+import os
 from src.adapters.storage.postgres_repo import (
     get_transcript, get_call, get_active_script, save_analysis,
-    create_notification, get_company_admin
+    create_notification, get_company_admin, get_company_settings
 )
-from src.infrastructure.llm.openai_client import MockLLMClient
+from src.infrastructure.llm.openai_client import OpenAIClient
+from src.infrastructure.llm.gemini_client import GeminiClient
+from src.adapters.events.redis_publisher import publish_analysis_completed, publish_critical_error
 
 logger = logging.getLogger(__name__)
 
 class AnalyzeCallUseCase:
     def __init__(self):
-        self.llm = MockLLMClient()
+        self.openai_client = OpenAIClient()
+        self.gemini_client = GeminiClient()
 
     async def execute(self, call_id: str, company_id: str):
         logger.info(f"Analyzing call {call_id} for company {company_id}")
@@ -31,15 +35,30 @@ class AnalyzeCallUseCase:
 
         # 2. Prepare prompt
         transcript_text = self._format_transcript(transcript['speaker_diarized_json'])
-        if not transcript_text:
-            logger.warning(f"Empty transcript for call {call_id}")
-            # Still proceed or skip? Let's proceed with an empty transcript but it might yield poor results.
-
         user_prompt = f"TRANSCRIPT:\n{transcript_text}\n\nSCRIPT:\n{script_text}"
-        system_prompt = "You are a sales analyst. Analyze the transcript against the script."
 
-        # 3. Call LLM (Mocked)
-        analysis = await self.llm.analyze(system_prompt, user_prompt)
+        system_prompt = """
+        You are a sales quality analyst. Analyze the call transcript against the provided sales script.
+
+        You must output a JSON object with the following fields:
+        {
+          "quality_score": (integer 0-100, based on tone, clarity, professionalism),
+          "script_match": (integer 0-100, based on adherence to script phases and keywords),
+          "errors_free": (integer 0-100, 100 if no rude language or prohibited words found),
+          "recommendation": (string, 3 sentences of actionable feedback),
+          "brief": (string, 3 sentence summary of the call),
+          "next_best_action": (string, one concrete next step for the representative)
+        }
+        """
+
+        # 3. Call LLM
+        settings = get_company_settings(company_id)
+        llm_provider = settings['llm_provider'] if settings else "openai"
+
+        if llm_provider == "gemini":
+            analysis = await self.gemini_client.analyze(system_prompt, user_prompt)
+        else:
+            analysis = await self.openai_client.analyze(system_prompt, user_prompt)
 
         # 4. Calculate KPI
         # KPI = (quality*0.4 + script_match*0.4 + errors_free*0.2) * (duration/60)
@@ -60,32 +79,39 @@ class AnalyzeCallUseCase:
             'errors_free': errors_free,
             'overall_rating': overall_rating,
             'kpi': round(kpi, 2),
-            'recommendation': analysis['recommendation'],
-            'brief': analysis['brief'],
-            'next_best_action': analysis['next_best_action'],
-            'llm_provider': 'mock-openai'
+            'recommendation': analysis.get('recommendation', ''),
+            'brief': analysis.get('brief', ''),
+            'next_best_action': analysis.get('next_best_action', ''),
+            'llm_provider': llm_provider
         }
 
         save_analysis(report)
         logger.info(f"Analysis saved for call {call_id}")
 
-        # 6. Check for Critical Errors
-        self._check_critical_errors(call_id, company_id, transcript_text)
+        # Publish event for real-time notifications
+        await publish_analysis_completed(call_id, overall_rating)
 
-    def _check_critical_errors(self, call_id, company_id, transcript_text):
+        # 6. Check for Critical Errors
+        await self._check_critical_errors(call_id, company_id, transcript_text)
+
+    async def _check_critical_errors(self, call_id, company_id, transcript_text):
         critical_keywords = ["sue", "litigation", "lawyer", "court", "legal action"]
         found = [kw for kw in critical_keywords if kw in transcript_text.lower()]
 
         if found:
             logger.warning(f"CRITICAL ERROR DETECTED in call {call_id}: {found}")
+            message = f"A critical error (mentions of {', '.join(found)}) was detected in call {call_id}."
             admin = get_company_admin(company_id)
             if admin:
                 create_notification(
                     user_id=admin['id'],
                     n_type="in_app",
                     subject="Critical Error Detected",
-                    message=f"A critical error (mentions of {', '.join(found)}) was detected in call {call_id}."
+                    message=message
                 )
+
+            # Real-time notification
+            await publish_critical_error(call_id, company_id, "litigation_threat", message)
 
     def _format_transcript(self, segments):
         if not segments:

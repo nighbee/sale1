@@ -26,6 +26,15 @@ def get_transcript(call_id):
     finally:
         get_pool().putconn(conn)
 
+def get_company_settings(company_id):
+    conn = get_pool().getconn()
+    try:
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute("SELECT llm_provider FROM auth_schema.companies WHERE id = %s", (company_id,))
+        return cur.fetchone()
+    finally:
+        get_pool().putconn(conn)
+
 def get_call(call_id):
     conn = get_pool().getconn()
     try:

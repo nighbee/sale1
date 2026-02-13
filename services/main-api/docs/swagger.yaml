@@ -1,0 +1,1006 @@
+basePath: /api/v1
+definitions:
+  fiber.Map:
+    additionalProperties: true
+    type: object
+  github_com_salesai_main-api_internal_core_domain.AnalysisReport:
+    properties:
+      brief:
+        type: string
+      call_id:
+        type: string
+      errors_free:
+        type: integer
+      id:
+        type: string
+      kpi:
+        type: number
+      llm_provider:
+        type: string
+      next_best_action:
+        type: string
+      overall_rating:
+        type: number
+      processed_at:
+        type: string
+      quality_score:
+        type: integer
+      recommendation:
+        type: string
+      script_id:
+        type: string
+      script_match:
+        type: integer
+    type: object
+  github_com_salesai_main-api_internal_core_domain.Call:
+    properties:
+      call_date:
+        type: string
+      call_link:
+        type: string
+      call_time:
+        type: string
+      chat_link:
+        type: string
+      client_id:
+        type: string
+      client_phone:
+        type: string
+      company_id:
+        type: string
+      created_at:
+        type: string
+      duration:
+        type: integer
+      id:
+        type: string
+      manager_id:
+        type: string
+      manager_name:
+        type: string
+      source:
+        type: string
+      status:
+        $ref: '#/definitions/github_com_salesai_main-api_internal_core_domain.CallStatus'
+      updated_at:
+        type: string
+    type: object
+  github_com_salesai_main-api_internal_core_domain.CallStatus:
+    enum:
+    - pending
+    - processing
+    - completed
+    - error
+    type: string
+    x-enum-varnames:
+    - StatusPending
+    - StatusProcessing
+    - StatusCompleted
+    - StatusError
+  github_com_salesai_main-api_internal_core_domain.Company:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      llm_provider:
+        $ref: '#/definitions/github_com_salesai_main-api_internal_core_domain.LLMProvider'
+      name:
+        type: string
+      stt_model_preference:
+        $ref: '#/definitions/github_com_salesai_main-api_internal_core_domain.STTModel'
+      subscription_tier:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  github_com_salesai_main-api_internal_core_domain.LLMProvider:
+    enum:
+    - openai
+    - gemini
+    type: string
+    x-enum-varnames:
+    - LLMOpenAI
+    - LLMGemini
+  github_com_salesai_main-api_internal_core_domain.STTModel:
+    enum:
+    - whisperx_local
+    - openai
+    - gemini
+    type: string
+    x-enum-varnames:
+    - STTWhisperXLocal
+    - STTOpenAI
+    - STTGemini
+  github_com_salesai_main-api_internal_core_domain.Script:
+    properties:
+      company_id:
+        type: string
+      created_at:
+        type: string
+      file_path_minio:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      name:
+        type: string
+      parsed_text:
+        type: string
+      structure:
+        additionalProperties: true
+        type: object
+      updated_at:
+        type: string
+      version:
+        type: integer
+    type: object
+  github_com_salesai_main-api_internal_core_domain.Transcript:
+    properties:
+      call_id:
+        type: string
+      id:
+        type: string
+      processed_at:
+        type: string
+      processing_time_seconds:
+        type: integer
+      speaker_diarized_json:
+        items:
+          type: integer
+        type: array
+      stt_provider:
+        type: string
+    type: object
+  github_com_salesai_main-api_internal_core_domain.User:
+    properties:
+      company_id:
+        type: string
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      last_login:
+        type: string
+      manager_id:
+        type: string
+      manager_name:
+        type: string
+      role:
+        $ref: '#/definitions/github_com_salesai_main-api_internal_core_domain.UserRole'
+      updated_at:
+        type: string
+    type: object
+  github_com_salesai_main-api_internal_core_domain.UserRole:
+    enum:
+    - super_admin
+    - tenant_admin
+    - sales_rep
+    type: string
+    x-enum-varnames:
+    - RoleSuperAdmin
+    - RoleTenantAdmin
+    - RoleSalesRep
+  github_com_salesai_main-api_internal_core_ports.TokenPair:
+    properties:
+      access_token:
+        type: string
+      expires_in:
+        type: integer
+      refresh_token:
+        type: string
+    type: object
+  github_com_salesai_main-api_internal_core_usecases_auth.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    type: object
+  github_com_salesai_main-api_internal_core_usecases_auth.LoginResponse:
+    properties:
+      tokens:
+        $ref: '#/definitions/github_com_salesai_main-api_internal_core_ports.TokenPair'
+      user:
+        $ref: '#/definitions/github_com_salesai_main-api_internal_core_domain.User'
+    type: object
+  github_com_salesai_main-api_internal_core_usecases_auth.RegisterRequest:
+    properties:
+      company_name:
+        type: string
+      email:
+        type: string
+      manager_id:
+        type: string
+      manager_name:
+        type: string
+      password:
+        type: string
+    type: object
+  github_com_salesai_main-api_internal_core_usecases_auth.RegisterResponse:
+    properties:
+      company:
+        $ref: '#/definitions/github_com_salesai_main-api_internal_core_domain.Company'
+      tokens:
+        $ref: '#/definitions/github_com_salesai_main-api_internal_core_ports.TokenPair'
+      user:
+        $ref: '#/definitions/github_com_salesai_main-api_internal_core_domain.User'
+    type: object
+  github_com_salesai_main-api_internal_core_usecases_calls.ListCallsResponse:
+    properties:
+      calls:
+        items:
+          $ref: '#/definitions/github_com_salesai_main-api_internal_core_domain.Call'
+        type: array
+      limit:
+        type: integer
+      page:
+        type: integer
+      total:
+        type: integer
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@salesai.local
+    name: API Support
+    url: http://www.salesai.local/support
+  description: Intelligent Revenue Intelligence & Coaching SaaS API.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: SalesAI API
+  version: "1.0"
+paths:
+  /analytics/leaderboard:
+    get:
+      consumes:
+      - application/json
+      description: Get a ranked list of managers based on their KPI scores
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/fiber.Map'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/fiber.Map'
+      security:
+      - BearerAuth: []
+      summary: Get sales leaderboard
+      tags:
+      - analytics
+  /analytics/team-performance:
+    get:
+      consumes:
+      - application/json
+      description: Get a breakdown of performance metrics per manager
+      parameters:
+      - description: Time period (e.g., last_30_days)
+        in: query
+        name: period
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/fiber.Map'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/fiber.Map'
+      security:
+      - BearerAuth: []
+      summary: Get team performance analytics
+      tags:
+      - analytics
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Login with email and password to receive JWT tokens
+      parameters:
+      - description: Login Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_salesai_main-api_internal_core_usecases_auth.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_salesai_main-api_internal_core_usecases_auth.LoginResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/fiber.Map'
+      summary: Login user
+      tags:
+      - auth
+  /auth/logout:
+    post:
+      description: Logout user and invalidate session (client-side)
+      responses:
+        "204":
+          description: No Content
+      summary: Logout user
+      tags:
+      - auth
+  /auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Get a new access token using a valid refresh token
+      parameters:
+      - description: Refresh Request
+        in: body
+        name: request
+        required: true
+        schema:
+          additionalProperties:
+            type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_salesai_main-api_internal_core_ports.TokenPair'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/fiber.Map'
+      summary: Refresh access token
+      tags:
+      - auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Register a new company along with a super_admin user
+      parameters:
+      - description: Registration Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_salesai_main-api_internal_core_usecases_auth.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_salesai_main-api_internal_core_usecases_auth.RegisterResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/fiber.Map'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/fiber.Map'
+      summary: Register a new company and admin user
+      tags:
+      - auth
+  /calls:
+    get:
+      consumes:
+      - application/json
+      description: Get a paginated list of calls for the company
+      parameters:
+      - description: Filter by manager ID
+        in: query
+        name: manager_id
+        type: string
+      - description: Filter by status
+        in: query
+        name: status
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Page limit
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_salesai_main-api_internal_core_usecases_calls.ListCallsResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/fiber.Map'
+      security:
+      - BearerAuth: []
+      summary: List calls with filters
+      tags:
+      - calls
+  /calls/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get full details of a call including transcript and analysis
+      parameters:
+      - description: Call ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/fiber.Map'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/fiber.Map'
+      security:
+      - BearerAuth: []
+      summary: Get call details
+      tags:
+      - calls
+  /calls/{id}/analysis:
+    get:
+      consumes:
+      - application/json
+      description: Get the AI analysis report for a call
+      parameters:
+      - description: Call ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_salesai_main-api_internal_core_domain.AnalysisReport'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/fiber.Map'
+      security:
+      - BearerAuth: []
+      summary: Get call analysis
+      tags:
+      - calls
+  /calls/{id}/audio:
+    get:
+      description: Get the audio file for a call from MinIO
+      parameters:
+      - description: Call ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - audio/mpeg
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/fiber.Map'
+      security:
+      - BearerAuth: []
+      summary: Stream call audio
+      tags:
+      - calls
+  /calls/{id}/reprocess:
+    post:
+      consumes:
+      - application/json
+      description: Re-enqueue a call for STT and AI analysis
+      parameters:
+      - description: Call ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/fiber.Map'
+      security:
+      - BearerAuth: []
+      summary: Reprocess a call
+      tags:
+      - calls
+  /calls/{id}/transcript:
+    get:
+      consumes:
+      - application/json
+      description: Get the diarized transcript for a call
+      parameters:
+      - description: Call ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_salesai_main-api_internal_core_domain.Transcript'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/fiber.Map'
+      security:
+      - BearerAuth: []
+      summary: Get call transcript
+      tags:
+      - calls
+  /companies/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get basic information and settings for a company
+      parameters:
+      - description: Company ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_salesai_main-api_internal_core_domain.Company'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/fiber.Map'
+      security:
+      - BearerAuth: []
+      summary: Get company details
+      tags:
+      - companies
+  /companies/{id}/settings:
+    put:
+      consumes:
+      - application/json
+      description: Update AI preferences (STT model, LLM provider) for a company
+      parameters:
+      - description: Company ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Settings Update Request
+        in: body
+        name: request
+        required: true
+        schema:
+          additionalProperties:
+            type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/fiber.Map'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/fiber.Map'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/fiber.Map'
+      security:
+      - BearerAuth: []
+      summary: Update company settings
+      tags:
+      - companies
+  /notifications:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of alerts and notifications for the current user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/fiber.Map'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/fiber.Map'
+      security:
+      - BearerAuth: []
+      summary: List user notifications
+      tags:
+      - notifications
+  /notifications/{id}/read:
+    put:
+      consumes:
+      - application/json
+      description: Update the status of a notification to read
+      parameters:
+      - description: Notification ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/fiber.Map'
+      security:
+      - BearerAuth: []
+      summary: Mark notification as read
+      tags:
+      - notifications
+  /scripts:
+    get:
+      consumes:
+      - application/json
+      description: Get all sales scripts registered for the company
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/fiber.Map'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/fiber.Map'
+      security:
+      - BearerAuth: []
+      summary: List company scripts
+      tags:
+      - scripts
+    post:
+      consumes:
+      - multipart/form-data
+      description: Upload a DOCX/PDF file to create a sales script. The file will
+        be parsed automatically.
+      parameters:
+      - description: Script file (DOCX/PDF)
+        in: formData
+        name: file
+        required: true
+        type: file
+      - description: Script name
+        in: formData
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/fiber.Map'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/fiber.Map'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/fiber.Map'
+      security:
+      - BearerAuth: []
+      summary: Upload and create a new script
+      tags:
+      - scripts
+  /scripts/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Deactivate a script (soft-delete)
+      parameters:
+      - description: Script ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/fiber.Map'
+      security:
+      - BearerAuth: []
+      summary: Delete a script
+      tags:
+      - scripts
+    get:
+      consumes:
+      - application/json
+      description: Get metadata and structure of a specific script
+      parameters:
+      - description: Script ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_salesai_main-api_internal_core_domain.Script'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/fiber.Map'
+      security:
+      - BearerAuth: []
+      summary: Get script details
+      tags:
+      - scripts
+    put:
+      consumes:
+      - application/json
+      description: Update script name, active status, or structured JSON data
+      parameters:
+      - description: Script ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Script Update Request
+        in: body
+        name: request
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_salesai_main-api_internal_core_domain.Script'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/fiber.Map'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/fiber.Map'
+      security:
+      - BearerAuth: []
+      summary: Update script details
+      tags:
+      - scripts
+  /scripts/{id}/content:
+    get:
+      consumes:
+      - application/json
+      description: Get the full extracted text from the script document
+      parameters:
+      - description: Script ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/fiber.Map'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/fiber.Map'
+      security:
+      - BearerAuth: []
+      summary: Get parsed script text
+      tags:
+      - scripts
+  /users:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of all users within the company
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/fiber.Map'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/fiber.Map'
+      security:
+      - BearerAuth: []
+      summary: List company users
+      tags:
+      - users
+  /users/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Remove a user from the company
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/fiber.Map'
+      security:
+      - BearerAuth: []
+      summary: Delete a user
+      tags:
+      - users
+    get:
+      consumes:
+      - application/json
+      description: Get details of a specific user
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_salesai_main-api_internal_core_domain.User'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/fiber.Map'
+      security:
+      - BearerAuth: []
+      summary: Get user details
+      tags:
+      - users
+    put:
+      consumes:
+      - application/json
+      description: Update role or manager name for a user
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: User Update Request
+        in: body
+        name: request
+        required: true
+        schema:
+          additionalProperties:
+            type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_salesai_main-api_internal_core_domain.User'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/fiber.Map'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/fiber.Map'
+      security:
+      - BearerAuth: []
+      summary: Update user details
+      tags:
+      - users
+  /users/invite:
+    post:
+      consumes:
+      - application/json
+      description: Invite a new user to the company and assign a role
+      parameters:
+      - description: User Invitation Request
+        in: body
+        name: request
+        required: true
+        schema:
+          additionalProperties:
+            type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/fiber.Map'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/fiber.Map'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/fiber.Map'
+      security:
+      - BearerAuth: []
+      summary: Invite a new user
+      tags:
+      - users
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer " followed by your JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

@@ -8,8 +8,11 @@ import (
 	"net/http"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/salesai/main-api/internal/core/domain"
 	"github.com/salesai/main-api/internal/core/ports"
 )
+
+var _ = domain.Script{}
 
 type ScriptHandler struct {
 	scriptRepo       ports.ScriptRepository
@@ -23,6 +26,16 @@ func NewScriptHandler(scriptRepo ports.ScriptRepository, scriptServiceURL string
 	}
 }
 
+// ListScripts godoc
+// @Summary List company scripts
+// @Description Get all sales scripts registered for the company
+// @Tags scripts
+// @Accept json
+// @Produce json
+// @Success 200 {object} fiber.Map
+// @Failure 500 {object} fiber.Map
+// @Security BearerAuth
+// @Router /scripts [get]
 func (h *ScriptHandler) ListScripts(c *fiber.Ctx) error {
 	companyID := c.Locals("company_id").(string)
 	scripts, err := h.scriptRepo.ListByCompany(c.Context(), companyID)
@@ -32,6 +45,17 @@ func (h *ScriptHandler) ListScripts(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"scripts": scripts})
 }
 
+// GetScript godoc
+// @Summary Get script details
+// @Description Get metadata and structure of a specific script
+// @Tags scripts
+// @Accept json
+// @Produce json
+// @Param id path string true "Script ID"
+// @Success 200 {object} domain.Script
+// @Failure 404 {object} fiber.Map
+// @Security BearerAuth
+// @Router /scripts/{id} [get]
 func (h *ScriptHandler) GetScript(c *fiber.Ctx) error {
 	id := c.Params("id")
 	companyID := c.Locals("company_id").(string)
@@ -42,6 +66,17 @@ func (h *ScriptHandler) GetScript(c *fiber.Ctx) error {
 	return c.JSON(script)
 }
 
+// GetScriptContent godoc
+// @Summary Get parsed script text
+// @Description Get the full extracted text from the script document
+// @Tags scripts
+// @Accept json
+// @Produce json
+// @Param id path string true "Script ID"
+// @Success 200 {object} fiber.Map
+// @Failure 404 {object} fiber.Map
+// @Security BearerAuth
+// @Router /scripts/{id}/content [get]
 func (h *ScriptHandler) GetScriptContent(c *fiber.Ctx) error {
 	id := c.Params("id")
 	companyID := c.Locals("company_id").(string)
@@ -57,6 +92,19 @@ func (h *ScriptHandler) GetScriptContent(c *fiber.Ctx) error {
 	})
 }
 
+// CreateScript godoc
+// @Summary Upload and create a new script
+// @Description Upload a DOCX/PDF file to create a sales script. The file will be parsed automatically.
+// @Tags scripts
+// @Accept multipart/form-data
+// @Produce json
+// @Param file formData file true "Script file (DOCX/PDF)"
+// @Param name formData string true "Script name"
+// @Success 201 {object} fiber.Map
+// @Failure 400 {object} fiber.Map
+// @Failure 500 {object} fiber.Map
+// @Security BearerAuth
+// @Router /scripts [post]
 func (h *ScriptHandler) CreateScript(c *fiber.Ctx) error {
 	companyID := c.Locals("company_id").(string)
 
@@ -102,6 +150,19 @@ func (h *ScriptHandler) CreateScript(c *fiber.Ctx) error {
 	})
 }
 
+// UpdateScript godoc
+// @Summary Update script details
+// @Description Update script name, active status, or structured JSON data
+// @Tags scripts
+// @Accept json
+// @Produce json
+// @Param id path string true "Script ID"
+// @Param request body map[string]interface{} true "Script Update Request"
+// @Success 200 {object} domain.Script
+// @Failure 400 {object} fiber.Map
+// @Failure 404 {object} fiber.Map
+// @Security BearerAuth
+// @Router /scripts/{id} [put]
 func (h *ScriptHandler) UpdateScript(c *fiber.Ctx) error {
 	id := c.Params("id")
 	companyID := c.Locals("company_id").(string)
@@ -135,6 +196,17 @@ func (h *ScriptHandler) UpdateScript(c *fiber.Ctx) error {
 	return c.JSON(script)
 }
 
+// DeleteScript godoc
+// @Summary Delete a script
+// @Description Deactivate a script (soft-delete)
+// @Tags scripts
+// @Accept json
+// @Produce json
+// @Param id path string true "Script ID"
+// @Success 204
+// @Failure 500 {object} fiber.Map
+// @Security BearerAuth
+// @Router /scripts/{id} [delete]
 func (h *ScriptHandler) DeleteScript(c *fiber.Ctx) error {
 	id := c.Params("id")
 	companyID := c.Locals("company_id").(string)

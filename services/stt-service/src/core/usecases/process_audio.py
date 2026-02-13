@@ -6,6 +6,7 @@ from pydub import AudioSegment
 from src.adapters.storage.postgres_repo import save_transcript, update_call_link
 from src.adapters.events.redis_publisher import publish_transcript_ready
 from src.adapters.storage.minio_client import MinioClient
+from src.infrastructure.audio.diarization import DiarizationService, merge_transcript_with_diarization
 
 logger = logging.getLogger(__name__)
 
@@ -13,6 +14,7 @@ class ProcessAudioUseCase:
     def __init__(self):
         self.stt_local_url = os.getenv("LOCAL_STT_URL", "http://localhost:5001")
         self.minio = MinioClient()
+        self.diarization_service = DiarizationService()
 
     async def execute(self, job: dict):
         call_id = job.get('call_id')
@@ -55,21 +57,19 @@ class ProcessAudioUseCase:
                 resp.raise_for_status()
                 transcript_data = resp.json()
 
-            # Transform to our internal format with mock diarization
-            # In a production environment, we would use pyannote.audio here.
-            segments = []
-            raw_segments = transcript_data.get("segments", [])
-            for i, seg in enumerate(raw_segments):
-                # Simple heuristic for demonstration: alternate speakers if segments are far apart
-                # or just use SPEAKER_0 for even, SPEAKER_1 for odd if it's a dialogue
-                speaker = "SPEAKER_0" if i % 2 == 0 else "SPEAKER_1"
+            # 5. Diarization
+            diarization_segments = self.diarization_service.process(wav_path)
 
-                segments.append({
+            # 6. Transform and Merge
+            transcript_segments = []
+            for seg in transcript_data.get("segments", []):
+                transcript_segments.append({
                     "start": seg.get("start"),
                     "end": seg.get("end"),
-                    "speaker": speaker,
                     "text": seg.get("text")
                 })
+
+            segments = merge_transcript_with_diarization(transcript_segments, diarization_segments)
 
             final_transcript = {
                 "call_id": call_id,

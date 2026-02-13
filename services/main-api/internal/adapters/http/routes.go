@@ -2,6 +2,9 @@ package http
 
 import (
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/swagger"
+	"github.com/gofiber/websocket/v2"
+	_ "github.com/salesai/main-api/docs"
 	"github.com/salesai/main-api/internal/adapters/http/handlers"
 	"github.com/salesai/main-api/internal/adapters/http/middleware"
 	"github.com/salesai/main-api/internal/core/ports"
@@ -15,9 +18,14 @@ func SetupRoutes(
 	companyHandler *handlers.CompanyHandler,
 	userHandler *handlers.UserHandler,
 	scriptHandler *handlers.ScriptHandler,
+	notificationHandler *handlers.NotificationHandler,
+	wsHandler *handlers.WSHandler,
 	jwtService ports.JWTService,
 ) {
 	api := app.Group("/api/v1")
+
+	// Swagger documentation
+	app.Get("/swagger/*", swagger.HandlerDefault)
 
 	// Public routes
 	auth := api.Group("/auth")
@@ -28,6 +36,14 @@ func SetupRoutes(
 
 	// Protected routes
 	protected := api.Group("", middleware.JWTAuth(jwtService))
+
+	// WebSocket
+	protected.Get("/ws", handlers.WSUpgrade, websocket.New(wsHandler.Handle))
+
+	// Notifications
+	notifications := protected.Group("/notifications")
+	notifications.Get("/", notificationHandler.ListNotifications)
+	notifications.Put("/:id/read", notificationHandler.MarkAsRead)
 
 	// Users
 	users := protected.Group("/users", middleware.RequireRole("super_admin", "tenant_admin"))
