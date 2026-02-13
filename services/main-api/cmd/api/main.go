@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"log"
 	"os"
@@ -11,9 +12,12 @@ import (
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 
+	"github.com/go-redis/redis/v8"
+	"github.com/salesai/main-api/internal/adapters/events"
 	"github.com/salesai/main-api/internal/adapters/grpc"
 	"github.com/salesai/main-api/internal/adapters/http"
 	"github.com/salesai/main-api/internal/adapters/http/handlers"
+	"github.com/salesai/main-api/internal/adapters/http/ws"
 	"github.com/salesai/main-api/internal/adapters/repositories"
 	"github.com/salesai/main-api/internal/core/usecases/analytics"
 	"github.com/salesai/main-api/internal/core/usecases/auth"
@@ -38,6 +42,7 @@ func main() {
 	transcriptRepo := repositories.NewTranscriptRepository(db)
 	analysisRepo := repositories.NewAnalysisRepository(db)
 	scriptRepo := repositories.NewScriptRepository(db)
+	notificationRepo := repositories.NewNotificationRepository(db)
 
 	// Services
 	jwtService := security.NewJWTService(cfg.JWTSecret, cfg.JWTExpiry)
@@ -62,6 +67,24 @@ func main() {
 	listCallsUC := calls.NewListCallsUseCase(callRepo)
 	teamPerformanceUC := analytics.NewTeamPerformanceUseCase(analysisRepo)
 
+	// Redis client
+	rdb := redis.NewClient(&redis.Options{
+		Addr: os.Getenv("REDIS_ADDR"), // or from cfg
+	})
+	if os.Getenv("REDIS_ADDR") == "" {
+		rdb = redis.NewClient(&redis.Options{
+			Addr: "redis:6379",
+		})
+	}
+
+	// WebSocket Hub
+	hub := ws.NewHub()
+	go hub.Run()
+
+	// Redis Consumer for Notifications
+	redisConsumer := events.NewRedisConsumer(rdb, hub, callRepo)
+	go redisConsumer.Start(context.Background())
+
 	// Handlers
 	authHandler := handlers.NewAuthHandler(registerUC, loginUC, refreshUC)
 	callHandler := handlers.NewCallHandler(listCallsUC, callRepo, transcriptRepo, analysisRepo, minioClient, grpcClient)
@@ -69,11 +92,13 @@ func main() {
 	companyHandler := handlers.NewCompanyHandler(companyRepo)
 	userHandler := handlers.NewUserHandler(userRepo)
 	scriptHandler := handlers.NewScriptHandler(scriptRepo, cfg.ScriptServiceURL)
+	notificationHandler := handlers.NewNotificationHandler(notificationRepo)
+	wsHandler := handlers.NewWSHandler(hub)
 
 	app := fiber.New()
 	app.Use(logger.New())
 
-	http.SetupRoutes(app, authHandler, callHandler, analyticsHandler, companyHandler, userHandler, scriptHandler, jwtService)
+	http.SetupRoutes(app, authHandler, callHandler, analyticsHandler, companyHandler, userHandler, scriptHandler, notificationHandler, wsHandler, jwtService)
 
 	port := os.Getenv("PORT")
 	if port == "" {

@@ -81,6 +81,39 @@ func (r *callRepository) GetByID(ctx context.Context, companyID, id string) (*do
 	return call, err
 }
 
+func (r *callRepository) GetByIDInternal(ctx context.Context, id string) (*domain.Call, error) {
+	query := `
+		SELECT id, company_id, manager_id, manager_name, client_phone, client_id, duration, call_link, chat_link, call_date, call_time, status, source, created_at, updated_at
+		FROM calls_schema.calls
+		WHERE id = $1
+	`
+
+	call := &domain.Call{}
+	err := r.db.QueryRowContext(ctx, query, id).Scan(
+		&call.ID,
+		&call.CompanyID,
+		&call.ManagerID,
+		&call.ManagerName,
+		&call.ClientPhone,
+		&call.ClientID,
+		&call.Duration,
+		&call.CallLink,
+		&call.ChatLink,
+		&call.CallDate,
+		&call.CallTime,
+		&call.Status,
+		&call.Source,
+		&call.CreatedAt,
+		&call.UpdatedAt,
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, errors.New("call not found")
+	}
+
+	return call, err
+}
+
 func (r *callRepository) ListByCompany(ctx context.Context, companyID string, filters map[string]interface{}) ([]*domain.Call, int, error) {
 	where := []string{"company_id = $1"}
 	args := []interface{}{companyID}

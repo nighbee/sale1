@@ -23,6 +23,7 @@ type CompanyRepository interface {
 type CallRepository interface {
 	Create(ctx context.Context, call *domain.Call) error
 	GetByID(ctx context.Context, companyID, id string) (*domain.Call, error)
+	GetByIDInternal(ctx context.Context, id string) (*domain.Call, error)
 	ListByCompany(ctx context.Context, companyID string, filters map[string]interface{}) ([]*domain.Call, int, error)
 	UpdateStatus(ctx context.Context, id string, status domain.CallStatus) error
 }
@@ -45,4 +46,10 @@ type ScriptRepository interface {
 	Update(ctx context.Context, script *domain.Script) error
 	Delete(ctx context.Context, companyID, id string) error
 	GetActiveByCompany(ctx context.Context, companyID string) (*domain.Script, error)
+}
+
+type NotificationRepository interface {
+	ListByUser(ctx context.Context, userID string) ([]*domain.Notification, error)
+	MarkAsRead(ctx context.Context, userID, id string) error
+	Create(ctx context.Context, n *domain.Notification) error
 }

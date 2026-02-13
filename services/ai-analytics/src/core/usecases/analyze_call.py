@@ -6,6 +6,7 @@ from src.adapters.storage.postgres_repo import (
 )
 from src.infrastructure.llm.openai_client import OpenAIClient
 from src.infrastructure.llm.gemini_client import GeminiClient
+from src.adapters.events.redis_publisher import publish_analysis_completed, publish_critical_error
 
 logger = logging.getLogger(__name__)
 
@@ -87,23 +88,30 @@ class AnalyzeCallUseCase:
         save_analysis(report)
         logger.info(f"Analysis saved for call {call_id}")
 
-        # 6. Check for Critical Errors
-        self._check_critical_errors(call_id, company_id, transcript_text)
+        # Publish event for real-time notifications
+        await publish_analysis_completed(call_id, overall_rating)
 
-    def _check_critical_errors(self, call_id, company_id, transcript_text):
+        # 6. Check for Critical Errors
+        await self._check_critical_errors(call_id, company_id, transcript_text)
+
+    async def _check_critical_errors(self, call_id, company_id, transcript_text):
         critical_keywords = ["sue", "litigation", "lawyer", "court", "legal action"]
         found = [kw for kw in critical_keywords if kw in transcript_text.lower()]
 
         if found:
             logger.warning(f"CRITICAL ERROR DETECTED in call {call_id}: {found}")
+            message = f"A critical error (mentions of {', '.join(found)}) was detected in call {call_id}."
             admin = get_company_admin(company_id)
             if admin:
                 create_notification(
                     user_id=admin['id'],
                     n_type="in_app",
                     subject="Critical Error Detected",
-                    message=f"A critical error (mentions of {', '.join(found)}) was detected in call {call_id}."
+                    message=message
                 )
+
+            # Real-time notification
+            await publish_critical_error(call_id, company_id, "litigation_threat", message)
 
     def _format_transcript(self, segments):
         if not segments:

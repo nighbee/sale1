@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/url"
 	"os"
+	"strconv"
 	"os/signal"
 	"time"
 
@@ -35,11 +36,16 @@ type SipuniEvent struct {
 }
 
 type SipuniNotifyRequest struct {
-	CallID    string `json:"call_id"`
-	Direction string `json:"direction"`
-	From      string `json:"from"`
-	To        string `json:"to"`
-	RecordURL string `json:"record_url"`
+	CallID             string `json:"call_id"`
+	Event              int    `json:"event"`
+	DstNum             string `json:"dst_num"`
+	SrcNum             string `json:"src_num"`
+	Timestamp          string `json:"timestamp"`
+	UserID             string `json:"user_id"`
+	Status             string `json:"status"`
+	CallStartTimestamp string `json:"call_start_timestamp"`
+	CallRecordLink     string `json:"call_record_link"`
+	TreeName           string `json:"treeName"`
 }
 
 var (
@@ -150,23 +156,32 @@ func handleNotify(request json.RawMessage) {
 		return
 	}
 
-	// We only care about completed calls with a record URL
-	if notify.RecordURL != "" {
-		log.Printf("Received notify for call %s", notify.CallID)
+	// We only care about calls with a record link
+	if notify.CallRecordLink != "" {
+		log.Printf("Received notify for call %s with status %s", notify.CallID, notify.Status)
 
 		callID := uuid.New().String()
-		now := time.Now()
+
+		// Parse timestamps for duration
+		startTime, _ := strconv.ParseInt(notify.CallStartTimestamp, 10, 64)
+		endTime, _ := strconv.ParseInt(notify.Timestamp, 10, 64)
+		duration := int(endTime - startTime)
+		if duration <= 0 {
+			duration = 1
+		}
+
+		callDate := time.Unix(startTime, 0)
 
 		call := &domain.Call{
 			ID:          callID,
 			CompanyID:   companyID,
-			ManagerID:   notify.To, // Assuming 'to' is the manager for inbound
+			ManagerID:   notify.UserID,
 			ManagerName: "Sipuni Manager",
-			ClientPhone: notify.From,
-			Duration:    60, // Mock duration if not provided
-			CallLink:    notify.RecordURL,
-			CallDate:    now,
-			CallTime:    now,
+			ClientPhone: notify.DstNum, // In outgoing, Dst is client. In incoming, Src is client.
+			Duration:    duration,
+			CallLink:    notify.CallRecordLink,
+			CallDate:    callDate,
+			CallTime:    callDate,
 			Status:      domain.StatusPending,
 			Source:      "webhook",
 		}
@@ -181,8 +196,8 @@ func handleNotify(request json.RawMessage) {
 		job := queue.AudioProcessingJob{
 			CallID:    callID,
 			CompanyID: companyID,
-			AudioURL:  notify.RecordURL,
-			ManagerID: notify.To,
+			AudioURL:  notify.CallRecordLink,
+			ManagerID: notify.UserID,
 		}
 
 		err := publisher.EnqueueAudioProcessing(context.Background(), job)
