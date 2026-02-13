@@ -65,6 +65,7 @@ func SetupRoutes(
 	analytics := protected.Group("/analytics", middleware.RequireRole("tenant_admin", "super_admin"))
 	analytics.Get("/team-performance", analyticsHandler.GetTeamPerformance)
 	analytics.Get("/leaderboard", analyticsHandler.GetLeaderboard)
+	analytics.Get("/trends", analyticsHandler.GetTrends)
 
 	// Company (Admin only)
 	companies := protected.Group("/companies", middleware.RequireRole("tenant_admin", "super_admin"))

@@ -36,6 +36,7 @@ type AnalysisRepository interface {
 	GetByCallID(ctx context.Context, callID string) (*domain.AnalysisReport, error)
 	Create(ctx context.Context, report *domain.AnalysisReport) error
 	GetTeamPerformance(ctx context.Context, companyID string, filters map[string]interface{}) ([]map[string]interface{}, error)
+	GetTrends(ctx context.Context, companyID string, filters map[string]interface{}) ([]map[string]interface{}, error)
 }
 
 type ScriptRepository interface {

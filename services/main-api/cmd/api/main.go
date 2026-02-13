@@ -80,11 +80,12 @@ func main() {
 	refreshUC := auth.NewRefreshUseCase(userRepo, jwtService)
 	listCallsUC := calls.NewListCallsUseCase(callRepo)
 	teamPerformanceUC := analytics.NewTeamPerformanceUseCase(analysisRepo)
+	getTrendsUC := analytics.NewGetTrendsUseCase(analysisRepo)
 
 	// Handlers
 	authHandler := handlers.NewAuthHandler(registerUC, loginUC, refreshUC)
 	callHandler := handlers.NewCallHandler(listCallsUC, callRepo, transcriptRepo, analysisRepo, minioClient, sttClient, analyticsClient)
-	analyticsHandler := handlers.NewAnalyticsHandler(teamPerformanceUC)
+	analyticsHandler := handlers.NewAnalyticsHandler(teamPerformanceUC, getTrendsUC)
 	companyHandler := handlers.NewCompanyHandler(companyRepo)
 	userHandler := handlers.NewUserHandler(userRepo)
 	scriptHandler := handlers.NewScriptHandler(scriptRepo, cfg.ScriptServiceURL)

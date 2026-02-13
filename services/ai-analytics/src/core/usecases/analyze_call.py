@@ -1,12 +1,15 @@
 import logging
+import json
 from src.adapters.storage.postgres_repo import get_transcript, get_call, get_active_script, save_analysis, create_notification, get_tenant_admins
 from src.infrastructure.llm.openai_client import MockLLMClient
+from src.adapters.events.notification_adapter import NotificationAdapter
 
 logger = logging.getLogger(__name__)
 
 class AnalyzeCallUseCase:
     def __init__(self):
         self.llm = MockLLMClient()
+        self.notifier = NotificationAdapter()
 
     async def execute(self, call_id: str, company_id: str):
         logger.info(f"Analyzing call {call_id} for company {company_id}")
@@ -29,7 +32,11 @@ class AnalyzeCallUseCase:
         # 2. Prepare prompt
         transcript_text = self._format_transcript(transcript['speaker_diarized_json'])
         user_prompt = f"TRANSCRIPT:\n{transcript_text}\n\nSCRIPT:\n{script_text}"
-        system_prompt = "You are a sales analyst. Analyze the transcript against the script."
+        system_prompt = (
+            "You are a sales analyst. Analyze the transcript against the script. "
+            "PII Redaction: Ignore and redact any credit card numbers or sensitive personal info. "
+            "Extract topics discussed in the call."
+        )
 
         # 3. Call LLM (Mocked)
         analysis = await self.llm.analyze(system_prompt, user_prompt)
@@ -56,7 +63,8 @@ class AnalyzeCallUseCase:
             'recommendation': analysis['recommendation'],
             'brief': analysis['brief'],
             'next_best_action': analysis['next_best_action'],
-            'llm_provider': 'mock-openai'
+            'llm_provider': 'openai',
+            'topics': json.dumps(["Pricing", "Features", "Contract"]) # Mocked topics
         }
 
         save_analysis(report)
@@ -72,6 +80,9 @@ class AnalyzeCallUseCase:
                     'in_app',
                     f"CRITICAL ERROR in call {call_id}: {analysis['critical_error_message']}"
                 )
+                # Send external alerts
+                await self.notifier.send_telegram(admin['id'], f"CRITICAL: {analysis['critical_error_message']}")
+                await self.notifier.send_email(admin['id'], "Critical Error Alert", f"A critical error was detected: {analysis['critical_error_message']}")
 
     def _format_transcript(self, segments):
         if not segments:

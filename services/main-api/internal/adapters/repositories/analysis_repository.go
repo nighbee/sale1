@@ -20,14 +20,51 @@ func NewAnalysisRepository(db *sql.DB) ports.AnalysisRepository {
 func (r *analysisRepository) Create(ctx context.Context, a *domain.AnalysisReport) error {
 	query := `
 		INSERT INTO calls_schema.analysis_reports
-		(id, call_id, script_id, quality_score, script_match, errors_free, overall_rating, kpi, recommendation, brief, next_best_action, llm_provider)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+		(id, call_id, script_id, quality_score, script_match, errors_free, overall_rating, kpi, recommendation, brief, next_best_action, llm_provider, topics)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 		RETURNING processed_at
 	`
 	return r.db.QueryRowContext(ctx, query,
 		a.ID, a.CallID, a.ScriptID, a.QualityScore, a.ScriptMatch, a.ErrorsFree,
-		a.OverallRating, a.KPI, a.Recommendation, a.Brief, a.NextBestAction, a.LLMProvider,
+		a.OverallRating, a.KPI, a.Recommendation, a.Brief, a.NextBestAction, a.LLMProvider, a.Topics,
 	).Scan(&a.ProcessedAt)
+}
+
+func (r *analysisRepository) GetTrends(ctx context.Context, companyID string, filters map[string]interface{}) ([]map[string]interface{}, error) {
+	// Aggregate by date
+	query := `
+		SELECT
+			call_date::text,
+			COUNT(id) as total_calls,
+			AVG(quality_score) as avg_quality,
+			AVG(kpi) as avg_kpi
+		FROM calls_schema.v_calls_with_analysis
+		WHERE company_id = $1
+		GROUP BY call_date
+		ORDER BY call_date ASC
+	`
+	rows, err := r.db.QueryContext(ctx, query, companyID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := []map[string]interface{}{}
+	for rows.Next() {
+		var date string
+		var totalCalls int
+		var avgQuality, avgKPI float64
+		if err := rows.Scan(&date, &totalCalls, &avgQuality, &avgKPI); err != nil {
+			return nil, err
+		}
+		result = append(result, map[string]interface{}{
+			"date":        date,
+			"total_calls": totalCalls,
+			"avg_quality": avgQuality,
+			"avg_kpi":     avgKPI,
+		})
+	}
+	return result, nil
 }
 
 func (r *analysisRepository) GetTeamPerformance(ctx context.Context, companyID string, filters map[string]interface{}) ([]map[string]interface{}, error) {
@@ -77,7 +114,7 @@ func (r *analysisRepository) GetTeamPerformance(ctx context.Context, companyID s
 
 func (r *analysisRepository) GetByCallID(ctx context.Context, callID string) (*domain.AnalysisReport, error) {
 	query := `
-		SELECT id, call_id, script_id, quality_score, script_match, errors_free, overall_rating, kpi, recommendation, brief, next_best_action, llm_provider, processed_at
+		SELECT id, call_id, script_id, quality_score, script_match, errors_free, overall_rating, kpi, recommendation, brief, next_best_action, llm_provider, topics, processed_at
 		FROM calls_schema.analysis_reports
 		WHERE call_id = $1
 	`
@@ -96,6 +133,7 @@ func (r *analysisRepository) GetByCallID(ctx context.Context, callID string) (*d
 		&a.Brief,
 		&a.NextBestAction,
 		&a.LLMProvider,
+		&a.Topics,
 		&a.ProcessedAt,
 	)
 

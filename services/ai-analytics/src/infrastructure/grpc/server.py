@@ -40,7 +40,7 @@ class AnalyticsServicer(analytics_service_pb2_grpc.AnalyticsServiceServicer):
 def serve_grpc():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     analytics_service_pb2_grpc.add_AnalyticsServiceServicer_to_server(AnalyticsServicer(), server)
-    port = os.Getenv("GRPC_PORT", "50052")
+    port = os.getenv("GRPC_PORT", "50052")
     server.add_insecure_port(f'[::]:{port}')
     logger.info(f"gRPC server starting on port {port}...")
     server.start()

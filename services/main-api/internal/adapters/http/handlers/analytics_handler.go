@@ -7,11 +7,13 @@ import (
 
 type AnalyticsHandler struct {
 	teamPerformanceUC *analytics.TeamPerformanceUseCase
+	getTrendsUC       *analytics.GetTrendsUseCase
 }
 
-func NewAnalyticsHandler(teamPerformanceUC *analytics.TeamPerformanceUseCase) *AnalyticsHandler {
+func NewAnalyticsHandler(teamPerformanceUC *analytics.TeamPerformanceUseCase, getTrendsUC *analytics.GetTrendsUseCase) *AnalyticsHandler {
 	return &AnalyticsHandler{
 		teamPerformanceUC: teamPerformanceUC,
+		getTrendsUC:       getTrendsUC,
 	}
 }
 
@@ -52,6 +54,30 @@ func (h *AnalyticsHandler) GetTeamPerformance(c *fiber.Ctx) error {
 // @Security BearerAuth
 // @Success 200 {object} map[string]interface{}
 // @Router /analytics/leaderboard [get]
+// GetTrends godoc
+// @Summary Get call analytics trends
+// @Description Get daily trends for call volume and quality
+// @Tags Analytics
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param period query string false "Time period"
+// @Success 200 {object} map[string]interface{}
+// @Router /analytics/trends [get]
+func (h *AnalyticsHandler) GetTrends(c *fiber.Ctx) error {
+	companyID := c.Locals("company_id").(string)
+	filters := map[string]interface{}{
+		"period": c.Query("period"),
+	}
+	result, err := h.getTrendsUC.Execute(c.Context(), companyID, filters)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{
+		"daily_trends": result,
+	})
+}
+
 func (h *AnalyticsHandler) GetLeaderboard(c *fiber.Ctx) error {
 	// For simplicity, we use same data for leaderboard but sorted by KPI in repo if needed
 	// or just reusing team performance for now as per contract similarities

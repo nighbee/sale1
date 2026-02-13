@@ -23,19 +23,33 @@ const docTemplate = `{
                 "security": [
                     {
                         "BearerAuth": []
+                    },
+                    {
+                        "BearerAuth": []
                     }
                 ],
-                "description": "Rank managers by overall quality and KPI",
+                "description": "Rank managers by overall quality and KPI\nGet daily trends for call volume and quality",
                 "consumes": [
+                    "application/json",
                     "application/json"
                 ],
                 "produces": [
+                    "application/json",
                     "application/json"
                 ],
                 "tags": [
+                    "Analytics",
                     "Analytics"
                 ],
-                "summary": "Get sales representative leaderboard",
+                "summary": "Get call analytics trends",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Time period",
+                        "name": "period",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -69,6 +83,49 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Time period (last_7_days, last_30_days, etc.)",
+                        "name": "period",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/analytics/trends": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Rank managers by overall quality and KPI\nGet daily trends for call volume and quality",
+                "consumes": [
+                    "application/json",
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json",
+                    "application/json"
+                ],
+                "tags": [
+                    "Analytics",
+                    "Analytics"
+                ],
+                "summary": "Get call analytics trends",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Time period",
                         "name": "period",
                         "in": "query"
                     }
@@ -595,6 +652,66 @@ const docTemplate = `{
                 }
             }
         },
+        "/notifications": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get all notifications for the current user",
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "List user notifications",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": true
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/notifications/{id}/read": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update notification status to read",
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Mark notification as read",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Notification ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/scripts": {
             "get": {
                 "security": [
@@ -1114,6 +1231,12 @@ const docTemplate = `{
                 },
                 "script_match": {
                     "type": "integer"
+                },
+                "topics": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -1243,6 +1366,9 @@ const docTemplate = `{
                 },
                 "created_at": {
                     "type": "string"
+                },
+                "definition": {
+                    "type": "object"
                 },
                 "file_path_minio": {
                     "type": "string"

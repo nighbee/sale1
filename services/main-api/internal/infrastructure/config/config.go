@@ -28,7 +28,7 @@ func Load() *Config {
 
 	scriptURL := os.Getenv("SCRIPT_SERVICE_URL")
 	if scriptURL == "" {
-		scriptURL = "http://script-service:8083"
+		scriptURL = "http://script-service:8082"
 	}
 
 	minioEndpoint := os.Getenv("MINIO_ENDPOINT")

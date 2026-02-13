@@ -58,7 +58,7 @@ services:
   script-service:
     build: ./services/script-service
     ports:
-      - "8083:8083"
+      - "8082:8082"
     environment:
       DATABASE_URL: "host=postgres port=5432 user=salesai_user password=strong_password dbname=salesai sslmode=disable"
       MINIO_ENDPOINT: "minio:9000"
@@ -73,7 +73,7 @@ services:
     environment:
       DATABASE_URL: "host=postgres port=5432 user=salesai_user password=strong_password dbname=salesai sslmode=disable"
       REDIS_URL: "redis://redis:6379"
-      LOCAL_STT_URL: "http://stt-local:5001"
+      LOCAL_STT_URL: "http://stt-local:5005"
     depends_on:
       - postgres
       - redis
@@ -91,7 +91,9 @@ services:
   stt-local:
     build: ./ai-services/stt-local
     ports:
-      - "5001:5001"
+      - "5005:5005"
+    environment:
+      PORT: "5005"
 
   nginx:
     image: nginx:1.25-alpine

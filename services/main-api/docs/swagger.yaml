@@ -77,6 +77,10 @@ definitions:
         type: string
       script_match:
         type: integer
+      topics:
+        items:
+          type: string
+        type: array
     type: object
   domain.Call:
     properties:
@@ -166,6 +170,8 @@ definitions:
         type: string
       created_at:
         type: string
+      definition:
+        type: object
       file_path_minio:
         type: string
       id:
@@ -265,8 +271,17 @@ paths:
     get:
       consumes:
       - application/json
-      description: Rank managers by overall quality and KPI
+      - application/json
+      description: |-
+        Rank managers by overall quality and KPI
+        Get daily trends for call volume and quality
+      parameters:
+      - description: Time period
+        in: query
+        name: period
+        type: string
       produces:
+      - application/json
       - application/json
       responses:
         "200":
@@ -276,8 +291,10 @@ paths:
             type: object
       security:
       - BearerAuth: []
-      summary: Get sales representative leaderboard
+      - BearerAuth: []
+      summary: Get call analytics trends
       tags:
+      - Analytics
       - Analytics
   /analytics/team-performance:
     get:
@@ -301,6 +318,35 @@ paths:
       - BearerAuth: []
       summary: Get team performance metrics
       tags:
+      - Analytics
+  /analytics/trends:
+    get:
+      consumes:
+      - application/json
+      - application/json
+      description: |-
+        Rank managers by overall quality and KPI
+        Get daily trends for call volume and quality
+      parameters:
+      - description: Time period
+        in: query
+        name: period
+        type: string
+      produces:
+      - application/json
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      - BearerAuth: []
+      summary: Get call analytics trends
+      tags:
+      - Analytics
       - Analytics
   /auth/login:
     post:
@@ -629,6 +675,43 @@ paths:
       summary: Update company preferences
       tags:
       - Company
+  /notifications:
+    get:
+      description: Get all notifications for the current user
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: List user notifications
+      tags:
+      - Notifications
+  /notifications/{id}/read:
+    put:
+      description: Update notification status to read
+      parameters:
+      - description: Notification ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Mark notification as read
+      tags:
+      - Notifications
   /scripts:
     get:
       consumes:

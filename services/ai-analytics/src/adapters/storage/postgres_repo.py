@@ -54,8 +54,8 @@ def save_analysis(report):
         cur = conn.cursor()
         query = """
             INSERT INTO calls_schema.analysis_reports
-            (id, call_id, script_id, quality_score, script_match, errors_free, overall_rating, kpi, recommendation, brief, next_best_action, llm_provider)
-            VALUES (gen_random_uuid(), %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            (id, call_id, script_id, quality_score, script_match, errors_free, overall_rating, kpi, recommendation, brief, next_best_action, llm_provider, topics)
+            VALUES (gen_random_uuid(), %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         cur.execute(query, (
             report['call_id'],
@@ -68,7 +68,8 @@ def save_analysis(report):
             report['recommendation'],
             report['brief'],
             report['next_best_action'],
-            report['llm_provider']
+            report['llm_provider'],
+            report['topics']
         ))
         conn.commit()
         cur.close()
