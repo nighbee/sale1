@@ -1,5 +1,5 @@
 import logging
-from src.adapters.storage.postgres_repo import get_transcript, get_call, get_active_script, save_analysis
+from src.adapters.storage.postgres_repo import get_transcript, get_call, get_active_script, save_analysis, create_notification, get_tenant_admins
 from src.infrastructure.llm.openai_client import MockLLMClient
 
 logger = logging.getLogger(__name__)
@@ -61,6 +61,17 @@ class AnalyzeCallUseCase:
 
         save_analysis(report)
         logger.info(f"Analysis saved for call {call_id}")
+
+        # 6. Critical Error Notification
+        if analysis.get('critical_error_detected'):
+            logger.warning(f"Critical error detected in call {call_id}: {analysis['critical_error_message']}")
+            admins = get_tenant_admins(company_id)
+            for admin in admins:
+                create_notification(
+                    admin['id'],
+                    'in_app',
+                    f"CRITICAL ERROR in call {call_id}: {analysis['critical_error_message']}"
+                )
 
     def _format_transcript(self, segments):
         if not segments:

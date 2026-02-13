@@ -17,6 +17,7 @@ func SetupRoutes(
 	companyHandler *handlers.CompanyHandler,
 	userHandler *handlers.UserHandler,
 	scriptHandler *handlers.ScriptHandler,
+	notificationHandler *handlers.NotificationHandler,
 	jwtService ports.JWTService,
 ) {
 	api := app.Group("/api/v1")
@@ -34,8 +35,8 @@ func SetupRoutes(
 	// Protected routes
 	protected := api.Group("", middleware.JWTAuth(jwtService))
 
-	// Users
-	users := protected.Group("/users")
+	// Users (Admin only)
+	users := protected.Group("/users", middleware.RequireRole("tenant_admin", "super_admin"))
 	users.Get("/", userHandler.ListUsers)
 	users.Post("/invite", userHandler.InviteUser)
 	users.Get("/:id", userHandler.GetUser)
@@ -49,24 +50,29 @@ func SetupRoutes(
 	calls.Get("/:id/transcript", callHandler.GetTranscript)
 	calls.Get("/:id/analysis", callHandler.GetAnalysis)
 	calls.Get("/:id/audio", callHandler.GetAudio)
-	calls.Post("/:id/reprocess", callHandler.ReprocessCall)
+	calls.Post("/:id/reprocess", middleware.RequireRole("tenant_admin", "super_admin"), callHandler.ReprocessCall)
 
 	// Scripts
 	scripts := protected.Group("/scripts")
-	scripts.Post("/", scriptHandler.CreateScript)
+	scripts.Post("/", middleware.RequireRole("tenant_admin", "super_admin"), scriptHandler.CreateScript)
 	scripts.Get("/", scriptHandler.ListScripts)
 	scripts.Get("/:id", scriptHandler.GetScript)
 	scripts.Get("/:id/content", scriptHandler.GetScriptContent)
-	scripts.Put("/:id", scriptHandler.UpdateScript)
-	scripts.Delete("/:id", scriptHandler.DeleteScript)
+	scripts.Put("/:id", middleware.RequireRole("tenant_admin", "super_admin"), scriptHandler.UpdateScript)
+	scripts.Delete("/:id", middleware.RequireRole("tenant_admin", "super_admin"), scriptHandler.DeleteScript)
 
-	// Analytics
-	analytics := protected.Group("/analytics")
+	// Analytics (Admin only)
+	analytics := protected.Group("/analytics", middleware.RequireRole("tenant_admin", "super_admin"))
 	analytics.Get("/team-performance", analyticsHandler.GetTeamPerformance)
 	analytics.Get("/leaderboard", analyticsHandler.GetLeaderboard)
 
-	// Company
-	companies := protected.Group("/companies")
+	// Company (Admin only)
+	companies := protected.Group("/companies", middleware.RequireRole("tenant_admin", "super_admin"))
 	companies.Get("/:id", companyHandler.GetCompany)
 	companies.Put("/:id/settings", companyHandler.UpdateSettings)
+
+	// Notifications
+	notifications := protected.Group("/notifications")
+	notifications.Get("/", notificationHandler.ListNotifications)
+	notifications.Put("/:id/read", notificationHandler.MarkRead)
 }

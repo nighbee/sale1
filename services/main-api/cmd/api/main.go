@@ -11,6 +11,7 @@ import (
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 
+	"github.com/salesai/main-api/internal/adapters/grpc"
 	"github.com/salesai/main-api/internal/adapters/http"
 	"github.com/salesai/main-api/internal/adapters/http/handlers"
 	"github.com/salesai/main-api/internal/adapters/repositories"
@@ -50,6 +51,7 @@ func main() {
 	transcriptRepo := repositories.NewTranscriptRepository(db)
 	analysisRepo := repositories.NewAnalysisRepository(db)
 	scriptRepo := repositories.NewScriptRepository(db)
+	notificationRepo := repositories.NewNotificationRepository(db)
 
 	// Services
 	jwtService := security.NewJWTService(cfg.JWTSecret, cfg.JWTExpiry)
@@ -62,6 +64,16 @@ func main() {
 		log.Printf("Warning: Failed to connect to MinIO: %v", err)
 	}
 
+	sttClient, err := grpc.NewSTTClient(os.Getenv("STT_GRPC_ADDR"))
+	if err != nil {
+		log.Printf("Warning: Failed to connect to STT gRPC: %v", err)
+	}
+
+	analyticsClient, err := grpc.NewAnalyticsClient(os.Getenv("ANALYTICS_GRPC_ADDR"))
+	if err != nil {
+		log.Printf("Warning: Failed to connect to Analytics gRPC: %v", err)
+	}
+
 	// Use Cases
 	registerUC := auth.NewRegisterUseCase(userRepo, companyRepo, jwtService)
 	loginUC := auth.NewLoginUseCase(userRepo, jwtService)
@@ -71,16 +83,17 @@ func main() {
 
 	// Handlers
 	authHandler := handlers.NewAuthHandler(registerUC, loginUC, refreshUC)
-	callHandler := handlers.NewCallHandler(listCallsUC, callRepo, transcriptRepo, analysisRepo, minioClient)
+	callHandler := handlers.NewCallHandler(listCallsUC, callRepo, transcriptRepo, analysisRepo, minioClient, sttClient, analyticsClient)
 	analyticsHandler := handlers.NewAnalyticsHandler(teamPerformanceUC)
 	companyHandler := handlers.NewCompanyHandler(companyRepo)
 	userHandler := handlers.NewUserHandler(userRepo)
 	scriptHandler := handlers.NewScriptHandler(scriptRepo, cfg.ScriptServiceURL)
+	notificationHandler := handlers.NewNotificationHandler(notificationRepo)
 
 	app := fiber.New()
 	app.Use(logger.New())
 
-	http.SetupRoutes(app, authHandler, callHandler, analyticsHandler, companyHandler, userHandler, scriptHandler, jwtService)
+	http.SetupRoutes(app, authHandler, callHandler, analyticsHandler, companyHandler, userHandler, scriptHandler, notificationHandler, jwtService)
 
 	port := os.Getenv("PORT")
 	if port == "" {

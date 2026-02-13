@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 
@@ -9,14 +10,18 @@ import (
 	"github.com/minio/minio-go/v7"
 	"github.com/salesai/main-api/internal/core/ports"
 	"github.com/salesai/main-api/internal/core/usecases/calls"
+	"github.com/salesai/main-api/pkg/analytics"
+	"github.com/salesai/main-api/pkg/stt"
 )
 
 type CallHandler struct {
-	listCallsUC    *calls.ListCallsUseCase
-	callRepo       ports.CallRepository
-	transcriptRepo ports.TranscriptRepository
-	analysisRepo   ports.AnalysisRepository
-	minioClient    *minio.Client
+	listCallsUC     *calls.ListCallsUseCase
+	callRepo        ports.CallRepository
+	transcriptRepo  ports.TranscriptRepository
+	analysisRepo    ports.AnalysisRepository
+	minioClient     *minio.Client
+	sttClient       stt.STTServiceClient
+	analyticsClient analytics.AnalyticsServiceClient
 }
 
 func NewCallHandler(
@@ -25,13 +30,17 @@ func NewCallHandler(
 	transcriptRepo ports.TranscriptRepository,
 	analysisRepo ports.AnalysisRepository,
 	minioClient *minio.Client,
+	sttClient stt.STTServiceClient,
+	analyticsClient analytics.AnalyticsServiceClient,
 ) *CallHandler {
 	return &CallHandler{
-		listCallsUC:    listCallsUC,
-		callRepo:       callRepo,
-		transcriptRepo: transcriptRepo,
-		analysisRepo:   analysisRepo,
-		minioClient:    minioClient,
+		listCallsUC:     listCallsUC,
+		callRepo:        callRepo,
+		transcriptRepo:  transcriptRepo,
+		analysisRepo:    analysisRepo,
+		minioClient:     minioClient,
+		sttClient:       sttClient,
+		analyticsClient: analyticsClient,
 	}
 }
 
@@ -114,6 +123,23 @@ func (h *CallHandler) GetCall(c *fiber.Ctx) error {
 // @Router /calls/{id}/transcript [get]
 func (h *CallHandler) GetTranscript(c *fiber.Ctx) error {
 	id := c.Params("id")
+
+	// Try gRPC first to demonstrate connectivity
+	if h.sttClient != nil {
+		resp, err := h.sttClient.GetTranscript(c.Context(), &stt.TranscriptRequest{CallId: id})
+		if err == nil {
+			var segments interface{}
+			json.Unmarshal([]byte(resp.TranscriptJson), &segments)
+			return c.JSON(fiber.Map{
+				"call_id":                 resp.CallId,
+				"speaker_diarized_json":   segments,
+				"stt_provider":            resp.SttProvider,
+				"processing_time_seconds": resp.ProcessingTime,
+				"source":                  "grpc",
+			})
+		}
+	}
+
 	transcript, err := h.transcriptRepo.GetByCallID(c.Context(), id)
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Transcript not found"})
@@ -134,6 +160,26 @@ func (h *CallHandler) GetTranscript(c *fiber.Ctx) error {
 // @Router /calls/{id}/analysis [get]
 func (h *CallHandler) GetAnalysis(c *fiber.Ctx) error {
 	id := c.Params("id")
+
+	// Try gRPC first
+	if h.analyticsClient != nil {
+		resp, err := h.analyticsClient.GetAnalysis(c.Context(), &analytics.AnalysisRequest{CallId: id})
+		if err == nil {
+			return c.JSON(fiber.Map{
+				"call_id":          resp.CallId,
+				"quality_score":    resp.QualityScore,
+				"script_match":     resp.ScriptMatch,
+				"errors_free":      resp.ErrorsFree,
+				"overall_rating":   resp.OverallRating,
+				"kpi":              resp.Kpi,
+				"recommendation":   resp.Recommendation,
+				"brief":            resp.Brief,
+				"next_best_action": resp.NextBestAction,
+				"source":           "grpc",
+			})
+		}
+	}
+
 	analysis, err := h.analysisRepo.GetByCallID(c.Context(), id)
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Analysis not found"})
@@ -181,8 +227,8 @@ func (h *CallHandler) GetAudio(c *fiber.Ctx) error {
 
 	// The call record should have a reference to the MinIO object name.
 	// If it doesn't, we can try to find it in the 'audio' bucket.
-	// For now, let's assume the object name is "audio/<call_id>.mp3"
-	objectName := fmt.Sprintf("audio/%s.mp3", id)
+	// For now, let's assume the object name is "<call_id>.mp3" in bucket "audio"
+	objectName := fmt.Sprintf("%s.mp3", id)
 
 	reader, err := h.minioClient.GetObject(context.Background(), "audio", objectName, minio.GetObjectOptions{})
 	if err != nil {

@@ -4,6 +4,7 @@ import threading
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
 from src.adapters.events.redis_consumer import start_consumer
+from src.infrastructure.grpc.server import serve_grpc
 import uvicorn
 
 logging.basicConfig(level=logging.INFO)
@@ -42,6 +43,10 @@ if __name__ == "__main__":
     # Start consumer in a background thread
     consumer_thread = threading.Thread(target=run_consumer, daemon=True)
     consumer_thread.start()
+
+    # Start gRPC server in a background thread
+    grpc_thread = threading.Thread(target=serve_grpc, daemon=True)
+    grpc_thread.start()
 
     # Start FastAPI
     uvicorn.run(app, host="0.0.0.0", port=5002)

@@ -109,6 +109,7 @@ func (h *ScriptHandler) CreateScript(c *fiber.Ctx) error {
 	if name == "" {
 		return c.Status(400).JSON(fiber.Map{"error": "Name is required"})
 	}
+	definition := c.FormValue("definition")
 
 	// Proxy to script-service
 	body := &bytes.Buffer{}
@@ -118,6 +119,9 @@ func (h *ScriptHandler) CreateScript(c *fiber.Ctx) error {
 	io.Copy(part, f)
 	writer.WriteField("name", name)
 	writer.WriteField("company_id", companyID)
+	if definition != "" {
+		writer.WriteField("definition", definition)
+	}
 	writer.Close()
 
 	req, _ := http.NewRequest("POST", h.scriptServiceURL+"/api/v1/scripts", body)

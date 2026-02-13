@@ -46,3 +46,8 @@ type ScriptRepository interface {
 	Delete(ctx context.Context, companyID, id string) error
 	GetActiveByCompany(ctx context.Context, companyID string) (*domain.Script, error)
 }
+
+type NotificationRepository interface {
+	ListByUser(ctx context.Context, userID string) ([]map[string]interface{}, error)
+	MarkAsRead(ctx context.Context, id string) error
+}

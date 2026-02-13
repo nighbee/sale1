@@ -46,6 +46,7 @@ func (h *ScriptHandler) Upload(c *fiber.Ctx) error {
 
 	name := c.FormValue("name")
 	companyID := c.FormValue("company_id") // In production, get from JWT
+	definition := c.FormValue("definition")
 
 	scriptID := uuid.New().String()
 	ext := filepath.Ext(file.Filename)
@@ -85,7 +86,10 @@ func (h *ScriptHandler) Upload(c *fiber.Ctx) error {
 	}
 
 	// Save to DB
-	err = h.repo.Create(context.Background(), scriptID, companyID, name, objectName, parsedText)
+	if definition == "" {
+		definition = "{}"
+	}
+	err = h.repo.Create(context.Background(), scriptID, companyID, name, objectName, parsedText, definition)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to save to database"})
 	}

@@ -71,6 +71,28 @@ def save_analysis(report):
             report['llm_provider']
         ))
         conn.commit()
-    finally:
         cur.close()
-        conn.close()
+    finally:
+        get_pool().putconn(conn)
+
+def create_notification(user_id, type, message):
+    conn = get_pool().getconn()
+    try:
+        cur = conn.cursor()
+        query = """
+            INSERT INTO logs_schema.notifications (id, user_id, type, message)
+            VALUES (gen_random_uuid(), %s, %s, %s)
+        """
+        cur.execute(query, (user_id, type, message))
+        conn.commit()
+    finally:
+        get_pool().putconn(conn)
+
+def get_tenant_admins(company_id):
+    conn = get_pool().getconn()
+    try:
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute("SELECT id FROM auth_schema.users WHERE company_id = %s AND role = 'tenant_admin'", (company_id,))
+        return cur.fetchall()
+    finally:
+        get_pool().putconn(conn)

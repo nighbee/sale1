@@ -44,6 +44,33 @@ async def start_consumer():
                         except Exception as e:
                             logger.error(f"Failed to analyze call {call_id}: {e}")
 
+                            retry_count = int(payload.get(b'retry_count', b'0').decode('utf-8'))
+                            max_retries = 3
+
+                            if retry_count < max_retries:
+                                logger.info(f"Retrying analysis for call {call_id} ({retry_count + 1}/{max_retries})")
+                                await r.xadd(stream_name, {
+                                    "call_id": call_id,
+                                    "company_id": company_id,
+                                    "retry_count": str(retry_count + 1)
+                                })
+                                await r.xack(stream_name, group_name, msg_id)
+                            else:
+                                logger.error(f"Max retries reached for analysis of call {call_id}. Marking as error.")
+                                from src.adapters.storage.postgres_repo import get_pool
+                                conn = get_pool().getconn()
+                                try:
+                                    cur = conn.cursor()
+                                    cur.execute("UPDATE calls_schema.calls SET status = 'error' WHERE id = %s", (call_id,))
+                                    cur.execute("""
+                                        INSERT INTO logs_schema.processing_logs (id, call_id, service_name, status, error_message, retry_count)
+                                        VALUES (gen_random_uuid(), %s, %s, 'error', %s, %s)
+                                    """, (call_id, 'ai-analytics', str(e), retry_count))
+                                    conn.commit()
+                                    await r.xack(stream_name, group_name, msg_id)
+                                finally:
+                                    get_pool().putconn(conn)
+
         except Exception as e:
             logger.error(f"Consumer error: {e}")
             await asyncio.sleep(5)

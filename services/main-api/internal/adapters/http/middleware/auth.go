@@ -41,3 +41,24 @@ func JWTAuth(jwtService ports.JWTService) fiber.Handler {
 		return c.Next()
 	}
 }
+
+func RequireRole(allowedRoles ...string) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		userRole, ok := c.Locals("role").(string)
+		if !ok {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+				"error": "Forbidden: role not found in context",
+			})
+		}
+
+		for _, role := range allowedRoles {
+			if userRole == role {
+				return c.Next()
+			}
+		}
+
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+			"error": "Forbidden: insufficient permissions",
+		})
+	}
+}
