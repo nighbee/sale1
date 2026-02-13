@@ -1,3 +1,23 @@
+// @title SalesAI API
+// @version 1.0
+// @description Intelligent Revenue Intelligence & Coaching SaaS API.
+// @termsOfService http://swagger.io/terms/
+
+// @contact.name API Support
+// @contact.url http://www.salesai.local/support
+// @contact.email support@salesai.local
+
+// @license.name Apache 2.0
+// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @host localhost:8080
+// @BasePath /api/v1
+
+// @securityDefinitions.apiKey BearerAuth
+// @in header
+// @name Authorization
+// @description Type "Bearer " followed by your JWT token.
+
 package main
 
 import (
