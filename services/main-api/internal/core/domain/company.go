@@ -20,6 +20,9 @@ const (
 type Company struct {
 	ID                 string      `json:"id"`
 	Name               string      `json:"name"`
+	Industry           string      `json:"industry"`
+	Size               string      `json:"size"`
+	TimeZone           string      `json:"time_zone"`
 	STTModelPreference STTModel    `json:"stt_model_preference"`
 	LLMProvider        LLMProvider `json:"llm_provider"`
 	SubscriptionTier   string      `json:"subscription_tier"`

@@ -17,6 +17,8 @@ func SetupRoutes(
 	analyticsHandler *handlers.AnalyticsHandler,
 	companyHandler *handlers.CompanyHandler,
 	userHandler *handlers.UserHandler,
+	teamHandler *handlers.TeamHandler,
+	integrationHandler *handlers.IntegrationHandler,
 	scriptHandler *handlers.ScriptHandler,
 	notificationHandler *handlers.NotificationHandler,
 	wsHandler *handlers.WSHandler,
@@ -80,4 +82,19 @@ func SetupRoutes(
 	companies := protected.Group("/companies", middleware.RequireRole("super_admin", "tenant_admin"))
 	companies.Get("/:id", companyHandler.GetCompany)
 	companies.Put("/:id/settings", companyHandler.UpdateSettings)
+
+	// Teams
+	teams := protected.Group("/teams", middleware.RequireRole("super_admin", "tenant_admin"))
+	teams.Post("/", teamHandler.Create)
+	teams.Get("/", teamHandler.List)
+	teams.Get("/:id", teamHandler.Get)
+	teams.Put("/:id", teamHandler.Update)
+	teams.Delete("/:id", teamHandler.Delete)
+
+	// Integrations
+	integrations := protected.Group("/integrations", middleware.RequireRole("super_admin", "tenant_admin"))
+	integrations.Post("/", integrationHandler.Save)
+	integrations.Get("/", integrationHandler.List)
+	integrations.Get("/:type", integrationHandler.Get)
+	integrations.Delete("/:type", integrationHandler.Delete)
 }

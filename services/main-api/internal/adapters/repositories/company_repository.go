@@ -20,8 +20,8 @@ func NewCompanyRepository(db *sql.DB) ports.CompanyRepository {
 func (r *companyRepository) Create(ctx context.Context, company *domain.Company) error {
 	query := `
 		INSERT INTO auth_schema.companies
-		(id, name, stt_model_preference, llm_provider, subscription_tier, is_active)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		(id, name, industry, size, time_zone, stt_model_preference, llm_provider, subscription_tier, is_active)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		RETURNING created_at, updated_at
 	`
 
@@ -30,6 +30,9 @@ func (r *companyRepository) Create(ctx context.Context, company *domain.Company)
 		query,
 		company.ID,
 		company.Name,
+		company.Industry,
+		company.Size,
+		company.TimeZone,
 		company.STTModelPreference,
 		company.LLMProvider,
 		company.SubscriptionTier,
@@ -41,7 +44,7 @@ func (r *companyRepository) Create(ctx context.Context, company *domain.Company)
 
 func (r *companyRepository) GetByID(ctx context.Context, id string) (*domain.Company, error) {
 	query := `
-		SELECT id, name, stt_model_preference, llm_provider, subscription_tier, is_active, created_at, updated_at
+		SELECT id, name, industry, size, time_zone, stt_model_preference, llm_provider, subscription_tier, is_active, created_at, updated_at
 		FROM auth_schema.companies
 		WHERE id = $1
 	`
@@ -50,6 +53,9 @@ func (r *companyRepository) GetByID(ctx context.Context, id string) (*domain.Com
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&company.ID,
 		&company.Name,
+		&company.Industry,
+		&company.Size,
+		&company.TimeZone,
 		&company.STTModelPreference,
 		&company.LLMProvider,
 		&company.SubscriptionTier,
@@ -68,10 +74,22 @@ func (r *companyRepository) GetByID(ctx context.Context, id string) (*domain.Com
 func (r *companyRepository) Update(ctx context.Context, company *domain.Company) error {
 	query := `
 		UPDATE auth_schema.companies
-		SET name = $2, stt_model_preference = $3, llm_provider = $4, subscription_tier = $5, is_active = $6, updated_at = NOW()
+		SET name = $2, industry = $3, size = $4, time_zone = $5, stt_model_preference = $6, llm_provider = $7, subscription_tier = $8, is_active = $9, updated_at = NOW()
 		WHERE id = $1
 	`
 
-	_, err := r.db.ExecContext(ctx, query, company.ID, company.Name, company.STTModelPreference, company.LLMProvider, company.SubscriptionTier, company.IsActive)
+	_, err := r.db.ExecContext(
+		ctx,
+		query,
+		company.ID,
+		company.Name,
+		company.Industry,
+		company.Size,
+		company.TimeZone,
+		company.STTModelPreference,
+		company.LLMProvider,
+		company.SubscriptionTier,
+		company.IsActive,
+	)
 	return err
 }

@@ -53,3 +53,19 @@ type NotificationRepository interface {
 	MarkAsRead(ctx context.Context, userID, id string) error
 	Create(ctx context.Context, n *domain.Notification) error
 }
+
+type TeamRepository interface {
+	Create(ctx context.Context, team *domain.Team) error
+	GetByID(ctx context.Context, companyID, id string) (*domain.Team, error)
+	ListByCompany(ctx context.Context, companyID string) ([]*domain.Team, error)
+	Update(ctx context.Context, team *domain.Team) error
+	Delete(ctx context.Context, companyID, id string) error
+}
+
+type IntegrationRepository interface {
+	Create(ctx context.Context, integration *domain.Integration) error
+	GetByType(ctx context.Context, companyID string, integrationType domain.IntegrationType) (*domain.Integration, error)
+	ListByCompany(ctx context.Context, companyID string) ([]*domain.Integration, error)
+	Update(ctx context.Context, integration *domain.Integration) error
+	Delete(ctx context.Context, companyID string, integrationType domain.IntegrationType) error
+}

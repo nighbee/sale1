@@ -58,6 +58,10 @@ func (h *CompanyHandler) UpdateSettings(c *fiber.Ctx) error {
 	}
 
 	var update struct {
+		Name               string `json:"name"`
+		Industry           string `json:"industry"`
+		Size               string `json:"size"`
+		TimeZone           string `json:"time_zone"`
 		STTModelPreference string `json:"stt_model_preference"`
 		LLMProvider        string `json:"llm_provider"`
 	}
@@ -66,6 +70,18 @@ func (h *CompanyHandler) UpdateSettings(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid body"})
 	}
 
+	if update.Name != "" {
+		company.Name = update.Name
+	}
+	if update.Industry != "" {
+		company.Industry = update.Industry
+	}
+	if update.Size != "" {
+		company.Size = update.Size
+	}
+	if update.TimeZone != "" {
+		company.TimeZone = update.TimeZone
+	}
 	if update.STTModelPreference != "" {
 		company.STTModelPreference = domain.STTModel(update.STTModelPreference)
 	}
