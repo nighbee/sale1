@@ -1,17 +1,21 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { teamApi } from "../api/client";
 
 const TeamCreation: React.FC = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    teamName: '',
-    description: '',
+    teamName: "",
+    description: "",
     autoAssign: false,
   });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+  ) => {
     const { name, value, type } = e.target;
-    const val = type === 'checkbox' ? (e.target as HTMLInputElement).checked : value;
+    const val =
+      type === "checkbox" ? (e.target as HTMLInputElement).checked : value;
     setFormData((prev) => ({
       ...prev,
       [name]: val,
@@ -20,16 +24,27 @@ const TeamCreation: React.FC = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Integration later
-    navigate('/script-upload');
+    teamApi
+      .create({
+        name: formData.teamName,
+        description: formData.description,
+        auto_assign: formData.autoAssign,
+      })
+      .then(() => {
+        navigate("/script-upload");
+      });
   };
 
   return (
     <div className="bg-background-light dark:bg-background-dark font-display antialiased min-h-screen flex flex-col transition-colors duration-200">
       <header className="w-full px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white font-bold text-xl">S</div>
-          <span className="text-gray-900 dark:text-white font-bold text-lg tracking-tight">SalesAI</span>
+          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white font-bold text-xl">
+            S
+          </div>
+          <span className="text-gray-900 dark:text-white font-bold text-lg tracking-tight">
+            SalesAI
+          </span>
         </div>
         <div className="text-sm text-gray-500 dark:text-gray-400 font-medium">
           Step 4 of 5
@@ -39,23 +54,34 @@ const TeamCreation: React.FC = () => {
       <main className="flex-grow flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-lg">
           <div className="mb-8 w-full bg-gray-200 dark:bg-gray-800 rounded-full h-1.5 overflow-hidden">
-            <div className="bg-primary h-1.5 rounded-full" style={{ width: '80%' }}></div>
+            <div
+              className="bg-primary h-1.5 rounded-full"
+              style={{ width: "80%" }}
+            ></div>
           </div>
 
           <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-100 dark:border-gray-800 p-8 sm:p-10">
             <div className="mb-8 text-center sm:text-left">
               <div className="w-12 h-12 bg-primary/10 dark:bg-primary/20 rounded-lg flex items-center justify-center mb-4 mx-auto sm:mx-0">
-                <span className="material-icons text-primary text-2xl">groups</span>
+                <span className="material-icons text-primary text-2xl">
+                  groups
+                </span>
               </div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Create Your First Sales Team</h1>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                Create Your First Sales Team
+              </h1>
               <p className="text-gray-500 dark:text-gray-400 leading-relaxed">
-                Organize your reps into focused groups. AI will use this structure to tailor insights specifically for this team's goals.
+                Organize your reps into focused groups. AI will use this
+                structure to tailor insights specifically for this team's goals.
               </p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5" htmlFor="team_name">
+                <label
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
+                  htmlFor="team_name"
+                >
                   Team Name
                 </label>
                 <div className="relative">
@@ -75,11 +101,17 @@ const TeamCreation: React.FC = () => {
 
               <div>
                 <div className="flex justify-between items-center mb-1.5">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="description">
+                  <label
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                    htmlFor="description"
+                  >
                     Description
                   </label>
                   <span className="text-xs text-primary font-medium flex items-center gap-1">
-                    <span className="material-icons text-[14px]">auto_awesome</span> AI Context
+                    <span className="material-icons text-[14px]">
+                      auto_awesome
+                    </span>{" "}
+                    AI Context
                   </span>
                 </div>
                 <div className="relative">
@@ -94,7 +126,8 @@ const TeamCreation: React.FC = () => {
                   ></textarea>
                 </div>
                 <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                  Optional. This helps our AI suggest relevant KPIs and coaching templates.
+                  Optional. This helps our AI suggest relevant KPIs and coaching
+                  templates.
                 </p>
               </div>
 
@@ -111,8 +144,15 @@ const TeamCreation: React.FC = () => {
                     />
                   </div>
                   <div className="ml-3 text-sm">
-                    <label className="font-medium text-gray-700 dark:text-gray-300" htmlFor="auto_assign">Enable AI Lead Routing</label>
-                    <p className="text-gray-500 dark:text-gray-400 text-xs">Automatically assign leads based on rep performance.</p>
+                    <label
+                      className="font-medium text-gray-700 dark:text-gray-300"
+                      htmlFor="auto_assign"
+                    >
+                      Enable AI Lead Routing
+                    </label>
+                    <p className="text-gray-500 dark:text-gray-400 text-xs">
+                      Automatically assign leads based on rep performance.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -130,7 +170,7 @@ const TeamCreation: React.FC = () => {
                   <button
                     type="button"
                     className="text-sm text-gray-500 dark:text-gray-400 hover:text-primary transition-colors hidden sm:block"
-                    onClick={() => navigate('/script-upload')}
+                    onClick={() => navigate("/script-upload")}
                   >
                     Skip for now
                   </button>
@@ -144,7 +184,7 @@ const TeamCreation: React.FC = () => {
                 <button
                   type="button"
                   className="text-sm text-gray-500 dark:text-gray-400 hover:text-primary transition-colors sm:hidden mt-2"
-                  onClick={() => navigate('/script-upload')}
+                  onClick={() => navigate("/script-upload")}
                 >
                   Skip for now
                 </button>
@@ -154,7 +194,11 @@ const TeamCreation: React.FC = () => {
 
           <div className="mt-8 text-center">
             <p className="text-xs text-gray-400 dark:text-gray-500">
-              Need help setting up your team structure? <a className="text-primary hover:underline" href="#">Read our guide</a> on sales org design.
+              Need help setting up your team structure?{" "}
+              <a className="text-primary hover:underline" href="#">
+                Read our guide
+              </a>{" "}
+              on sales org design.
             </p>
           </div>
         </div>

@@ -7,8 +7,8 @@ import (
 	"log"
 	"net/url"
 	"os"
-	"strconv"
 	"os/signal"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -103,6 +103,8 @@ func main() {
 		Type: "auth",
 		Body: SipuniAuthBody{Key: apiKey},
 	}
+	log.Println("sending auth message")
+	log.Printf("auth message: %+v", authMsg)
 	err = c.WriteJSON(authMsg)
 	if err != nil {
 		log.Println("auth:", err)
