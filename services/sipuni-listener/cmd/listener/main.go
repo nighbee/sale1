@@ -7,8 +7,8 @@ import (
 	"log"
 	"net/url"
 	"os"
-	"strconv"
 	"os/signal"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"

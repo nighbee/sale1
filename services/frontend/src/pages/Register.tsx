@@ -1,42 +1,42 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { authApi } from '../api/client';
+import React, { useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { authApi } from "../api/client";
 
 const Register: React.FC = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    fullname: '',
-    email: '',
-    password: '',
+    fullname: "",
+    email: "",
+    password: "",
     terms: false,
   });
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value,
+      [name]: type === "checkbox" ? checked : value,
     }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
+    setError("");
     try {
       const response = await authApi.register({
         email: formData.email,
         password: formData.password,
         full_name: formData.fullname,
       });
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('company_id', response.data.user.company_id);
-      localStorage.setItem('user_id', response.data.user.id);
-      navigate('/company-setup');
+      localStorage.setItem("token", response.data.tokens.access_token);
+      localStorage.setItem("company_id", response.data.user.company_id);
+      localStorage.setItem("user_id", response.data.user.id);
+      navigate("/company-setup");
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Registration failed');
+      setError(err.response?.data?.error || "Registration failed");
     } finally {
       setLoading(false);
     }
@@ -46,11 +46,21 @@ const Register: React.FC = () => {
     <div className="bg-blue-50 dark:bg-background-dark min-h-screen font-display flex flex-col">
       <header className="w-full py-6 px-8 flex justify-between items-center">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white font-bold text-lg">S</div>
-          <span className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">SalesAI</span>
+          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white font-bold text-lg">
+            S
+          </div>
+          <span className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
+            SalesAI
+          </span>
         </div>
         <div className="hidden sm:block text-sm font-medium text-slate-600 dark:text-slate-400">
-          Already have an account? <Link to="/login" className="text-primary hover:text-blue-700 dark:hover:text-blue-400 font-semibold transition-colors">Log in</Link>
+          Already have an account?{" "}
+          <Link
+            to="/login"
+            className="text-primary hover:text-blue-700 dark:hover:text-blue-400 font-semibold transition-colors"
+          >
+            Log in
+          </Link>
         </div>
       </header>
 
@@ -61,19 +71,37 @@ const Register: React.FC = () => {
           </div>
           <div className="p-8 sm:p-10">
             <div className="flex items-center gap-2 mb-6">
-              <span className="bg-primary/10 text-primary text-xs font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">Step 2 of 3</span>
-              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Account Setup</span>
+              <span className="bg-primary/10 text-primary text-xs font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
+                Step 2 of 3
+              </span>
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                Account Setup
+              </span>
             </div>
 
             <div className="mb-8">
-              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white mb-2 tracking-tight">Create your account</h1>
-              <p className="text-slate-500 dark:text-slate-400 text-sm">Set up your credentials to start managing your sales team efficiently.</p>
+              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white mb-2 tracking-tight">
+                Create your account
+              </h1>
+              <p className="text-slate-500 dark:text-slate-400 text-sm">
+                Set up your credentials to start managing your sales team
+                efficiently.
+              </p>
             </div>
 
-            {error && <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm">{error}</div>}
+            {error && (
+              <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm">
+                {error}
+              </div>
+            )}
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300" htmlFor="fullname">Full Name</label>
+                <label
+                  className="block text-sm font-medium text-slate-700 dark:text-slate-300"
+                  htmlFor="fullname"
+                >
+                  Full Name
+                </label>
                 <div className="relative">
                   <input
                     className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm"
@@ -85,12 +113,19 @@ const Register: React.FC = () => {
                     value={formData.fullname}
                     onChange={handleChange}
                   />
-                  <span className="material-icons absolute right-3 top-2.5 text-slate-400 text-[20px]">person_outline</span>
+                  <span className="material-icons absolute right-3 top-2.5 text-slate-400 text-[20px]">
+                    person_outline
+                  </span>
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300" htmlFor="email">Work Email</label>
+                <label
+                  className="block text-sm font-medium text-slate-700 dark:text-slate-300"
+                  htmlFor="email"
+                >
+                  Work Email
+                </label>
                 <div className="relative">
                   <input
                     className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm"
@@ -102,12 +137,19 @@ const Register: React.FC = () => {
                     value={formData.email}
                     onChange={handleChange}
                   />
-                  <span className="material-icons absolute right-3 top-2.5 text-slate-400 text-[20px]">mail_outline</span>
+                  <span className="material-icons absolute right-3 top-2.5 text-slate-400 text-[20px]">
+                    mail_outline
+                  </span>
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300" htmlFor="password">Password</label>
+                <label
+                  className="block text-sm font-medium text-slate-700 dark:text-slate-300"
+                  htmlFor="password"
+                >
+                  Password
+                </label>
                 <div className="relative group">
                   <input
                     className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm"
@@ -119,25 +161,44 @@ const Register: React.FC = () => {
                     value={formData.password}
                     onChange={handleChange}
                   />
-                  <button className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none transition-colors" type="button">
-                    <span className="material-icons text-[20px]">visibility_off</span>
+                  <button
+                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none transition-colors"
+                    type="button"
+                  >
+                    <span className="material-icons text-[20px]">
+                      visibility_off
+                    </span>
                   </button>
                 </div>
               </div>
 
               <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-100 dark:border-slate-700/50 space-y-2">
-                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">Password Strength</p>
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">
+                  Password Strength
+                </p>
                 <div className="flex items-center gap-2">
-                  <span className="material-icons text-[14px] text-green-500">check_circle</span>
-                  <span className="text-xs text-slate-600 dark:text-slate-300">At least 8 characters</span>
+                  <span className="material-icons text-[14px] text-green-500">
+                    check_circle
+                  </span>
+                  <span className="text-xs text-slate-600 dark:text-slate-300">
+                    At least 8 characters
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="material-icons text-[14px] text-slate-300 dark:text-slate-600">radio_button_unchecked</span>
-                  <span className="text-xs text-slate-500 dark:text-slate-500">One uppercase letter</span>
+                  <span className="material-icons text-[14px] text-slate-300 dark:text-slate-600">
+                    radio_button_unchecked
+                  </span>
+                  <span className="text-xs text-slate-500 dark:text-slate-500">
+                    One uppercase letter
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="material-icons text-[14px] text-slate-300 dark:text-slate-600">radio_button_unchecked</span>
-                  <span className="text-xs text-slate-500 dark:text-slate-500">One number</span>
+                  <span className="material-icons text-[14px] text-slate-300 dark:text-slate-600">
+                    radio_button_unchecked
+                  </span>
+                  <span className="text-xs text-slate-500 dark:text-slate-500">
+                    One number
+                  </span>
                 </div>
               </div>
 
@@ -154,11 +215,25 @@ const Register: React.FC = () => {
                   />
                 </div>
                 <div className="text-sm leading-6">
-                  <label className="font-medium text-slate-700 dark:text-slate-300" htmlFor="terms">
-                    I agree to the{' '}
-                    <a className="font-semibold text-primary hover:text-blue-600 dark:hover:text-blue-400" href="#">Terms of Service</a>
-                    {' '}and{' '}
-                    <a className="font-semibold text-primary hover:text-blue-600 dark:hover:text-blue-400" href="#">Privacy Policy</a>.
+                  <label
+                    className="font-medium text-slate-700 dark:text-slate-300"
+                    htmlFor="terms"
+                  >
+                    I agree to the{" "}
+                    <a
+                      className="font-semibold text-primary hover:text-blue-600 dark:hover:text-blue-400"
+                      href="#"
+                    >
+                      Terms of Service
+                    </a>{" "}
+                    and{" "}
+                    <a
+                      className="font-semibold text-primary hover:text-blue-600 dark:hover:text-blue-400"
+                      href="#"
+                    >
+                      Privacy Policy
+                    </a>
+                    .
                   </label>
                 </div>
               </div>
@@ -168,14 +243,22 @@ const Register: React.FC = () => {
                 type="submit"
                 disabled={loading}
               >
-                {loading ? 'Creating account...' : 'Continue'}
-                <span className="material-icons text-sm ml-2">arrow_forward</span>
+                {loading ? "Creating account..." : "Continue"}
+                <span className="material-icons text-sm ml-2">
+                  arrow_forward
+                </span>
               </button>
             </form>
           </div>
           <div className="bg-slate-50 dark:bg-slate-800 px-8 py-4 text-center sm:hidden">
             <p className="text-sm text-slate-600 dark:text-slate-400">
-              Already have an account? <Link className="font-medium text-primary hover:text-blue-500" to="/login">Log in</Link>
+              Already have an account?{" "}
+              <Link
+                className="font-medium text-primary hover:text-blue-500"
+                to="/login"
+              >
+                Log in
+              </Link>
             </p>
           </div>
         </div>

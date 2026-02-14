@@ -62,7 +62,19 @@ func (h *ScriptHandler) Upload(c *fiber.Ctx) error {
 	}
 	parsedText := string(out)
 
-	// Upload to MinIO
+	bucketName := "scripts"
+	exists, err := h.minioClient.BucketExists(context.Background(), bucketName)
+	if err != nil {
+		fmt.Printf("MinIO bucket check failed: %v\n", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to access MinIO"})
+	}
+	if !exists {
+		err = h.minioClient.MakeBucket(context.Background(), bucketName, minio.MakeBucketOptions{})
+		if err != nil {
+			fmt.Printf("MinIO bucket creation failed: %v\n", err)
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to create MinIO bucket"})
+		}
+	}// Upload to MinIO
 	_, err = h.minioClient.FPutObject(context.Background(), "scripts", objectName, tmpPath, minio.PutObjectOptions{
 		ContentType: "application/octet-stream",
 	})
