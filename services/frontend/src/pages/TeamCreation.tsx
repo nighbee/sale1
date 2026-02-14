@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { teamApi } from '../api/client';
 
 const TeamCreation: React.FC = () => {
   const navigate = useNavigate();
@@ -8,6 +9,8 @@ const TeamCreation: React.FC = () => {
     description: '',
     autoAssign: false,
   });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
@@ -18,10 +21,23 @@ const TeamCreation: React.FC = () => {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Integration later
-    navigate('/script-upload');
+    setLoading(true);
+    setError('');
+
+    try {
+      await teamApi.create({
+        name: formData.teamName,
+        description: formData.description,
+        company_id: localStorage.getItem('company_id') || '',
+      });
+      navigate('/script-upload');
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to create team');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -53,6 +69,7 @@ const TeamCreation: React.FC = () => {
               </p>
             </div>
 
+            {error && <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm">{error}</div>}
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5" htmlFor="team_name">
@@ -135,10 +152,11 @@ const TeamCreation: React.FC = () => {
                     Skip for now
                   </button>
                   <button
-                    className="w-full sm:w-auto bg-primary hover:bg-blue-600 text-white font-medium py-2.5 px-6 rounded-lg shadow-sm hover:shadow transition-all focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+                    className="w-full sm:w-auto bg-primary hover:bg-blue-600 text-white font-medium py-2.5 px-6 rounded-lg shadow-sm hover:shadow transition-all focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 dark:focus:ring-offset-gray-900 disabled:opacity-50"
                     type="submit"
+                    disabled={loading}
                   >
-                    Create Team
+                    {loading ? 'Creating...' : 'Create Team'}
                   </button>
                 </div>
                 <button
