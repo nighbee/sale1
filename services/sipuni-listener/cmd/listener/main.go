@@ -79,7 +79,6 @@ func main() {
 	// Resolve company ID from environment
 	companyID = os.Getenv("COMPANY_ID")
 	if companyID == "" {
-		// Fallback to test company for development
 		companyID = "550e8400-e29b-41d4-a716-446655440000"
 	}
 
@@ -89,61 +88,74 @@ func main() {
 	}
 
 	u := url.URL{Scheme: "wss", Host: "wss.sipuni.com", Path: "/api"}
-	log.Printf("connecting to %s", u.String())
-
-	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
-	if err != nil {
-		log.Fatal("dial:", err)
-	}
-	defer c.Close()
-
-	// Auth
 	apiKey := os.Getenv("SIPUNI_API_KEY")
-	authMsg := SipuniAuthMessage{
-		Type: "auth",
-		Body: SipuniAuthBody{Key: apiKey},
-	}
-	err = c.WriteJSON(authMsg)
-	if err != nil {
-		log.Println("auth:", err)
-		return
-	}
 
-	done := make(chan struct{})
-
-	go func() {
-		defer close(done)
-		for {
-			_, message, err := c.ReadMessage()
-			if err != nil {
-				log.Println("read:", err)
-				return
-			}
-
-			var event SipuniEvent
-			if err := json.Unmarshal(message, &event); err == nil {
-				if event.Action == "notify" && event.Namespace == "api" {
-					handleNotify(event.Request)
-				}
-			}
-		}
-	}()
+	backoff := 2 * time.Second
+	maxBackoff := 60 * time.Second
 
 	for {
+		log.Printf("Connecting to %s...", u.String())
+		c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
+		if err != nil {
+			log.Printf("Dial error: %v. Retrying in %v...", err, backoff)
+			select {
+			case <-interrupt:
+				return
+			case <-time.After(backoff):
+				backoff *= 2
+				if backoff > maxBackoff {
+					backoff = maxBackoff
+				}
+				continue
+			}
+		}
+
+		// Connected successfully
+		backoff = 2 * time.Second
+		log.Println("Connected to Sipuni WebSocket server.")
+
+		// Auth
+		authMsg := SipuniAuthMessage{
+			Type: "auth",
+			Body: SipuniAuthBody{Key: apiKey},
+		}
+		if err := c.WriteJSON(authMsg); err != nil {
+			log.Printf("Auth send error: %v", err)
+			c.Close()
+			continue
+		}
+		log.Println("Authentication message sent.")
+
+		// Listen loop
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			for {
+				_, message, err := c.ReadMessage()
+				if err != nil {
+					log.Printf("Read error: %v", err)
+					return
+				}
+
+				log.Printf("Received raw message: %s", string(message))
+
+				var event SipuniEvent
+				if err := json.Unmarshal(message, &event); err == nil {
+					if event.Action == "notify" && event.Namespace == "api" {
+						handleNotify(event.Request)
+					}
+				}
+			}
+		}()
+
 		select {
 		case <-done:
-			return
+			log.Println("Listen loop terminated. Reconnecting...")
+			c.Close()
 		case <-interrupt:
-			log.Println("interrupt")
-			err := c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-			if err != nil {
-				log.Println("write close:", err)
-				return
-			}
-			select {
-			case <-done:
-			case <-time.After(time.Second):
-			}
+			log.Println("Interrupt received. Closing connection...")
+			c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+			c.Close()
 			return
 		}
 	}
@@ -152,13 +164,13 @@ func main() {
 func handleNotify(request json.RawMessage) {
 	var notify SipuniNotifyRequest
 	if err := json.Unmarshal(request, &notify); err != nil {
-		log.Println("unmarshal notify:", err)
+		log.Println("Unmarshal notify error:", err)
 		return
 	}
 
 	// We only care about calls with a record link
 	if notify.CallRecordLink != "" {
-		log.Printf("Received notify for call %s with status %s", notify.CallID, notify.Status)
+		log.Printf("Received call event: ID=%s, Status=%s, Link=%s", notify.CallID, notify.Status, notify.CallRecordLink)
 
 		callID := uuid.New().String()
 
@@ -172,12 +184,18 @@ func handleNotify(request json.RawMessage) {
 
 		callDate := time.Unix(startTime, 0)
 
+		// Determine client phone (usually the longer one)
+		clientPhone := notify.DstNum
+		if len(notify.SrcNum) > len(notify.DstNum) {
+			clientPhone = notify.SrcNum
+		}
+
 		call := &domain.Call{
 			ID:          callID,
 			CompanyID:   companyID,
 			ManagerID:   notify.UserID,
 			ManagerName: "Sipuni Manager",
-			ClientPhone: notify.DstNum, // In outgoing, Dst is client. In incoming, Src is client.
+			ClientPhone: clientPhone,
 			Duration:    duration,
 			CallLink:    notify.CallRecordLink,
 			CallDate:    callDate,
@@ -187,11 +205,11 @@ func handleNotify(request json.RawMessage) {
 		}
 
 		if err := callRepo.Create(context.Background(), call); err != nil {
-			log.Println("save call:", err)
+			log.Println("Database error saving call:", err)
 			return
 		}
 
-		log.Printf("Enqueuing job for call %s", callID)
+		log.Printf("Enqueuing audio processing job for call %s", callID)
 
 		job := queue.AudioProcessingJob{
 			CallID:    callID,
@@ -200,9 +218,10 @@ func handleNotify(request json.RawMessage) {
 			ManagerID: notify.UserID,
 		}
 
-		err := publisher.EnqueueAudioProcessing(context.Background(), job)
-		if err != nil {
-			log.Println("enqueue job:", err)
+		if err := publisher.EnqueueAudioProcessing(context.Background(), job); err != nil {
+			log.Println("Queue error enqueuing job:", err)
 		}
+	} else {
+		log.Printf("Ignored notify for call %s (no recording link yet)", notify.CallID)
 	}
 }

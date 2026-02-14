@@ -49,6 +49,20 @@ cd services/script-service
 go run cmd/script/main.go
 ```
 
+### Sipuni Listener
+1.  **Configure Sipuni Dashboard**:
+    - Go to Sipuni Admin -> Event Sending.
+    - Check "Use WebSocket server (wss://wss.sipuni.com/api)".
+    - Select "Incoming" and "Outgoing" schemes.
+    - Save changes.
+2.  **Run Service**:
+```bash
+cd services/sipuni-listener
+cp .env.example .env
+# Edit .env with your SIPUNI_API_KEY
+go run cmd/listener/main.go
+```
+
 ---
 
 ## 3. AI Services Setup (Python)
@@ -75,13 +89,15 @@ python main.py
 
 ## 4. Frontend Setup (React + Vite)
 
+**Important**: You must run these commands inside the `services/frontend` directory.
+
 ```bash
 cd services/frontend
 npm install
 npm run dev
 ```
 
-The frontend will be available at `http://localhost:5173`.
+The frontend will be available at `http://localhost:5173`. It is configured to proxy `/api/v1` requests to the Go backend on port 8080.
 
 ---
 
