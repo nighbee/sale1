@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sidebar } from './DirectorDashboard';
+import Sidebar from '../components/Sidebar';
 import { integrationApi } from '../api/client';
 
 const Integrations: React.FC = () => {
@@ -34,7 +34,7 @@ const Integrations: React.FC = () => {
 
   return (
     <div className="bg-background-light dark:bg-background-dark text-slate-900 min-h-screen flex font-display">
-      <Sidebar active="settings" />
+      <Sidebar />
       <main className="flex-1 max-w-[1200px] mx-auto w-full px-6 py-10 overflow-y-auto">
         <div className="flex flex-wrap items-center justify-between gap-6 mb-12">
           <div className="flex flex-col gap-2">

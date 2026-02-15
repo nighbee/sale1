@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Sidebar } from './DirectorDashboard';
+import { useNavigate } from 'react-router-dom';
+import Sidebar from '../components/Sidebar';
 import { callApi } from '../api/client';
+import Skeleton from '../components/Skeleton';
 
 const RepDashboard: React.FC = () => {
+  const navigate = useNavigate();
   const [stats] = useState({
     calls: 42,
     score: 87.5,
@@ -34,7 +37,7 @@ const RepDashboard: React.FC = () => {
 
   return (
     <div className="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 flex h-screen overflow-hidden">
-      <Sidebar active="dashboard" />
+      <Sidebar />
       <main className="flex-1 overflow-y-auto bg-background-light dark:bg-background-dark">
         <header className="sticky top-0 z-10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-border-light dark:border-slate-800 px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4 flex-1">
@@ -164,7 +167,18 @@ const RepDashboard: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border-light dark:divide-slate-800">
-                    {recentCalls.map((call) => (
+                    {loading ? (
+                      [1, 2, 3, 4, 5].map((i) => (
+                        <tr key={i}>
+                          <td className="px-6 py-4"><Skeleton className="h-10 w-full" /></td>
+                          <td className="px-6 py-4"><Skeleton className="h-10 w-full" /></td>
+                          <td className="px-6 py-4"><Skeleton className="h-10 w-full" /></td>
+                          <td className="px-6 py-4"><Skeleton className="h-10 w-full" /></td>
+                          <td className="px-6 py-4"><Skeleton className="h-10 w-full" /></td>
+                        </tr>
+                      ))
+                    ) : (
+                    recentCalls.map((call) => (
                       <tr key={call.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
@@ -184,10 +198,10 @@ const RepDashboard: React.FC = () => {
                           Strong objection handling and clear next steps defined.
                         </td>
                         <td className="px-6 py-4 text-right">
-                          <button className="text-primary font-bold text-sm hover:text-primary/80" onClick={() => window.location.href=`/calls/${call.id}`}>Analyze</button>
+                          <button className="text-primary font-bold text-sm hover:text-primary/80" onClick={() => navigate(`/calls/${call.id}`)}>Analyze</button>
                         </td>
                       </tr>
-                    ))}
+                    )))}
                   </tbody>
                 </table>
               </div>

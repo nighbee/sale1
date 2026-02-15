@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { authApi } from "../api/client";
+import { toast } from "sonner";
 
 const Register: React.FC = () => {
   const navigate = useNavigate();
@@ -34,9 +35,12 @@ const Register: React.FC = () => {
       localStorage.setItem("token", response.data.tokens.access_token);
       localStorage.setItem("company_id", response.data.user.company_id);
       localStorage.setItem("user_id", response.data.user.id);
+      toast.success("Account created successfully!");
       navigate("/company-setup");
     } catch (err: any) {
-      setError(err.response?.data?.error || "Registration failed");
+      const msg = err.response?.data?.error || "Registration failed";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }

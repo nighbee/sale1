@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { authApi } from "../api/client";
+import { toast } from "sonner";
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -32,9 +33,12 @@ const Login: React.FC = () => {
       localStorage.setItem("token", response.data.tokens.access_token);
       localStorage.setItem("company_id", response.data.user.company_id);
       localStorage.setItem("user_id", response.data.user.id);
+      toast.success("Welcome back!");
       navigate("/dashboard");
     } catch (err: any) {
-      setError(err.response?.data?.error || "Login failed");
+      const msg = err.response?.data?.error || "Login failed";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
