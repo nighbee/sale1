@@ -1,9 +1,12 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { authApi } from "../api/client";
 import { toast } from "sonner";
+import LanguageSwitcher from "../components/LanguageSwitcher";
 
 const Login: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: "",
@@ -33,10 +36,10 @@ const Login: React.FC = () => {
       localStorage.setItem("token", response.data.tokens.access_token);
       localStorage.setItem("company_id", response.data.user.company_id);
       localStorage.setItem("user_id", response.data.user.id);
-      toast.success("Welcome back!");
+      toast.success(t("auth.welcome_back"));
       navigate("/dashboard");
     } catch (err: any) {
-      const msg = err.response?.data?.error || "Login failed";
+      const msg = err.response?.data?.error || t("auth.login_failed");
       setError(msg);
       toast.error(msg);
     } finally {
@@ -54,6 +57,9 @@ const Login: React.FC = () => {
 
         <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-xl shadow-2xl shadow-primary/10 border border-slate-200 dark:border-slate-800 z-10 overflow-hidden">
           <div className="p-8 sm:p-10">
+            <div className="flex justify-center mb-6">
+              <LanguageSwitcher />
+            </div>
             <div className="text-center mb-8">
               <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-primary/10 text-primary mb-4">
                 <span className="material-icons text-3xl">analytics</span>
@@ -62,7 +68,7 @@ const Login: React.FC = () => {
                 SalesAI
               </h1>
               <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-                Sign in to access your sales dashboard
+                {t("auth.login_title")}
               </p>
             </div>
 
@@ -77,7 +83,7 @@ const Login: React.FC = () => {
                   className="block text-sm font-medium text-slate-700 dark:text-slate-300"
                   htmlFor="email"
                 >
-                  Email address
+                  {t("auth.email")}
                 </label>
                 <div className="mt-1 relative">
                   <input
@@ -99,7 +105,7 @@ const Login: React.FC = () => {
                   className="block text-sm font-medium text-slate-700 dark:text-slate-300"
                   htmlFor="password"
                 >
-                  Password
+                  {t("auth.password")}
                 </label>
                 <div className="mt-1 relative">
                   <input
@@ -130,7 +136,7 @@ const Login: React.FC = () => {
                     className="ml-2 block text-sm text-slate-600 dark:text-slate-400 cursor-pointer select-none"
                     htmlFor="remember-me"
                   >
-                    Remember me
+                    {t("auth.remember_me")}
                   </label>
                 </div>
                 <div className="text-sm">
@@ -138,7 +144,7 @@ const Login: React.FC = () => {
                     className="font-medium text-primary hover:text-primary/80 transition-colors"
                     href="#"
                   >
-                    Forgot password?
+                    {t("auth.forgot_password")}
                   </a>
                 </div>
               </div>
@@ -149,7 +155,7 @@ const Login: React.FC = () => {
                   type="submit"
                   disabled={loading}
                 >
-                  {loading ? "Signing in..." : "Sign In"}
+                  {loading ? t("auth.signing_in") : t("auth.sign_in")}
                 </button>
               </div>
             </form>
@@ -201,12 +207,12 @@ const Login: React.FC = () => {
 
           <div className="px-8 py-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 text-center">
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              New to SalesAI?{" "}
+              {t("auth.no_account")}{" "}
               <Link
                 className="text-primary font-medium hover:underline"
                 to="/register"
               >
-                Create an account
+                {t("auth.create_account")}
               </Link>
             </p>
           </div>

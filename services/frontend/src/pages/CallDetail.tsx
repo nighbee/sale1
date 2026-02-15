@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { callApi } from '../api/client';
 
 const CallDetail: React.FC = () => {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const [call, setCall] = useState<any>(null);
   const [transcript, setTranscript] = useState<any>(null);
@@ -14,6 +16,21 @@ const CallDetail: React.FC = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [activeSegmentIndex, setActiveSegmentIndex] = useState(-1);
+
+  // Waveform data should be stable
+  const waveformData = useRef(Array.from({ length: 60 }).map(() => 20 + Math.random() * 60));
+
+  useEffect(() => {
+    if (transcript?.segments) {
+      const index = transcript.segments.findIndex(
+        (seg: any) => currentTime >= seg.start && currentTime <= seg.end
+      );
+      if (index !== activeSegmentIndex && index !== -1) {
+        setActiveSegmentIndex(index);
+      }
+    }
+  }, [currentTime, transcript, activeSegmentIndex]);
 
   useEffect(() => {
     if (activeSegmentRef.current && isPlaying) {
@@ -22,7 +39,7 @@ const CallDetail: React.FC = () => {
         block: 'center',
       });
     }
-  }, [currentTime, isPlaying]);
+  }, [activeSegmentIndex, isPlaying]);
 
   const togglePlay = () => {
     if (audioRef.current) {
@@ -59,7 +76,7 @@ const CallDetail: React.FC = () => {
         setCall(callRes.data);
         setTranscript(transRes.data);
         setAnalysis(analRes.data);
-      } catch (err) {
+      } catch (_err) {
         console.error('Failed to fetch call data');
       } finally {
         setLoading(false);
@@ -76,10 +93,10 @@ const CallDetail: React.FC = () => {
       <header className="bg-surface-light dark:bg-surface-dark border-b border-neutral-200 dark:border-neutral-700 h-16 flex items-center px-6 shrink-0 z-20">
         <div className="flex items-center gap-4 w-full">
           <button onClick={() => window.history.back()} className="text-neutral-500 hover:text-primary dark:text-neutral-400 dark:hover:text-primary transition-colors flex items-center gap-1 text-sm font-medium">
-            <span className="material-icons text-lg">arrow_back</span> Back
+            <span className="material-icons text-lg">arrow_back</span> {t('calls.back')}
           </button>
           <div className="h-6 w-px bg-neutral-200 dark:bg-neutral-700 mx-2"></div>
-          <h1 className="text-lg font-bold text-neutral-900 dark:text-white">Call with {call.manager_name}</h1>
+          <h1 className="text-lg font-bold text-neutral-900 dark:text-white">{t('calls.call_with')} {call.manager_name}</h1>
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border border-green-200 dark:border-green-800 uppercase">
             {call.status}
           </span>
@@ -94,18 +111,18 @@ const CallDetail: React.FC = () => {
                  <span className="material-icons text-4xl text-primary">person</span>
               </div>
               <h3 className="text-base font-bold text-neutral-900 dark:text-white">{call.manager_name}</h3>
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">Sales Representative</p>
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">{t('calls.representative')}</p>
             </div>
             <div>
-              <h4 className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-4">Call Metadata</h4>
+              <h4 className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-4">{t('calls.metadata')}</h4>
               <div className="space-y-4">
                 <div className="flex items-start gap-3">
                   <div className="p-2 rounded-lg bg-primary/10 text-primary"><span className="material-icons text-sm">event</span></div>
-                  <div><p className="text-xs text-neutral-500">Date</p><p className="text-sm font-medium">{new Date(call.call_date).toLocaleDateString()}</p></div>
+                  <div><p className="text-xs text-neutral-500">{t('calls.date')}</p><p className="text-sm font-medium">{new Date(call.call_date).toLocaleDateString()}</p></div>
                 </div>
                 <div className="flex items-start gap-3">
                   <div className="p-2 rounded-lg bg-primary/10 text-primary"><span className="material-icons text-sm">timer</span></div>
-                  <div><p className="text-xs text-neutral-500">Duration</p><p className="text-sm font-medium">{Math.floor(call.duration / 60)}:{(call.duration % 60).toString().padStart(2, '0')}</p></div>
+                  <div><p className="text-xs text-neutral-500">{t('calls.duration')}</p><p className="text-sm font-medium">{Math.floor(call.duration / 60)}:{(call.duration % 60).toString().padStart(2, '0')}</p></div>
                 </div>
               </div>
             </div>
@@ -134,11 +151,11 @@ const CallDetail: React.FC = () => {
             >
                {/* Simple progress bar instead of placeholder */}
                <div className="absolute inset-0 flex items-center justify-center text-slate-400 text-xs z-0">
-                 {Array.from({ length: 60 }).map((_, i) => (
+                 {waveformData.current.map((height, i) => (
                    <div
                      key={i}
                      className="w-1 mx-0.5 bg-primary/20 rounded-full"
-                     style={{ height: `${20 + Math.random() * 60}%` }}
+                     style={{ height: `${height}%` }}
                    />
                  ))}
                </div>
@@ -176,7 +193,7 @@ const CallDetail: React.FC = () => {
 
           <div className="flex-1 overflow-y-auto p-6 space-y-4 scroll-smooth">
             {transcript?.segments?.map((seg: any, i: number) => {
-              const isActive = currentTime >= seg.start && currentTime <= seg.end;
+              const isActive = i === activeSegmentIndex;
               return (
                 <div
                   key={i}
@@ -220,28 +237,28 @@ const CallDetail: React.FC = () => {
           <div className="p-6 space-y-8">
             <div>
               <h2 className="text-sm font-bold text-neutral-900 dark:text-white flex items-center gap-2 mb-4">
-                <span className="material-icons text-primary text-lg">analytics</span> AI Analysis
+                <span className="material-icons text-primary text-lg">analytics</span> {t('calls.analysis')}
               </h2>
               {analysis ? (
                 <div className="space-y-4">
                   <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-xl p-4 border border-neutral-100 dark:border-neutral-700 flex items-center justify-between">
                     <div>
-                      <p className="text-xs text-neutral-500">Quality Score</p>
+                      <p className="text-xs text-neutral-500">{t('calls.quality_score')}</p>
                       <p className="text-2xl font-bold text-neutral-900 dark:text-white mt-1">{analysis.quality_score}<span className="text-sm text-neutral-400 font-normal">/100</span></p>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-xl p-3 border border-neutral-100">
-                      <p className="text-xs text-neutral-500 mb-1">Script Match</p>
+                      <p className="text-xs text-neutral-500 mb-1">{t('calls.script_match')}</p>
                       <span className="text-xl font-bold">{analysis.script_match}%</span>
                     </div>
                     <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-xl p-3 border border-neutral-100">
-                      <p className="text-xs text-neutral-500 mb-1">Errors Free</p>
+                      <p className="text-xs text-neutral-500 mb-1">{t('calls.errors_free')}</p>
                       <span className="text-xl font-bold">{analysis.errors_free}%</span>
                     </div>
                   </div>
                   <div className="bg-blue-50 dark:bg-primary/10 rounded-xl p-4 border border-blue-100">
-                     <h3 className="text-xs font-bold uppercase mb-2">Recommendation</h3>
+                     <h3 className="text-xs font-bold uppercase mb-2">{t('calls.recommendation')}</h3>
                      <p className="text-sm">{analysis.recommendation}</p>
                   </div>
                 </div>

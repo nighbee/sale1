@@ -1,14 +1,17 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from './LanguageSwitcher';
 
 const Sidebar: React.FC = () => {
+  const { t } = useTranslation();
   const navItems = [
-    { id: 'dashboard', icon: 'dashboard', label: 'Dashboard', path: '/dashboard' },
-    { id: 'teams', icon: 'groups', label: 'Teams', path: '/teams' },
-    { id: 'calls', icon: 'call', label: 'Calls', path: '/calls' },
-    { id: 'leaderboard', icon: 'leaderboard', label: 'Leaderboard', path: '/leaderboard' },
-    { id: 'integrations', icon: 'hub', label: 'Integrations', path: '/integrations' },
-    { id: 'settings', icon: 'settings', label: 'Settings', path: '/settings' },
+    { id: 'dashboard', icon: 'dashboard', label: t('nav.dashboard'), path: '/dashboard' },
+    { id: 'teams', icon: 'groups', label: t('nav.teams'), path: '/teams' },
+    { id: 'calls', icon: 'call', label: t('nav.calls'), path: '/calls' },
+    { id: 'leaderboard', icon: 'leaderboard', label: t('nav.leaderboard'), path: '/leaderboard' },
+    { id: 'integrations', icon: 'hub', label: t('nav.integrations'), path: '/integrations' },
+    { id: 'settings', icon: 'settings', label: t('nav.settings'), path: '/settings' },
   ];
 
   return (
@@ -38,6 +41,7 @@ const Sidebar: React.FC = () => {
         ))}
       </nav>
       <div className="p-4 border-t border-white/10">
+        <LanguageSwitcher />
         <button className="flex items-center gap-3 w-full hover:bg-white/5 p-2 rounded-lg transition-colors text-left">
           <img
             alt="Profile"
