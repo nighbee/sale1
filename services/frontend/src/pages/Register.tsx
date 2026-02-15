@@ -1,9 +1,12 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { authApi } from "../api/client";
 import { toast } from "sonner";
+import LanguageSwitcher from "../components/LanguageSwitcher";
 
 const Register: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     fullname: "",
@@ -35,10 +38,10 @@ const Register: React.FC = () => {
       localStorage.setItem("token", response.data.tokens.access_token);
       localStorage.setItem("company_id", response.data.user.company_id);
       localStorage.setItem("user_id", response.data.user.id);
-      toast.success("Account created successfully!");
+      toast.success(t("auth.account_created"));
       navigate("/company-setup");
     } catch (err: any) {
-      const msg = err.response?.data?.error || "Registration failed";
+      const msg = err.response?.data?.error || t("auth.registration_failed");
       setError(msg);
       toast.error(msg);
     } finally {
@@ -58,12 +61,12 @@ const Register: React.FC = () => {
           </span>
         </div>
         <div className="hidden sm:block text-sm font-medium text-slate-600 dark:text-slate-400">
-          Already have an account?{" "}
+          {t("auth.have_account")}{" "}
           <Link
             to="/login"
             className="text-primary hover:text-blue-700 dark:hover:text-blue-400 font-semibold transition-colors"
           >
-            Log in
+            {t("auth.log_in")}
           </Link>
         </div>
       </header>
@@ -74,6 +77,9 @@ const Register: React.FC = () => {
             <div className="h-full bg-primary w-2/3 transition-all duration-500 ease-out"></div>
           </div>
           <div className="p-8 sm:p-10">
+            <div className="flex justify-center mb-6">
+              <LanguageSwitcher />
+            </div>
             <div className="flex items-center gap-2 mb-6">
               <span className="bg-primary/10 text-primary text-xs font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
                 Step 2 of 3
@@ -85,11 +91,10 @@ const Register: React.FC = () => {
 
             <div className="mb-8">
               <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white mb-2 tracking-tight">
-                Create your account
+                {t("auth.register_title")}
               </h1>
               <p className="text-slate-500 dark:text-slate-400 text-sm">
-                Set up your credentials to start managing your sales team
-                efficiently.
+                {t("auth.register_subtitle")}
               </p>
             </div>
 
@@ -104,7 +109,7 @@ const Register: React.FC = () => {
                   className="block text-sm font-medium text-slate-700 dark:text-slate-300"
                   htmlFor="fullname"
                 >
-                  Full Name
+                  {t("auth.full_name")}
                 </label>
                 <div className="relative">
                   <input
@@ -128,7 +133,7 @@ const Register: React.FC = () => {
                   className="block text-sm font-medium text-slate-700 dark:text-slate-300"
                   htmlFor="email"
                 >
-                  Work Email
+                  {t("auth.work_email")}
                 </label>
                 <div className="relative">
                   <input
@@ -152,7 +157,7 @@ const Register: React.FC = () => {
                   className="block text-sm font-medium text-slate-700 dark:text-slate-300"
                   htmlFor="password"
                 >
-                  Password
+                  {t("auth.password")}
                 </label>
                 <div className="relative group">
                   <input
@@ -223,19 +228,19 @@ const Register: React.FC = () => {
                     className="font-medium text-slate-700 dark:text-slate-300"
                     htmlFor="terms"
                   >
-                    I agree to the{" "}
+                    {t("auth.terms_agree")}{" "}
                     <a
                       className="font-semibold text-primary hover:text-blue-600 dark:hover:text-blue-400"
                       href="#"
                     >
-                      Terms of Service
+                      {t("auth.terms_service")}
                     </a>{" "}
-                    and{" "}
+                    {t("auth.and")}{" "}
                     <a
                       className="font-semibold text-primary hover:text-blue-600 dark:hover:text-blue-400"
                       href="#"
                     >
-                      Privacy Policy
+                      {t("auth.privacy_policy")}
                     </a>
                     .
                   </label>
@@ -247,7 +252,7 @@ const Register: React.FC = () => {
                 type="submit"
                 disabled={loading}
               >
-                {loading ? "Creating account..." : "Continue"}
+                {loading ? t("auth.creating_account") : t("auth.continue")}
                 <span className="material-icons text-sm ml-2">
                   arrow_forward
                 </span>

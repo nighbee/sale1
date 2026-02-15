@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import Sidebar from '../components/Sidebar';
 import { callApi } from '../api/client';
 import Skeleton from '../components/Skeleton';
 
 const RepDashboard: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [stats] = useState({
     calls: 42,
@@ -26,7 +28,7 @@ const RepDashboard: React.FC = () => {
         // In a real app, we'd fetch rep-specific stats
         const callsRes = await callApi.listCalls({ limit: 5 });
         setRecentCalls(callsRes.data.calls || []);
-      } catch (err) {
+      } catch (_err) {
         console.error('Failed to fetch rep data');
       } finally {
         setLoading(false);
@@ -43,7 +45,7 @@ const RepDashboard: React.FC = () => {
           <div className="flex items-center gap-4 flex-1">
             <div className="relative w-full max-w-md">
               <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
-              <input className="w-full pl-10 pr-4 py-2 bg-slate-100 dark:bg-slate-800 border-none rounded-lg focus:ring-2 focus:ring-primary text-sm" placeholder="Search analytics or calls..." type="text"/>
+              <input className="w-full pl-10 pr-4 py-2 bg-slate-100 dark:bg-slate-800 border-none rounded-lg focus:ring-2 focus:ring-primary text-sm" placeholder={t('calls.search')} type="text"/>
             </div>
           </div>
           <div className="flex items-center gap-4">
@@ -67,7 +69,7 @@ const RepDashboard: React.FC = () => {
         <div className="p-8 max-w-7xl mx-auto space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-border-light dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow">
-              <p className="text-sm font-medium text-slate-500 mb-1">Your Calls</p>
+              <p className="text-sm font-medium text-slate-500 mb-1">{t('dashboard.your_calls')}</p>
               <div className="flex items-end justify-between">
                 <h3 className="text-3xl font-bold">{stats.calls}</h3>
                 <span className="text-emerald-500 text-sm font-bold flex items-center gap-1">
@@ -76,7 +78,7 @@ const RepDashboard: React.FC = () => {
               </div>
             </div>
             <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-border-light dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow">
-              <p className="text-sm font-medium text-slate-500 mb-1">Your Score</p>
+              <p className="text-sm font-medium text-slate-500 mb-1">{t('dashboard.your_score')}</p>
               <div className="flex items-end justify-between">
                 <h3 className="text-3xl font-bold">{stats.score}</h3>
                 <span className="text-emerald-500 text-sm font-bold flex items-center gap-1">
@@ -85,7 +87,7 @@ const RepDashboard: React.FC = () => {
               </div>
             </div>
             <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-border-light dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow">
-              <p className="text-sm font-medium text-slate-500 mb-1">Team Rank</p>
+              <p className="text-sm font-medium text-slate-500 mb-1">{t('dashboard.team_rank')}</p>
               <div className="flex items-end justify-between">
                 <h3 className="text-3xl font-bold">#{stats.rank}<span className="text-slate-400 text-lg font-medium">/{stats.totalReps}</span></h3>
                 <span className="text-emerald-500 text-sm font-bold flex items-center gap-1">
@@ -94,7 +96,7 @@ const RepDashboard: React.FC = () => {
               </div>
             </div>
             <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-border-light dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow">
-              <p className="text-sm font-medium text-slate-500 mb-1">Improvement</p>
+              <p className="text-sm font-medium text-slate-500 mb-1">{t('dashboard.improvement')}</p>
               <div className="flex items-end justify-between">
                 <h3 className="text-3xl font-bold">+{stats.improvement}%</h3>
                 <span className="text-emerald-500 text-sm font-bold flex items-center gap-1">
@@ -107,7 +109,7 @@ const RepDashboard: React.FC = () => {
           <div className="bg-white dark:bg-slate-900 rounded-xl border border-border-light dark:border-slate-800 shadow-sm overflow-hidden">
             <div className="p-6 border-b border-border-light dark:border-slate-800 flex items-center gap-3">
               <span className="material-symbols-outlined text-primary">psychology</span>
-              <h2 className="text-xl font-bold">AI Coach Insights</h2>
+              <h2 className="text-xl font-bold">{t('dashboard.ai_coach')}</h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2">
               <div className="p-8 border-b md:border-b-0 md:border-r border-border-light dark:border-slate-800 bg-emerald-50/30 dark:bg-emerald-500/5">
@@ -151,8 +153,8 @@ const RepDashboard: React.FC = () => {
 
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold">Recent Calls</h2>
-              <button className="text-primary text-sm font-bold hover:underline">View All Calls</button>
+              <h2 className="text-xl font-bold">{t('dashboard.recent_calls')}</h2>
+              <button className="text-primary text-sm font-bold hover:underline" onClick={() => navigate('/calls')}>{t('dashboard.view_all')}</button>
             </div>
             <div className="bg-white dark:bg-slate-900 rounded-xl border border-border-light dark:border-slate-800 shadow-sm overflow-hidden">
               <div className="overflow-x-auto">
@@ -160,8 +162,8 @@ const RepDashboard: React.FC = () => {
                   <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 text-xs font-bold uppercase tracking-wider">
                     <tr>
                       <th className="px-6 py-4">Client Name</th>
-                      <th className="px-6 py-4">Date</th>
-                      <th className="px-6 py-4">AI Score</th>
+                      <th className="px-6 py-4">{t('calls.date')}</th>
+                      <th className="px-6 py-4">{t('calls.score')}</th>
                       <th className="px-6 py-4">AI Insight</th>
                       <th className="px-6 py-4 text-right">Action</th>
                     </tr>
@@ -198,7 +200,7 @@ const RepDashboard: React.FC = () => {
                           Strong objection handling and clear next steps defined.
                         </td>
                         <td className="px-6 py-4 text-right">
-                          <button className="text-primary font-bold text-sm hover:text-primary/80" onClick={() => navigate(`/calls/${call.id}`)}>Analyze</button>
+                          <button className="text-primary font-bold text-sm hover:text-primary/80" onClick={() => navigate(`/calls/${call.id}`)}>{t('dashboard.analyze')}</button>
                         </td>
                       </tr>
                     )))}

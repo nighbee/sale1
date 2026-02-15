@@ -3,8 +3,10 @@ import Sidebar from '../components/Sidebar';
 import { callApi } from '../api/client';
 import Skeleton from '../components/Skeleton';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 const CallsList: React.FC = () => {
+  const { t } = useTranslation();
   const [calls, setCalls] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ total: 0, avgScore: 0, failed: 0 });
@@ -18,7 +20,7 @@ const CallsList: React.FC = () => {
         const total = res.data.total || res.data.calls.length;
         const avg = res.data.calls.length > 0 ? 78.4 : 0; // Mocked avg
         setStats({ total, avgScore: avg, failed: 12 });
-      } catch (err) {
+      } catch (_err) {
         console.error('Failed to fetch calls');
       } finally {
         setLoading(false);
@@ -33,17 +35,17 @@ const CallsList: React.FC = () => {
       <main className="flex-1 p-6 lg:p-8 overflow-y-auto">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Organization Calls</h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-1">Monitor call quality, processing status, and team performance.</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('calls.list_title')}</h1>
+            <p className="text-slate-500 dark:text-slate-400 mt-1">{t('calls.list_subtitle')}</p>
           </div>
           <div className="flex gap-4">
             <div className="bg-white dark:bg-slate-900 px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-3">
               <div className="p-2 rounded-md bg-blue-50 dark:bg-blue-900/30 text-blue-600"><span className="material-icons">call</span></div>
-              <div><p className="text-xs text-slate-500 uppercase font-semibold">Total Calls</p><p className="text-lg font-bold">{stats.total}</p></div>
+              <div><p className="text-xs text-slate-500 uppercase font-semibold">{t('dashboard.total_calls')}</p><p className="text-lg font-bold">{stats.total}</p></div>
             </div>
             <div className="bg-white dark:bg-slate-900 px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-3">
               <div className="p-2 rounded-md bg-green-50 dark:bg-green-900/30 text-green-600"><span className="material-icons">analytics</span></div>
-              <div><p className="text-xs text-slate-500 uppercase font-semibold">Avg Score</p><p className="text-lg font-bold">{stats.avgScore}</p></div>
+              <div><p className="text-xs text-slate-500 uppercase font-semibold">{t('dashboard.avg_quality')}</p><p className="text-lg font-bold">{stats.avgScore}</p></div>
             </div>
           </div>
         </div>
@@ -52,18 +54,18 @@ const CallsList: React.FC = () => {
           <div className="p-4 flex flex-col lg:flex-row gap-4 justify-between items-center">
             <div className="relative w-full lg:w-64">
               <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><span className="material-icons">search</span></span>
-              <input className="block w-full pl-10 pr-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-sm" placeholder="Search calls..." type="text"/>
+              <input className="block w-full pl-10 pr-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-sm" placeholder={t('calls.search')} type="text"/>
             </div>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
               <thead className="bg-slate-50 dark:bg-slate-800/50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Call ID</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Date/Time</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Representative</th>
-                  <th className="px-6 py-3 text-center text-xs font-semibold text-slate-500 uppercase">Score</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">{t('calls.id')}</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">{t('calls.datetime')}</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">{t('calls.representative')}</th>
+                  <th className="px-6 py-3 text-center text-xs font-semibold text-slate-500 uppercase">{t('calls.score')}</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">{t('calls.status')}</th>
                   <th className="relative px-6 py-3"></th>
                 </tr>
               </thead>
@@ -103,11 +105,11 @@ const CallsList: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right">
-                       <Link to={`/calls/${call.id}`} className="text-primary hover:text-primary-hover font-medium text-sm">View</Link>
+                       <Link to={`/calls/${call.id}`} className="text-primary hover:text-primary-hover font-medium text-sm">{t('calls.view')}</Link>
                     </td>
                   </tr>
                 )))}
-                {!loading && calls.length === 0 && <tr><td colSpan={6} className="text-center p-8">No calls found.</td></tr>}
+                {!loading && calls.length === 0 && <tr><td colSpan={6} className="text-center p-8">{t('calls.no_calls')}</td></tr>}
               </tbody>
             </table>
           </div>
