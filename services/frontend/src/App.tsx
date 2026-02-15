@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'sonner';
 import Register from './pages/Register';
 import Login from './pages/Login';
 import CompanySetup from './pages/CompanySetup';
@@ -18,6 +19,7 @@ import CallsList from './pages/CallsList';
 function App() {
   return (
     <Router>
+      <Toaster position="top-right" richColors />
       <Routes>
         <Route path="/register" element={<Register />} />
         <Route path="/login" element={<Login />} />

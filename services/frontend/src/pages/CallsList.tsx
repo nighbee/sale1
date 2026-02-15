@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Sidebar } from './DirectorDashboard';
+import Sidebar from '../components/Sidebar';
 import { callApi } from '../api/client';
+import Skeleton from '../components/Skeleton';
 import { Link } from 'react-router-dom';
 
 const CallsList: React.FC = () => {
@@ -28,7 +29,7 @@ const CallsList: React.FC = () => {
 
   return (
     <div className="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display min-h-screen flex">
-      <Sidebar active="calls" />
+      <Sidebar />
       <main className="flex-1 p-6 lg:p-8 overflow-y-auto">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
           <div>
@@ -67,7 +68,19 @@ const CallsList: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                {calls.map((call) => (
+                {loading ? (
+                  [1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                    <tr key={i}>
+                      <td className="px-6 py-4"><Skeleton className="h-6 w-24" /></td>
+                      <td className="px-6 py-4"><Skeleton className="h-6 w-32" /></td>
+                      <td className="px-6 py-4"><Skeleton className="h-6 w-40" /></td>
+                      <td className="px-6 py-4"><Skeleton className="h-6 w-16" /></td>
+                      <td className="px-6 py-4"><Skeleton className="h-6 w-20" /></td>
+                      <td className="px-6 py-4"><Skeleton className="h-6 w-12" /></td>
+                    </tr>
+                  ))
+                ) : (
+                calls.map((call) => (
                   <tr key={call.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <Link to={`/calls/${call.id}`} className="text-sm font-mono text-primary hover:underline">#{call.id.slice(0, 8)}</Link>
@@ -93,8 +106,7 @@ const CallsList: React.FC = () => {
                        <Link to={`/calls/${call.id}`} className="text-primary hover:text-primary-hover font-medium text-sm">View</Link>
                     </td>
                   </tr>
-                ))}
-                {loading && <tr><td colSpan={6} className="text-center p-8">Loading calls...</td></tr>}
+                )))}
                 {!loading && calls.length === 0 && <tr><td colSpan={6} className="text-center p-8">No calls found.</td></tr>}
               </tbody>
             </table>

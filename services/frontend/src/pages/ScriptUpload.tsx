@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { scriptApi } from '../api/client';
+import { toast } from 'sonner';
 
 const ScriptUpload: React.FC = () => {
   const navigate = useNavigate();
@@ -27,9 +28,12 @@ const ScriptUpload: React.FC = () => {
 
     try {
       await scriptApi.upload(formData);
+      toast.success('Script uploaded successfully!');
       navigate('/invite-members');
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to upload script');
+      const msg = err.response?.data?.error || 'Failed to upload script';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setIsUploading(false);
     }

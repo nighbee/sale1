@@ -1,55 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { analyticsApi } from '../api/client';
-
-const Sidebar: React.FC<{ active: string }> = ({ active }) => {
-  return (
-    <aside className="w-64 bg-primary-dark dark:bg-slate-900 flex-shrink-0 flex flex-col text-white transition-all duration-300">
-      <div className="h-16 flex items-center px-6 border-b border-white/10">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded bg-primary flex items-center justify-center">
-            <span className="material-icons text-lg">insights</span>
-          </div>
-          <span className="font-bold text-lg tracking-tight">SalesAI</span>
-        </div>
-      </div>
-      <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto">
-        {[
-          { id: 'dashboard', icon: 'dashboard', label: 'Dashboard', path: '/dashboard' },
-          { id: 'teams', icon: 'groups', label: 'Teams', path: '/teams' },
-          { id: 'calls', icon: 'call', label: 'Calls', path: '/calls' },
-          { id: 'leaderboard', icon: 'leaderboard', label: 'Leaderboard', path: '/leaderboard' },
-          { id: 'integrations', icon: 'hub', label: 'Integrations', path: '/integrations' },
-          { id: 'settings', icon: 'settings', label: 'Settings', path: '/settings' },
-        ].map((item) => (
-          <a
-            key={item.id}
-            href={item.path}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium group transition-colors ${
-              active === item.id ? 'bg-white/10 text-white' : 'text-slate-300 hover:bg-white/5 hover:text-white'
-            }`}
-          >
-            <span className="material-icons text-xl group-hover:text-primary-300">{item.icon}</span>
-            <span>{item.label}</span>
-          </a>
-        ))}
-      </nav>
-      <div className="p-4 border-t border-white/10">
-        <button className="flex items-center gap-3 w-full hover:bg-white/5 p-2 rounded-lg transition-colors text-left">
-          <img
-            alt="Profile"
-            className="w-9 h-9 rounded-full border-2 border-primary"
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuB-E_TDTpvwgUsWY03c8YNZVfIkJPM7_vYomCxVaURoVI3SsPy63e3EU_lUsxp5L9tDvJx2QEkplHwv6cyBGxSG9PnNqRP9PAMG_13ze__58mxV5LhcQcYqExwVDaFZc33iosJb59WR0PVvspn1B5ju13RY0hEhmNnB11BZE2Pm5r-j3KEi6LBSVv6HP-0WxkaUUbbneR-3537h5WGN2JGsuc8EpbnwzV1FRkXQW4PnoiPH2scNBczW6VnVHnerJBrPnvl5e2vVZRM"
-          />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-white truncate">Alex Morgan</p>
-            <p className="text-xs text-slate-400 truncate">Director of Sales</p>
-          </div>
-          <span className="material-icons text-slate-400 text-lg">more_vert</span>
-        </button>
-      </div>
-    </aside>
-  );
-};
+import Sidebar from '../components/Sidebar';
+import Skeleton from '../components/Skeleton';
 
 const DirectorDashboard: React.FC = () => {
   const [managers, setManagers] = useState<any[]>([]);
@@ -76,7 +28,7 @@ const DirectorDashboard: React.FC = () => {
 
   return (
     <div className="bg-background-light dark:bg-background-dark font-display text-slate-800 dark:text-slate-200 h-screen flex overflow-hidden w-full">
-      <Sidebar active="dashboard" />
+      <Sidebar />
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <header className="h-16 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-8 flex-shrink-0 z-10">
           <h1 className="text-xl font-semibold text-primary-dark dark:text-white">Overall Dashboard</h1>
@@ -97,8 +49,24 @@ const DirectorDashboard: React.FC = () => {
 
         <div className="flex-1 overflow-y-auto p-8">
           {loading ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            <div className="max-w-7xl mx-auto space-y-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                    <Skeleton className="h-10 w-10 mb-4" />
+                    <Skeleton className="h-4 w-24 mb-2" />
+                    <Skeleton className="h-8 w-32" />
+                  </div>
+                ))}
+              </div>
+              <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
+                 <Skeleton className="h-6 w-48 mb-6" />
+                 <div className="space-y-4">
+                   {[1, 2, 3, 4, 5].map((i) => (
+                     <Skeleton key={i} className="h-12 w-full" />
+                   ))}
+                 </div>
+              </div>
             </div>
           ) : (
           <div className="max-w-7xl mx-auto space-y-8">
@@ -184,4 +152,3 @@ const DirectorDashboard: React.FC = () => {
 };
 
 export default DirectorDashboard;
-export { Sidebar };

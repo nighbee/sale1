@@ -1,0 +1,58 @@
+import React from 'react';
+import { NavLink } from 'react-router-dom';
+
+const Sidebar: React.FC = () => {
+  const navItems = [
+    { id: 'dashboard', icon: 'dashboard', label: 'Dashboard', path: '/dashboard' },
+    { id: 'teams', icon: 'groups', label: 'Teams', path: '/teams' },
+    { id: 'calls', icon: 'call', label: 'Calls', path: '/calls' },
+    { id: 'leaderboard', icon: 'leaderboard', label: 'Leaderboard', path: '/leaderboard' },
+    { id: 'integrations', icon: 'hub', label: 'Integrations', path: '/integrations' },
+    { id: 'settings', icon: 'settings', label: 'Settings', path: '/settings' },
+  ];
+
+  return (
+    <aside className="w-64 bg-slate-900 flex-shrink-0 flex flex-col text-white transition-all duration-300">
+      <div className="h-16 flex items-center px-6 border-b border-white/10">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded bg-primary flex items-center justify-center">
+            <span className="material-icons text-lg">insights</span>
+          </div>
+          <span className="font-bold text-lg tracking-tight">SalesAI</span>
+        </div>
+      </div>
+      <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto">
+        {navItems.map((item) => (
+          <NavLink
+            key={item.id}
+            to={item.path}
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium group transition-colors ${
+                isActive ? 'bg-white/10 text-white' : 'text-slate-300 hover:bg-white/5 hover:text-white'
+              }`
+            }
+          >
+            <span className="material-icons text-xl group-hover:text-primary-300">{item.icon}</span>
+            <span>{item.label}</span>
+          </NavLink>
+        ))}
+      </nav>
+      <div className="p-4 border-t border-white/10">
+        <button className="flex items-center gap-3 w-full hover:bg-white/5 p-2 rounded-lg transition-colors text-left">
+          <img
+            alt="Profile"
+            className="w-9 h-9 rounded-full border-2 border-primary"
+            src="https://lh3.googleusercontent.com/aida-public/AB6AXuB-E_TDTpvwgUsWY03c8YNZVfIkJPM7_vYomCxVaURoVI3SsPy63e3EU_lUsxp5L9tDvJx2QEkplHwv6cyBGxSG9PnNqRP9PAMG_13ze__58mxV5LhcQcYqExwVDaFZc33iosJb59WR0PVvspn1B5ju13RY0hEhmNnB11BZE2Pm5r-j3KEi6LBSVv6HP-0WxkaUUbbneR-3537h5WGN2JGsuc8EpbnwzV1FRkXQW4PnoiPH2scNBczW6VnVHnerJBrPnvl5e2vVZRM"
+          />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-white truncate">Alex Morgan</p>
+            <p className="text-xs text-slate-400 truncate">Director of Sales</p>
+          </div>
+          <span className="material-icons text-slate-400 text-lg">more_vert</span>
+        </button>
+      </div>
+    </aside>
+  );
+};
+
+export default Sidebar;

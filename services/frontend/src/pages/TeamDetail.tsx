@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Sidebar } from './DirectorDashboard';
+import Sidebar from '../components/Sidebar';
 import { teamApi, userApi } from '../api/client';
 
 const TeamDetail: React.FC = () => {
@@ -44,7 +44,7 @@ const TeamDetail: React.FC = () => {
 
   return (
     <div className="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex font-display">
-      <Sidebar active="teams" />
+      <Sidebar />
       <main className="flex-1 p-8 overflow-y-auto">
         <div className="flex justify-between items-start mb-8">
           <div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sidebar } from './DirectorDashboard';
+import Sidebar from '../components/Sidebar';
 import { analyticsApi } from '../api/client';
 
 const Leaderboard: React.FC = () => {
@@ -24,7 +24,7 @@ const Leaderboard: React.FC = () => {
 
   return (
     <div className="bg-background-light dark:bg-background-dark text-slate-800 dark:text-slate-100 min-h-screen font-display antialiased transition-colors duration-200 flex">
-      <Sidebar active="dashboard" />
+      <Sidebar />
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 overflow-y-auto">
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
           <div>
