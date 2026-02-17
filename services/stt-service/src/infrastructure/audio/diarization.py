@@ -1,6 +1,9 @@
 import os
 import logging
-import torch
+try:
+    import torch
+except ImportError:
+    torch = None
 
 logger = logging.getLogger(__name__)
 
@@ -8,7 +11,7 @@ class DiarizationService:
     def __init__(self):
         self.hf_token = os.getenv("HF_TOKEN")
         self.pipeline = None
-        if self.hf_token:
+        if self.hf_token and torch:
             try:
                 from pyannote.audio import Pipeline
                 self.pipeline = Pipeline.from_pretrained(
@@ -21,7 +24,7 @@ class DiarizationService:
             except Exception as e:
                 logger.error(f"Failed to load Pyannote pipeline: {e}")
         else:
-            logger.warning("HF_TOKEN not set, Pyannote diarization will be skipped")
+            logger.warning("HF_TOKEN not set or torch not installed, Pyannote diarization will be skipped")
 
     def process(self, audio_path):
         if not self.pipeline:

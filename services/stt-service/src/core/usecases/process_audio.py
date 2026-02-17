@@ -7,6 +7,8 @@ from src.adapters.storage.postgres_repo import save_transcript, update_call_link
 from src.adapters.events.redis_publisher import publish_transcript_ready
 from src.adapters.storage.minio_client import MinioClient
 from src.infrastructure.audio.diarization import DiarizationService, merge_transcript_with_diarization
+from src.adapters.stt.openai_provider import OpenAISTTProvider
+from src.adapters.stt.gemini_provider import GeminiSTTProvider
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +17,12 @@ class ProcessAudioUseCase:
         self.stt_local_url = os.getenv("LOCAL_STT_URL", "http://localhost:5001")
         self.minio = MinioClient()
         self.diarization_service = DiarizationService()
+        
+        self.stt_provider_name = os.getenv("STT_PROVIDER", "openai")
+        if self.stt_provider_name == "gemini":
+            self.stt_provider = GeminiSTTProvider()
+        else:
+            self.stt_provider = OpenAISTTProvider()
 
     async def execute(self, job: dict):
         call_id = job.get('call_id')
@@ -48,14 +56,18 @@ class ProcessAudioUseCase:
             # Update call record with MinIO reference
             update_call_link(call_id, f"minio://audio/{object_name}")
 
-            # 4. Transcribe (using local stt-local)
-            async with httpx.AsyncClient() as client:
-                # Note: stt-local expected 'url' in form data.
-                # Since we archived it, we can still use the original url or the new minio url if stt-local supports it.
-                # PRD says stt-local uses the URL.
-                resp = await client.post(f"{self.stt_local_url}/transcribe", data={"url": audio_url}, timeout=300)
-                resp.raise_for_status()
-                transcript_data = resp.json()
+            # 4. Transcribe (using API provider)
+            # Old local STT logic commented out:
+            # async with httpx.AsyncClient() as client:
+            #     # Note: stt-local expected 'url' in form data.
+            #     # Since we archived it, we can still use the original url or the new minio url if stt-local supports it.
+            #     # PRD says stt-local uses the URL.
+            #     resp = await client.post(f"{self.stt_local_url}/transcribe", data={"url": audio_url}, timeout=300)
+            #     resp.raise_for_status()
+            #     transcript_data = resp.json()
+
+            # New API logic:
+            transcript_data = await self.stt_provider.transcribe(wav_path)
 
             # 5. Diarization
             diarization_segments = self.diarization_service.process(wav_path)
@@ -79,7 +91,7 @@ class ProcessAudioUseCase:
 
             # Save to DB
             # We wrap the segments in the expected JSON column structure
-            save_transcript(call_id, segments, "whisper-local")
+            save_transcript(call_id, segments, self.stt_provider_name)
 
             # Publish event
             await publish_transcript_ready(call_id, company_id)

@@ -73,11 +73,14 @@ services:
     environment:
       DATABASE_URL: "host=postgres port=5432 user=salesai_user password=strong_password dbname=salesai sslmode=disable"
       REDIS_URL: "redis://redis:6379"
-      LOCAL_STT_URL: "http://stt-local:5001"
+      # LOCAL_STT_URL: "http://stt-local:5001"
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      STT_PROVIDER: "openai" # or "gemini"
     depends_on:
       - postgres
       - redis
-      - stt-local
+      # - stt-local
 
   ai-analytics:
     build: ./services/ai-analytics
@@ -88,10 +91,10 @@ services:
       - postgres
       - redis
 
-  stt-local:
-    build: ./ai-services/stt-local
-    ports:
-      - "5001:5001"
+  # stt-local:
+  #   build: ./ai-services/stt-local
+  #   ports:
+  #     - "5001:5001"
 
   nginx:
     image: nginx:1.25-alpine
