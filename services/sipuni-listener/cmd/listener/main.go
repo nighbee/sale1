@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
-	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -29,23 +28,21 @@ type SipuniAuthMessage struct {
 }
 
 type SipuniEvent struct {
-	Type      string          `json:"type"`
-	Action    string          `json:"action"`
-	Namespace string          `json:"namespace"`
-	Request   json.RawMessage `json:"request"`
+	Action  string          `json:"action"`
+	Request json.RawMessage `json:"request"`
 }
 
 type SipuniNotifyRequest struct {
-	CallID             string `json:"call_id"`
-	Event              int    `json:"event"`
-	DstNum             string `json:"dst_num"`
-	SrcNum             string `json:"src_num"`
-	Timestamp          string `json:"timestamp"`
-	UserID             string `json:"user_id"`
-	Status             string `json:"status"`
-	CallStartTimestamp string `json:"call_start_timestamp"`
-	CallRecordLink     string `json:"call_record_link"`
-	TreeName           string `json:"treeName"`
+	CallID             string      `json:"call_id"`
+	Event              json.Number `json:"event"`
+	DstNum             string      `json:"dst_num"`
+	SrcNum             string      `json:"src_num"`
+	Timestamp          json.Number `json:"timestamp"`
+	UserID             string      `json:"user_id"`
+	Status             string      `json:"status"`
+	CallStartTimestamp json.Number `json:"call_start_timestamp"`
+	CallRecordLink     string      `json:"call_record_link"`
+	TreeName           string      `json:"treeName"`
 }
 
 var (
@@ -126,10 +123,30 @@ func main() {
 		}
 		log.Println("Authentication message sent.")
 
+		// Keepalive goroutine
+		keepaliveStop := make(chan struct{})
+		go func() {
+			ticker := time.NewTicker(30 * time.Second)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ticker.C:
+					keepalive := map[string]string{"type": "keepalive"}
+					if err := c.WriteJSON(keepalive); err != nil {
+						log.Printf("Keepalive error: %v", err)
+						return
+					}
+				case <-keepaliveStop:
+					return
+				}
+			}
+		}()
+
 		// Listen loop
 		done := make(chan struct{})
 		go func() {
 			defer close(done)
+			defer close(keepaliveStop)
 			for {
 				_, message, err := c.ReadMessage()
 				if err != nil {
@@ -137,14 +154,28 @@ func main() {
 					return
 				}
 
-				log.Printf("Received raw message: %s", string(message))
+				// Log EVERY message for diagnostics
+				log.Printf("[DIAGNOSTIC] Raw message: %s", string(message))
 
+				// Try to parse as wrapped notify message
 				var event SipuniEvent
-				if err := json.Unmarshal(message, &event); err == nil {
-					if event.Action == "notify" && event.Namespace == "api" {
-						handleNotify(event.Request)
-					}
+				err = json.Unmarshal(message, &event)
+				if err == nil && event.Action == "notify" {
+					handleNotify(event.Request)
+					continue
 				}
+
+				// Fallback: Try to parse as direct notify request (unwrapped)
+				var directNotify SipuniNotifyRequest
+				err = json.Unmarshal(message, &directNotify)
+				if err == nil && directNotify.CallID != "" {
+					// We need to re-marshal to RawMessage to use existing handleNotify
+					rawRequest, _ := json.Marshal(directNotify)
+					handleNotify(rawRequest)
+					continue
+				}
+
+				log.Printf("[DIAGNOSTIC] Message did not match any expected format")
 			}
 		}()
 
@@ -168,15 +199,17 @@ func handleNotify(request json.RawMessage) {
 		return
 	}
 
+	// Log all notifications for debugging
+	log.Printf("Processing notify: ID=%s, Event=%s, Status=%s, Link=%s", notify.CallID, notify.Event.String(), notify.Status, notify.CallRecordLink)
+
 	// We only care about calls with a record link
 	if notify.CallRecordLink != "" {
-		log.Printf("Received call event: ID=%s, Status=%s, Link=%s", notify.CallID, notify.Status, notify.CallRecordLink)
 
 		callID := uuid.New().String()
 
 		// Parse timestamps for duration
-		startTime, _ := strconv.ParseInt(notify.CallStartTimestamp, 10, 64)
-		endTime, _ := strconv.ParseInt(notify.Timestamp, 10, 64)
+		startTime, _ := notify.CallStartTimestamp.Int64()
+		endTime, _ := notify.Timestamp.Int64()
 		duration := int(endTime - startTime)
 		if duration <= 0 {
 			duration = 1
