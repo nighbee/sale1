@@ -30,6 +30,7 @@ type SipuniAuthMessage struct {
 type SipuniEvent struct {
 	Action  string          `json:"action"`
 	Request json.RawMessage `json:"request"`
+	Status  int             `json:"status"`
 }
 
 type SipuniNotifyRequest struct {
@@ -154,15 +155,25 @@ func main() {
 					return
 				}
 
-				// Log EVERY message for diagnostics
-				log.Printf("[DIAGNOSTIC] Raw message: %s", string(message))
-
-				// Try to parse as wrapped notify message
+				// Try to parse as event message (notify or auth response)
 				var event SipuniEvent
 				err = json.Unmarshal(message, &event)
-				if err == nil && event.Action == "notify" {
-					handleNotify(event.Request)
-					continue
+				if err == nil {
+					// Handle auth response
+					if event.Action == "auth" {
+						if event.Status == 1 {
+							log.Println("Authentication successful")
+						} else {
+							log.Printf("Authentication failed with status: %d", event.Status)
+						}
+						continue
+					}
+
+					// Handle notify message
+					if event.Action == "notify" {
+						handleNotify(event.Request)
+						continue
+					}
 				}
 
 				// Fallback: Try to parse as direct notify request (unwrapped)
@@ -175,7 +186,7 @@ func main() {
 					continue
 				}
 
-				log.Printf("[DIAGNOSTIC] Message did not match any expected format")
+				log.Printf("[DIAGNOSTIC] Message did not match any expected format: %s", string(message))
 			}
 		}()
 
