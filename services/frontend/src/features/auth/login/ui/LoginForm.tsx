@@ -42,7 +42,14 @@ export const LoginForm: React.FC = () => {
       localStorage.setItem("user_id", user.id);
       setUser(user);
       toast.success(t("auth.welcome_back"));
-      navigate("/dashboard");
+
+      if (user.role === 'super_admin') {
+        navigate("/super-admin");
+      } else if (user.role === 'admin') {
+        navigate("/dashboard");
+      } else {
+        navigate("/user-dashboard");
+      }
     } catch (_err: unknown) {
       const apiError = _err as { response?: { data?: { error?: string } } };
       const msg = apiError.response?.data?.error || t("auth.login_failed");

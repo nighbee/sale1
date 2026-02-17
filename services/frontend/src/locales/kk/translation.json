@@ -81,5 +81,41 @@
     "view": "Көру",
     "search": "Қоңырауларды іздеу...",
     "no_calls": "Қоңыраулар табылмады."
+  },
+  "settings": {
+    "title": "Компания параметрлері",
+    "subtitle": "AI инфрақұрылымын, интеграцияларды және биллингті басқарыңыз.",
+    "general": "Жалпы",
+    "ai_providers": "AI провайдерлері",
+    "integrations": "Интеграциялар",
+    "billing": "Биллинг",
+    "stt_title": "Сөйлеуді мәтінге айналдыру (STT)",
+    "stt_subtitle": "Қоңырауларды транскрипциялау үшін қозғалтқышты таңдаңыз.",
+    "llm_title": "LLM талдауы",
+    "llm_subtitle": "Көңіл-күйді талдау және қарсылықтарды өңдеу үшін модельді таңдаңыз.",
+    "cost_estimate": "Құнды бағалау",
+    "total_estimate": "Жалпы бағалау",
+    "save_changes": "Барлық өзгерістерді сақтау",
+    "loading": "Жүктелуде...",
+    "not_found": "Компания табылмады.",
+    "stt_whisperx": "WhisperX (Жергілікті)",
+    "stt_openai": "OpenAI Whisper API",
+    "stt_gemini": "Google Gemini STT",
+    "llm_openai": "OpenAI GPT-4 Turbo",
+    "llm_gemini": "Google Gemini Pro 1.5"
+  },
+  "integrations": {
+    "title": "Интеграциялар",
+    "subtitle": "Деректер экожүйесін басқарыңыз және жұмыс процестерін оңтайландырыңыз.",
+    "request": "Интеграцияны сұрау",
+    "connected": "Қосылған интеграциялар",
+    "available": "Қолжетімді интеграциялар",
+    "active": "Белсенді",
+    "crm_connector": "CRM коннекторы",
+    "configure": "Конфигурациялау",
+    "no_active": "Белсенді интеграциялар табылмады.",
+    "connected_status": "Қосылған",
+    "connect_now": "Қазір қосылу",
+    "loading": "Интеграциялар жүктелуде..."
   }
 }

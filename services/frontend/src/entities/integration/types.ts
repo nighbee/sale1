@@ -1,6 +1,6 @@
 export interface Integration {
   id: string;
-  type: string;
+  integration_type: string;
   config: unknown;
-  status: string;
+  is_active: boolean;
 }

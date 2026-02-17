@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 import { Sidebar } from '../../../widgets/Sidebar';
 import { companyApi } from '../../../entities/company/api';
+import type { Company } from '../../../entities/company/types';
 import Button from '../../../shared/ui/Button';
 
 const CompanySettingsPage: React.FC = () => {
-  const [company, setCompany] = useState<any | null>(null);
+  const { t } = useTranslation();
+  const [company, setCompany] = useState<Company | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -14,7 +18,7 @@ const CompanySettingsPage: React.FC = () => {
       if (companyId) {
         try {
           const res = await companyApi.getCompany(companyId);
-          setCompany(res.data as any);
+          setCompany(res.data);
         } catch {
           console.error('Failed to fetch company');
         } finally {
@@ -35,15 +39,17 @@ const CompanySettingsPage: React.FC = () => {
         llm_provider: llm,
       });
       setCompany({...company, stt_model_preference: stt, llm_provider: llm});
-    } catch {
-      console.error('Failed to update settings');
+      toast.success('Settings updated successfully');
+    } catch (_err: unknown) {
+      console.error('Failed to update settings', _err);
+      toast.error('Failed to update settings');
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading) return <div>Loading...</div>;
-  if (!company) return <div>Company not found.</div>;
+  if (loading) return <div className="p-8">{t('settings.loading')}</div>;
+  if (!company) return <div className="p-8">{t('settings.not_found')}</div>;
 
   return (
     <div className="bg-background-light dark:bg-background-dark text-slate-800 dark:text-slate-200 min-h-screen flex font-display antialiased">
@@ -51,17 +57,17 @@ const CompanySettingsPage: React.FC = () => {
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 overflow-y-auto">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Company Settings</h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Manage your AI infrastructure, integrations, and billing preferences.</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('settings.title')}</h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{t('settings.subtitle')}</p>
           </div>
         </div>
 
         <div className="border-b border-border-light dark:border-border-dark mb-8 overflow-x-auto">
           <nav className="-mb-px flex space-x-8">
-            <button className="border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">General</button>
-            <button className="border-primary text-primary whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">AI Providers</button>
-            <button className="border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Integrations</button>
-            <button className="border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Billing</button>
+            <button className="border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">{t('settings.general')}</button>
+            <button className="border-primary text-primary whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">{t('settings.ai_providers')}</button>
+            <button className="border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">{t('settings.integrations')}</button>
+            <button className="border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">{t('settings.billing')}</button>
           </nav>
         </div>
 
@@ -70,15 +76,15 @@ const CompanySettingsPage: React.FC = () => {
             <section>
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Speech-to-Text (STT)</h2>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">Select the engine used to transcribe sales calls.</p>
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{t('settings.stt_title')}</h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">{t('settings.stt_subtitle')}</p>
                 </div>
               </div>
               <div className="space-y-4">
                 {[
-                  { id: 'whisperx_local', name: 'WhisperX (Self-Hosted)', type: 'Free', details: ['Zero data egress', 'Lowest latency'], warning: ['Requires GPU', 'Higher maintenance'] },
-                  { id: 'openai', name: 'OpenAI Whisper API', type: '$0.006 / min', details: ['Highest accuracy', 'Managed infra'], warning: ['Data leaves region'] },
-                  { id: 'gemini', name: 'Google Gemini STT', type: '$0.004 / min', details: ['Strong multilingual', 'Native GCP'], warning: ['Lower jargon accuracy'] },
+                  { id: 'whisperx_local', name: t('settings.stt_whisperx'), type: 'Free', details: ['Zero data egress', 'Lowest latency'], warning: ['Requires GPU', 'Higher maintenance'] },
+                  { id: 'openai', name: t('settings.stt_openai'), type: '$0.006 / min', details: ['Highest accuracy', 'Managed infra'], warning: ['Data leaves region'] },
+                  { id: 'gemini', name: t('settings.stt_gemini'), type: '$0.004 / min', details: ['Strong multilingual', 'Native GCP'], warning: ['Lower jargon accuracy'] },
                 ].map((p) => (
                   <div
                     key={p.id}
@@ -111,14 +117,14 @@ const CompanySettingsPage: React.FC = () => {
             <section>
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">LLM Analysis</h2>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">Select the model for sentiment analysis and objection handling.</p>
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{t('settings.llm_title')}</h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">{t('settings.llm_subtitle')}</p>
                 </div>
               </div>
               <div className="space-y-4">
                 {[
-                  { id: 'openai', name: 'OpenAI GPT-4 Turbo', type: '$10 / 1M tokens', details: ['SOTA reasoning', 'Excellent nuance'], warning: ['Highest cost', 'Latency ~2-3s'] },
-                  { id: 'gemini', name: 'Google Gemini Pro 1.5', type: '$7 / 1M tokens', details: ['1M+ context window', 'Cost effective'], warning: ['Strict safety filters'] },
+                  { id: 'openai', name: t('settings.llm_openai'), type: '$10 / 1M tokens', details: ['SOTA reasoning', 'Excellent nuance'], warning: ['Highest cost', 'Latency ~2-3s'] },
+                  { id: 'gemini', name: t('settings.llm_gemini'), type: '$7 / 1M tokens', details: ['1M+ context window', 'Cost effective'], warning: ['Strict safety filters'] },
                 ].map((p) => (
                   <div
                     key={p.id}
@@ -145,19 +151,23 @@ const CompanySettingsPage: React.FC = () => {
             <div className="rounded-xl border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark shadow-sm overflow-hidden p-6">
               <h3 className="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2 mb-4">
                 <span className="material-symbols-outlined text-primary">payments</span>
-                Cost Estimate
+                {t('settings.cost_estimate')}
               </h3>
               <div className="space-y-4">
                 <div className="flex justify-between items-center text-sm">
-                  <span className="text-slate-600 dark:text-slate-300">Total Estimate</span>
+                  <span className="text-slate-600 dark:text-slate-300">{t('settings.total_estimate')}</span>
                   <span className="text-2xl font-bold text-slate-900 dark:text-white">$162/mo</span>
                 </div>
                 <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
                   <div className="bg-primary h-full w-[63%]"></div>
                 </div>
               </div>
-              <Button isLoading={saving} className="w-full mt-6 py-3 px-4">
-                Save All Changes
+              <Button
+                isLoading={saving}
+                className="w-full mt-6 py-3 px-4"
+                onClick={() => handleSave(company.stt_model_preference as string, company.llm_provider as string)}
+              >
+                {t('settings.save_changes')}
               </Button>
             </div>
           </div>
