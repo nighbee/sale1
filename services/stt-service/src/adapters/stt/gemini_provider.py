@@ -4,11 +4,13 @@ from src.core.ports.stt_provider import STTProvider
 
 class GeminiSTTProvider(STTProvider):
     def __init__(self, api_key: str = None):
-        self.api_key = api_key or os.getenv("GEMINI_API_KEY")
+        self.api_key = api_key or os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
         if not self.api_key:
-            raise ValueError("GEMINI_API_KEY is not set")
+            raise ValueError("GOOGLE_API_KEY is not set")
         genai.configure(api_key=self.api_key)
-        self.model = genai.GenerativeModel('gemini-1.5-flash')
+        
+        model_name = os.getenv("GOOGLE_AI_MODEL", "gemini-1.5-flash")
+        self.model = genai.GenerativeModel(model_name)
 
     async def transcribe(self, audio_path: str) -> dict:
         try:

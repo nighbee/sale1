@@ -75,7 +75,8 @@ services:
       REDIS_URL: "redis://redis:6379"
       # LOCAL_STT_URL: "http://stt-local:5001"
       OPENAI_API_KEY: ${OPENAI_API_KEY}
-      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      GOOGLE_AI_MODEL: ${GOOGLE_AI_MODEL}
       STT_PROVIDER: "openai" # or "gemini"
     depends_on:
       - postgres
@@ -87,6 +88,9 @@ services:
     environment:
       DATABASE_URL: "host=postgres port=5432 user=salesai_user password=strong_password dbname=salesai sslmode=disable"
       REDIS_URL: "redis://redis:6379"
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      GOOGLE_AI_MODEL: ${GOOGLE_AI_MODEL}
     depends_on:
       - postgres
       - redis
