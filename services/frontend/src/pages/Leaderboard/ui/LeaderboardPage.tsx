@@ -3,16 +3,24 @@ import { useTranslation } from 'react-i18next';
 import { Sidebar } from '../../../widgets/Sidebar';
 import { analyticsApi } from '../../../entities/analytics/api';
 
+interface LeaderboardEntry {
+  manager_id: string;
+  manager_name: string;
+  total_calls: number;
+  avg_quality: number;
+  avg_kpi: number;
+}
+
 const LeaderboardPage: React.FC = () => {
   const { t } = useTranslation();
-  const [data, setData] = useState<any[]>([]);
+  const [data, setData] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const res = await analyticsApi.getLeaderboard();
-        const responseData = res.data as any;
+        const responseData = res.data as { leaderboard?: LeaderboardEntry[] };
         setData(responseData.leaderboard || []);
       } catch {
         console.error('Failed to fetch leaderboard');

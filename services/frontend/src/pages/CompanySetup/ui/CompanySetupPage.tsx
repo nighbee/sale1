@@ -22,7 +22,7 @@ const CompanySetupPage: React.FC = () => {
       if (companyId) {
         try {
           const res = await companyApi.getCompany(companyId);
-          const data = res.data as any;
+          const data = res.data as { name?: string; industry?: string; size?: string; time_zone?: string };
           setFormData({
             companyName: data.name || '',
             industry: data.industry || '',

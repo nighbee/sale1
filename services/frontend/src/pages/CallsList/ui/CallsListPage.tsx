@@ -4,10 +4,11 @@ import { callApi } from '../../../entities/call/api';
 import Skeleton from '../../../shared/ui/Skeleton';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import type { Call } from '../../../entities/call/types';
 
 const CallsListPage: React.FC = () => {
   const { t } = useTranslation();
-  const [calls, setCalls] = useState<any[]>([]);
+  const [calls, setCalls] = useState<Call[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ total: 0, avgScore: 0, failed: 0 });
 
@@ -15,11 +16,12 @@ const CallsListPage: React.FC = () => {
     const fetchData = async () => {
       try {
         const res = await callApi.listCalls({});
-        const data = res.data as any;
-        setCalls(data.calls || []);
+        const data = res.data as { calls?: Call[], total?: number };
+        const callsList = data.calls || [];
+        setCalls(callsList);
         // Simulated stats calculation
-        const total = data.total || (data.calls ? data.calls.length : 0);
-        const avg = data.calls && data.calls.length > 0 ? 78.4 : 0; // Mocked avg
+        const total = data.total || (callsList.length);
+        const avg = callsList.length > 0 ? 78.4 : 0; // Mocked avg
         setStats({ total, avgScore: avg, failed: 12 });
       } catch {
         console.error('Failed to fetch calls');

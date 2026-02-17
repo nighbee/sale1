@@ -4,14 +4,16 @@ import { useTranslation } from 'react-i18next';
 import { Sidebar } from '../../../widgets/Sidebar';
 import { teamApi } from '../../../entities/team/api';
 import { userApi } from '../../../entities/user/api';
+import type { Team } from '../../../entities/team/types';
+import type { User } from '../../../entities/user/types';
 import Button from '../../../shared/ui/Button';
 
 const TeamDetailPage: React.FC = () => {
   const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [team, setTeam] = useState<any>(null);
-  const [users, setUsers] = useState<any[]>([]);
+  const [team, setTeam] = useState<Team | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -23,8 +25,8 @@ const TeamDetailPage: React.FC = () => {
           userApi.listUsers(),
         ]);
         setTeam(teamRes.data);
-        const userData = usersRes.data as any;
-        setUsers(userData.users.filter((u: any) => u.team_id === id));
+        const userData = usersRes.data as { users: User[] };
+        setUsers(userData.users.filter((u: User) => u.team_id === id));
       } catch {
         console.error('Failed to fetch team details');
       } finally {
