@@ -1,18 +1,41 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useUserStore } from '../../../entities/user/model/store';
 import LanguageSwitcher from '../../../shared/ui/LanguageSwitcher';
 
 const Sidebar: React.FC = () => {
   const { t } = useTranslation();
-  const navItems = [
-    { id: 'dashboard', icon: 'dashboard', label: t('nav.dashboard'), path: '/dashboard' },
-    { id: 'teams', icon: 'groups', label: t('nav.teams'), path: '/teams' },
-    { id: 'calls', icon: 'call', label: t('nav.calls'), path: '/calls' },
-    { id: 'leaderboard', icon: 'leaderboard', label: t('nav.leaderboard'), path: '/leaderboard' },
-    { id: 'integrations', icon: 'hub', label: t('nav.integrations'), path: '/integrations' },
-    { id: 'settings', icon: 'settings', label: t('nav.settings'), path: '/settings' },
-  ];
+  const { user } = useUserStore();
+
+  const getNavItems = () => {
+    if (user?.role === 'super_admin') {
+      return [
+        { id: 'super-admin', icon: 'admin_panel_settings', label: 'Super Admin', path: '/super-admin' },
+        { id: 'settings', icon: 'settings', label: t('nav.settings'), path: '/settings' },
+      ];
+    }
+
+    if (user?.role === 'admin') {
+      return [
+        { id: 'dashboard', icon: 'dashboard', label: t('nav.dashboard'), path: '/dashboard' },
+        { id: 'teams', icon: 'groups', label: t('nav.teams'), path: '/teams' },
+        { id: 'calls', icon: 'call', label: t('nav.calls'), path: '/calls' },
+        { id: 'leaderboard', icon: 'leaderboard', label: t('nav.leaderboard'), path: '/leaderboard' },
+        { id: 'integrations', icon: 'hub', label: t('nav.integrations'), path: '/integrations' },
+        { id: 'settings', icon: 'settings', label: t('nav.settings'), path: '/settings' },
+      ];
+    }
+
+    // Default for 'user' role
+    return [
+      { id: 'user-dashboard', icon: 'dashboard', label: t('nav.dashboard'), path: '/user-dashboard' },
+      { id: 'calls', icon: 'call', label: t('nav.calls'), path: '/calls' },
+      { id: 'leaderboard', icon: 'leaderboard', label: t('nav.leaderboard'), path: '/leaderboard' },
+    ];
+  };
+
+  const navItems = getNavItems();
 
   return (
     <aside className="w-64 bg-slate-900 flex-shrink-0 flex flex-col text-white transition-all duration-300">
@@ -42,15 +65,13 @@ const Sidebar: React.FC = () => {
       </nav>
       <div className="p-4 border-t border-white/10">
         <LanguageSwitcher />
-        <button className="flex items-center gap-3 w-full hover:bg-white/5 p-2 rounded-lg transition-colors text-left">
-          <img
-            alt="Profile"
-            className="w-9 h-9 rounded-full border-2 border-primary"
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuB-E_TDTpvwgUsWY03c8YNZVfIkJPM7_vYomCxVaURoVI3SsPy63e3EU_lUsxp5L9tDvJx2QEkplHwv6cyBGxSG9PnNqRP9PAMG_13ze__58mxV5LhcQcYqExwVDaFZc33iosJb59WR0PVvspn1B5ju13RY0hEhmNnB11BZE2Pm5r-j3KEi6LBSVv6HP-0WxkaUUbbneR-3537h5WGN2JGsuc8EpbnwzV1FRkXQW4PnoiPH2scNBczW6VnVHnerJBrPnvl5e2vVZRM"
-          />
+        <button className="flex items-center gap-3 w-full hover:bg-white/5 p-2 rounded-lg transition-colors text-left mt-4">
+          <div className="w-9 h-9 rounded-full border-2 border-primary bg-primary/20 flex items-center justify-center text-primary font-bold">
+            {user?.full_name?.charAt(0) || user?.email?.charAt(0) || 'U'}
+          </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-white truncate">Alex Morgan</p>
-            <p className="text-xs text-slate-400 truncate">Director of Sales</p>
+            <p className="text-sm font-medium text-white truncate">{user?.full_name || user?.email || 'User'}</p>
+            <p className="text-xs text-slate-400 truncate capitalize">{user?.role || 'Role'}</p>
           </div>
           <span className="material-icons text-slate-400 text-lg">more_vert</span>
         </button>

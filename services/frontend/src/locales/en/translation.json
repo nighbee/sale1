@@ -81,5 +81,41 @@
     "view": "View",
     "search": "Search calls...",
     "no_calls": "No calls found."
+  },
+  "settings": {
+    "title": "Company Settings",
+    "subtitle": "Manage your AI infrastructure, integrations, and billing preferences.",
+    "general": "General",
+    "ai_providers": "AI Providers",
+    "integrations": "Integrations",
+    "billing": "Billing",
+    "stt_title": "Speech-to-Text (STT)",
+    "stt_subtitle": "Select the engine used to transcribe sales calls.",
+    "llm_title": "LLM Analysis",
+    "llm_subtitle": "Select the model for sentiment analysis and objection handling.",
+    "cost_estimate": "Cost Estimate",
+    "total_estimate": "Total Estimate",
+    "save_changes": "Save All Changes",
+    "loading": "Loading...",
+    "not_found": "Company not found.",
+    "stt_whisperx": "WhisperX (Self-Hosted)",
+    "stt_openai": "OpenAI Whisper API",
+    "stt_gemini": "Google Gemini STT",
+    "llm_openai": "OpenAI GPT-4 Turbo",
+    "llm_gemini": "Google Gemini Pro 1.5"
+  },
+  "integrations": {
+    "title": "Integrations",
+    "subtitle": "Manage your data ecosystem and streamline lead workflows across platforms.",
+    "request": "Request Integration",
+    "connected": "Connected Integrations",
+    "available": "Available Integrations",
+    "active": "Active",
+    "crm_connector": "CRM Connector",
+    "configure": "Configure",
+    "no_active": "No active integrations found.",
+    "connected_status": "Connected",
+    "connect_now": "Connect Now",
+    "loading": "Loading integrations..."
   }
 }

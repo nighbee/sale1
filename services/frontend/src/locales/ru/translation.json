@@ -81,5 +81,41 @@
     "view": "Посмотреть",
     "search": "Поиск звонков...",
     "no_calls": "Звонки не найдены."
+  },
+  "settings": {
+    "title": "Настройки компании",
+    "subtitle": "Управляйте инфраструктурой ИИ, интеграциями и биллингом.",
+    "general": "Общие",
+    "ai_providers": "Провайдеры ИИ",
+    "integrations": "Интеграции",
+    "billing": "Биллинг",
+    "stt_title": "Преобразование речи в текст (STT)",
+    "stt_subtitle": "Выберите движок для транскрибации звонков.",
+    "llm_title": "Анализ LLM",
+    "llm_subtitle": "Выберите модель для анализа настроений и обработки возражений.",
+    "cost_estimate": "Оценка стоимости",
+    "total_estimate": "Общая оценка",
+    "save_changes": "Сохранить все изменения",
+    "loading": "Загрузка...",
+    "not_found": "Компания не найдена.",
+    "stt_whisperx": "WhisperX (Локальный)",
+    "stt_openai": "OpenAI Whisper API",
+    "stt_gemini": "Google Gemini STT",
+    "llm_openai": "OpenAI GPT-4 Turbo",
+    "llm_gemini": "Google Gemini Pro 1.5"
+  },
+  "integrations": {
+    "title": "Интеграции",
+    "subtitle": "Управляйте экосистемой данных и оптимизируйте рабочие процессы.",
+    "request": "Запросить интеграцию",
+    "connected": "Подключенные интеграции",
+    "available": "Доступные интеграции",
+    "active": "Активно",
+    "crm_connector": "CRM Коннектор",
+    "configure": "Настроить",
+    "no_active": "Активных интеграций не найдено.",
+    "connected_status": "Подключено",
+    "connect_now": "Подключить сейчас",
+    "loading": "Загрузка интеграций..."
   }
 }

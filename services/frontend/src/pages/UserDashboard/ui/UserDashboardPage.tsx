@@ -3,11 +3,19 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Sidebar } from '../../../widgets/Sidebar';
 import { callApi } from '../../../entities/call/api';
+import { useUserStore } from '../../../entities/user/model/store';
 import Skeleton from '../../../shared/ui/Skeleton';
 
-const RepDashboardPage: React.FC = () => {
+interface CallRecord {
+  id: string;
+  client_phone: string;
+  call_date: string;
+}
+
+export const UserDashboardPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { user } = useUserStore();
   const [stats] = useState({
     calls: 42,
     score: 87.5,
@@ -22,7 +30,7 @@ const RepDashboardPage: React.FC = () => {
     const fetchData = async () => {
       try {
         const callsRes = await callApi.listCalls({ limit: 5 });
-        const data = callsRes.data as any;
+        const data = callsRes.data as { calls: CallRecord[] };
         setRecentCalls(data.calls || []);
       } catch {
         console.error('Failed to fetch rep data');
@@ -54,15 +62,29 @@ const RepDashboardPage: React.FC = () => {
             <div className="h-8 w-px bg-border-light dark:bg-slate-800 mx-2"></div>
             <div className="flex items-center gap-3">
               <div className="text-right hidden sm:block">
-                <p className="text-sm font-bold text-slate-900 dark:text-slate-100">Alex Morgan</p>
-                <p className="text-xs text-slate-500">Sales Representative</p>
+                <p className="text-sm font-bold text-slate-900 dark:text-slate-100">{user?.full_name || user?.email || 'User'}</p>
+                <p className="text-xs text-slate-500 capitalize">{user?.role || 'Sales Representative'}</p>
               </div>
-              <div className="h-10 w-10 rounded-full bg-primary/20 bg-cover bg-center border border-primary/10" style={{backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuDYxbtApsI07U94vF85V8AhKd1IYE2tjpVAKbgqEq-hxjro7mIsRCS1rvsD6N62I--sqA5D9j2Ytfl31vDaER65hpue9ODz-BG3_zL8qnPXCn9NYVq1mqA6GpffcL_mjf8HxeWCx-GyhkfBFV5vAgUyiBmVIhyWuyKFS8Hvql-dvyFEK-b6fp8cHVQZ__ZMJrCPOCd29cHWbVt0QrS61a2bFmGaMBPlVzNuV3QVHFvtkTJC3fTWLOuN68PgZnexOBj_jIRWWHLJb8M')"}}></div>
+              <div className="h-10 w-10 rounded-full bg-primary/20 bg-cover bg-center border border-primary/10 flex items-center justify-center text-primary font-bold">
+                {user?.full_name?.charAt(0) || user?.email?.charAt(0) || 'U'}
+              </div>
             </div>
           </div>
         </header>
 
         <div className="p-8 max-w-7xl mx-auto space-y-8">
+          {user?.manager_name && (
+            <div className="bg-primary/5 border border-primary/10 rounded-xl p-4 flex items-center gap-4">
+              <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                <span className="material-symbols-outlined">groups</span>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Your Team</p>
+                <p className="text-sm font-bold text-slate-900 dark:text-slate-100">{user.manager_name}'s Team</p>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-border-light dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow">
               <p className="text-sm font-medium text-slate-500 mb-1">{t('dashboard.your_calls')}</p>
@@ -176,7 +198,7 @@ const RepDashboardPage: React.FC = () => {
                         </tr>
                       ))
                     ) : (
-                    recentCalls.map((call) => (
+                    (recentCalls as unknown as CallRecord[]).map((call) => (
                       <tr key={call.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
@@ -186,7 +208,7 @@ const RepDashboardPage: React.FC = () => {
                             <span className="font-semibold">{call.client_phone}</span>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-sm text-slate-500">{new Date(call.call_date).toLocaleDateString()}</td>
+                        <td className="px-6 py-4 text-sm text-slate-500">{call.call_date ? new Date(call.call_date).toLocaleDateString() : 'N/A'}</td>
                         <td className="px-6 py-4">
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-400">
                             92
@@ -211,4 +233,3 @@ const RepDashboardPage: React.FC = () => {
   );
 };
 
-export default RepDashboardPage;
