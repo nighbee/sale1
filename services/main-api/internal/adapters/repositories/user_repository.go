@@ -20,8 +20,8 @@ func NewUserRepository(db *sql.DB) ports.UserRepository {
 func (r *userRepository) Create(ctx context.Context, user *domain.User) error {
 	query := `
 		INSERT INTO auth_schema.users
-		(id, company_id, email, password_hash, role, manager_id, manager_name, is_active, team_id)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		(id, company_id, email, password_hash, role, manager_id, manager_name, is_active)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		RETURNING created_at, updated_at
 	`
 
@@ -36,7 +36,6 @@ func (r *userRepository) Create(ctx context.Context, user *domain.User) error {
 		user.ManagerID,
 		user.ManagerName,
 		user.IsActive,
-		user.TeamID,
 	).Scan(&user.CreatedAt, &user.UpdatedAt)
 
 	return err

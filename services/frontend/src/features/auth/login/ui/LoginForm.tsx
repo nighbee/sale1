@@ -43,9 +43,9 @@ export const LoginForm: React.FC = () => {
       setUser(user);
       toast.success(t("auth.welcome_back"));
 
-      if (user.role === "super_admin") {
+      if (user.role === 'super_admin') {
         navigate("/super-admin");
-      } else if (user.role === "tenant_admin") {
+      } else if (user.role === 'admin') {
         navigate("/dashboard");
       } else {
         navigate("/user-dashboard");
@@ -116,7 +116,11 @@ export const LoginForm: React.FC = () => {
         </div>
       </div>
 
-      <Button className="w-full" type="submit" isLoading={loading}>
+      <Button
+        className="w-full"
+        type="submit"
+        isLoading={loading}
+      >
         {t("auth.sign_in")}
       </Button>
     </form>

@@ -1,28 +1,24 @@
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  Navigate,
-} from "react-router-dom";
-import { Toaster } from "sonner";
-import { RegisterPage } from "@pages/Register";
-import { LoginPage } from "@pages/Login";
-import { CompanySetupPage } from "@pages/CompanySetup";
-import { TeamCreationPage } from "../pages/TeamCreation";
-import { ScriptUploadPage } from "../pages/ScriptUpload";
-import { InviteMembersPage } from "../pages/InviteMembers";
-import { DirectorDashboardPage } from "../pages/DirectorDashboard";
-import { TeamsOverviewPage } from "../pages/TeamsOverview";
-import { TeamDetailPage } from "../pages/TeamDetail";
-import { UserDashboardPage } from "../pages/UserDashboard";
-import { CompanySettingsPage } from "../pages/CompanySettings";
-import { IntegrationsPage } from "../pages/Integrations";
-import { LeaderboardPage } from "../pages/Leaderboard";
-import { CallDetailPage } from "../pages/CallDetail";
-import { CallsListPage } from "../pages/CallsList";
-import { SuperAdminPage } from "../pages/SuperAdmin";
-import ProtectedRoute from "./providers/ProtectedRoute";
-import "./styles/App.css";
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'sonner';
+import { RegisterPage } from '@pages/Register';
+import { LoginPage } from '@pages/Login';
+import { CompanySetupPage } from '@pages/CompanySetup';
+import { TeamCreationPage } from '../pages/TeamCreation';
+import { ScriptUploadPage } from '../pages/ScriptUpload';
+import { InviteMembersPage } from '../pages/InviteMembers';
+import { DirectorDashboardPage } from '../pages/DirectorDashboard';
+import { TeamsOverviewPage } from '../pages/TeamsOverview';
+import { TeamDetailPage } from '../pages/TeamDetail';
+import { UserDashboardPage } from '../pages/UserDashboard';
+import { CompanySettingsPage } from '../pages/CompanySettings';
+import { IntegrationsPage } from '../pages/Integrations';
+import { LeaderboardPage } from '../pages/Leaderboard';
+import { CallDetailPage } from '../pages/CallDetail';
+import { CallsListPage } from '../pages/CallsList';
+import { SuperAdminPage } from '../pages/SuperAdmin';
+import { ProfilePage } from '../pages/Profile';
+import ProtectedRoute from './providers/ProtectedRoute';
+import './styles/App.css';
 
 function App() {
   return (
@@ -70,7 +66,7 @@ function App() {
         <Route
           path="/super-admin"
           element={
-            <ProtectedRoute allowedRoles={["super_admin"]}>
+            <ProtectedRoute allowedRoles={['super_admin']}>
               <SuperAdminPage />
             </ProtectedRoute>
           }
@@ -78,7 +74,7 @@ function App() {
         <Route
           path="/dashboard"
           element={
-            <ProtectedRoute allowedRoles={["tenant_admin"]}>
+            <ProtectedRoute allowedRoles={['admin']}>
               <DirectorDashboardPage />
             </ProtectedRoute>
           }
@@ -86,7 +82,7 @@ function App() {
         <Route
           path="/user-dashboard"
           element={
-            <ProtectedRoute allowedRoles={["sales_rep"]}>
+            <ProtectedRoute allowedRoles={['user']}>
               <UserDashboardPage />
             </ProtectedRoute>
           }
@@ -94,7 +90,7 @@ function App() {
         <Route
           path="/teams"
           element={
-            <ProtectedRoute allowedRoles={["tenant_admin"]}>
+            <ProtectedRoute allowedRoles={['admin']}>
               <TeamsOverviewPage />
             </ProtectedRoute>
           }
@@ -102,7 +98,7 @@ function App() {
         <Route
           path="/teams/:id"
           element={
-            <ProtectedRoute allowedRoles={["tenant_admin"]}>
+            <ProtectedRoute allowedRoles={['admin']}>
               <TeamDetailPage />
             </ProtectedRoute>
           }
@@ -110,7 +106,7 @@ function App() {
         <Route
           path="/settings"
           element={
-            <ProtectedRoute allowedRoles={["tenant_admin", "super_admin"]}>
+            <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
               <CompanySettingsPage />
             </ProtectedRoute>
           }
@@ -118,7 +114,7 @@ function App() {
         <Route
           path="/integrations"
           element={
-            <ProtectedRoute allowedRoles={["tenant_admin"]}>
+            <ProtectedRoute allowedRoles={['admin']}>
               <IntegrationsPage />
             </ProtectedRoute>
           }
@@ -144,6 +140,14 @@ function App() {
           element={
             <ProtectedRoute>
               <CallDetailPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <ProfilePage />
             </ProtectedRoute>
           }
         />

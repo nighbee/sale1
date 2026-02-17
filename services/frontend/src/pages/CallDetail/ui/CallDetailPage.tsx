@@ -78,7 +78,7 @@ const CallDetailPage: React.FC = () => {
         setCall(callRes.data);
         setTranscript(transRes.data);
         setAnalysis(analRes.data);
-      } catch (_err) {
+      } catch {
         console.error('Failed to fetch call data');
       } finally {
         setLoading(false);

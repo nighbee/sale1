@@ -18,7 +18,8 @@
     "not_found": "Не найдено.",
     "name": "Имя",
     "email": "Электронная почта",
-    "role": "Роль"
+    "role": "Роль",
+    "logout": "Выйти"
   },
   "nav": {
     "dashboard": "Панель управления",
@@ -27,7 +28,8 @@
     "leaderboard": "Лидерборд",
     "integrations": "Интеграции",
     "settings": "Настройки",
-    "super_admin": "Супер Админ"
+    "super_admin": "Супер Админ",
+    "profile": "Профиль"
   },
   "auth": {
     "login_title": "Войдите, чтобы получить доступ к панели продаж",
@@ -271,6 +273,16 @@
     "connect_failed": "Ошибка при подключении {{type}}",
     "disconnect_success": "{{type}} успешно отключен",
     "disconnect_failed": "Ошибка при отключении {{type}}"
+  },
+  "profile": {
+    "title": "Мой профиль",
+    "personal_info": "Личная информация",
+    "full_name": "Полное имя",
+    "email": "Адрес электронной почты",
+    "role": "Текущая роль",
+    "company": "Компания",
+    "joined": "Дата регистрации",
+    "status": "Статус аккаунта"
   },
   "teams": {
     "management_title": "Управление командами",

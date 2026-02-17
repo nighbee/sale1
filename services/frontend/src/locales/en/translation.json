@@ -18,7 +18,8 @@
     "not_found": "Not found.",
     "name": "Name",
     "email": "Email",
-    "role": "Role"
+    "role": "Role",
+    "logout": "Logout"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -27,7 +28,8 @@
     "leaderboard": "Leaderboard",
     "integrations": "Integrations",
     "settings": "Settings",
-    "super_admin": "Super Admin"
+    "super_admin": "Super Admin",
+    "profile": "Profile"
   },
   "auth": {
     "login_title": "Sign in to access your sales dashboard",
@@ -271,6 +273,16 @@
     "connect_failed": "Failed to connect {{type}}",
     "disconnect_success": "{{type}} disconnected successfully",
     "disconnect_failed": "Failed to disconnect {{type}}"
+  },
+  "profile": {
+    "title": "My Profile",
+    "personal_info": "Personal Information",
+    "full_name": "Full Name",
+    "email": "Email Address",
+    "role": "Current Role",
+    "company": "Company",
+    "joined": "Joined Date",
+    "status": "Account Status"
   },
   "teams": {
     "management_title": "Teams Management",

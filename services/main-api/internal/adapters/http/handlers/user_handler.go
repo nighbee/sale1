@@ -1,14 +1,10 @@
 package handlers
 
 import (
-	"encoding/json"
-	"log"
-
 	"github.com/gofiber/fiber/v2"
+	"github.com/salesai/main-api/internal/core/ports"
 	"github.com/google/uuid"
 	"github.com/salesai/main-api/internal/core/domain"
-	"github.com/salesai/main-api/internal/core/ports"
-	"golang.org/x/crypto/bcrypt"
 )
 
 type UserHandler struct {
@@ -62,24 +58,15 @@ func (h *UserHandler) InviteUser(c *fiber.Ctx) error {
 		ManagerName       string   `json:"manager_name"`
 		ManagerID         string   `json:"manager_id"`
 		TemporaryPassword string   `json:"temporary_password"`
-		TeamID            string   `json:"team_id"`
 	}
 
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid body"})
 	}
-    // Log the parsed request struct
-    reqJson, _ := json.MarshalIndent(req, "", "  ")
-    log.Printf("InviteUser request: %s", reqJson)
 
 	emails := req.Emails
 	if req.Email != "" {
 		emails = append(emails, req.Email)
-	}
-
-	teamId := req.TeamID
-	if teamId == "" {
-		teamId = "" // Replace with your default team ID if needed
 	}
 
 	if len(emails) == 0 {
@@ -93,11 +80,6 @@ func (h *UserHandler) InviteUser(c *fiber.Ctx) error {
 
 	var invitedUsers []*domain.User
 	for _, email := range emails {
-		hash, err := bcrypt.GenerateFromPassword([]byte(req.TemporaryPassword), bcrypt.DefaultCost)
-		if err != nil {
-			continue
-		}
-
 		user := &domain.User{
 			ID:           uuid.New().String(),
 			CompanyID:    companyID,
@@ -105,8 +87,8 @@ func (h *UserHandler) InviteUser(c *fiber.Ctx) error {
 			Role:         domain.UserRole(role),
 			ManagerName:  req.ManagerName,
 			ManagerID:    &req.ManagerID,
-			PasswordHash: string(hash),
-			TeamID:       teamId,
+			PasswordHash: "invited", // In real app, hash the temporary password or handle via flow
+			IsActive:     true,
 		}
 		if err := h.userRepo.Create(c.Context(), user); err != nil {
 			// Skip duplicates or log error

@@ -22,7 +22,7 @@ const DirectorDashboardPage: React.FC = () => {
     const fetchData = async () => {
       try {
         const response = await analyticsApi.getTeamPerformance('last_30_days');
-        const data = response.data as any;
+        const data = response.data as { managers?: ManagerPerformance[] };
         setManagers(data.managers || []);
       } catch (_err) {
         console.error("Failed to fetch performance data", _err);
