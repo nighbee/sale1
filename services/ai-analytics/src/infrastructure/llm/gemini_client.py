@@ -7,11 +7,11 @@ logger = logging.getLogger(__name__)
 
 class GeminiClient:
     def __init__(self):
-        self.api_key = os.getenv("GEMINI_API_KEY")
+        self.api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
         if self.api_key:
             genai.configure(api_key=self.api_key)
         else:
-            logger.warning("GEMINI_API_KEY not set")
+            logger.warning("GOOGLE_API_KEY is not set")
 
     async def analyze(self, system_prompt: str, user_prompt: str, model: str = "gemini-pro") -> dict:
         logger.info(f"Calling Gemini API with model {model}")

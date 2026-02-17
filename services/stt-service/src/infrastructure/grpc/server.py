@@ -2,6 +2,7 @@ import grpc
 from concurrent import futures
 import time
 import logging
+import os
 from . import stt_service_pb2
 from . import stt_service_pb2_grpc
 from src.adapters.storage.postgres_repo import get_pool
