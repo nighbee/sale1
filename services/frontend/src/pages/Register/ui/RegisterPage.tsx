@@ -40,10 +40,10 @@ const RegisterPage: React.FC = () => {
             </div>
             <div className="flex items-center gap-2 mb-6">
               <span className="bg-primary/10 text-primary text-xs font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
-                Step 2 of 3
+                {t('common.step', { current: 2, total: 3 })}
               </span>
               <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                Account Setup
+                {t('auth.account_setup')}
               </span>
             </div>
 
@@ -60,12 +60,12 @@ const RegisterPage: React.FC = () => {
           </div>
           <div className="bg-slate-50 dark:bg-slate-800 px-8 py-4 text-center sm:hidden">
             <p className="text-sm text-slate-600 dark:text-slate-400">
-              Already have an account?{" "}
+              {t("auth.have_account")}{" "}
               <Link
                 className="font-medium text-primary hover:text-blue-500"
                 to="/login"
               >
-                Log in
+                {t("auth.log_in")}
               </Link>
             </p>
           </div>
@@ -73,7 +73,7 @@ const RegisterPage: React.FC = () => {
       </main>
 
       <footer className="py-6 text-center text-xs text-slate-500 dark:text-slate-400">
-        <p>SalesAI © 2024. All rights reserved.</p>
+        <p>{t('common.all_rights_reserved')}</p>
       </footer>
     </div>
   );

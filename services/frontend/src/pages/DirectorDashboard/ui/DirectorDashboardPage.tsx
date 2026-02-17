@@ -49,7 +49,7 @@ const DirectorDashboardPage: React.FC = () => {
               <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
                 <span className="material-icons text-lg">search</span>
               </span>
-              <input className="pl-10 pr-4 py-1.5 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-slate-50 dark:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-primary w-64 transition-all" placeholder="Search teams, calls..." type="text"/>
+              <input className="pl-10 pr-4 py-1.5 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-slate-50 dark:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-primary w-64 transition-all" placeholder={t('common.search')} type="text"/>
             </div>
             <button className="flex items-center gap-2 px-3 py-1.5 border border-slate-200 dark:border-slate-600 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors">
               <span className="material-icons text-lg text-slate-400">calendar_today</span>
@@ -87,7 +87,7 @@ const DirectorDashboardPage: React.FC = () => {
                 { label: t('dashboard.total_calls'), value: totalCalls, trend: '+12%', icon: 'phone_in_talk', color: 'blue' },
                 { label: t('dashboard.avg_quality'), value: avgQuality, trend: '+2.1', icon: 'analytics', color: 'purple' },
                 { label: t('dashboard.active_teams'), value: managers.length, subValue: t('dashboard.managers'), icon: 'groups', color: 'indigo' },
-                { label: t('dashboard.pending_analysis'), value: '3', subValue: t('dashboard.pending'), icon: 'hourglass_top', color: 'orange', status: 'Processing' },
+                { label: t('dashboard.pending_analysis'), value: '3', subValue: t('dashboard.pending'), icon: 'hourglass_top', color: 'orange', status: t('dashboard.processing') },
               ].map((metric) => (
                 <div key={metric.label} className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow">
                   <div className="flex justify-between items-start mb-4">

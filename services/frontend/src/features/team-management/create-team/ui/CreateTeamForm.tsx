@@ -1,10 +1,12 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { teamApi } from "../../../../entities/team/api";
 import Button from "../../../../shared/ui/Button";
 import Input from "../../../../shared/ui/Input";
 
 export const CreateTeamForm: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     teamName: "",
@@ -45,10 +47,10 @@ export const CreateTeamForm: React.FC = () => {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <Input
-        label="Team Name"
+        label={t('setup.team_name_label')}
         id="team_name"
         name="teamName"
-        placeholder="Inbound Sales Team"
+        placeholder={t('setup.team_name_placeholder')}
         required
         value={formData.teamName}
         onChange={handleChange}
@@ -61,27 +63,26 @@ export const CreateTeamForm: React.FC = () => {
             className="block text-sm font-medium text-gray-700 dark:text-gray-300"
             htmlFor="description"
           >
-            Description
+            {t('setup.team_desc_label')}
           </label>
           <span className="text-xs text-primary font-medium flex items-center gap-1">
             <span className="material-icons text-[14px]">
               auto_awesome
             </span>{" "}
-            AI Context
+            {t('setup.ai_context')}
           </span>
         </div>
         <textarea
           className="block w-full rounded-lg border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:border-primary focus:ring-primary sm:text-sm py-2.5 px-3 shadow-sm transition-colors resize-none"
           id="description"
           name="description"
-          placeholder="e.g., Handles all incoming leads from marketing campaigns and website inquiries..."
+          placeholder={t('setup.team_desc_placeholder')}
           rows={4}
           value={formData.description}
           onChange={handleChange}
         ></textarea>
         <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-          Optional. This helps our AI suggest relevant KPIs and coaching
-          templates.
+          {t('setup.team_desc_hint')}
         </p>
       </div>
 
@@ -102,10 +103,10 @@ export const CreateTeamForm: React.FC = () => {
               className="font-medium text-gray-700 dark:text-gray-300"
               htmlFor="auto_assign"
             >
-              Enable AI Lead Routing
+              {t('setup.lead_routing_label')}
             </label>
             <p className="text-gray-500 dark:text-gray-400 text-xs">
-              Automatically assign leads based on rep performance.
+              {t('setup.lead_routing_hint')}
             </p>
           </div>
         </div>
@@ -119,7 +120,7 @@ export const CreateTeamForm: React.FC = () => {
           className="w-full sm:w-auto"
         >
           <span className="material-icons text-lg mr-2">arrow_back</span>
-          Back
+          {t('common.back')}
         </Button>
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
           <button
@@ -127,14 +128,14 @@ export const CreateTeamForm: React.FC = () => {
             className="text-sm text-gray-500 dark:text-gray-400 hover:text-primary transition-colors hidden sm:block"
             onClick={() => navigate("/script-upload")}
           >
-            Skip for now
+            {t('common.skip')}
           </button>
           <Button
             className="w-full sm:w-auto"
             type="submit"
             isLoading={loading}
           >
-            Create Team
+            {t('teams.create_team')}
           </Button>
         </div>
         <button
@@ -142,7 +143,7 @@ export const CreateTeamForm: React.FC = () => {
           className="text-sm text-gray-500 dark:text-gray-400 hover:text-primary transition-colors sm:hidden mt-2"
           onClick={() => navigate("/script-upload")}
         >
-          Skip for now
+          {t('common.skip')}
         </button>
       </div>
     </form>

@@ -56,14 +56,14 @@ export const UserDashboardPage: React.FC = () => {
             <button className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
               <span className="material-symbols-outlined">notifications</span>
             </button>
-            <button className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+            <button className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors" onClick={() => navigate('/settings')}>
               <span className="material-symbols-outlined">settings</span>
             </button>
             <div className="h-8 w-px bg-border-light dark:bg-slate-800 mx-2"></div>
             <div className="flex items-center gap-3">
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-bold text-slate-900 dark:text-slate-100">{user?.full_name || user?.email || 'User'}</p>
-                <p className="text-xs text-slate-500 capitalize">{user?.role || 'Sales Representative'}</p>
+                <p className="text-xs text-slate-500 capitalize">{user?.role || t('calls.representative')}</p>
               </div>
               <div className="h-10 w-10 rounded-full bg-primary/20 bg-cover bg-center border border-primary/10 flex items-center justify-center text-primary font-bold">
                 {user?.full_name?.charAt(0) || user?.email?.charAt(0) || 'U'}
@@ -79,8 +79,8 @@ export const UserDashboardPage: React.FC = () => {
                 <span className="material-symbols-outlined">groups</span>
               </div>
               <div>
-                <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Your Team</p>
-                <p className="text-sm font-bold text-slate-900 dark:text-slate-100">{user.manager_name}'s Team</p>
+                <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">{t('dashboard.your_team')}</p>
+                <p className="text-sm font-bold text-slate-900 dark:text-slate-100">{t('dashboard.team_of', { manager: user.manager_name })}</p>
               </div>
             </div>
           )}
@@ -135,7 +135,7 @@ export const UserDashboardPage: React.FC = () => {
                   <div className="bg-emerald-100 dark:bg-emerald-500/20 p-2 rounded-lg text-emerald-600">
                     <span className="material-symbols-outlined">trending_up</span>
                   </div>
-                  <h3 className="font-bold text-slate-900 dark:text-slate-100">Great Improvements</h3>
+                  <h3 className="font-bold text-slate-900 dark:text-slate-100">{t('dashboard.great_improvements')}</h3>
                 </div>
                 <ul className="space-y-4">
                   <li className="flex gap-3 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
@@ -153,7 +153,7 @@ export const UserDashboardPage: React.FC = () => {
                   <div className="bg-amber-100 dark:bg-amber-500/20 p-2 rounded-lg text-amber-600">
                     <span className="material-symbols-outlined">target</span>
                   </div>
-                  <h3 className="font-bold text-slate-900 dark:text-slate-100">Focus Areas</h3>
+                  <h3 className="font-bold text-slate-900 dark:text-slate-100">{t('dashboard.focus_areas')}</h3>
                 </div>
                 <ul className="space-y-4">
                   <li className="flex gap-3 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
@@ -179,11 +179,11 @@ export const UserDashboardPage: React.FC = () => {
                 <table className="w-full text-left">
                   <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 text-xs font-bold uppercase tracking-wider">
                     <tr>
-                      <th className="px-6 py-4">Client Name</th>
+                      <th className="px-6 py-4">{t('dashboard.client_name')}</th>
                       <th className="px-6 py-4">{t('calls.date')}</th>
                       <th className="px-6 py-4">{t('calls.score')}</th>
-                      <th className="px-6 py-4">AI Insight</th>
-                      <th className="px-6 py-4 text-right">Action</th>
+                      <th className="px-6 py-4">{t('dashboard.ai_insight')}</th>
+                      <th className="px-6 py-4 text-right">{t('dashboard.action')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border-light dark:divide-slate-800">
@@ -232,4 +232,3 @@ export const UserDashboardPage: React.FC = () => {
     </div>
   );
 };
-

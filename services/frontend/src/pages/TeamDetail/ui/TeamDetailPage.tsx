@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Sidebar } from '../../../widgets/Sidebar';
 import { teamApi } from '../../../entities/team/api';
 import { userApi } from '../../../entities/user/api';
 import Button from '../../../shared/ui/Button';
 
 const TeamDetailPage: React.FC = () => {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [team, setTeam] = useState<any>(null);
@@ -33,7 +35,7 @@ const TeamDetailPage: React.FC = () => {
   }, [id]);
 
   const handleDelete = async () => {
-    if (!id || !window.confirm('Are you sure you want to delete this team?')) return;
+    if (!id || !window.confirm(t('teams.delete_confirm'))) return;
     try {
       await teamApi.delete(id);
       navigate('/teams');
@@ -42,8 +44,8 @@ const TeamDetailPage: React.FC = () => {
     }
   };
 
-  if (loading) return <div className="p-8">Loading...</div>;
-  if (!team) return <div className="p-8">Team not found.</div>;
+  if (loading) return <div className="p-8">{t('common.loading')}</div>;
+  if (!team) return <div className="p-8">{t('teams.not_found')}</div>;
 
   return (
     <div className="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex font-display">
@@ -55,24 +57,24 @@ const TeamDetailPage: React.FC = () => {
             <p className="text-slate-500 mt-2 max-w-xl">{team.description}</p>
           </div>
           <div className="flex gap-3">
-             <Button variant="secondary" onClick={handleDelete} className="text-red-700 hover:bg-red-200">Delete Team</Button>
-             <Button>Edit Details</Button>
+             <Button variant="secondary" onClick={handleDelete} className="text-red-700 hover:bg-red-200">{t('teams.delete_team')}</Button>
+             <Button>{t('teams.edit_details')}</Button>
           </div>
         </div>
 
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
           <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
-            <h2 className="text-lg font-bold">Team Members</h2>
-            <button className="text-primary font-bold text-sm hover:underline" onClick={() => navigate('/invite-members')}>+ Invite Member</button>
+            <h2 className="text-lg font-bold">{t('teams.team_members')}</h2>
+            <button className="text-primary font-bold text-sm hover:underline" onClick={() => navigate('/invite-members')}>{t('teams.invite_member')}</button>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 text-xs font-bold uppercase">
                 <tr>
-                  <th className="px-6 py-4">Name</th>
-                  <th className="px-6 py-4">Email</th>
-                  <th className="px-6 py-4">Role</th>
-                  <th className="px-6 py-4 text-right">Actions</th>
+                  <th className="px-6 py-4">{t('common.name')}</th>
+                  <th className="px-6 py-4">{t('common.email')}</th>
+                  <th className="px-6 py-4">{t('common.role')}</th>
+                  <th className="px-6 py-4 text-right">{t('common.actions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -88,7 +90,7 @@ const TeamDetailPage: React.FC = () => {
                     </td>
                   </tr>
                 ))}
-                {users.length === 0 && <tr><td colSpan={4} className="text-center p-8 text-slate-500">No members in this team.</td></tr>}
+                {users.length === 0 && <tr><td colSpan={4} className="text-center p-8 text-slate-500">{t('teams.no_members')}</td></tr>}
               </tbody>
             </table>
           </div>

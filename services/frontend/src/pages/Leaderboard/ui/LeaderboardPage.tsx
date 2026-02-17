@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Sidebar } from '../../../widgets/Sidebar';
 import { analyticsApi } from '../../../entities/analytics/api';
 
 const LeaderboardPage: React.FC = () => {
+  const { t } = useTranslation();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -29,15 +31,15 @@ const LeaderboardPage: React.FC = () => {
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 overflow-y-auto">
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
           <div>
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">Team Leaderboard</h2>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">Track real-time performance and rankings.</p>
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">{t('leaderboard.title')}</h2>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">{t('leaderboard.subtitle')}</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <select className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 py-2 px-4 rounded-lg text-sm">
-              <option>All Teams</option>
+              <option>{t('leaderboard.all_teams')}</option>
             </select>
             <button className="flex items-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-4 py-2 rounded-lg text-sm">
-              <span className="material-icons text-sm">download</span> Export
+              <span className="material-icons text-sm">download</span> {t('leaderboard.export')}
             </button>
           </div>
         </div>
@@ -64,7 +66,7 @@ const LeaderboardPage: React.FC = () => {
                       <h3 className="font-bold text-lg text-slate-900 dark:text-white">{topThree[1].manager_name}</h3>
                       <div className="w-full bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3 border border-slate-100 dark:border-slate-700 mt-4">
                         <div className="text-3xl font-bold text-primary">{(topThree[1].avg_kpi || 0).toFixed(1)}</div>
-                        <div className="text-xs text-slate-500 mt-1">Overall Score</div>
+                        <div className="text-xs text-slate-500 mt-1">{t('leaderboard.overall_score')}</div>
                       </div>
                     </div>
                   </div>
@@ -87,7 +89,7 @@ const LeaderboardPage: React.FC = () => {
                       <h3 className="font-bold text-xl text-slate-900 dark:text-white">{topThree[0].manager_name}</h3>
                       <div className="w-full bg-primary/5 rounded-lg p-4 border border-primary/10 mt-5">
                         <div className="text-5xl font-bold text-primary tracking-tight">{(topThree[0].avg_kpi || 0).toFixed(1)}</div>
-                        <div className="text-sm text-slate-500 mt-1 font-medium">Overall Score</div>
+                        <div className="text-sm text-slate-500 mt-1 font-medium">{t('leaderboard.overall_score')}</div>
                       </div>
                     </div>
                   </div>
@@ -107,7 +109,7 @@ const LeaderboardPage: React.FC = () => {
                       <h3 className="font-bold text-lg text-slate-900 dark:text-white">{topThree[2].manager_name}</h3>
                       <div className="w-full bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3 border border-slate-100 dark:border-slate-700 mt-4">
                         <div className="text-3xl font-bold text-primary">{(topThree[2].avg_kpi || 0).toFixed(1)}</div>
-                        <div className="text-xs text-slate-500 mt-1">Overall Score</div>
+                        <div className="text-xs text-slate-500 mt-1">{t('leaderboard.overall_score')}</div>
                       </div>
                     </div>
                   </div>
@@ -117,18 +119,18 @@ const LeaderboardPage: React.FC = () => {
 
             <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
               <div className="p-5 border-b border-slate-100 dark:border-slate-800">
-                <h3 className="font-semibold text-slate-800 dark:text-slate-200">Full Rankings</h3>
+                <h3 className="font-semibold text-slate-800 dark:text-slate-200">{t('leaderboard.full_rankings')}</h3>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 text-xs uppercase font-semibold">
-                      <th className="px-6 py-4">Rank</th>
-                      <th className="px-6 py-4">Representative</th>
-                      <th className="px-6 py-4 text-center">Calls</th>
-                      <th className="px-6 py-4">Avg Quality</th>
-                      <th className="px-6 py-4">Overall Score</th>
-                      <th className="px-6 py-4 text-right">Actions</th>
+                      <th className="px-6 py-4">{t('leaderboard.rank')}</th>
+                      <th className="px-6 py-4">{t('calls.representative')}</th>
+                      <th className="px-6 py-4 text-center">{t('dashboard.calls')}</th>
+                      <th className="px-6 py-4">{t('dashboard.avg_quality')}</th>
+                      <th className="px-6 py-4">{t('leaderboard.overall_score')}</th>
+                      <th className="px-6 py-4 text-right">{t('common.actions')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -144,7 +146,7 @@ const LeaderboardPage: React.FC = () => {
                         <td className="px-6 py-4">{(m.avg_quality || 0).toFixed(1)}</td>
                         <td className="px-6 py-4 font-bold">{(m.avg_kpi || 0).toFixed(1)}</td>
                         <td className="px-6 py-4 text-right">
-                          <button className="text-primary hover:underline text-sm">View Details</button>
+                          <button className="text-primary hover:underline text-sm">{t('leaderboard.view_details')}</button>
                         </td>
                       </tr>
                     ))}

@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { userApi } from '../../../entities/user/api';
 import Button from '../../../shared/ui/Button';
 
 const InviteMembersPage: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [emails, setEmails] = useState('');
   const [loading, setLoading] = useState(false);
@@ -25,7 +27,7 @@ const InviteMembersPage: React.FC = () => {
       navigate('/dashboard');
     } catch (_err: unknown) {
       const apiError = _err as { response?: { data?: { error?: string } } };
-      setError(apiError.response?.data?.error || 'Failed to send invitations');
+      setError(apiError.response?.data?.error || t('setup.invite_failed'));
     } finally {
       setLoading(false);
     }
@@ -39,7 +41,7 @@ const InviteMembersPage: React.FC = () => {
           <span className="font-bold text-lg tracking-tight">SalesAI</span>
         </div>
         <div className="text-sm text-slate-500 dark:text-slate-400">
-          Step 6 of 7: Team Setup
+          {t('setup.team_setup')} (6/7)
         </div>
       </header>
 
@@ -58,9 +60,9 @@ const InviteMembersPage: React.FC = () => {
               <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 text-primary mb-4">
                 <span className="material-icons">group_add</span>
               </div>
-              <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Build your Dream Team</h1>
+              <h1 className="text-3xl font-bold text-slate-900 dark:text-white">{t('setup.invite_title')}</h1>
               <p className="text-slate-500 dark:text-slate-400 max-w-lg mx-auto">
-                Add your sales representatives' email addresses below. They will be added to your <span className="text-slate-900 dark:text-white font-medium">'North America Sales'</span> team immediately.
+                {t('setup.invite_subtitle')}
               </p>
             </div>
 
@@ -68,7 +70,7 @@ const InviteMembersPage: React.FC = () => {
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300" htmlFor="emails">
-                  Email Addresses <span className="text-slate-400 font-normal ml-1">(One per line)</span>
+                  {t('setup.emails_label')} <span className="text-slate-400 font-normal ml-1">{t('setup.one_per_line')}</span>
                 </label>
                 <div className="relative">
                   <textarea
@@ -80,18 +82,18 @@ const InviteMembersPage: React.FC = () => {
                     onChange={(e) => setEmails(e.target.value)}
                   ></textarea>
                   <div className="absolute top-3 right-3">
-                    <span className="text-xs text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded">CSV Paste Supported</span>
+                    <span className="text-xs text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded">{t('setup.csv_paste')}</span>
                   </div>
                 </div>
                 <p className="text-xs text-slate-500 dark:text-slate-500 flex items-center gap-1">
                   <span className="material-icons text-[14px]">info</span>
-                  You can invite up to 50 members at once.
+                  {t('setup.invite_limit_hint')}
                 </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Default Temporary Password</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('setup.temp_password_label')}</label>
                   <div className="flex rounded-lg shadow-sm">
                     <div className="relative flex-grow focus-within:z-10">
                       <input
@@ -103,7 +105,7 @@ const InviteMembersPage: React.FC = () => {
                     </div>
                     <button
                       className="relative -ml-px inline-flex items-center space-x-2 rounded-r-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                      title="Regenerate Password"
+                      title={t('setup.regenerate_password')}
                       type="button"
                     >
                       <span className="material-icons text-primary text-lg">autorenew</span>
@@ -113,8 +115,8 @@ const InviteMembersPage: React.FC = () => {
                 <div className="bg-blue-50 dark:bg-primary/10 rounded-lg p-4 border border-blue-100 dark:border-primary/20 flex items-start gap-3">
                   <span className="material-icons text-primary text-xl mt-0.5">mail_outline</span>
                   <div className="text-sm text-slate-600 dark:text-slate-300">
-                    <p className="font-medium text-primary mb-1">Invitation Details</p>
-                    We'll send a secure link to each user. They will be prompted to change this password immediately upon their first login.
+                    <p className="font-medium text-primary mb-1">{t('setup.invite_details_title')}</p>
+                    {t('setup.invite_details_desc')}
                   </div>
                 </div>
               </div>
@@ -126,7 +128,7 @@ const InviteMembersPage: React.FC = () => {
                   onClick={() => navigate('/dashboard')}
                   className="w-full sm:w-auto"
                 >
-                  Skip for now
+                  {t('common.skip')}
                 </Button>
                 <Button
                   className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8"
@@ -134,7 +136,7 @@ const InviteMembersPage: React.FC = () => {
                   isLoading={loading}
                   disabled={!emails.trim()}
                 >
-                  <span>Send Invitations</span>
+                  <span>{t('setup.send_invitations')}</span>
                   <span className="material-icons text-sm">send</span>
                 </Button>
               </div>
@@ -144,7 +146,7 @@ const InviteMembersPage: React.FC = () => {
 
         <div className="absolute bottom-6 text-center w-full">
           <a className="text-sm text-slate-400 hover:text-primary transition-colors flex items-center justify-center gap-1" href="#">
-            <span className="material-icons text-sm">help_outline</span> Need help adding members?
+            <span className="material-icons text-sm">help_outline</span> {t('setup.invite_help_prompt')}
           </a>
         </div>
       </main>

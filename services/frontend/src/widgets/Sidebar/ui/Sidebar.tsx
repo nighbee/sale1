@@ -11,18 +11,8 @@ const Sidebar: React.FC = () => {
   const getNavItems = () => {
     if (user?.role === "super_admin") {
       return [
-        {
-          id: "super-admin",
-          icon: "admin_panel_settings",
-          label: "Super Admin",
-          path: "/super-admin",
-        },
-        {
-          id: "settings",
-          icon: "settings",
-          label: t("nav.settings"),
-          path: "/settings",
-        },
+        { id: 'super-admin', icon: 'admin_panel_settings', label: t('nav.super_admin'), path: '/super-admin' },
+        { id: 'settings', icon: 'settings', label: t('nav.settings'), path: '/settings' },
       ];
     }
 
@@ -114,12 +104,8 @@ const Sidebar: React.FC = () => {
             {user?.full_name?.charAt(0) || user?.email?.charAt(0) || "U"}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-white truncate">
-              {user?.full_name || user?.email || "User"}
-            </p>
-            <p className="text-xs text-slate-400 truncate capitalize">
-              {user?.role || "Role"}
-            </p>
+            <p className="text-sm font-medium text-white truncate">{user?.full_name || user?.email || 'User'}</p>
+            <p className="text-xs text-slate-400 truncate capitalize">{user?.role || t('common.role')}</p>
           </div>
           <span className="material-icons text-slate-400 text-lg">
             more_vert

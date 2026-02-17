@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Sidebar } from '../../../widgets/Sidebar';
 import { companyApi } from '../../../entities/company/api';
 import { userApi } from '../../../entities/user/api';
@@ -7,6 +8,7 @@ import type { User } from '../../../entities/user/types';
 import Skeleton from '../../../shared/ui/Skeleton';
 
 export const SuperAdminPage: React.FC = () => {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<'companies' | 'users' | 'subscriptions'>('companies');
   const [companies, setCompanies] = useState<Company[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -37,8 +39,8 @@ export const SuperAdminPage: React.FC = () => {
       <Sidebar />
       <main className="flex-1 p-8 overflow-y-auto">
         <div className="mb-8">
-          <h1 className="text-3xl font-black tracking-tight">Super Admin Dashboard</h1>
-          <p className="text-slate-500 mt-2">Global management of companies, users, and subscriptions.</p>
+          <h1 className="text-3xl font-black tracking-tight">{t('superadmin.title')}</h1>
+          <p className="text-slate-500 mt-2">{t('superadmin.subtitle')}</p>
         </div>
 
         <div className="flex border-b border-border-light dark:border-slate-800 mb-8">
@@ -46,19 +48,19 @@ export const SuperAdminPage: React.FC = () => {
             onClick={() => setActiveTab('companies')}
             className={`px-6 py-3 font-bold text-sm transition-colors border-b-2 ${activeTab === 'companies' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
           >
-            Companies
+            {t('superadmin.companies')}
           </button>
           <button
             onClick={() => setActiveTab('users')}
             className={`px-6 py-3 font-bold text-sm transition-colors border-b-2 ${activeTab === 'users' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
           >
-            Users
+            {t('superadmin.users')}
           </button>
           <button
             onClick={() => setActiveTab('subscriptions')}
             className={`px-6 py-3 font-bold text-sm transition-colors border-b-2 ${activeTab === 'subscriptions' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
           >
-            Subscriptions
+            {t('superadmin.subscriptions')}
           </button>
         </div>
 
@@ -75,10 +77,10 @@ export const SuperAdminPage: React.FC = () => {
                 <table className="w-full text-left">
                   <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 text-xs font-bold uppercase tracking-wider">
                     <tr>
-                      <th className="px-6 py-4">Company Name</th>
-                      <th className="px-6 py-4">Created At</th>
-                      <th className="px-6 py-4">Status</th>
-                      <th className="px-6 py-4 text-right">Actions</th>
+                      <th className="px-6 py-4">{t('superadmin.company_name')}</th>
+                      <th className="px-6 py-4">{t('superadmin.created_at')}</th>
+                      <th className="px-6 py-4">{t('common.status')}</th>
+                      <th className="px-6 py-4 text-right">{t('common.actions')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border-light dark:divide-slate-800">
@@ -88,17 +90,17 @@ export const SuperAdminPage: React.FC = () => {
                         <td className="px-6 py-4 text-sm text-slate-500">{new Date(company.created_at || Date.now()).toLocaleDateString()}</td>
                         <td className="px-6 py-4">
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-400">
-                            Active
+                            {t('superadmin.active')}
                           </span>
                         </td>
                         <td className="px-6 py-4 text-right">
-                          <button className="text-primary font-bold text-sm hover:underline">Edit</button>
+                          <button className="text-primary font-bold text-sm hover:underline">{t('common.edit')}</button>
                         </td>
                       </tr>
                     ))}
                     {companies.length === 0 && (
                       <tr>
-                        <td colSpan={4} className="px-6 py-12 text-center text-slate-500">No companies found.</td>
+                        <td colSpan={4} className="px-6 py-12 text-center text-slate-500">{t('superadmin.no_companies')}</td>
                       </tr>
                     )}
                   </tbody>
@@ -109,10 +111,10 @@ export const SuperAdminPage: React.FC = () => {
                 <table className="w-full text-left">
                   <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 text-xs font-bold uppercase tracking-wider">
                     <tr>
-                      <th className="px-6 py-4">Name</th>
-                      <th className="px-6 py-4">Email</th>
-                      <th className="px-6 py-4">Role</th>
-                      <th className="px-6 py-4">Company ID</th>
+                      <th className="px-6 py-4">{t('common.name')}</th>
+                      <th className="px-6 py-4">{t('common.email')}</th>
+                      <th className="px-6 py-4">{t('common.role')}</th>
+                      <th className="px-6 py-4">{t('superadmin.company_id')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border-light dark:divide-slate-800">
@@ -126,7 +128,7 @@ export const SuperAdminPage: React.FC = () => {
                     ))}
                     {users.length === 0 && (
                       <tr>
-                        <td colSpan={4} className="px-6 py-12 text-center text-slate-500">No users found.</td>
+                        <td colSpan={4} className="px-6 py-12 text-center text-slate-500">{t('superadmin.no_users')}</td>
                       </tr>
                     )}
                   </tbody>
@@ -136,7 +138,7 @@ export const SuperAdminPage: React.FC = () => {
               {activeTab === 'subscriptions' && (
                 <div className="p-12 text-center text-slate-500">
                   <span className="material-symbols-outlined text-4xl mb-4">payments</span>
-                  <p>Subscription management coming soon.</p>
+                  <p>{t('superadmin.sub_mgmt_soon')}</p>
                 </div>
               )}
             </div>

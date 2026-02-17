@@ -87,8 +87,8 @@ const CallDetailPage: React.FC = () => {
     fetchData();
   }, [id]);
 
-  if (loading) return <div className="p-8">Loading call details...</div>;
-  if (!call) return <div className="p-8">Call not found.</div>;
+  if (loading) return <div className="p-8">{t('calls.loading')}</div>;
+  if (!call) return <div className="p-8">{t('calls.not_found')}</div>;
 
   return (
     <div className="bg-background-light dark:bg-background-dark text-neutral-800 dark:text-neutral-100 font-display min-h-screen flex flex-col overflow-hidden">
@@ -221,7 +221,7 @@ const CallDetailPage: React.FC = () => {
                   <div className="flex-1">
                     <div className="flex items-baseline gap-2 mb-1">
                       <span className={`font-semibold text-sm ${seg.speaker === 'SPEAKER_0' ? 'text-primary' : 'text-neutral-700'}`}>
-                        {seg.speaker === 'SPEAKER_0' ? 'Agent' : 'Client'}
+                        {seg.speaker === 'SPEAKER_0' ? t('calls.agent') : t('calls.client')}
                       </span>
                     </div>
                     <p className={`text-neutral-800 dark:text-neutral-200 leading-relaxed ${isActive ? 'font-medium' : ''}`}>
@@ -231,7 +231,7 @@ const CallDetailPage: React.FC = () => {
                 </div>
               );
             })}
-            {!transcript && <p className="text-center text-slate-500">Transcript being processed...</p>}
+            {!transcript && <p className="text-center text-slate-500">{t('calls.transcript_processing')}</p>}
           </div>
         </section>
 
@@ -265,7 +265,7 @@ const CallDetailPage: React.FC = () => {
                   </div>
                 </div>
               ) : (
-                <p className="text-sm text-slate-500">Analysis pending...</p>
+                <p className="text-sm text-slate-500">{t('calls.analysis_pending')}</p>
               )}
             </div>
           </div>

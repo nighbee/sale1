@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import type { Team } from '../types';
 import { cn } from '../../../shared/utils/cn';
 
@@ -9,6 +10,7 @@ interface TeamCardProps {
 }
 
 const TeamCard: React.FC<TeamCardProps> = ({ team, className }) => {
+  const { t } = useTranslation();
   return (
     <Link
       to={`/teams/${team.id}`}
@@ -25,11 +27,11 @@ const TeamCard: React.FC<TeamCardProps> = ({ team, className }) => {
       </div>
       <h3 className="text-lg font-bold group-hover:text-primary transition-colors">{team.name}</h3>
       <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 line-clamp-2">
-        {team.description || 'No description provided.'}
+        {team.description || t('teams.no_desc')}
       </p>
       <div className="mt-6 flex items-center justify-between">
         <span className="text-xs bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">
-          {team.auto_assign ? 'Auto-assign ON' : 'Auto-assign OFF'}
+          {team.auto_assign ? t('teams.auto_assign_on') : t('teams.auto_assign_off')}
         </span>
         <span className="material-icons text-primary opacity-0 group-hover:opacity-100 transition-opacity">
           arrow_forward
