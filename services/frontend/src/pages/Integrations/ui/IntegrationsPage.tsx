@@ -26,9 +26,9 @@ const IntegrationsPage: React.FC = () => {
   }, []);
 
   const available = [
-    { id: 'google_sheets', name: 'Google Sheets', type: 'Reporting', icon: 'table_chart', color: 'green', desc: 'Export leads and analytics directly to spreadsheets.' },
-    { id: 'telegram', name: 'Telegram', type: 'Notifications', icon: 'send', color: 'blue', desc: 'Receive instant mobile notifications for new leads.' },
-    { id: 'slack', name: 'Slack', type: 'Communication', icon: 'chat_bubble', color: 'purple', desc: 'Sync sales activity to dedicated team channels.' },
+    { id: 'google_sheets', name: t('integrations.google_sheets_name'), type: t('integrations.reporting'), icon: 'table_chart', color: 'green', desc: t('integrations.google_sheets_desc') },
+    { id: 'telegram', name: t('integrations.telegram_name'), type: t('integrations.notifications'), icon: 'send', color: 'blue', desc: t('integrations.telegram_desc') },
+    { id: 'slack', name: t('integrations.slack_name'), type: t('integrations.communication'), icon: 'chat_bubble', color: 'purple', desc: t('integrations.slack_desc') },
   ];
 
   const isConnected = (type: string) => integrations.some(i => i.integration_type === type && i.is_active);
@@ -39,9 +39,9 @@ const IntegrationsPage: React.FC = () => {
       await integrationApi.save({ integration_type: type, config: {}, is_active: true });
       const res = await integrationApi.list();
       setIntegrations(res.data.integrations || []);
-      toast.success(`${type} connected successfully`);
+      toast.success(t('integrations.connect_success', { type }));
     } catch {
-      toast.error(`Failed to connect ${type}`);
+      toast.error(t('integrations.connect_failed', { type }));
     } finally {
       setActionLoading(null);
     }
@@ -53,9 +53,9 @@ const IntegrationsPage: React.FC = () => {
       await integrationApi.delete(type);
       const res = await integrationApi.list();
       setIntegrations(res.data.integrations || []);
-      toast.success(`${type} disconnected successfully`);
+      toast.success(t('integrations.disconnect_success', { type }));
     } catch {
-      toast.error(`Failed to disconnect ${type}`);
+      toast.error(t('integrations.disconnect_failed', { type }));
     } finally {
       setActionLoading(null);
     }

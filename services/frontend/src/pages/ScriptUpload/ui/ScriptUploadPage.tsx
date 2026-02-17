@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { scriptApi } from '../../../entities/script/api';
 import { toast } from 'sonner';
 import Button from '../../../shared/ui/Button';
 
 const ScriptUploadPage: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -29,11 +31,11 @@ const ScriptUploadPage: React.FC = () => {
 
     try {
       await scriptApi.upload(formData);
-      toast.success('Script uploaded successfully!');
+      toast.success(t('setup.upload_success'));
       navigate('/invite-members');
     } catch (err: unknown) {
       const apiError = err as { response?: { data?: { error?: string } } };
-      const msg = apiError.response?.data?.error || 'Failed to upload script';
+      const msg = apiError.response?.data?.error || t('setup.upload_failed');
       setError(msg);
       toast.error(msg);
     } finally {
@@ -49,7 +51,7 @@ const ScriptUploadPage: React.FC = () => {
           <span className="font-bold text-xl tracking-tight text-slate-900 dark:text-white">SalesAI</span>
         </div>
         <button className="text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-primary transition-colors">
-          Help & Support
+          {t('common.help')}
         </button>
       </header>
 
@@ -60,15 +62,15 @@ const ScriptUploadPage: React.FC = () => {
           </div>
           <div className="p-8 sm:p-12">
             <div className="flex items-center justify-between mb-8">
-              <span className="text-xs font-semibold uppercase tracking-wider text-primary bg-primary/10 px-3 py-1 rounded-full">Step 5 of 6</span>
-              <span className="text-sm text-slate-500 dark:text-slate-400 font-medium">Customization</span>
+              <span className="text-xs font-semibold uppercase tracking-wider text-primary bg-primary/10 px-3 py-1 rounded-full">{t('common.step', { current: 5, total: 6 })}</span>
+              <span className="text-sm text-slate-500 dark:text-slate-400 font-medium">{t('setup.customization')}</span>
             </div>
 
             {error && <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm">{error}</div>}
             <div className="text-center mb-10">
-              <h1 className="text-3xl sm:text-4xl font-bold mb-4 text-slate-900 dark:text-white">Upload Your Sales Script</h1>
+              <h1 className="text-3xl sm:text-4xl font-bold mb-4 text-slate-900 dark:text-white">{t('setup.script_title')}</h1>
               <p className="text-lg text-slate-600 dark:text-slate-400 max-w-xl mx-auto leading-relaxed">
-                Our AI analyzes your best scripts to generate personalized coaching scenarios that match your company's tone.
+                {t('setup.script_subtitle')}
               </p>
             </div>
 
@@ -79,10 +81,10 @@ const ScriptUploadPage: React.FC = () => {
                   <span className="material-icons text-primary text-3xl">cloud_upload</span>
                 </div>
                 <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2 group-hover:text-primary transition-colors">
-                  {file ? file.name : 'Click to upload or drag and drop'}
+                  {file ? file.name : t('setup.upload_drag_drop')}
                 </h3>
                 <p className="text-sm text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
-                  PDF or DOCX documents (max. 10MB)
+                  {t('setup.file_types_hint')}
                 </p>
               </label>
 
@@ -95,7 +97,7 @@ const ScriptUploadPage: React.FC = () => {
                     <div className="flex-grow min-w-0">
                       <div className="flex justify-between mb-1">
                         <h4 className="text-sm font-medium text-slate-900 dark:text-white truncate pr-4">{file?.name}</h4>
-                        <span className="text-xs font-medium text-primary">Parsing...</span>
+                        <span className="text-xs font-medium text-primary">{t('setup.parsing')}</span>
                       </div>
                       <div className="w-full bg-slate-100 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden">
                         <div className="bg-primary h-full rounded-full animate-pulse w-3/4"></div>
@@ -116,9 +118,9 @@ const ScriptUploadPage: React.FC = () => {
             <div className="mt-8 flex items-start gap-3 p-4 bg-primary/5 dark:bg-primary/10 rounded-lg border border-primary/10 dark:border-primary/20">
               <span className="material-icons text-primary text-xl mt-0.5">info</span>
               <div>
-                <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Why upload scripts?</h4>
+                <h4 className="text-sm font-semibold text-slate-900 dark:text-white">{t('setup.why_scripts_title')}</h4>
                 <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                  Uploaded scripts help our AI create realistic role-play scenarios that mimic your actual sales conversations. We do not share your data.
+                  {t('setup.why_scripts_desc')}
                 </p>
               </div>
             </div>
@@ -129,14 +131,14 @@ const ScriptUploadPage: React.FC = () => {
               className="text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white font-medium text-sm px-4 py-2 rounded-lg transition-colors"
               onClick={() => navigate('/invite-members')}
             >
-              Skip for now
+              {t('common.skip')}
             </button>
             <div className="flex items-center gap-4 w-full sm:w-auto">
               <button
                 className="hidden sm:block text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-medium text-sm transition-colors"
                 onClick={() => navigate(-1)}
               >
-                Back
+                {t('common.back')}
               </button>
               <Button
                 className="w-full sm:w-auto shadow-md shadow-primary/20 flex items-center justify-center gap-2 group"
@@ -144,7 +146,7 @@ const ScriptUploadPage: React.FC = () => {
                 isLoading={isUploading}
                 disabled={!file}
               >
-                Upload & Continue
+                {t('setup.upload_and_continue')}
                 <span className="material-icons text-sm group-hover:translate-x-0.5 transition-transform">arrow_forward</span>
               </Button>
             </div>

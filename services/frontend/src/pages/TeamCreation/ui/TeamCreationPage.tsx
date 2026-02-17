@@ -1,7 +1,9 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { CreateTeamForm } from "../../../features/team-management/create-team";
 
 const TeamCreationPage: React.FC = () => {
+  const { t } = useTranslation();
   return (
     <div className="bg-background-light dark:bg-background-dark font-display antialiased min-h-screen flex flex-col transition-colors duration-200">
       <header className="w-full px-6 py-4 flex items-center justify-between">
@@ -14,7 +16,7 @@ const TeamCreationPage: React.FC = () => {
           </span>
         </div>
         <div className="text-sm text-gray-500 dark:text-gray-400 font-medium">
-          Step 4 of 5
+          {t('common.step', { current: 4, total: 5 })}
         </div>
       </header>
 
@@ -35,11 +37,10 @@ const TeamCreationPage: React.FC = () => {
                 </span>
               </div>
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                Create Your First Sales Team
+                {t('setup.team_title')}
               </h1>
               <p className="text-gray-500 dark:text-gray-400 leading-relaxed">
-                Organize your reps into focused groups. AI will use this
-                structure to tailor insights specifically for this team's goals.
+                {t('setup.team_subtitle')}
               </p>
             </div>
 
@@ -48,11 +49,11 @@ const TeamCreationPage: React.FC = () => {
 
           <div className="mt-8 text-center">
             <p className="text-xs text-gray-400 dark:text-gray-500">
-              Need help setting up your team structure?{" "}
+              {t('setup.team_help_prompt')}{" "}
               <a className="text-primary hover:underline" href="#">
-                Read our guide
+                {t('setup.read_guide')}
               </a>{" "}
-              on sales org design.
+              {t('setup.org_design_suffix')}
             </p>
           </div>
         </div>

@@ -41,7 +41,7 @@ const LoginPage: React.FC = () => {
                 </div>
                 <div className="relative flex justify-center text-sm">
                   <span className="px-2 bg-white dark:bg-slate-900 text-slate-500">
-                    Or continue with
+                    {t('auth.or_continue_with')}
                   </span>
                 </div>
               </div>
@@ -73,7 +73,7 @@ const LoginPage: React.FC = () => {
                       fill="#EA4335"
                     ></path>
                   </svg>
-                  Continue with Google
+                  {t('auth.continue_google')}
                 </button>
               </div>
             </div>
@@ -98,19 +98,19 @@ const LoginPage: React.FC = () => {
               className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
               href="#"
             >
-              Privacy Policy
+              {t('auth.privacy_policy')}
             </a>
             <a
               className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
               href="#"
             >
-              Terms of Service
+              {t('auth.terms_service')}
             </a>
             <a
               className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
               href="#"
             >
-              Help Center
+              {t('auth.help_center')}
             </a>
           </div>
         </div>

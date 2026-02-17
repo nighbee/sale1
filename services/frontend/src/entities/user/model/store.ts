@@ -9,6 +9,14 @@ interface UserState {
   logout: () => void;
 }
 
+/**
+ * Security Rules for Frontend State:
+ * 1. Role-Based Access Control (RBAC): Always verify user roles on the backend for sensitive operations.
+ * 2. Token Security: Consider using HttpOnly cookies for storing JWTs to mitigate XSS risks.
+ * 3. Data Integrity: Validate and sanitize all user data before rendering to prevent DOM-based XSS.
+ * 4. Resource Ownership: Ensure that API requests are scoped to the authenticated user's company_id on the backend.
+ */
+
 export const useUserStore = create<UserState>()(
   persist(
     (set) => ({
