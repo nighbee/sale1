@@ -7,11 +7,13 @@ from . import stt_service_pb2
 from . import stt_service_pb2_grpc
 from src.adapters.storage.postgres_repo import get_pool
 import json
+from src.infrastructure.monitoring.metrics import REQUEST_COUNT, REQUEST_LATENCY
 
 logger = logging.getLogger(__name__)
 
 class STTServiceServicer(stt_service_pb2_grpc.STTServiceServicer):
     def GetTranscript(self, request, context):
+        start_time = REQUEST_LATENCY.labels(app_name='stt-service', method='GRPC', path='/GetTranscript').time()
         call_id = request.call_id
         logger.info(f"gRPC GetTranscript called for call_id: {call_id}")
 
@@ -23,6 +25,7 @@ class STTServiceServicer(stt_service_pb2_grpc.STTServiceServicer):
             cur.close()
 
             if row:
+                REQUEST_COUNT.labels(app_name='stt-service', method='GRPC', path='/GetTranscript', status_code='200').inc()
                 return stt_service_pb2.TranscriptResponse(
                     call_id=call_id,
                     transcript_json=json.dumps(row[0]),
@@ -30,8 +33,13 @@ class STTServiceServicer(stt_service_pb2_grpc.STTServiceServicer):
                     processing_time=row[2] or 0
                 )
             else:
+                REQUEST_COUNT.labels(app_name='stt-service', method='GRPC', path='/GetTranscript', status_code='404').inc()
                 context.abort(grpc.StatusCode.NOT_FOUND, "Transcript not found")
+        except Exception as e:
+            REQUEST_COUNT.labels(app_name='stt-service', method='GRPC', path='/GetTranscript', status_code='500').inc()
+            raise e
         finally:
+            start_time.stop()
             get_pool().putconn(conn)
 
 def serve():
