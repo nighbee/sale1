@@ -2,10 +2,10 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { userApi } from "../../../../entities/user/api";
-import { useUserStore } from "../../../../entities/user/model/store";
-import Button from "../../../../shared/ui/Button";
-import Input from "../../../../shared/ui/Input";
+import { userApi } from "@entities/user";
+import { useUserStore } from "@entities/user";
+import Button from "@shared/ui/Button";
+import Input from "@shared/ui/Input";
 
 export const RegisterForm: React.FC = () => {
   const { t } = useTranslation();

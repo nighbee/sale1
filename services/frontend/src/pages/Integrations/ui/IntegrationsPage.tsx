@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { Sidebar } from '../../../widgets/Sidebar';
-import { integrationApi } from '../../../entities/integration/api';
-import type { Integration } from '../../../entities/integration/types';
+import { Sidebar } from "@widgets/Sidebar";
+import { integrationApi } from "@entities/integration";
+import type { Integration } from "@entities/integration";
 
 const IntegrationsPage: React.FC = () => {
   const { t } = useTranslation();

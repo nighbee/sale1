@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Sidebar } from '../../../widgets/Sidebar';
-import { callApi } from '../../../entities/call/api';
-import Skeleton from '../../../shared/ui/Skeleton';
+import { Sidebar } from "@widgets/Sidebar";
+import { callApi, type Call } from "@entities/call";
+import Skeleton from "@shared/ui/Skeleton";
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 const CallsListPage: React.FC = () => {
   const { t } = useTranslation();
-  const [calls, setCalls] = useState<any[]>([]);
+  const [calls, setCalls] = useState<Call[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ total: 0, avgScore: 0, failed: 0 });
 
@@ -15,7 +15,7 @@ const CallsListPage: React.FC = () => {
     const fetchData = async () => {
       try {
         const res = await callApi.listCalls({});
-        const data = res.data as any;
+        const data = res.data;
         setCalls(data.calls || []);
         // Simulated stats calculation
         const total = data.total || (data.calls ? data.calls.length : 0);
@@ -89,7 +89,7 @@ const CallsListPage: React.FC = () => {
                       <Link to={`/calls/${call.id}`} className="text-sm font-mono text-primary hover:underline">#{call.id.slice(0, 8)}</Link>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                       {new Date(call.call_date).toLocaleDateString()}
+                       {call.call_date ? new Date(call.call_date).toLocaleDateString() : 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap font-medium text-sm">
                       {call.manager_name}

@@ -1,8 +1,8 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
-import { LoginForm } from "../../../features/auth/login";
-import LanguageSwitcher from "../../../shared/ui/LanguageSwitcher";
+import { LoginForm } from "@features/auth/login";
+import LanguageSwitcher from "@shared/ui/LanguageSwitcher";
 
 const LoginPage: React.FC = () => {
   const { t } = useTranslation();

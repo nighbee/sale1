@@ -1,8 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import type { Team } from '../types';
-import { cn } from '../../../shared/utils/cn';
+import type { Team } from "@entities/team";
+import { cn } from "@shared/utils/cn";
 
 interface TeamCardProps {
   team: Team;

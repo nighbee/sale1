@@ -1,19 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Sidebar } from '../../../widgets/Sidebar';
-import { analyticsApi } from '../../../entities/analytics/api';
+import { Sidebar } from "@widgets/Sidebar";
+import { analyticsApi, type ManagerPerformance } from "@entities/analytics";
 
 const LeaderboardPage: React.FC = () => {
   const { t } = useTranslation();
-  const [data, setData] = useState<any[]>([]);
+  const [data, setData] = useState<ManagerPerformance[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const res = await analyticsApi.getLeaderboard();
-        const responseData = res.data as any;
-        setData(responseData.leaderboard || []);
+        setData(res.data.leaderboard || []);
       } catch {
         console.error('Failed to fetch leaderboard');
       } finally {

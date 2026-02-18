@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { userApi } from '../../../entities/user/api';
-import Button from '../../../shared/ui/Button';
+import { userApi } from "@entities/user";
+import Button from "@shared/ui/Button";
 
 const InviteMembersPage: React.FC = () => {
   const { t } = useTranslation();

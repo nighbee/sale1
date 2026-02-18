@@ -1,6 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { CreateTeamForm } from "../../../features/team-management/create-team";
+import { CreateTeamForm } from "@features/team-management/create-team";
 
 const TeamCreationPage: React.FC = () => {
   const { t } = useTranslation();

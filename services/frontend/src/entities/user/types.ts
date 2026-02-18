@@ -10,6 +10,7 @@ export interface User {
   last_login?: string;
   manager_id?: string;
   manager_name?: string;
+  team_id?: string;
 }
 
 export interface AuthResponse {

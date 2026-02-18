@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { scriptApi } from '../../../entities/script/api';
+import { scriptApi } from "@entities/script";
 import { toast } from 'sonner';
-import Button from '../../../shared/ui/Button';
+import Button from "@shared/ui/Button";
 
 const ScriptUploadPage: React.FC = () => {
   const { t } = useTranslation();

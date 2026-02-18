@@ -1,16 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Sidebar } from '../../../widgets/Sidebar';
-import { callApi } from '../../../entities/call/api';
-import { useUserStore } from '../../../entities/user/model/store';
-import Skeleton from '../../../shared/ui/Skeleton';
-
-interface CallRecord {
-  id: string;
-  customer_phone?: string;
-  timestamp: string;
-}
+import { Sidebar } from "@widgets/Sidebar";
+import { callApi, type Call } from '@entities/call';
+import { useUserStore } from '@entities/user';
+import Skeleton from "@shared/ui/Skeleton";
 
 export const UserDashboardPage: React.FC = () => {
   const { t } = useTranslation();
@@ -23,15 +17,14 @@ export const UserDashboardPage: React.FC = () => {
     totalReps: 8,
     improvement: 2.3
   });
-  const [recentCalls, setRecentCalls] = useState<CallRecord[]>([]);
+  const [recentCalls, setRecentCalls] = useState<Call[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const callsRes = await callApi.listCalls({ limit: 5 });
-        const data = callsRes.data as { calls: CallRecord[] };
-        setRecentCalls(data.calls || []);
+        setRecentCalls(callsRes.data.calls || []);
       } catch {
         console.error('Failed to fetch rep data');
       } finally {
@@ -198,7 +191,7 @@ export const UserDashboardPage: React.FC = () => {
                         </tr>
                       ))
                     ) : (
-                    (recentCalls as unknown as CallRecord[]).map((call) => (
+                    recentCalls.map((call) => (
                       <tr key={call.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">

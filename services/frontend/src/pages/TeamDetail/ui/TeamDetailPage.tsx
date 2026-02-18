@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Sidebar } from '../../../widgets/Sidebar';
-import { teamApi } from '../../../entities/team/api';
-import { userApi } from '../../../entities/user/api';
-import Button from '../../../shared/ui/Button';
+import { Sidebar } from "@widgets/Sidebar";
+import { teamApi, type Team } from "@entities/team";
+import { userApi, type User } from "@entities/user";
+import Button from "@shared/ui/Button";
 
 const TeamDetailPage: React.FC = () => {
   const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [team, setTeam] = useState<any>(null);
-  const [users, setUsers] = useState<any[]>([]);
+  const [team, setTeam] = useState<Team | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -23,8 +23,7 @@ const TeamDetailPage: React.FC = () => {
           userApi.listUsers(),
         ]);
         setTeam(teamRes.data);
-        const userData = usersRes.data as any;
-        setUsers(userData.users.filter((u: any) => u.team_id === id));
+        setUsers(usersRes.data.users.filter((u) => u.team_id === id));
       } catch {
         console.error('Failed to fetch team details');
       } finally {

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { companyApi } from '../../../entities/company/api';
-import Button from '../../../shared/ui/Button';
+import { companyApi, type Company } from "@entities/company";
+import Button from "@shared/ui/Button";
 
 const CompanySetupPage: React.FC = () => {
   const { t } = useTranslation();
@@ -22,7 +22,7 @@ const CompanySetupPage: React.FC = () => {
       if (companyId) {
         try {
           const res = await companyApi.getCompany(companyId);
-          const data = res.data as any;
+          const data: Company = res.data;
           setFormData({
             companyName: data.name || '',
             industry: data.industry || '',

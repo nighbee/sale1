@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Sidebar } from '../../../widgets/Sidebar';
-import { companyApi } from '../../../entities/company/api';
-import { userApi } from '../../../entities/user/api';
-import type { Company } from '../../../entities/company/types';
-import type { User } from '../../../entities/user/types';
-import Skeleton from '../../../shared/ui/Skeleton';
+import { Sidebar } from "@widgets/Sidebar";
+import { companyApi } from "@entities/company";
+import { userApi } from "@entities/user";
+import type { Company } from "@entities/company";
+import type { User } from "@entities/user";
+import Skeleton from "@shared/ui/Skeleton";
 
 export const SuperAdminPage: React.FC = () => {
   const { t } = useTranslation();
