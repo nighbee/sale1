@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { notificationApi } from "../api/client";
-import { Sidebar } from "./DirectorDashboard";
+import { notificationApi } from "../entities/notification/api";
+import { Sidebar } from "../widgets/Sidebar";
 
 const Notifications: React.FC = () => {
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -27,7 +27,7 @@ const Notifications: React.FC = () => {
 
   return (
     <div className="flex">
-      <Sidebar active="notifications" />
+      <Sidebar />
       <div className="p-8 flex-1">
         <h2 className="text-2xl font-bold mb-4">Notifications</h2>
         {loading ? (

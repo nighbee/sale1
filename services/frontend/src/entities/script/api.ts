@@ -6,4 +6,6 @@ export const scriptApi = {
       'Content-Type': 'multipart/form-data',
     },
   }),
+  list: () => api.get<{ scripts: any[] }>('/scripts'),
+  delete: (id: string) => api.delete(`/scripts/${id}`),
 };

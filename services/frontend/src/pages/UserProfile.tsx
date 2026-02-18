@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { userApi } from "../api/client";
+import { userApi } from "../entities/user/api";
 import { useParams, useNavigate } from "react-router-dom";
 
 const UserProfile: React.FC = () => {
@@ -8,13 +8,13 @@ const UserProfile: React.FC = () => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [edit, setEdit] = useState(false);
-  const [form, setForm] = useState({ name: "", email: "" });
+  const [form, setForm] = useState({ full_name: "", email: "" });
 
   useEffect(() => {
     if (!id) return;
-    userApi.get(id).then((res) => {
+    userApi.get(id).then((res: any) => {
       setUser(res.data.user);
-      setForm({ name: res.data.user.name, email: res.data.user.email });
+      setForm({ full_name: res.data.user.full_name || "", email: res.data.user.email });
       setLoading(false);
     });
   }, [id]);
@@ -41,8 +41,8 @@ const UserProfile: React.FC = () => {
       {edit ? (
         <form onSubmit={handleUpdate} className="space-y-4">
           <input
-            value={form.name}
-            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+            value={form.full_name}
+            onChange={(e) => setForm((f) => ({ ...f, full_name: e.target.value }))}
             className="border p-2"
           />
           <input
@@ -62,7 +62,7 @@ const UserProfile: React.FC = () => {
         </form>
       ) : (
         <div>
-          <div>Name: {user.name}</div>
+          <div>Name: {user.full_name}</div>
           <div>Email: {user.email}</div>
           <button
             onClick={() => setEdit(true)}

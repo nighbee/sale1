@@ -8,8 +8,8 @@ import Skeleton from '../../../shared/ui/Skeleton';
 
 interface CallRecord {
   id: string;
-  client_phone: string;
-  call_date: string;
+  customer_phone?: string;
+  timestamp: string;
 }
 
 export const UserDashboardPage: React.FC = () => {
@@ -23,7 +23,7 @@ export const UserDashboardPage: React.FC = () => {
     totalReps: 8,
     improvement: 2.3
   });
-  const [recentCalls, setRecentCalls] = useState<Record<string, unknown>[]>([]);
+  const [recentCalls, setRecentCalls] = useState<CallRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -205,10 +205,10 @@ export const UserDashboardPage: React.FC = () => {
                             <div className="size-8 rounded bg-primary/10 flex items-center justify-center text-primary">
                               <span className="material-symbols-outlined text-sm">corporate_fare</span>
                             </div>
-                            <span className="font-semibold">{call.client_phone}</span>
+                            <span className="font-semibold">{call.customer_phone || 'N/A'}</span>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-sm text-slate-500">{call.call_date ? new Date(call.call_date).toLocaleDateString() : 'N/A'}</td>
+                        <td className="px-6 py-4 text-sm text-slate-500">{call.timestamp ? new Date(call.timestamp).toLocaleDateString() : 'N/A'}</td>
                         <td className="px-6 py-4">
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-400">
                             92
