@@ -96,6 +96,8 @@ services:
   frontend:
     build: ./services/frontend
     restart: always
+    ports:
+      - "80:80"
     depends_on:
       - main-api
 
