@@ -10,6 +10,8 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/ansrivas/fiberprometheus/v2"
+	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	_ "github.com/lib/pq"
@@ -84,6 +86,23 @@ func main() {
 	if err != nil {
 		log.Fatal("redis publisher:", err)
 	}
+
+	// Start a simple HTTP server for metrics
+	go func() {
+		app := fiber.New()
+		prometheus := fiberprometheus.New("sipuni-listener")
+		prometheus.RegisterAt(app, "/metrics")
+		app.Use(prometheus.Middleware)
+
+		port := os.Getenv("PORT")
+		if port == "" {
+			port = "8081"
+		}
+		log.Printf("Metrics server starting on port %s", port)
+		if err := app.Listen(":" + port); err != nil {
+			log.Printf("Metrics server error: %v", err)
+		}
+	}()
 
 	u := url.URL{Scheme: "wss", Host: "wss.sipuni.com", Path: "/api"}
 	apiKey := os.Getenv("SIPUNI_API_KEY")

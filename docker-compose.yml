@@ -116,7 +116,85 @@ services:
       - script-service
       - frontend
 
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    ports:
+      - "9090:9090"
+
+  loki:
+    image: grafana/loki:2.8.2
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/loki/loki-config.yml:/etc/loki/local-config.yaml
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    ports:
+      - "3100:3100"
+
+  promtail:
+    image: grafana/promtail:2.8.2
+    user: root
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/promtail/promtail-config.yml:/etc/promtail/config.yml
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    command: -config.file=/etc/promtail/config.yml
+
+  grafana:
+    image: grafana/grafana:10.0.3
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitoring/grafana/dashboards:/etc/grafana/dashboards
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+      - loki
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.47.2
+    restart: unless-stopped
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    ports:
+      - "8082:8080"
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.52.0
+    restart: unless-stopped
+    environment:
+      - REDIS_ADDR=redis:6379
+    ports:
+      - "9121:9121"
+
+  bullmq-exporter:
+    image: sbeckeriv/bullmq-exporter:latest
+    restart: unless-stopped
+    environment:
+      - REDIS_URL=redis://redis:6379
+    ports:
+      - "9800:9800"
+
 volumes:
   postgres_data:
   redis_data:
   minio_data:
+  prometheus_data:
+  loki_data:
+  grafana_data:

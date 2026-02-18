@@ -26,6 +26,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/ansrivas/fiberprometheus/v2"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	_ "github.com/lib/pq"
@@ -128,6 +129,10 @@ func main() {
 
 	app := fiber.New()
 	app.Use(logger.New())
+
+	prometheus := fiberprometheus.New("main-api")
+	prometheus.RegisterAt(app, "/metrics")
+	app.Use(prometheus.Middleware)
 
 	http.SetupRoutes(app, authHandler, callHandler, analyticsHandler, companyHandler, userHandler, teamHandler, integrationHandler, scriptHandler, notificationHandler, wsHandler, jwtService)
 

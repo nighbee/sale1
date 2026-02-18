@@ -5,6 +5,7 @@ import logging
 import os
 from src.core.usecases.process_audio import ProcessAudioUseCase
 from src.adapters.storage.postgres_repo import log_processing_event
+from src.infrastructure.monitoring.metrics import JOBS_PROCESSED
 
 logger = logging.getLogger(__name__)
 
@@ -34,8 +35,10 @@ async def start_consumer():
                 try:
                     await use_case.execute(job)
                     log_processing_event(call_id, "stt-service", "completed", retry_count=retry_count)
+                    JOBS_PROCESSED.labels(status='completed').inc()
                 except Exception as e:
                     logger.error(f"Failed to execute use case: {e}")
+                    JOBS_PROCESSED.labels(status='error').inc()
 
                     log_processing_event(call_id, "stt-service", "error", error_message=str(e), retry_count=retry_count)
                     if retry_count < max_retries:
