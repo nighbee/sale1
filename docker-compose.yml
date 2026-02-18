@@ -93,6 +93,12 @@ services:
       - postgres
       - redis
 
+  frontend:
+    build: ./services/frontend
+    restart: always
+    depends_on:
+      - main-api
+
   # stt-local:
   #   build: ./ai-services/stt-local
   #   ports:
@@ -108,6 +114,7 @@ services:
       - main-api
       - sipuni-listener
       - script-service
+      - frontend
 
 volumes:
   postgres_data:
