@@ -1918,6 +1918,9 @@ const docTemplate = `{
                 "role": {
                     "$ref": "#/definitions/github_com_salesai_main-api_internal_core_domain.UserRole"
                 },
+                "team_id": {
+                    "type": "string"
+                },
                 "updated_at": {
                     "type": "string"
                 }
