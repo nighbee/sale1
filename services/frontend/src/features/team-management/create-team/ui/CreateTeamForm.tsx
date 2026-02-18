@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { teamApi } from "../../../../entities/team/api";
-import Button from "../../../../shared/ui/Button";
-import Input from "../../../../shared/ui/Input";
+import { teamApi } from "@entities/team";
+import Button from "@shared/ui/Button";
+import Input from "@shared/ui/Input";
 
 export const CreateTeamForm: React.FC = () => {
   const { t } = useTranslation();

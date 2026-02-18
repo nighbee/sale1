@@ -8,19 +8,22 @@ import { Toaster } from "sonner";
 import { RegisterPage } from "@pages/Register";
 import { LoginPage } from "@pages/Login";
 import { CompanySetupPage } from "@pages/CompanySetup";
-import { TeamCreationPage } from "../pages/TeamCreation";
-import { ScriptUploadPage } from "../pages/ScriptUpload";
-import { InviteMembersPage } from "../pages/InviteMembers";
-import { DirectorDashboardPage } from "../pages/DirectorDashboard";
-import { TeamsOverviewPage } from "../pages/TeamsOverview";
-import { TeamDetailPage } from "../pages/TeamDetail";
-import { UserDashboardPage } from "../pages/UserDashboard";
-import { CompanySettingsPage } from "../pages/CompanySettings";
-import { IntegrationsPage } from "../pages/Integrations";
-import { LeaderboardPage } from "../pages/Leaderboard";
-import { CallDetailPage } from "../pages/CallDetail";
-import { CallsListPage } from "../pages/CallsList";
-import { SuperAdminPage } from "../pages/SuperAdmin";
+import { TeamCreationPage } from "@pages/TeamCreation";
+import { ScriptUploadPage } from "@pages/ScriptUpload";
+import { InviteMembersPage } from "@pages/InviteMembers";
+import { DirectorDashboardPage } from "@pages/DirectorDashboard";
+import { TeamsOverviewPage } from "@pages/TeamsOverview";
+import { TeamDetailPage } from "@pages/TeamDetail";
+import { UserDashboardPage } from "@pages/UserDashboard";
+import { CompanySettingsPage } from "@pages/CompanySettings";
+import { IntegrationsPage } from "@pages/Integrations";
+import { LeaderboardPage } from "@pages/Leaderboard";
+import { CallDetailPage } from "@pages/CallDetail";
+import { CallsListPage } from "@pages/CallsList";
+import { SuperAdminPage } from "@pages/SuperAdmin";
+import { NotificationsPage } from "@pages/Notifications";
+import { ScriptsListPage } from "@pages/ScriptsList";
+import { UserProfilePage } from "@pages/UserProfile";
 import ProtectedRoute from "./providers/ProtectedRoute";
 import "./styles/App.css";
 
@@ -144,6 +147,30 @@ function App() {
           element={
             <ProtectedRoute>
               <CallDetailPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/notifications"
+          element={
+            <ProtectedRoute>
+              <NotificationsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/scripts"
+          element={
+            <ProtectedRoute>
+              <ScriptsListPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile/:id"
+          element={
+            <ProtectedRoute>
+              <UserProfilePage />
             </ProtectedRoute>
           }
         />

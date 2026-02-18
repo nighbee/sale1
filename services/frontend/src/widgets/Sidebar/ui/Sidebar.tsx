@@ -1,8 +1,8 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { useUserStore } from "../../../entities/user/model/store";
-import LanguageSwitcher from "../../../shared/ui/LanguageSwitcher";
+import { useUserStore } from "@entities/user";
+import LanguageSwitcher from "@shared/ui/LanguageSwitcher";
 
 const Sidebar: React.FC = () => {
   const { t } = useTranslation();

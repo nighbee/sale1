@@ -1,4 +1,4 @@
-import { api } from '../../shared/api/base';
+import { api } from "@shared/api/base";
 import type { Integration } from './types';
 
 export const integrationApi = {

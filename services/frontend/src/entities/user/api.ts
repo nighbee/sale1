@@ -1,4 +1,4 @@
-import { api } from '../../shared/api/base';
+import { api } from "@shared/api/base";
 import type { User, AuthResponse } from './types';
 
 export const userApi = {

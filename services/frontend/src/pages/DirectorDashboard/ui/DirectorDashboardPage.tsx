@@ -1,17 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { analyticsApi } from '../../../entities/analytics/api';
-import { Sidebar } from '../../../widgets/Sidebar';
-import Skeleton from '../../../shared/ui/Skeleton';
-
-interface ManagerPerformance {
-  manager_id: string;
-  manager_name: string;
-  total_calls: number;
-  avg_quality: number;
-  avg_script_match: number;
-  avg_kpi: number;
-}
+import { analyticsApi, type ManagerPerformance } from '@entities/analytics';
+import { Sidebar } from "@widgets/Sidebar";
+import Skeleton from "@shared/ui/Skeleton";
 
 const DirectorDashboardPage: React.FC = () => {
   const { t } = useTranslation();
@@ -22,8 +13,7 @@ const DirectorDashboardPage: React.FC = () => {
     const fetchData = async () => {
       try {
         const response = await analyticsApi.getTeamPerformance('last_30_days');
-        const data = response.data as any;
-        setManagers(data.managers || []);
+        setManagers(response.data.managers || []);
       } catch (_err) {
         console.error("Failed to fetch performance data", _err);
       } finally {

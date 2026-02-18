@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { notificationApi } from "../entities/notification/api";
-import { Sidebar } from "../widgets/Sidebar";
+import { notificationApi, type Notification } from "@entities/notification";
+import { Sidebar } from "@widgets/Sidebar";
 
-const Notifications: React.FC = () => {
-  const [notifications, setNotifications] = useState<any[]>([]);
+const NotificationsPage: React.FC = () => {
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchNotifications = async () => {
@@ -64,4 +64,4 @@ const Notifications: React.FC = () => {
   );
 };
 
-export default Notifications;
+export default NotificationsPage;

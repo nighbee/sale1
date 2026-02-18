@@ -1,20 +1,23 @@
 import React, { useEffect, useState } from "react";
-import { userApi } from "../entities/user/api";
+import { userApi, type User } from "@entities/user";
 import { useParams, useNavigate } from "react-router-dom";
 
-const UserProfile: React.FC = () => {
+const UserProfilePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [edit, setEdit] = useState(false);
   const [form, setForm] = useState({ full_name: "", email: "" });
 
   useEffect(() => {
     if (!id) return;
-    userApi.get(id).then((res: any) => {
+    userApi.get(id).then((res) => {
       setUser(res.data.user);
-      setForm({ full_name: res.data.user.full_name || "", email: res.data.user.email });
+      setForm({
+        full_name: res.data.user.full_name || "",
+        email: res.data.user.email,
+      });
       setLoading(false);
     });
   }, [id]);
@@ -82,4 +85,4 @@ const UserProfile: React.FC = () => {
   );
 };
 
-export default UserProfile;
+export default UserProfilePage;

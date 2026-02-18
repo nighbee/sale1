@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Sidebar } from '../../../widgets/Sidebar';
-import { teamApi } from '../../../entities/team/api';
-import type { Team } from '../../../entities/team/types';
-import TeamCard from '../../../entities/team/ui/TeamCard';
-import Button from '../../../shared/ui/Button';
+import { Sidebar } from "@widgets/Sidebar";
+import { teamApi } from "@entities/team";
+import type { Team } from "@entities/team";
+import TeamCard from "@entities/team/ui/TeamCard";
+import Button from "@shared/ui/Button";
 
 const TeamsOverviewPage: React.FC = () => {
   const { t } = useTranslation();

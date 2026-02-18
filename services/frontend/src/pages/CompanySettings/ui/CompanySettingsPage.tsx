@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { Sidebar } from '../../../widgets/Sidebar';
-import { companyApi } from '../../../entities/company/api';
-import type { Company } from '../../../entities/company/types';
-import Button from '../../../shared/ui/Button';
+import { Sidebar } from "@widgets/Sidebar";
+import { companyApi, type Company } from "@entities/company";
+import Button from "@shared/ui/Button";
 
 const CompanySettingsPage: React.FC = () => {
   const { t } = useTranslation();
