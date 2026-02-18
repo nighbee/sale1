@@ -45,6 +45,7 @@ import (
 	"github.com/salesai/main-api/internal/core/usecases/integrations"
 	"github.com/salesai/main-api/internal/core/usecases/teams"
 	"github.com/salesai/main-api/internal/infrastructure/config"
+	"github.com/salesai/main-api/internal/infrastructure/database"
 	"github.com/salesai/main-api/internal/infrastructure/security"
 )
 
@@ -56,6 +57,13 @@ func main() {
 		log.Fatal("Failed to connect to database:", err)
 	}
 	defer db.Close()
+
+	// Run automatic migrations
+	if err := database.RunMigrations(db, cfg.MigrationsPath); err != nil {
+		log.Printf("Warning: Database migrations failed: %v", err)
+		// We continue anyway, as the DB might be schema-correct but the tool might have issues
+		// However, for a fresh start, this is where it would stop.
+	}
 
 	// Repositories
 	userRepo := repositories.NewUserRepository(db)
@@ -95,13 +103,8 @@ func main() {
 
 	// Redis client
 	rdb := redis.NewClient(&redis.Options{
-		Addr: os.Getenv("REDIS_ADDR"), // or from cfg
+		Addr: cfg.RedisURL,
 	})
-	if os.Getenv("REDIS_ADDR") == "" {
-		rdb = redis.NewClient(&redis.Options{
-			Addr: "redis:6379",
-		})
-	}
 
 	// WebSocket Hub
 	hub := ws.NewHub()

@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"log"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/salesai/main-api/internal/core/ports"
 	"github.com/salesai/main-api/internal/core/usecases/auth"
@@ -17,7 +19,7 @@ type AuthHandler struct {
 func NewAuthHandler(
 	registerUC *auth.RegisterUseCase,
 	loginUC *auth.LoginUseCase,
-	refreshUC  *auth.RefreshUseCase,
+	refreshUC *auth.RefreshUseCase,
 ) *AuthHandler {
 	return &AuthHandler{
 		registerUC: registerUC,
@@ -41,18 +43,23 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 	var req auth.RegisterRequest
 
 	if err := c.BodyParser(&req); err != nil {
+		log.Printf("[AUTH] Register body parse error: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Invalid request body",
 		})
 	}
 
+	log.Printf("[AUTH] Processing registration for email: %s, company: %s", req.Email, req.CompanyName)
+
 	resp, err := h.registerUC.Execute(c.Context(), &req)
 	if err != nil {
+		log.Printf("[AUTH] Registration failed for %s: %v", req.Email, err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": err.Error(),
 		})
 	}
 
+	log.Printf("[AUTH] Registration successful for %s (Company ID: %s)", req.Email, resp.Company.ID)
 	return c.Status(fiber.StatusCreated).JSON(resp)
 }
 

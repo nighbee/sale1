@@ -3,7 +3,10 @@ import logging
 from src.adapters.events.redis_consumer import start_consumer
 from src.infrastructure.grpc.server import serve
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 async def main():

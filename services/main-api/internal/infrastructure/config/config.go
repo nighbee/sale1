@@ -7,6 +7,8 @@ import (
 
 type Config struct {
 	DatabaseURL      string
+	RedisURL         string
+	MigrationsPath   string
 	JWTSecret        string
 	JWTExpiry        time.Duration
 	ScriptServiceURL string
@@ -21,6 +23,20 @@ func Load() *Config {
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
 		dbURL = "host=postgres port=5432 user=salesai_user password=strong_password dbname=salesai sslmode=disable"
+	}
+
+	redisURL := os.Getenv("REDIS_URL")
+	if redisURL == "" {
+		// Use REDIS_ADDR if REDIS_URL is not set for backward compatibility
+		redisURL = os.Getenv("REDIS_ADDR")
+		if redisURL == "" {
+			redisURL = "redis:6379"
+		}
+	}
+
+	migrationsPath := os.Getenv("MIGRATIONS_PATH")
+	if migrationsPath == "" {
+		migrationsPath = "./internal/infrastructure/database/migrations"
 	}
 
 	secret := os.Getenv("JWT_SECRET")
@@ -50,6 +66,8 @@ func Load() *Config {
 
 	return &Config{
 		DatabaseURL:      dbURL,
+		RedisURL:         redisURL,
+		MigrationsPath:   migrationsPath,
 		JWTSecret:        secret,
 		JWTExpiry:        time.Hour * 24,
 		ScriptServiceURL: scriptURL,

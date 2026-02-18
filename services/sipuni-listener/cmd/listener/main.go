@@ -151,7 +151,7 @@ func main() {
 			for {
 				_, message, err := c.ReadMessage()
 				if err != nil {
-					log.Printf("Read error: %v", err)
+					log.Printf("[WS] Read error: %v", err)
 					return
 				}
 
@@ -162,15 +162,16 @@ func main() {
 					// Handle auth response
 					if event.Action == "auth" {
 						if event.Status == 1 {
-							log.Println("Authentication successful")
+							log.Println("[WS] Authentication successful")
 						} else {
-							log.Printf("Authentication failed with status: %d", event.Status)
+							log.Printf("[WS] Authentication failed! Status: %d, Message: %s", event.Status, string(message))
 						}
 						continue
 					}
 
 					// Handle notify message
 					if event.Action == "notify" {
+						log.Printf("[WS] Received notify event")
 						handleNotify(event.Request)
 						continue
 					}
@@ -180,13 +181,14 @@ func main() {
 				var directNotify SipuniNotifyRequest
 				err = json.Unmarshal(message, &directNotify)
 				if err == nil && directNotify.CallID != "" {
+					log.Printf("[WS] Received direct notify (unwrapped) for CallID: %s", directNotify.CallID)
 					// We need to re-marshal to RawMessage to use existing handleNotify
 					rawRequest, _ := json.Marshal(directNotify)
 					handleNotify(rawRequest)
 					continue
 				}
 
-				log.Printf("[DIAGNOSTIC] Message did not match any expected format: %s", string(message))
+				log.Printf("[DIAGNOSTIC] Unrecognized message format: %s", string(message))
 			}
 		}()
 

@@ -30,19 +30,14 @@ func (c *RedisConsumer) Start(ctx context.Context) {
 	groupName := "main_api_group"
 	consumerName := "main_api_consumer_1"
 
-	// Create groups
-	for _, stream := range streams {
-		err := c.client.XGroupCreateMkStream(ctx, stream, groupName, "0").Err()
-		if err != nil && err.Error() != "BUSYGROUP Consumer Group name already exists" {
-			log.Printf("XGroupCreate error for %s: %v", stream, err)
-		}
-	}
+	// Initial group creation
+	c.ensureGroups(ctx, streams, groupName)
 
 	for {
 		entries, err := c.client.XReadGroup(ctx, &redis.XReadGroupArgs{
 			Group:    groupName,
 			Consumer: consumerName,
-			Streams:  append(streams, ">", ">"), // Wait, syntax is streams then positions
+			Streams:  []string{"analysis_completed", "critical_error", ">", ">"},
 			Count:    1,
 			Block:    5 * time.Second,
 		}).Result()
@@ -50,6 +45,13 @@ func (c *RedisConsumer) Start(ctx context.Context) {
 		if err != nil {
 			if err != redis.Nil {
 				log.Printf("Redis error: %v", err)
+				// If error is NOGROUP, try to recreate groups
+				if err.Error() == "NOGROUP No such key 'analysis_completed' or consumer group 'main_api_group' in XREADGROUP with GROUP option" ||
+					err.Error() == "NOGROUP No such key 'critical_error' or consumer group 'main_api_group' in XREADGROUP with GROUP option" {
+					log.Println("Consumer group missing, attempting to recreate...")
+					c.ensureGroups(ctx, streams, groupName)
+				}
+				time.Sleep(2 * time.Second) // Small backoff on error
 			}
 			continue
 		}
@@ -92,6 +94,20 @@ func (c *RedisConsumer) Start(ctx context.Context) {
 
 				c.client.XAck(ctx, streamName, groupName, message.ID)
 			}
+		}
+	}
+}
+
+func (c *RedisConsumer) ensureGroups(ctx context.Context, streams []string, groupName string) {
+	for _, stream := range streams {
+		err := c.client.XGroupCreateMkStream(ctx, stream, groupName, "0").Err()
+		if err != nil {
+			if err.Error() == "BUSYGROUP Consumer Group name already exists" {
+				continue
+			}
+			log.Printf("XGroupCreate error for %s: %v", stream, err)
+		} else {
+			log.Printf("Successfully created consumer group %s for stream %s", groupName, stream)
 		}
 	}
 }
