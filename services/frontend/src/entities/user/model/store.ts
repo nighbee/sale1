@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import { userApi } from '../api';
 import type { User, UserCompany } from '../types';
 
 interface UserState {
@@ -12,7 +13,7 @@ interface UserState {
   setCompanies: (companies: UserCompany[]) => void;
   setCurrentCompany: (companyId: string) => void;
   setCurrentTeam: (teamId: string | null) => void;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 /**
@@ -39,11 +40,17 @@ export const useUserStore = create<UserState>()(
           window.location.reload(); // Reload to refresh data for new company
       },
       setCurrentTeam: (teamId) => set({ currentTeamId: teamId }),
-      logout: () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('company_id');
-        localStorage.removeItem('user_id');
-        set({ user: null, isLogged: false, companies: [], currentCompanyId: null, currentTeamId: null });
+      logout: async () => {
+        try {
+          await userApi.logout();
+        } catch (err) {
+          console.error('Logout API call failed', err);
+        } finally {
+          localStorage.removeItem('token');
+          localStorage.removeItem('company_id');
+          localStorage.removeItem('user_id');
+          set({ user: null, isLogged: false, companies: [], currentCompanyId: null, currentTeamId: null });
+        }
       },
     }),
     {

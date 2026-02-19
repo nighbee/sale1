@@ -53,6 +53,8 @@
     "log_in": "Log in",
     "welcome_back": "Welcome back!",
     "account_created": "Account created successfully!",
+    "logout_success": "Logged out successfully",
+    "logout_failed": "Logout failed",
     "login_failed": "Login failed",
     "registration_failed": "Registration failed",
     "continue_google": "Continue with Google",

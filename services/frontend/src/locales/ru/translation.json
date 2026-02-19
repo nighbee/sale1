@@ -53,6 +53,8 @@
     "log_in": "Войти",
     "welcome_back": "С возвращением!",
     "account_created": "Аккаунт успешно создан!",
+    "logout_success": "Выход выполнен успешно",
+    "logout_failed": "Ошибка выхода",
     "login_failed": "Ошибка входа",
     "registration_failed": "Ошибка регистрации",
     "continue_google": "Продолжить через Google",
