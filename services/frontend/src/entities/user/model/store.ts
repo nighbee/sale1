@@ -5,7 +5,13 @@ import type { User } from '../types';
 interface UserState {
   user: User | null;
   isLogged: boolean;
+  companies: any[];
+  currentCompanyId: string | null;
+  currentTeamId: string | null;
   setUser: (user: User | null) => void;
+  setCompanies: (companies: any[]) => void;
+  setCurrentCompany: (companyId: string) => void;
+  setCurrentTeam: (teamId: string | null) => void;
   logout: () => void;
 }
 
@@ -22,12 +28,22 @@ export const useUserStore = create<UserState>()(
     (set) => ({
       user: null,
       isLogged: !!localStorage.getItem('token'),
+      companies: [],
+      currentCompanyId: localStorage.getItem('company_id'),
+      currentTeamId: null,
       setUser: (user) => set({ user, isLogged: !!user }),
+      setCompanies: (companies) => set({ companies }),
+      setCurrentCompany: (companyId) => {
+          localStorage.setItem('company_id', companyId);
+          set({ currentCompanyId: companyId, currentTeamId: null });
+          window.location.reload(); // Reload to refresh data for new company
+      },
+      setCurrentTeam: (teamId) => set({ currentTeamId: teamId }),
       logout: () => {
         localStorage.removeItem('token');
         localStorage.removeItem('company_id');
         localStorage.removeItem('user_id');
-        set({ user: null, isLogged: false });
+        set({ user: null, isLogged: false, companies: [], currentCompanyId: null, currentTeamId: null });
       },
     }),
     {

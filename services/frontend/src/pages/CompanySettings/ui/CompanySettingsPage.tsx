@@ -3,48 +3,58 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Sidebar } from '../../../widgets/Sidebar';
 import { companyApi } from '../../../entities/company/api';
+import { integrationApi } from '../../../entities/integration/api';
 import type { Company } from '../../../entities/company/types';
 import Button from '../../../shared/ui/Button';
+import Input from '../../../shared/ui/Input';
 
 const CompanySettingsPage: React.FC = () => {
   const { t } = useTranslation();
-  const [company, setCompany] = useState<Company | null>(null);
+  const [activeTab, setActiveTab] = useState<'general' | 'ai' | 'integrations' | 'billing'>('general');
+  const [company, setCompany] = useState<Company | any>(null);
+  const [billing, setBilling] = useState<any>(null);
+  const [integrations, setIntegrations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const fetchCompany = async () => {
-      const companyId = localStorage.getItem('company_id');
-      if (companyId) {
-        try {
-          const res = await companyApi.getCompany(companyId);
-          setCompany(res.data);
-        } catch {
-          console.error('Failed to fetch company');
-        } finally {
-          setLoading(false);
-        }
-      }
-    };
-    fetchCompany();
+    fetchData();
   }, []);
 
-  const handleSave = async (stt: string, llm: string) => {
+  const fetchData = async () => {
+    const companyId = localStorage.getItem('company_id');
+    if (!companyId) return;
+    setLoading(true);
+    try {
+      const [compRes, billRes, intRes] = await Promise.all([
+        companyApi.getCompany(companyId),
+        companyApi.getBilling(companyId),
+        integrationApi.list(),
+      ]);
+      setCompany(compRes.data);
+      setBilling(billRes.data);
+      setIntegrations(intRes.data.integrations || []);
+    } catch (err) {
+      console.error('Failed to fetch company data', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveAll = async () => {
     if (!company) return;
     setSaving(true);
     const companyId = localStorage.getItem('company_id');
     try {
-      await companyApi.updateSettings(companyId!, {
-        stt_model_preference: stt,
-        llm_provider: llm,
-      });
-      setCompany({...company, stt_model_preference: stt, llm_provider: llm});
-      toast.success(t('settings.update_success'));
+        await Promise.all([
+            companyApi.updateSettings(companyId!, company),
+            companyApi.updateBilling(companyId!, billing),
+        ]);
+        toast.success(t('settings.update_success'));
     } catch (_err: unknown) {
-      console.error('Failed to update settings', _err);
-      toast.error(t('settings.update_failed'));
+        toast.error(t('settings.update_failed'));
     } finally {
-      setSaving(false);
+        setSaving(false);
     }
   };
 
@@ -64,15 +74,58 @@ const CompanySettingsPage: React.FC = () => {
 
         <div className="border-b border-border-light dark:border-border-dark mb-8 overflow-x-auto">
           <nav className="-mb-px flex space-x-8">
-            <button className="border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">{t('settings.general')}</button>
-            <button className="border-primary text-primary whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">{t('settings.ai_providers')}</button>
-            <button className="border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">{t('settings.integrations')}</button>
-            <button className="border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">{t('settings.billing')}</button>
+            {[
+                { id: 'general', label: t('settings.general') },
+                { id: 'ai', label: t('settings.ai_providers') },
+                { id: 'integrations', label: t('settings.integrations') },
+                { id: 'billing', label: t('settings.billing') },
+            ].map(tab => (
+                <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id as any)}
+                    className={`${activeTab === tab.id ? 'border-primary text-primary' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-all`}
+                >
+                    {tab.label}
+                </button>
+            ))}
           </nav>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           <div className="lg:col-span-8 space-y-10">
+            {activeTab === 'general' && (
+                <section className="space-y-6">
+                    <Input
+                        label="Company Name"
+                        value={company.name}
+                        onChange={(e) => setCompany({ ...company, name: e.target.value })}
+                    />
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Description</label>
+                        <textarea
+                            className="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-sm text-slate-900 dark:text-white"
+                            rows={4}
+                            value={company.description || ''}
+                            onChange={(e) => setCompany({ ...company, description: e.target.value })}
+                        />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <Input
+                            label="Industry"
+                            value={company.industry}
+                            onChange={(e) => setCompany({ ...company, industry: e.target.value })}
+                        />
+                        <Input
+                            label="Company Size"
+                            value={company.size}
+                            onChange={(e) => setCompany({ ...company, size: e.target.value })}
+                        />
+                    </div>
+                </section>
+            )}
+
+            {activeTab === 'ai' && (
+                <>
             <section>
               <div className="flex items-center justify-between mb-4">
                 <div>
@@ -88,7 +141,7 @@ const CompanySettingsPage: React.FC = () => {
                 ].map((p) => (
                   <div
                     key={p.id}
-                    onClick={() => handleSave(p.id, company.llm_provider as string)}
+                    onClick={() => setCompany({ ...company, stt_model_preference: p.id })}
                     className={`relative flex cursor-pointer rounded-lg border p-4 shadow-sm transition-all ${company.stt_model_preference === p.id ? 'border-2 border-primary bg-blue-50/20 dark:bg-blue-900/10' : 'border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark'}`}
                   >
                     <div className="flex h-5 items-center">
@@ -128,7 +181,7 @@ const CompanySettingsPage: React.FC = () => {
                 ].map((p) => (
                   <div
                     key={p.id}
-                    onClick={() => handleSave(company.stt_model_preference as string, p.id)}
+                    onClick={() => setCompany({ ...company, llm_provider: p.id })}
                     className={`relative flex cursor-pointer rounded-lg border p-4 shadow-sm transition-all ${company.llm_provider === p.id ? 'border-2 border-primary bg-blue-50/20 dark:bg-blue-900/10' : 'border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark'}`}
                   >
                     <div className="flex h-5 items-center">
@@ -145,30 +198,105 @@ const CompanySettingsPage: React.FC = () => {
                 ))}
               </div>
             </section>
+                </>
+            )}
+
+            {activeTab === 'integrations' && (
+                <section className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {[
+                            { id: 'slack', name: 'Slack', icon: 'chat', desc: 'Sync activities to Slack channels' },
+                            { id: 'amocrm', name: 'AmoCRM', icon: 'hub', desc: 'Sync leads and calls with AmoCRM' },
+                            { id: 'telegram', name: 'Telegram', icon: 'send', desc: 'Get notifications via Telegram bot' },
+                        ].map(int => {
+                            const isConnected = integrations.some(i => i.integration_type === int.id && i.is_active);
+                            return (
+                                <div key={int.id} className="p-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded-lg text-primary">
+                                            <span className="material-icons">{int.icon}</span>
+                                        </div>
+                                        <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded ${isConnected ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                                            {isConnected ? 'Connected' : 'Disconnected'}
+                                        </span>
+                                    </div>
+                                    <h3 className="font-bold">{int.name}</h3>
+                                    <p className="text-xs text-slate-500 mt-1 mb-4">{int.desc}</p>
+                                    <Button variant="outline" className="w-full text-xs">Configure</Button>
+                                </div>
+                            )
+                        })}
+                    </div>
+                </section>
+            )}
+
+            {activeTab === 'billing' && billing && (
+                <section className="space-y-8">
+                    <div className="bg-gradient-to-br from-primary to-blue-700 p-8 rounded-2xl text-white shadow-xl shadow-primary/20">
+                        <div className="flex justify-between items-start mb-12">
+                            <span className="text-lg font-bold italic tracking-widest uppercase">{billing.card_type || 'VISA'}</span>
+                            <span className="material-icons text-3xl">contactless</span>
+                        </div>
+                        <div className="mb-8">
+                            <p className="text-xs text-white/60 uppercase tracking-widest mb-2 font-medium">Card Number</p>
+                            <p className="text-2xl font-mono tracking-[0.2em]">{billing.card_number_masked || '•••• •••• •••• ••••'}</p>
+                        </div>
+                        <div className="flex justify-between items-end">
+                            <div>
+                                <p className="text-[10px] text-white/60 uppercase mb-1 font-medium">Card Holder</p>
+                                <p className="font-bold tracking-wide uppercase">{billing.card_holder_name || 'NOT PROVIDED'}</p>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-[10px] text-white/60 uppercase mb-1 font-medium">Expires</p>
+                                <p className="font-bold font-mono">{billing.expiration_date || 'MM/YY'}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="p-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+                            <h3 className="text-sm font-bold text-slate-500 uppercase mb-4 tracking-wider">Token Usage</h3>
+                            <div className="flex items-baseline gap-2 mb-2">
+                                <span className="text-3xl font-black">{billing.tokens_used?.toLocaleString()}</span>
+                                <span className="text-slate-400 font-medium">/ {billing.tokens_limit?.toLocaleString()}</span>
+                            </div>
+                            <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                                <div className="bg-primary h-full" style={{ width: `${(billing.tokens_used / billing.tokens_limit) * 100}%` }}></div>
+                            </div>
+                        </div>
+                        <div className="p-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+                             <h3 className="text-sm font-bold text-slate-500 uppercase mb-4 tracking-wider">Plan</h3>
+                             <div className="flex items-center gap-3">
+                                 <span className="text-2xl font-black uppercase">{company.subscription_tier}</span>
+                                 <span className="bg-primary/10 text-primary text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider">Active</span>
+                             </div>
+                             <p className="text-xs text-slate-400 mt-2">Renews on March 15, 2024</p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <h3 className="font-bold text-slate-900 dark:text-white">Update Payment Method</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <Input label="Card Holder Name" value={billing.card_holder_name || ''} onChange={(e) => setBilling({...billing, card_holder_name: e.target.value})} />
+                            <Input label="Card Number" value={billing.card_number_masked || ''} onChange={(e) => setBilling({...billing, card_number_masked: e.target.value})} />
+                            <Input label="Expiration Date (MM/YY)" value={billing.expiration_date || ''} onChange={(e) => setBilling({...billing, expiration_date: e.target.value})} />
+                            <Input label="Card Type (Visa/Mastercard)" value={billing.card_type || ''} onChange={(e) => setBilling({...billing, card_type: e.target.value})} />
+                        </div>
+                    </div>
+                </section>
+            )}
           </div>
 
-          <div className="lg:col-span-4 sticky top-24 space-y-6">
+          <div className="lg:col-span-4 sticky top-24">
             <div className="rounded-xl border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark shadow-sm overflow-hidden p-6">
-              <h3 className="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2 mb-4">
-                <span className="material-symbols-outlined text-primary">payments</span>
-                {t('settings.cost_estimate')}
-              </h3>
-              <div className="space-y-4">
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-slate-600 dark:text-slate-300">{t('settings.total_estimate')}</span>
-                  <span className="text-2xl font-bold text-slate-900 dark:text-white">$162/mo</span>
-                </div>
-                <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
-                  <div className="bg-primary h-full w-[63%]"></div>
-                </div>
-              </div>
               <Button
                 isLoading={saving}
-                className="w-full mt-6 py-3 px-4"
-                onClick={() => handleSave(company.stt_model_preference as string, company.llm_provider as string)}
+                className="w-full py-4 text-base font-bold shadow-xl shadow-primary/30"
+                onClick={handleSaveAll}
               >
                 {t('settings.save_changes')}
               </Button>
+              <p className="text-center text-xs text-slate-400 mt-4">All changes will be applied instantly to your organization.</p>
             </div>
           </div>
         </div>

@@ -32,6 +32,27 @@ definitions:
       script_match:
         type: integer
     type: object
+  github_com_salesai_main-api_internal_core_domain.BillingInfo:
+    properties:
+      card_holder_name:
+        type: string
+      card_number_masked:
+        type: string
+      card_type:
+        type: string
+      company_id:
+        type: string
+      created_at:
+        type: string
+      expiration_date:
+        type: string
+      tokens_limit:
+        type: integer
+      tokens_used:
+        type: integer
+      updated_at:
+        type: string
+    type: object
   github_com_salesai_main-api_internal_core_domain.Call:
     properties:
       call_date:
@@ -80,6 +101,8 @@ definitions:
   github_com_salesai_main-api_internal_core_domain.Company:
     properties:
       created_at:
+        type: string
+      description:
         type: string
       id:
         type: string
@@ -176,6 +199,8 @@ definitions:
       structure:
         additionalProperties: true
         type: object
+      team_id:
+        type: string
       updated_at:
         type: string
       version:
@@ -193,8 +218,14 @@ definitions:
         type: string
       id:
         type: string
+      members:
+        items:
+          $ref: '#/definitions/github_com_salesai_main-api_internal_core_domain.User'
+        type: array
       name:
         type: string
+      script:
+        $ref: '#/definitions/github_com_salesai_main-api_internal_core_domain.Script'
       updated_at:
         type: string
     type: object
@@ -223,11 +254,15 @@ definitions:
         type: string
       email:
         type: string
+      first_name:
+        type: string
       id:
         type: string
       is_active:
         type: boolean
       last_login:
+        type: string
+      last_name:
         type: string
       manager_id:
         type: string
@@ -279,6 +314,8 @@ definitions:
         type: string
       email:
         type: string
+      full_name:
+        type: string
       manager_id:
         type: string
       manager_name:
@@ -322,42 +359,28 @@ info:
   title: SalesAI API
   version: "1.0"
 paths:
-  /analytics/leaderboard:
+  /analytics/leaderboard/export/{format}:
     get:
-      consumes:
-      - application/json
-      description: Get a ranked list of managers based on their KPI scores
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/fiber.Map'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/fiber.Map'
-      security:
-      - BearerAuth: []
-      summary: Get sales leaderboard
-      tags:
-      - analytics
-  /analytics/team-performance:
-    get:
-      consumes:
-      - application/json
-      description: Get a breakdown of performance metrics per manager
+      description: Export leaderboard performance data in CSV, Excel, or PDF format
       parameters:
-      - description: Time period (e.g., last_30_days)
+      - description: Export format (csv, excel, pdf)
+        in: path
+        name: format
+        required: true
+        type: string
+      - description: Filter by team ID
         in: query
-        name: period
+        name: team_id
         type: string
       produces:
-      - application/json
+      - application/octet-stream
       responses:
         "200":
           description: OK
+          schema:
+            type: file
+        "400":
+          description: Bad Request
           schema:
             $ref: '#/definitions/fiber.Map'
         "500":
@@ -366,7 +389,7 @@ paths:
             $ref: '#/definitions/fiber.Map'
       security:
       - BearerAuth: []
-      summary: Get team performance analytics
+      summary: Export leaderboard data
       tags:
       - analytics
   /auth/login:
@@ -656,6 +679,69 @@ paths:
       security:
       - BearerAuth: []
       summary: Get company details
+      tags:
+      - companies
+  /companies/{id}/billing:
+    get:
+      consumes:
+      - application/json
+      description: Get billing details, card info, and token usage for a company
+      parameters:
+      - description: Company ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_salesai_main-api_internal_core_domain.BillingInfo'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/fiber.Map'
+      security:
+      - BearerAuth: []
+      summary: Get company billing info
+      tags:
+      - companies
+    put:
+      consumes:
+      - application/json
+      description: Update card details and billing preferences
+      parameters:
+      - description: Company ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Billing Update Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_salesai_main-api_internal_core_domain.BillingInfo'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_salesai_main-api_internal_core_domain.BillingInfo'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/fiber.Map'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/fiber.Map'
+      security:
+      - BearerAuth: []
+      summary: Update company billing info
       tags:
       - companies
   /companies/{id}/settings:
@@ -1019,6 +1105,35 @@ paths:
       summary: Get parsed script text
       tags:
       - scripts
+  /scripts/{id}/download:
+    get:
+      description: Download the original DOCX/PDF file for a script
+      parameters:
+      - description: Script ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/fiber.Map'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/fiber.Map'
+      security:
+      - BearerAuth: []
+      summary: Download script file
+      tags:
+      - scripts
   /teams:
     get:
       consumes:
@@ -1159,6 +1274,115 @@ paths:
       summary: Update team details
       tags:
       - teams
+  /teams/{id}/members:
+    post:
+      consumes:
+      - application/json
+      description: Assign a user to a sales team
+      parameters:
+      - description: Team ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Add Member Request
+        in: body
+        name: request
+        required: true
+        schema:
+          additionalProperties:
+            type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/fiber.Map'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/fiber.Map'
+      security:
+      - BearerAuth: []
+      summary: Add a member to a team
+      tags:
+      - teams
+  /teams/{id}/members/{userID}:
+    delete:
+      consumes:
+      - application/json
+      description: Unassign a user from a sales team
+      parameters:
+      - description: Team ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: User ID
+        in: path
+        name: userID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/fiber.Map'
+      security:
+      - BearerAuth: []
+      summary: Remove a member from a team
+      tags:
+      - teams
+  /user/companies:
+    get:
+      consumes:
+      - application/json
+      description: Get all companies associated with the current user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/fiber.Map'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/fiber.Map'
+      security:
+      - BearerAuth: []
+      summary: List user's companies
+      tags:
+      - users
+  /user/me:
+    get:
+      consumes:
+      - application/json
+      description: Get profile details of the currently authenticated user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_salesai_main-api_internal_core_domain.User'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/fiber.Map'
+      security:
+      - BearerAuth: []
+      summary: Get current user profile
+      tags:
+      - users
   /users:
     get:
       consumes:

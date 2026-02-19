@@ -4,17 +4,20 @@ import { callApi } from '../../../entities/call/api';
 import Skeleton from '../../../shared/ui/Skeleton';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useUserStore } from '../../../entities/user/model/store';
 
 const CallsListPage: React.FC = () => {
   const { t } = useTranslation();
+  const { currentTeamId } = useUserStore();
   const [calls, setCalls] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ total: 0, avgScore: 0, failed: 0 });
 
   useEffect(() => {
     const fetchData = async () => {
+      setLoading(true);
       try {
-        const res = await callApi.listCalls({});
+        const res = await callApi.listCalls({ team_id: currentTeamId });
         const data = res.data as any;
         setCalls(data.calls || []);
         // Simulated stats calculation
@@ -28,7 +31,7 @@ const CallsListPage: React.FC = () => {
       }
     };
     fetchData();
-  }, []);
+  }, [currentTeamId]);
 
   return (
     <div className="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display min-h-screen flex">

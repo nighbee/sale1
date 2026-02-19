@@ -20,6 +20,7 @@ const (
 type Company struct {
 	ID                 string      `json:"id"`
 	Name               string      `json:"name"`
+	Description        string      `json:"description"`
 	Industry           string      `json:"industry"`
 	Size               string      `json:"size"`
 	TimeZone           string      `json:"time_zone"`
@@ -29,4 +30,16 @@ type Company struct {
 	IsActive           bool        `json:"is_active"`
 	CreatedAt          time.Time   `json:"created_at"`
 	UpdatedAt          time.Time   `json:"updated_at"`
+}
+
+type BillingInfo struct {
+	CompanyID         string    `json:"company_id"`
+	CardHolderName    string    `json:"card_holder_name"`
+	CardNumberMasked  string    `json:"card_number_masked"`
+	ExpirationDate    string    `json:"expiration_date"`
+	CardType          string    `json:"card_type"`
+	TokensUsed        int       `json:"tokens_used"`
+	TokensLimit       int       `json:"tokens_limit"`
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
 }

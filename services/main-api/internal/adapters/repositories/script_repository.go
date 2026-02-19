@@ -21,20 +21,20 @@ func NewScriptRepository(db *sql.DB) ports.ScriptRepository {
 func (r *scriptRepository) Create(ctx context.Context, s *domain.Script) error {
 	structureJSON, _ := json.Marshal(s.Structure)
 	query := `
-		INSERT INTO scripts_schema.scripts (id, company_id, name, file_path_minio, parsed_text, structure, version, is_active)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		INSERT INTO scripts_schema.scripts (id, company_id, name, file_path_minio, parsed_text, structure, version, is_active, team_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		RETURNING created_at, updated_at
 	`
-	return r.db.QueryRowContext(ctx, query, s.ID, s.CompanyID, s.Name, s.FilePathMinio, s.ParsedText, structureJSON, s.Version, s.IsActive).Scan(&s.CreatedAt, &s.UpdatedAt)
+	return r.db.QueryRowContext(ctx, query, s.ID, s.CompanyID, s.Name, s.FilePathMinio, s.ParsedText, structureJSON, s.Version, s.IsActive, s.TeamID).Scan(&s.CreatedAt, &s.UpdatedAt)
 }
 
 func (r *scriptRepository) Update(ctx context.Context, s *domain.Script) error {
 	structureJSON, _ := json.Marshal(s.Structure)
 	query := `
-		UPDATE scripts_schema.scripts SET name = $2, is_active = $3, structure = $4, updated_at = NOW()
+		UPDATE scripts_schema.scripts SET name = $2, is_active = $3, structure = $4, updated_at = NOW(), team_id = $6
 		WHERE id = $1 AND company_id = $5
 	`
-	_, err := r.db.ExecContext(ctx, query, s.ID, s.Name, s.IsActive, structureJSON, s.CompanyID)
+	_, err := r.db.ExecContext(ctx, query, s.ID, s.Name, s.IsActive, structureJSON, s.CompanyID, s.TeamID)
 	return err
 }
 
@@ -46,7 +46,7 @@ func (r *scriptRepository) Delete(ctx context.Context, companyID, id string) err
 
 func (r *scriptRepository) GetActiveByCompany(ctx context.Context, companyID string) (*domain.Script, error) {
 	query := `
-		SELECT id, company_id, name, file_path_minio, parsed_text, structure, version, is_active, created_at, updated_at
+		SELECT id, company_id, name, file_path_minio, parsed_text, structure, version, is_active, created_at, updated_at, team_id
 		FROM scripts_schema.scripts
 		WHERE company_id = $1 AND is_active = true
 		ORDER BY version DESC LIMIT 1
@@ -54,7 +54,7 @@ func (r *scriptRepository) GetActiveByCompany(ctx context.Context, companyID str
 	s := &domain.Script{}
 	var structureJSON []byte
 	err := r.db.QueryRowContext(ctx, query, companyID).Scan(
-		&s.ID, &s.CompanyID, &s.Name, &s.FilePathMinio, &s.ParsedText, &structureJSON, &s.Version, &s.IsActive, &s.CreatedAt, &s.UpdatedAt,
+		&s.ID, &s.CompanyID, &s.Name, &s.FilePathMinio, &s.ParsedText, &structureJSON, &s.Version, &s.IsActive, &s.CreatedAt, &s.UpdatedAt, &s.TeamID,
 	)
 	if err == sql.ErrNoRows {
 		return nil, errors.New("active script not found")
@@ -70,7 +70,7 @@ func (r *scriptRepository) GetActiveByCompany(ctx context.Context, companyID str
 
 func (r *scriptRepository) ListByCompany(ctx context.Context, companyID string) ([]*domain.Script, error) {
 	query := `
-		SELECT id, company_id, name, file_path_minio, parsed_text, structure, version, is_active, created_at, updated_at
+		SELECT id, company_id, name, file_path_minio, parsed_text, structure, version, is_active, created_at, updated_at, team_id
 		FROM scripts_schema.scripts
 		WHERE company_id = $1
 		ORDER BY created_at DESC
@@ -97,6 +97,7 @@ func (r *scriptRepository) ListByCompany(ctx context.Context, companyID string) 
 			&s.IsActive,
 			&s.CreatedAt,
 			&s.UpdatedAt,
+			&s.TeamID,
 		)
 		if err != nil {
 			return nil, err
@@ -112,7 +113,7 @@ func (r *scriptRepository) ListByCompany(ctx context.Context, companyID string) 
 
 func (r *scriptRepository) GetByID(ctx context.Context, companyID, id string) (*domain.Script, error) {
 	query := `
-		SELECT id, company_id, name, file_path_minio, parsed_text, structure, version, is_active, created_at, updated_at
+		SELECT id, company_id, name, file_path_minio, parsed_text, structure, version, is_active, created_at, updated_at, team_id
 		FROM scripts_schema.scripts
 		WHERE id = $1 AND company_id = $2
 	`
@@ -130,6 +131,7 @@ func (r *scriptRepository) GetByID(ctx context.Context, companyID, id string) (*
 		&s.IsActive,
 		&s.CreatedAt,
 		&s.UpdatedAt,
+		&s.TeamID,
 	)
 
 	if err == sql.ErrNoRows {
