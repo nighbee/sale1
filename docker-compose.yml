@@ -42,7 +42,7 @@ services:
     environment:
       DATABASE_URL: "host=postgres port=5432 user=salesai_user password=strong_password dbname=salesai sslmode=disable"
       JWT_SECRET: "mysecret"
-      REDIS_URL: "redis://redis:6379"
+      REDIS_URL: "redis:6379"
     depends_on:
       - postgres
       - redis
@@ -55,7 +55,7 @@ services:
       - "8081:8081"
     environment:
       DATABASE_URL: "host=postgres port=5432 user=salesai_user password=strong_password dbname=salesai sslmode=disable"
-      REDIS_URL: "redis://redis:6379"
+      REDIS_URL: "redis:6379"
       SIPUNI_API_KEY: ${SIPUNI_API_KEY}
     depends_on:
       - postgres
@@ -82,7 +82,7 @@ services:
     build: ./services/stt-service
     environment:
       DATABASE_URL: "host=postgres port=5432 user=salesai_user password=strong_password dbname=salesai sslmode=disable"
-      REDIS_URL: "redis://redis:6379"
+      REDIS_URL: "redis:6379"
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY}
       GOOGLE_AI_MODEL: ${GOOGLE_AI_MODEL}
@@ -97,7 +97,7 @@ services:
     build: ./services/ai-analytics
     environment:
       DATABASE_URL: "host=postgres port=5432 user=salesai_user password=strong_password dbname=salesai sslmode=disable"
-      REDIS_URL: "redis://redis:6379"
+      REDIS_URL: "redis:6379"
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY}
       GOOGLE_AI_MODEL: ${GOOGLE_AI_MODEL}
