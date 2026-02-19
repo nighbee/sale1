@@ -6,6 +6,9 @@ import Input from '../../../shared/ui/Input';
 import { teamApi } from '../../../entities/team/api';
 import { userApi } from '../../../entities/user/api';
 import { scriptApi } from '../../../entities/script/api';
+import type { Team } from '../../../entities/team/types';
+import type { User } from '../../../entities/user/types';
+import type { Script } from '../../../entities/script/types';
 import { toast } from 'sonner';
 
 interface TeamModalProps {
@@ -21,12 +24,35 @@ const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose, teamId, onSucces
   const [description, setDescription] = useState('');
   const [autoAssign, setAutoAssign] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [members, setMembers] = useState<any[]>([]);
-  const [allUsers, setAllUsers] = useState<any[]>([]);
-  const [script, setScript] = useState<any>(null);
+  const [members, setMembers] = useState<User[]>([]);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [script, setScript] = useState<Script | null>(null);
   const [uploadingScript, setUploadingScript] = useState(false);
 
   useEffect(() => {
+    const fetchTeamDetails = async () => {
+        try {
+          const res = await teamApi.get(teamId!);
+      const teamData: Team = res.data;
+      setName(teamData.name);
+      setDescription(teamData.description || '');
+      setAutoAssign(teamData.auto_assign);
+      setMembers(teamData.members || []);
+      setScript(teamData.script || null);
+        } catch {
+          toast.error(t('teams.fetch_details_failed'));
+        }
+      };
+
+      const fetchAllUsers = async () => {
+          try {
+              const res = await userApi.listUsers();
+              setAllUsers(res.data.users || []);
+          } catch {
+              console.error("Failed to fetch users");
+          }
+      }
+
     if (isOpen && teamId) {
       fetchTeamDetails();
     } else {
@@ -39,30 +65,22 @@ const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose, teamId, onSucces
     if (isOpen) {
         fetchAllUsers();
     }
-  }, [isOpen, teamId]);
+  }, [isOpen, teamId, t]);
 
   const fetchTeamDetails = async () => {
+    if (!teamId) return;
     try {
-      const res = await teamApi.get(teamId!);
-      const team = res.data as any;
-      setName(team.name);
-      setDescription(team.description);
-      setAutoAssign(team.auto_assign);
-      setMembers(team.members || []);
-      setScript(team.script);
+      const res = await teamApi.get(teamId);
+      const teamData: Team = res.data;
+      setName(teamData.name);
+      setDescription(teamData.description || '');
+      setAutoAssign(teamData.auto_assign);
+      setMembers(teamData.members || []);
+      setScript(teamData.script || null);
     } catch {
       toast.error(t('teams.fetch_details_failed'));
     }
   };
-
-  const fetchAllUsers = async () => {
-      try {
-          const res = await userApi.listUsers();
-          setAllUsers((res.data as any).users || []);
-      } catch {
-          console.error("Failed to fetch users");
-      }
-  }
 
   const handleSave = async () => {
     setLoading(true);
@@ -137,7 +155,7 @@ const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose, teamId, onSucces
       if (!script) return;
       try {
           const res = await scriptApi.download(script.id);
-          const url = window.URL.createObjectURL(new Blob([res.data as any]));
+          const url = window.URL.createObjectURL(new Blob([res.data as BlobPart]));
           const link = document.createElement('a');
           link.href = url;
           link.setAttribute('download', script.name || 'script');

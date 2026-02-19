@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Sidebar } from '../../../widgets/Sidebar';
+import { PageLayout } from '../../../widgets/PageLayout';
 import { companyApi } from '../../../entities/company/api';
 import { userApi } from '../../../entities/user/api';
 import type { Company } from '../../../entities/company/types';
@@ -35,15 +35,13 @@ export const SuperAdminPage: React.FC = () => {
   }, [activeTab]);
 
   return (
-    <div className="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex font-display">
-      <Sidebar />
-      <main className="flex-1 p-8 overflow-y-auto">
+    <PageLayout title={t('superadmin.title')}>
+      <div className="p-4 md:p-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-black tracking-tight">{t('superadmin.title')}</h1>
           <p className="text-slate-500 mt-2">{t('superadmin.subtitle')}</p>
         </div>
 
-        <div className="flex border-b border-border-light dark:border-slate-800 mb-8">
+        <div className="flex border-b border-border-light dark:border-slate-800 mb-8 overflow-x-auto whitespace-nowrap">
           <button
             onClick={() => setActiveTab('companies')}
             className={`px-6 py-3 font-bold text-sm transition-colors border-b-2 ${activeTab === 'companies' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
@@ -144,7 +142,7 @@ export const SuperAdminPage: React.FC = () => {
             </div>
           )}
         </div>
-      </main>
-    </div>
+      </div>
+    </PageLayout>
   );
 };

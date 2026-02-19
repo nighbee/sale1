@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Sidebar } from '../../../widgets/Sidebar';
+import { PageLayout } from '../../../widgets/PageLayout';
 import { teamApi } from '../../../entities/team/api';
 import { userApi } from '../../../entities/user/api';
+import type { Team } from '../../../entities/team/types';
+import type { User } from '../../../entities/user/types';
 import Button from '../../../shared/ui/Button';
 import TeamModal from '../../../features/team-management/ui/TeamModal';
 
@@ -11,31 +13,43 @@ const TeamDetailPage: React.FC = () => {
   const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [team, setTeam] = useState<any>(null);
-  const [users, setUsers] = useState<any[]>([]);
+  const [team, setTeam] = useState<Team | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-  const fetchData = async () => {
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!id) return;
+      try {
+        const [teamRes, usersRes] = await Promise.all([
+          teamApi.get(id),
+          userApi.listUsers(),
+        ]);
+        setTeam(teamRes.data);
+        const userData = usersRes.data;
+        setUsers(userData.users.filter((u) => u.team_id === id));
+      } catch {
+        console.error('Failed to fetch team details');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [id]);
+
+  const handleSuccess = async () => {
     if (!id) return;
+    setLoading(true);
     try {
-      const [teamRes, usersRes] = await Promise.all([
-        teamApi.get(id),
-        userApi.listUsers(),
-      ]);
+      const teamRes = await teamApi.get(id);
       setTeam(teamRes.data);
-      const userData = usersRes.data as any;
-      setUsers(userData.users.filter((u: any) => u.team_id === id));
     } catch {
       console.error('Failed to fetch team details');
     } finally {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    fetchData();
-  }, [id]);
 
   const handleDelete = async () => {
     if (!id || !window.confirm(t('teams.delete_confirm'))) return;
@@ -47,19 +61,25 @@ const TeamDetailPage: React.FC = () => {
     }
   };
 
-  if (loading) return <div className="p-8">{t('common.loading')}</div>;
-  if (!team) return <div className="p-8">{t('teams.not_found')}</div>;
+  if (loading) return (
+    <PageLayout title={t('teams.management_title')}>
+        <div className="p-8">{t('common.loading')}</div>
+    </PageLayout>
+  );
+  if (!team) return (
+    <PageLayout title={t('teams.management_title')}>
+        <div className="p-8">{t('teams.not_found')}</div>
+    </PageLayout>
+  );
 
   return (
-    <div className="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex font-display">
-      <Sidebar />
-      <main className="flex-1 p-8 overflow-y-auto">
-        <div className="flex justify-between items-start mb-8">
+    <PageLayout title={team.name}>
+      <div className="p-4 md:p-8">
+        <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold">{team.name}</h1>
             <p className="text-slate-500 mt-2 max-w-xl">{team.description}</p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-3 w-full md:w-auto">
              <Button variant="secondary" onClick={handleDelete} className="text-red-700 hover:bg-red-200">{t('teams.delete_team')}</Button>
              <Button onClick={() => setIsEditModalOpen(true)}>{t('teams.edit_details')}</Button>
           </div>
@@ -69,7 +89,7 @@ const TeamDetailPage: React.FC = () => {
           isOpen={isEditModalOpen}
           onClose={() => setIsEditModalOpen(false)}
           teamId={id}
-          onSuccess={fetchData}
+          onSuccess={handleSuccess}
         />
 
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
@@ -105,8 +125,8 @@ const TeamDetailPage: React.FC = () => {
             </table>
           </div>
         </div>
-      </main>
-    </div>
+      </div>
+    </PageLayout>
   );
 };
 

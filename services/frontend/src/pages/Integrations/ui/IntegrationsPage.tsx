@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { Sidebar } from '../../../widgets/Sidebar';
+import { PageLayout } from '../../../widgets/PageLayout';
 import { integrationApi } from '../../../entities/integration/api';
 import type { Integration } from '../../../entities/integration/types';
 import IntegrationModal from '../../../features/integrations/ui/IntegrationModal';
@@ -56,18 +56,20 @@ const IntegrationsPage: React.FC = () => {
     }
   };
 
-  if (loading) return <div className="p-8">{t('integrations.loading')}</div>;
+  if (loading) return (
+    <PageLayout title={t('integrations.title')}>
+        <div className="p-8">{t('integrations.loading')}</div>
+    </PageLayout>
+  );
 
   return (
-    <div className="bg-background-light dark:bg-background-dark text-slate-900 min-h-screen flex font-display">
-      <Sidebar />
-      <main className="flex-1 max-w-[1200px] mx-auto w-full px-6 py-10 overflow-y-auto">
-        <div className="flex flex-wrap items-center justify-between gap-6 mb-12">
+    <PageLayout title={t('integrations.title')}>
+      <div className="max-w-[1200px] mx-auto w-full px-4 sm:px-6 py-10">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-12">
           <div className="flex flex-col gap-2">
-            <h1 className="text-slate-900 dark:text-white text-4xl font-black tracking-tight">{t('integrations.title')}</h1>
             <p className="text-slate-500 dark:text-slate-400 text-lg max-w-xl">{t('integrations.subtitle')}</p>
           </div>
-          <button className="bg-primary/10 text-primary hover:bg-primary/20 font-bold px-6 py-3 rounded-lg flex items-center gap-2">
+          <button className="bg-primary/10 text-primary hover:bg-primary/20 font-bold px-6 py-3 rounded-lg flex items-center justify-center gap-2 w-full sm:w-auto">
             <span className="material-symbols-outlined">add_circle</span>
             {t('integrations.request')}
           </button>
@@ -157,8 +159,8 @@ const IntegrationsPage: React.FC = () => {
                 onSuccess={fetchIntegrations}
             />
         )}
-      </main>
-    </div>
+      </div>
+    </PageLayout>
   );
 };
 

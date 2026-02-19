@@ -1,13 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Sidebar } from '../../../widgets/Sidebar';
+import { PageLayout } from '../../../widgets/PageLayout';
 import { analyticsApi } from '../../../entities/analytics/api';
 import { useUserStore } from '../../../entities/user/model/store';
+
+interface LeaderboardEntry {
+  manager_id: string;
+  manager_name: string;
+  total_calls: number;
+  avg_quality: number;
+  avg_kpi: number;
+}
 
 const LeaderboardPage: React.FC = () => {
   const { t } = useTranslation();
   const { currentTeamId } = useUserStore();
-  const [data, setData] = useState<any[]>([]);
+  const [data, setData] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -15,7 +23,7 @@ const LeaderboardPage: React.FC = () => {
       setLoading(true);
       try {
         const res = await analyticsApi.getLeaderboard({ team_id: currentTeamId });
-        const responseData = res.data as any;
+        const responseData = res.data as { leaderboard?: LeaderboardEntry[] };
         setData(responseData.leaderboard || []);
       } catch {
         console.error('Failed to fetch leaderboard');
@@ -29,7 +37,7 @@ const LeaderboardPage: React.FC = () => {
   const handleExport = async (format: string) => {
       try {
           const res = await analyticsApi.exportLeaderboard(format, { team_id: currentTeamId });
-          const url = window.URL.createObjectURL(new Blob([res.data as any]));
+          const url = window.URL.createObjectURL(new Blob([res.data as BlobPart]));
           const link = document.createElement('a');
           link.href = url;
           link.setAttribute('download', `leaderboard.${format === 'excel' ? 'xlsx' : format}`);
@@ -44,12 +52,10 @@ const LeaderboardPage: React.FC = () => {
   const topThree = data.slice(0, 3);
 
   return (
-    <div className="bg-background-light dark:bg-background-dark text-slate-800 dark:text-slate-100 min-h-screen font-display antialiased transition-colors duration-200 flex">
-      <Sidebar />
-      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 overflow-y-auto">
+    <PageLayout title={t('leaderboard.title')}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
           <div>
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">{t('leaderboard.title')}</h2>
             <p className="text-slate-500 dark:text-slate-400 text-sm">{t('leaderboard.subtitle')}</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -188,8 +194,8 @@ const LeaderboardPage: React.FC = () => {
             </div>
           </>
         )}
-      </main>
-    </div>
+      </div>
+    </PageLayout>
   );
 };
 

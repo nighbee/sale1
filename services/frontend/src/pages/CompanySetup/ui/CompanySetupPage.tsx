@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { companyApi } from '../../../entities/company/api';
+import type { Company } from '../../../entities/company/types';
 import Button from '../../../shared/ui/Button';
 
 const CompanySetupPage: React.FC = () => {
@@ -22,7 +23,7 @@ const CompanySetupPage: React.FC = () => {
       if (companyId) {
         try {
           const res = await companyApi.getCompany(companyId);
-          const data = res.data as any;
+          const data = res.data as Company;
           setFormData({
             companyName: data.name || '',
             industry: data.industry || '',
@@ -64,8 +65,8 @@ const CompanySetupPage: React.FC = () => {
         time_zone: formData.timezone,
       });
       navigate('/teams?create=true');
-    } catch (_err: unknown) {
-      const apiError = _err as { response?: { data?: { error?: string } } }; setError(apiError.response?.data?.error || 'Failed to update company');
+    } catch (err: unknown) {
+      const apiError = err as { response?: { data?: { error?: string } } }; setError(apiError.response?.data?.error || 'Failed to update company');
     } finally {
       setLoading(false);
     }

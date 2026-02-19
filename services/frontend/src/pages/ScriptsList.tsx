@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { scriptApi } from "../entities/script/api";
+import type { Script } from "../entities/script/types";
 import { Link } from "react-router-dom";
 
 const ScriptsList: React.FC = () => {
-  const [scripts, setScripts] = useState<any[]>([]);
+  const [scripts, setScripts] = useState<Script[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchScripts = async () => {

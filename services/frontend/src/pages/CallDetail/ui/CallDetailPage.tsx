@@ -18,15 +18,16 @@ const CallDetailPage: React.FC = () => {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [activeSegmentIndex, setActiveSegmentIndex] = useState(-1);
+  const [showAnalysis, setShowAnalysis] = useState(false);
 
   // Waveform data should be stable
   const waveformData = useRef(Array.from({ length: 60 }).map(() => 20 + Math.random() * 60));
 
   useEffect(() => {
-    if (transcript && (transcript as any).segments) {
-      const segments = (transcript as any).segments as any[];
+    if (transcript && transcript.segments) {
+      const segments = transcript.segments;
       const index = segments.findIndex(
-        (seg: any) => currentTime >= seg.start && currentTime <= seg.end
+        (seg) => currentTime >= seg.start && currentTime <= seg.end
       );
       if (index !== activeSegmentIndex && index !== -1) {
         setActiveSegmentIndex(index);
@@ -75,10 +76,10 @@ const CallDetailPage: React.FC = () => {
           callApi.getTranscript(id),
           callApi.getAnalysis(id),
         ]);
-        setCall(callRes.data);
-        setTranscript(transRes.data);
-        setAnalysis(analRes.data);
-      } catch (_err) {
+        setCall(callRes.data as Call);
+        setTranscript(transRes.data as CallTranscript);
+        setAnalysis(analRes.data as CallAnalysis);
+      } catch {
         console.error('Failed to fetch call data');
       } finally {
         setLoading(false);
@@ -98,10 +99,16 @@ const CallDetailPage: React.FC = () => {
             <span className="material-icons text-lg">arrow_back</span> {t('calls.back')}
           </button>
           <div className="h-6 w-px bg-neutral-200 dark:bg-neutral-700 mx-2"></div>
-          <h1 className="text-lg font-bold text-neutral-900 dark:text-white">{t('calls.call_with')} {(call as any).manager_name}</h1>
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border border-green-200 dark:border-green-800 uppercase">
+          <h1 className="text-base md:text-lg font-bold text-neutral-900 dark:text-white truncate">{t('calls.call_with')} {call.manager_name}</h1>
+          <span className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border border-green-200 dark:border-green-800 uppercase shrink-0">
             {call.status}
           </span>
+          <button
+            onClick={() => setShowAnalysis(!showAnalysis)}
+            className="lg:hidden ml-auto p-2 text-primary hover:bg-primary/10 rounded-lg"
+          >
+            <span className="material-icons">analytics</span>
+          </button>
         </div>
       </header>
 
@@ -112,7 +119,7 @@ const CallDetailPage: React.FC = () => {
               <div className="h-20 w-20 rounded-full overflow-hidden bg-primary/10 mb-3 border-4 border-white dark:border-neutral-700 shadow-sm flex items-center justify-center">
                  <span className="material-icons text-4xl text-primary">person</span>
               </div>
-              <h3 className="text-base font-bold text-neutral-900 dark:text-white">{(call as any).manager_name}</h3>
+              <h3 className="text-base font-bold text-neutral-900 dark:text-white">{call.manager_name}</h3>
               <p className="text-sm text-neutral-500 dark:text-neutral-400">{t('calls.representative')}</p>
             </div>
             <div>
@@ -120,7 +127,7 @@ const CallDetailPage: React.FC = () => {
               <div className="space-y-4">
                 <div className="flex items-start gap-3">
                   <div className="p-2 rounded-lg bg-primary/10 text-primary"><span className="material-icons text-sm">event</span></div>
-                  <div><p className="text-xs text-neutral-500">{t('calls.date')}</p><p className="text-sm font-medium">{new Date((call as any).call_date).toLocaleDateString()}</p></div>
+                  <div><p className="text-xs text-neutral-500">{t('calls.date')}</p><p className="text-sm font-medium">{new Date(call.call_date).toLocaleDateString()}</p></div>
                 </div>
                 <div className="flex items-start gap-3">
                   <div className="p-2 rounded-lg bg-primary/10 text-primary"><span className="material-icons text-sm">timer</span></div>
@@ -134,7 +141,7 @@ const CallDetailPage: React.FC = () => {
         <section className="flex-1 flex flex-col relative bg-background-light dark:bg-background-dark overflow-hidden">
           <audio
             ref={audioRef}
-            src={(call as any).audio_url || "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"}
+            src={call.audio_url || "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"}
             onTimeUpdate={() => setCurrentTime(audioRef.current?.currentTime || 0)}
             onLoadedMetadata={() => setDuration(audioRef.current?.duration || 0)}
             onEnded={() => setIsPlaying(false)}
@@ -194,7 +201,7 @@ const CallDetailPage: React.FC = () => {
           </div>
 
           <div className="flex-1 overflow-y-auto p-6 space-y-4 scroll-smooth">
-            {((transcript as any)?.segments as any[])?.map((seg: any, i: number) => {
+            {transcript?.segments?.map((seg, i) => {
               const isActive = i === activeSegmentIndex;
               return (
                 <div
@@ -235,7 +242,13 @@ const CallDetailPage: React.FC = () => {
           </div>
         </section>
 
-        <aside className="w-80 bg-surface-light dark:bg-surface-dark border-l border-neutral-200 dark:border-neutral-700 flex flex-col shrink-0 overflow-y-auto">
+        {showAnalysis && (
+          <div
+            className="fixed inset-0 bg-black/50 z-20 lg:hidden"
+            onClick={() => setShowAnalysis(false)}
+          />
+        )}
+        <aside className={`fixed inset-y-0 right-0 z-30 w-80 bg-surface-light dark:bg-surface-dark border-l border-neutral-200 dark:border-neutral-700 flex flex-col shrink-0 overflow-y-auto transition-transform duration-300 transform lg:translate-x-0 lg:static ${showAnalysis ? 'translate-x-0' : 'translate-x-full'}`}>
           <div className="p-6 space-y-8">
             <div>
               <h2 className="text-sm font-bold text-neutral-900 dark:text-white flex items-center gap-2 mb-4">
@@ -246,22 +259,22 @@ const CallDetailPage: React.FC = () => {
                   <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-xl p-4 border border-neutral-100 dark:border-neutral-700 flex items-center justify-between">
                     <div>
                       <p className="text-xs text-neutral-500">{t('calls.quality_score')}</p>
-                      <p className="text-2xl font-bold text-neutral-900 dark:text-white mt-1">{(analysis as any).quality_score}<span className="text-sm text-neutral-400 font-normal">/100</span></p>
+                      <p className="text-2xl font-bold text-neutral-900 dark:text-white mt-1">{analysis.quality_score}<span className="text-sm text-neutral-400 font-normal">/100</span></p>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-xl p-3 border border-neutral-100">
                       <p className="text-xs text-neutral-500 mb-1">{t('calls.script_match')}</p>
-                      <span className="text-xl font-bold">{(analysis as any).script_match}%</span>
+                      <span className="text-xl font-bold">{analysis.script_match}%</span>
                     </div>
                     <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-xl p-3 border border-neutral-100">
                       <p className="text-xs text-neutral-500 mb-1">{t('calls.errors_free')}</p>
-                      <span className="text-xl font-bold">{(analysis as any).errors_free}%</span>
+                      <span className="text-xl font-bold">{analysis.errors_free}%</span>
                     </div>
                   </div>
                   <div className="bg-blue-50 dark:bg-primary/10 rounded-xl p-4 border border-blue-100">
                      <h3 className="text-xs font-bold uppercase mb-2">{t('calls.recommendation')}</h3>
-                     <p className="text-sm">{(analysis as any).recommendation}</p>
+                     <p className="text-sm">{analysis.recommendation}</p>
                   </div>
                 </div>
               ) : (
