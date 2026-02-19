@@ -4,24 +4,28 @@ import { toast } from 'sonner';
 import { Sidebar } from '../../../widgets/Sidebar';
 import { integrationApi } from '../../../entities/integration/api';
 import type { Integration } from '../../../entities/integration/types';
+import IntegrationModal from '../../../features/integrations/ui/IntegrationModal';
 
 const IntegrationsPage: React.FC = () => {
   const { t } = useTranslation();
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedType, setSelectedType] = useState<string | null>(null);
+
+  const fetchIntegrations = async () => {
+    try {
+      const res = await integrationApi.list();
+      setIntegrations(res.data.integrations || []);
+    } catch {
+      console.error('Failed to fetch integrations');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchIntegrations = async () => {
-      try {
-        const res = await integrationApi.list();
-        setIntegrations(res.data.integrations || []);
-      } catch {
-        console.error('Failed to fetch integrations');
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchIntegrations();
   }, []);
 
@@ -33,18 +37,9 @@ const IntegrationsPage: React.FC = () => {
 
   const isConnected = (type: string) => integrations.some(i => i.integration_type === type && i.is_active);
 
-  const handleConnect = async (type: string) => {
-    setActionLoading(type);
-    try {
-      await integrationApi.save({ integration_type: type, config: {}, is_active: true });
-      const res = await integrationApi.list();
-      setIntegrations(res.data.integrations || []);
-      toast.success(t('integrations.connect_success', { type }));
-    } catch {
-      toast.error(t('integrations.connect_failed', { type }));
-    } finally {
-      setActionLoading(null);
-    }
+  const handleConnect = (type: string) => {
+      setSelectedType(type);
+      setIsModalOpen(true);
   };
 
   const handleDisconnect = async (type: string) => {
@@ -99,7 +94,9 @@ const IntegrationsPage: React.FC = () => {
                   </div>
                 </div>
                 <div className="flex gap-3">
-                  <button className="flex-1 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 text-slate-700 dark:text-slate-300 font-semibold py-2 rounded-lg text-sm border border-slate-200 dark:border-slate-700 flex items-center justify-center gap-2">
+                  <button
+                    onClick={() => handleConnect(i.integration_type)}
+                    className="flex-1 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 text-slate-700 dark:text-slate-300 font-semibold py-2 rounded-lg text-sm border border-slate-200 dark:border-slate-700 flex items-center justify-center gap-2">
                     <span className="material-symbols-outlined text-base">settings</span>
                     {t('integrations.configure')}
                   </button>
@@ -151,6 +148,15 @@ const IntegrationsPage: React.FC = () => {
             ))}
           </div>
         </section>
+
+        {selectedType && (
+            <IntegrationModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                type={selectedType}
+                onSuccess={fetchIntegrations}
+            />
+        )}
       </main>
     </div>
   );

@@ -101,7 +101,7 @@ func main() {
 	refreshUC := auth.NewRefreshUseCase(userRepo, jwtService)
 	listCallsUC := calls.NewListCallsUseCase(callRepo)
 	teamPerformanceUC := analytics.NewTeamPerformanceUseCase(analysisRepo)
-	teamUC := teams.NewTeamUseCase(teamRepo)
+	teamUC := teams.NewTeamUseCase(teamRepo, userRepo, scriptRepo)
 	integrationUC := integrations.NewIntegrationUseCase(integrationRepo)
 
 	// Redis client
@@ -126,7 +126,7 @@ func main() {
 	go hub.Run()
 
 	// Redis Consumer for Notifications
-	redisConsumer := events.NewRedisConsumer(rdb, hub, callRepo)
+	redisConsumer := events.NewRedisConsumer(rdb, hub, callRepo, integrationRepo)
 	go redisConsumer.Start(context.Background())
 
 	// Handlers

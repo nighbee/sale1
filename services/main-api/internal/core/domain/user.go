@@ -15,6 +15,8 @@ const (
 type User struct {
 	ID           string     `json:"id"`
 	CompanyID    string     `json:"company_id"`
+	FirstName    string     `json:"first_name"`
+	LastName     string     `json:"last_name"`
 	Email        string     `json:"email"`
 	PasswordHash string     `json:"-"`
 	Role         UserRole   `json:"role"`
@@ -29,4 +31,10 @@ type User struct {
 
 func (u *User) IsAdmin() bool {
 	return u.Role == RoleTenantAdmin || u.Role == RoleSuperAdmin
+}
+
+type UserCompany struct {
+	UserID    string   `json:"user_id"`
+	CompanyID string   `json:"company_id"`
+	Role      UserRole `json:"role"`
 }

@@ -83,6 +83,56 @@ func (h *TeamHandler) Get(c *fiber.Ctx) error {
 	return c.JSON(team)
 }
 
+// AddMember godoc
+// @Summary Add a member to a team
+// @Description Assign a user to a sales team
+// @Tags teams
+// @Accept json
+// @Produce json
+// @Param id path string true "Team ID"
+// @Param request body map[string]string true "Add Member Request"
+// @Success 200
+// @Failure 400 {object} fiber.Map
+// @Failure 500 {object} fiber.Map
+// @Security BearerAuth
+// @Router /teams/{id}/members [post]
+func (h *TeamHandler) AddMember(c *fiber.Ctx) error {
+	companyID := c.Locals("company_id").(string)
+	id := c.Params("id")
+	var req struct {
+		UserID string `json:"user_id"`
+	}
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid body"})
+	}
+	if err := h.teamUC.AddMember(c.Context(), companyID, id, req.UserID); err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.SendStatus(200)
+}
+
+// RemoveMember godoc
+// @Summary Remove a member from a team
+// @Description Unassign a user from a sales team
+// @Tags teams
+// @Accept json
+// @Produce json
+// @Param id path string true "Team ID"
+// @Param userID path string true "User ID"
+// @Success 200
+// @Failure 500 {object} fiber.Map
+// @Security BearerAuth
+// @Router /teams/{id}/members/{userID} [delete]
+func (h *TeamHandler) RemoveMember(c *fiber.Ctx) error {
+	companyID := c.Locals("company_id").(string)
+	id := c.Params("id")
+	userID := c.Params("userID")
+	if err := h.teamUC.RemoveMember(c.Context(), companyID, id, userID); err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.SendStatus(200)
+}
+
 // Update godoc
 // @Summary Update team details
 // @Description Update name or description for a sales team

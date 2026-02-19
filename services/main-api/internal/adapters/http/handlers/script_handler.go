@@ -126,6 +126,9 @@ func (h *ScriptHandler) CreateScript(c *fiber.Ctx) error {
 	io.Copy(part, f)
 	writer.WriteField("name", name)
 	writer.WriteField("company_id", companyID)
+	if teamID := c.FormValue("team_id"); teamID != "" {
+		writer.WriteField("team_id", teamID)
+	}
 	writer.Close()
 
 	req, _ := http.NewRequest("POST", h.scriptServiceURL+"/api/v1/scripts", body)
@@ -214,4 +217,40 @@ func (h *ScriptHandler) DeleteScript(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.SendStatus(fiber.StatusNoContent)
+}
+
+// DownloadScript godoc
+// @Summary Download script file
+// @Description Download the original DOCX/PDF file for a script
+// @Tags scripts
+// @Produce octet-stream
+// @Param id path string true "Script ID"
+// @Success 200 {file} binary
+// @Failure 404 {object} fiber.Map
+// @Failure 500 {object} fiber.Map
+// @Security BearerAuth
+// @Router /scripts/{id}/download [get]
+func (h *ScriptHandler) DownloadScript(c *fiber.Ctx) error {
+	id := c.Params("id")
+	companyID := c.Locals("company_id").(string)
+	_, err := h.scriptRepo.GetByID(c.Context(), companyID, id)
+	if err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Script not found"})
+	}
+
+	resp, err := http.Get(h.scriptServiceURL + "/api/v1/scripts/" + id + "/download")
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return c.Status(resp.StatusCode).SendString("Failed to download script from script-service")
+	}
+
+	c.Set("Content-Disposition", resp.Header.Get("Content-Disposition"))
+	c.Set("Content-Type", resp.Header.Get("Content-Type"))
+
+	_, err = io.Copy(c.Response().BodyWriter(), resp.Body)
+	return err
 }

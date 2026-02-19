@@ -66,6 +66,7 @@ func (h *CallHandler) ListCalls(c *fiber.Ctx) error {
 	req := calls.ListCallsRequest{
 		CompanyID: companyID,
 		ManagerID: c.Query("manager_id"),
+		TeamID:    c.Query("team_id"),
 		Status:    c.Query("status"),
 		Page:      page,
 		Limit:     limit,

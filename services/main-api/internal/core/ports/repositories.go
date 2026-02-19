@@ -12,12 +12,16 @@ type UserRepository interface {
 	Update(ctx context.Context, user *domain.User) error
 	Delete(ctx context.Context, companyID, id string) error
 	ListByCompany(ctx context.Context, companyID string) ([]*domain.User, error)
+	AddUserToCompany(ctx context.Context, userID, companyID string, role domain.UserRole) error
+	GetUserCompanies(ctx context.Context, userID string) ([]domain.UserCompany, error)
 }
 
 type CompanyRepository interface {
 	Create(ctx context.Context, company *domain.Company) error
 	GetByID(ctx context.Context, id string) (*domain.Company, error)
 	Update(ctx context.Context, company *domain.Company) error
+	GetBillingInfo(ctx context.Context, companyID string) (*domain.BillingInfo, error)
+	UpdateBillingInfo(ctx context.Context, billing *domain.BillingInfo) error
 }
 
 type CallRepository interface {

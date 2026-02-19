@@ -33,6 +33,12 @@ func (h *ScriptHandler) Upload(c *fiber.Ctx) error {
 
 	name := c.FormValue("name")
 	companyID := c.FormValue("company_id") // In production, get from JWT
+	teamID := c.FormValue("team_id")
+
+	var teamIDPtr *string
+	if teamID != "" {
+		teamIDPtr = &teamID
+	}
 
 	scriptID := uuid.New().String()
 	ext := filepath.Ext(file.Filename)
@@ -84,7 +90,7 @@ func (h *ScriptHandler) Upload(c *fiber.Ctx) error {
 	}
 
 	// Save to DB
-	err = h.repo.Create(context.Background(), scriptID, companyID, name, objectName, parsedText)
+	err = h.repo.Create(context.Background(), scriptID, companyID, name, objectName, parsedText, teamIDPtr)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to save to database"})
 	}
@@ -110,4 +116,20 @@ func (h *ScriptHandler) Delete(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.SendStatus(204)
+}
+
+func (h *ScriptHandler) Download(c *fiber.Ctx) error {
+	id := c.Params("id")
+	script, err := h.repo.GetByID(c.Context(), id)
+	if err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Script not found"})
+	}
+
+	object, err := h.minioClient.GetObject(c.Context(), "scripts", script["file_path_minio"].(string), minio.GetObjectOptions{})
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to get object from MinIO"})
+	}
+
+	c.Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", script["name"].(string)))
+	return c.SendStream(object)
 }

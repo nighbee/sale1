@@ -2,16 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Sidebar } from '../../../widgets/Sidebar';
 import { analyticsApi } from '../../../entities/analytics/api';
+import { useUserStore } from '../../../entities/user/model/store';
 
 const LeaderboardPage: React.FC = () => {
   const { t } = useTranslation();
+  const { currentTeamId } = useUserStore();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
+      setLoading(true);
       try {
-        const res = await analyticsApi.getLeaderboard();
+        const res = await analyticsApi.getLeaderboard({ team_id: currentTeamId });
         const responseData = res.data as any;
         setData(responseData.leaderboard || []);
       } catch {
@@ -21,7 +24,22 @@ const LeaderboardPage: React.FC = () => {
       }
     };
     fetchData();
-  }, []);
+  }, [currentTeamId]);
+
+  const handleExport = async (format: string) => {
+      try {
+          const res = await analyticsApi.exportLeaderboard(format, { team_id: currentTeamId });
+          const url = window.URL.createObjectURL(new Blob([res.data as any]));
+          const link = document.createElement('a');
+          link.href = url;
+          link.setAttribute('download', `leaderboard.${format === 'excel' ? 'xlsx' : format}`);
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+      } catch (err) {
+          console.error("Export failed", err);
+      }
+  }
 
   const topThree = data.slice(0, 3);
 
@@ -35,12 +53,26 @@ const LeaderboardPage: React.FC = () => {
             <p className="text-slate-500 dark:text-slate-400 text-sm">{t('leaderboard.subtitle')}</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <select className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 py-2 px-4 rounded-lg text-sm">
-              <option>{t('leaderboard.all_teams')}</option>
-            </select>
-            <button className="flex items-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-4 py-2 rounded-lg text-sm">
-              <span className="material-icons text-sm">download</span> {t('leaderboard.export')}
-            </button>
+            <div className="relative group">
+                <button className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg shadow-primary/20 hover:bg-primary-hover transition-all">
+                    <span className="material-icons text-sm">download</span> {t('leaderboard.export')}
+                    <span className="material-icons text-sm">expand_more</span>
+                </button>
+                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-100 dark:border-slate-700 overflow-hidden hidden group-hover:block z-50">
+                    {['pdf', 'csv', 'excel'].map((format) => (
+                        <button
+                            key={format}
+                            onClick={() => handleExport(format)}
+                            className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center gap-2 uppercase font-medium"
+                        >
+                            <span className="material-icons text-slate-400 text-lg">
+                                {format === 'pdf' ? 'picture_as_pdf' : format === 'csv' ? 'description' : 'table_view'}
+                            </span>
+                            {format}
+                        </button>
+                    ))}
+                </div>
+            </div>
           </div>
         </div>
 

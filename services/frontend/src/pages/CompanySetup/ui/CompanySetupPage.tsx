@@ -63,7 +63,7 @@ const CompanySetupPage: React.FC = () => {
         size: formData.companySize,
         time_zone: formData.timezone,
       });
-      navigate('/team-creation');
+      navigate('/teams?create=true');
     } catch (_err: unknown) {
       const apiError = _err as { response?: { data?: { error?: string } } }; setError(apiError.response?.data?.error || 'Failed to update company');
     } finally {

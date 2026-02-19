@@ -53,6 +53,7 @@ func main() {
 	scripts := api.Group("/scripts")
 	scripts.Post("/", scriptHandler.Upload)
 	scripts.Get("/:company_id", scriptHandler.List)
+	scripts.Get("/:id/download", scriptHandler.Download)
 	scripts.Delete("/:id", scriptHandler.Delete)
 
 	port := os.Getenv("PORT")

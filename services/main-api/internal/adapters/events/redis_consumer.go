@@ -11,17 +11,30 @@ import (
 	"github.com/salesai/main-api/internal/core/ports"
 )
 
+import (
+	"fmt"
+	"net/http"
+	"bytes"
+)
+
 type RedisConsumer struct {
-	client   *redis.Client
-	hub      *ws.Hub
-	callRepo ports.CallRepository
+	client          *redis.Client
+	hub             *ws.Hub
+	callRepo        ports.CallRepository
+	integrationRepo ports.IntegrationRepository
 }
 
-func NewRedisConsumer(client *redis.Client, hub *ws.Hub, callRepo ports.CallRepository) *RedisConsumer {
+func NewRedisConsumer(
+	client *redis.Client,
+	hub *ws.Hub,
+	callRepo ports.CallRepository,
+	integrationRepo ports.IntegrationRepository,
+) *RedisConsumer {
 	return &RedisConsumer{
-		client:   client,
-		hub:      hub,
-		callRepo: callRepo,
+		client:          client,
+		hub:             hub,
+		callRepo:        callRepo,
+		integrationRepo: integrationRepo,
 	}
 }
 
@@ -82,6 +95,8 @@ func (c *RedisConsumer) Start(ctx context.Context) {
 							Type:      "analysis_completed",
 							Payload:   payload,
 						})
+						// External Notifications
+						go c.notifyExternal(ctx, call.CompanyID, "Call Analysis Completed", fmt.Sprintf("Call with %s completed. Rating: %v", call.ClientPhone, payload["overall_rating"]))
 					}
 				} else if streamName == "critical_error" {
 					// Broadcast to everyone in the company (admins)
@@ -90,9 +105,53 @@ func (c *RedisConsumer) Start(ctx context.Context) {
 						Type:      "critical_error",
 						Payload:   payload,
 					})
+					// External Notifications
+					go c.notifyExternal(ctx, companyID, "CRITICAL ERROR", fmt.Sprintf("%v", payload["message"]))
 				}
 
 				c.client.XAck(ctx, streamName, groupName, message.ID)
+			}
+		}
+	}
+}
+
+func (c *RedisConsumer) notifyExternal(ctx context.Context, companyID, subject, message string) {
+	integrations, err := c.integrationRepo.ListByCompany(ctx, companyID)
+	if err != nil {
+		return
+	}
+
+	for _, intg := range integrations {
+		if !intg.IsActive {
+			continue
+		}
+
+		var creds map[string]interface{}
+		json.Unmarshal(intg.Credentials, &creds)
+
+		var config map[string]interface{}
+		json.Unmarshal(intg.Config, &config)
+
+		switch intg.IntegrationType {
+		case "slack":
+			webhookURL, _ := creds["webhook_url"].(string)
+			if webhookURL != "" {
+				payload := map[string]string{"text": fmt.Sprintf("*%s*\n%s", subject, message)}
+				body, _ := json.Marshal(payload)
+				http.Post(webhookURL, "application/json", bytes.NewBuffer(body))
+			}
+		case "telegram":
+			botToken, _ := creds["bot_token"].(string)
+			chatID, _ := config["chat_id"].(string)
+			if botToken != "" && chatID != "" {
+				apiURL := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", botToken)
+				payload := map[string]string{
+					"chat_id": chatID,
+					"text":    fmt.Sprintf("<b>%s</b>\n%s", subject, message),
+					"parse_mode": "HTML",
+				}
+				body, _ := json.Marshal(payload)
+				http.Post(apiURL, "application/json", bytes.NewBuffer(body))
 			}
 		}
 	}

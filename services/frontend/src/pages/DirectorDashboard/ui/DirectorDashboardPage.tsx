@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { analyticsApi } from '../../../entities/analytics/api';
 import { Sidebar } from '../../../widgets/Sidebar';
 import Skeleton from '../../../shared/ui/Skeleton';
+import { useUserStore } from '../../../entities/user/model/store';
 
 interface ManagerPerformance {
   manager_id: string;
@@ -15,13 +16,15 @@ interface ManagerPerformance {
 
 const DirectorDashboardPage: React.FC = () => {
   const { t } = useTranslation();
+  const { currentTeamId } = useUserStore();
   const [managers, setManagers] = useState<ManagerPerformance[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
+      setLoading(true);
       try {
-        const response = await analyticsApi.getTeamPerformance('last_30_days');
+        const response = await analyticsApi.getTeamPerformance({ period: 'last_30_days', team_id: currentTeamId });
         const data = response.data as any;
         setManagers(data.managers || []);
       } catch (_err) {
@@ -31,7 +34,7 @@ const DirectorDashboardPage: React.FC = () => {
       }
     };
     fetchData();
-  }, []);
+  }, [currentTeamId]);
 
   const totalCalls = managers.reduce((acc, m) => acc + (m.total_calls || 0), 0);
   const avgQuality = managers.length > 0

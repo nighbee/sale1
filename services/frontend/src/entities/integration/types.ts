@@ -1,6 +1,7 @@
 export interface Integration {
   id: string;
   integration_type: string;
-  config: unknown;
+  credentials?: any;
+  config: any;
   is_active: boolean;
 }
