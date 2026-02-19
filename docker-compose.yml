@@ -48,6 +48,8 @@ services:
       - redis
     networks:
       - sale1-network
+    volumes:
+      - ./services/main-api/internal/infrastructure/database/migrations:/app/internal/infrastructure/database/migrations:ro
 
   sipuni-listener:
     build: ./services/sipuni-listener
