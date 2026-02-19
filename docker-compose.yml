@@ -123,8 +123,8 @@ services:
       - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
     command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
     ports:
       - "9090:9090"
 
@@ -184,10 +184,10 @@ services:
       - "9121:9121"
 
   bullmq-exporter:
-    image: sbeckeriv/bullmq-exporter:latest
+    image: felixmosh/bull-exporter:latest
     restart: unless-stopped
     environment:
-      - REDIS_URL=redis://redis:6379
+      - EXPORTER_REDIS_URL=redis://redis:6379
     ports:
       - "9800:9800"
 
