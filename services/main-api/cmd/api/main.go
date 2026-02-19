@@ -103,9 +103,12 @@ func main() {
 	integrationUC := integrations.NewIntegrationUseCase(integrationRepo)
 
 	// Redis client
-	rdb := redis.NewClient(&redis.Options{
-		Addr: cfg.RedisURL,
-	})
+	redisOpts, err := redis.ParseURL(cfg.RedisURL)
+	if err != nil {
+		log.Printf("Warning: Redis URL parse error: %v. Using default options.", err)
+		redisOpts = &redis.Options{Addr: cfg.RedisURL}
+	}
+	rdb := redis.NewClient(redisOpts)
 
 	// WebSocket Hub
 	hub := ws.NewHub()
