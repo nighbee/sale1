@@ -30,13 +30,15 @@ func main() {
     }
 
     // 3. Read user input
-    var username string
+    var first_name string
+    var last_name = "Admin"
     var email string
     var password string
+    var manager_name = "SuperAdmin"
 
 
-    fmt.Print("Username: ")
-    fmt.Scanln(&username)
+    fmt.Print("First Name: ")
+    fmt.Scanln(&first_name)
 
     fmt.Print("Email: ")
     fmt.Scanln(&email)
@@ -53,7 +55,7 @@ func main() {
 	`, companyID)
 
     // 4. Validate input (basic)
-    if username == "" || email == "" || password == "" || companyID == "" {
+    if first_name == "" || email == "" || password == "" || companyID == "" {
         log.Fatal("All fields are required")
     }
 
@@ -71,10 +73,10 @@ func main() {
 
     _, err = db.Exec(`
     INSERT INTO auth_schema.users
-        (id, email, password_hash, role, company_id, manager_name, created_at)
+        (id, email, password_hash, role, company_id, first_name, last_name, manager_name, created_at)
     VALUES
-        ($1, $2, $3, 'super_admin', $4, $5, NOW())
-`, userID, email, string(hash), companyID, username)
+        ($1, $2, $3, 'super_admin', $4, $5, $6, $7, NOW())
+`, userID, email, string(hash), companyID, first_name, last_name, manager_name)
 
     if err != nil {
         log.Fatal("Failed to insert super admin:", err)

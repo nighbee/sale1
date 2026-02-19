@@ -3,6 +3,8 @@ package auth
 import (
 	"context"
 	"errors"
+	"fmt"
+
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/salesai/main-api/internal/core/domain"
@@ -34,8 +36,9 @@ func NewLoginUseCase(userRepo ports.UserRepository, jwtService ports.JWTService)
 func (uc *LoginUseCase) Execute(ctx context.Context, req *LoginRequest) (*LoginResponse, error) {
 	user, err := uc.userRepo.GetByEmail(ctx, req.Email)
 	if err != nil {
-		return nil, errors.New("invalid credentials")
-	}
+    fmt.Printf("User not found for email: %s, err: %v\n", req.Email, err)
+    return nil, errors.New("invalid credentials")
+}
 
 	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password))
 	if err != nil {
