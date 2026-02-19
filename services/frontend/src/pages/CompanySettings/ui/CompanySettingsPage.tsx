@@ -1,19 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { Sidebar } from '../../../widgets/Sidebar';
+import { PageLayout } from '../../../widgets/PageLayout';
 import { companyApi } from '../../../entities/company/api';
 import { integrationApi } from '../../../entities/integration/api';
-import type { Company } from '../../../entities/company/types';
+import type { Company, Billing } from '../../../entities/company/types';
+import type { Integration } from '../../../entities/integration/types';
 import Button from '../../../shared/ui/Button';
 import Input from '../../../shared/ui/Input';
 
 const CompanySettingsPage: React.FC = () => {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState<'general' | 'ai' | 'integrations' | 'billing'>('general');
-  const [company, setCompany] = useState<Company | any>(null);
-  const [billing, setBilling] = useState<any>(null);
-  const [integrations, setIntegrations] = useState<any[]>([]);
+  type TabId = 'general' | 'ai' | 'integrations' | 'billing';
+  const [activeTab, setActiveTab] = useState<TabId>('general');
+  const [company, setCompany] = useState<Company | null>(null);
+  const [billing, setBilling] = useState<Billing | null>(null);
+  const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -46,28 +48,36 @@ const CompanySettingsPage: React.FC = () => {
     setSaving(true);
     const companyId = localStorage.getItem('company_id');
     try {
-        await Promise.all([
-            companyApi.updateSettings(companyId!, company),
-            companyApi.updateBilling(companyId!, billing),
-        ]);
-        toast.success(t('settings.update_success'));
-    } catch (_err: unknown) {
+        if (company && billing) {
+          await Promise.all([
+              companyApi.updateSettings(companyId!, company),
+              companyApi.updateBilling(companyId!, billing),
+          ]);
+          toast.success(t('settings.update_success'));
+        }
+    } catch {
         toast.error(t('settings.update_failed'));
     } finally {
         setSaving(false);
     }
   };
 
-  if (loading) return <div className="p-8">{t('settings.loading')}</div>;
-  if (!company) return <div className="p-8">{t('settings.not_found')}</div>;
+  if (loading) return (
+    <PageLayout title={t('settings.title')}>
+        <div className="p-8">{t('settings.loading')}</div>
+    </PageLayout>
+  );
+  if (!company) return (
+    <PageLayout title={t('settings.title')}>
+        <div className="p-8">{t('settings.not_found')}</div>
+    </PageLayout>
+  );
 
   return (
-    <div className="bg-background-light dark:bg-background-dark text-slate-800 dark:text-slate-200 min-h-screen flex font-display antialiased">
-      <Sidebar />
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 overflow-y-auto">
+    <PageLayout title={t('settings.title')}>
+      <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('settings.title')}</h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{t('settings.subtitle')}</p>
           </div>
         </div>
@@ -82,7 +92,7 @@ const CompanySettingsPage: React.FC = () => {
             ].map(tab => (
                 <button
                     key={tab.id}
-                    onClick={() => setActiveTab(tab.id as any)}
+                    onClick={() => setActiveTab(tab.id as TabId)}
                     className={`${activeTab === tab.id ? 'border-primary text-primary' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-all`}
                 >
                     {tab.label}
@@ -209,7 +219,7 @@ const CompanySettingsPage: React.FC = () => {
                             { id: 'amocrm', name: 'AmoCRM', icon: 'hub', desc: 'Sync leads and calls with AmoCRM' },
                             { id: 'telegram', name: 'Telegram', icon: 'send', desc: 'Get notifications via Telegram bot' },
                         ].map(int => {
-                            const isConnected = integrations.some(i => i.integration_type === int.id && i.is_active);
+                            const isConnected = integrations.some((i: Integration) => i.integration_type === int.id && i.is_active);
                             return (
                                 <div key={int.id} className="p-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
                                     <div className="flex justify-between items-start mb-4">
@@ -261,7 +271,7 @@ const CompanySettingsPage: React.FC = () => {
                                 <span className="text-slate-400 font-medium">/ {billing.tokens_limit?.toLocaleString()}</span>
                             </div>
                             <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
-                                <div className="bg-primary h-full" style={{ width: `${(billing.tokens_used / billing.tokens_limit) * 100}%` }}></div>
+                                <div className="bg-primary h-full" style={{ width: `${((billing.tokens_used || 0) / (billing.tokens_limit || 1)) * 100}%` }}></div>
                             </div>
                         </div>
                         <div className="p-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
@@ -300,8 +310,8 @@ const CompanySettingsPage: React.FC = () => {
             </div>
           </div>
         </div>
-      </main>
-    </div>
+      </div>
+    </PageLayout>
   );
 };
 

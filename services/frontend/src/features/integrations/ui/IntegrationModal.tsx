@@ -16,25 +16,24 @@ interface IntegrationModalProps {
 const IntegrationModal: React.FC<IntegrationModalProps> = ({ isOpen, onClose, type, onSuccess }) => {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
-  const [credentials, setCredentials] = useState<any>({});
-  const [config, setConfig] = useState<any>({});
+  const [credentials, setCredentials] = useState<Record<string, string>>({});
+  const [config, setConfig] = useState<Record<string, string>>({});
 
   useEffect(() => {
+    const fetchIntegration = async () => {
+        try {
+            const res = await integrationApi.get(type);
+            setCredentials((res.data.credentials as Record<string, string>) || {});
+            setConfig((res.data.config as Record<string, string>) || {});
+        } catch {
+            setCredentials({});
+            setConfig({});
+        }
+    }
     if (isOpen) {
         fetchIntegration();
     }
   }, [isOpen, type]);
-
-  const fetchIntegration = async () => {
-      try {
-          const res = await integrationApi.get(type);
-          setCredentials(res.data.credentials || {});
-          setConfig(res.data.config || {});
-      } catch {
-          setCredentials({});
-          setConfig({});
-      }
-  }
 
   const handleSave = async () => {
     setLoading(true);

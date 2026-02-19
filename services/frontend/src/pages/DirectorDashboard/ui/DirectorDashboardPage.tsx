@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { analyticsApi } from '../../../entities/analytics/api';
-import { Sidebar } from '../../../widgets/Sidebar';
+import { PageLayout } from '../../../widgets/PageLayout';
 import Skeleton from '../../../shared/ui/Skeleton';
 import { useUserStore } from '../../../entities/user/model/store';
 
@@ -25,10 +25,10 @@ const DirectorDashboardPage: React.FC = () => {
       setLoading(true);
       try {
         const response = await analyticsApi.getTeamPerformance({ period: 'last_30_days', team_id: currentTeamId });
-        const data = response.data as any;
+        const data = response.data as { managers?: ManagerPerformance[] };
         setManagers(data.managers || []);
-      } catch (_err) {
-        console.error("Failed to fetch performance data", _err);
+      } catch {
+        console.error("Failed to fetch performance data");
       } finally {
         setLoading(false);
       }
@@ -42,27 +42,15 @@ const DirectorDashboardPage: React.FC = () => {
     : '0.0';
 
   return (
-    <div className="bg-background-light dark:bg-background-dark font-display text-slate-800 dark:text-slate-200 h-screen flex overflow-hidden w-full">
-      <Sidebar />
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="h-16 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-8 flex-shrink-0 z-10">
-          <h1 className="text-xl font-semibold text-primary-dark dark:text-white">{t('dashboard.title')}</h1>
-          <div className="flex items-center gap-4">
-            <div className="relative hidden md:block">
-              <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                <span className="material-icons text-lg">search</span>
-              </span>
-              <input className="pl-10 pr-4 py-1.5 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-slate-50 dark:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-primary w-64 transition-all" placeholder={t('common.search')} type="text"/>
-            </div>
+    <PageLayout title={t('dashboard.title')}>
+        <div className="p-4 md:p-8">
+          <div className="flex justify-end mb-6 md:-mt-14 relative z-20">
             <button className="flex items-center gap-2 px-3 py-1.5 border border-slate-200 dark:border-slate-600 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors">
               <span className="material-icons text-lg text-slate-400">calendar_today</span>
-              {t('dashboard.last_30_days')}
+              <span className="hidden sm:inline">{t('dashboard.last_30_days')}</span>
               <span className="material-icons text-lg text-slate-400">expand_more</span>
             </button>
           </div>
-        </header>
-
-        <div className="flex-1 overflow-y-auto p-8">
           {loading ? (
             <div className="max-w-7xl mx-auto space-y-8">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -161,8 +149,7 @@ const DirectorDashboardPage: React.FC = () => {
           </div>
           )}
         </div>
-      </main>
-    </div>
+    </PageLayout>
   );
 };
 

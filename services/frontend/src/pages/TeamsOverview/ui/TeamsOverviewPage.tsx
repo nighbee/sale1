@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Sidebar } from '../../../widgets/Sidebar';
+import { PageLayout } from '../../../widgets/PageLayout';
 import { teamApi } from '../../../entities/team/api';
 import type { Team } from '../../../entities/team/types';
 import TeamCard from '../../../entities/team/ui/TeamCard';
@@ -39,15 +39,13 @@ const TeamsOverviewPage: React.FC = () => {
   };
 
   return (
-    <div className="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex font-display">
-      <Sidebar />
-      <main className="flex-1 p-8 overflow-y-auto">
-        <div className="flex justify-between items-center mb-8">
+    <PageLayout title={t('teams.management_title')}>
+      <div className="p-4 md:p-8">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div>
-            <h1 className="text-2xl font-bold">{t('teams.management_title')}</h1>
             <p className="text-slate-500">{t('teams.management_subtitle')}</p>
           </div>
-          <Button onClick={handleCreateClick}>{t('teams.create_team')}</Button>
+          <Button onClick={handleCreateClick} className="w-full sm:w-auto">{t('teams.create_team')}</Button>
         </div>
 
         {loading ? (
@@ -69,8 +67,8 @@ const TeamsOverviewPage: React.FC = () => {
           teamId={selectedTeamId}
           onSuccess={fetchTeams}
         />
-      </main>
-    </div>
+      </div>
+    </PageLayout>
   );
 };
 

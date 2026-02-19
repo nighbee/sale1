@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Sidebar } from '../../../widgets/Sidebar';
+import { PageLayout } from '../../../widgets/PageLayout';
 import { callApi } from '../../../entities/call/api';
 import { useUserStore } from '../../../entities/user/model/store';
 import Skeleton from '../../../shared/ui/Skeleton';
@@ -42,37 +42,8 @@ export const UserDashboardPage: React.FC = () => {
   }, []);
 
   return (
-    <div className="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 flex h-screen overflow-hidden">
-      <Sidebar />
-      <main className="flex-1 overflow-y-auto bg-background-light dark:bg-background-dark">
-        <header className="sticky top-0 z-10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-border-light dark:border-slate-800 px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4 flex-1">
-            <div className="relative w-full max-w-md">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
-              <input className="w-full pl-10 pr-4 py-2 bg-slate-100 dark:bg-slate-800 border-none rounded-lg focus:ring-2 focus:ring-primary text-sm" placeholder={t('calls.search')} type="text"/>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <button className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
-              <span className="material-symbols-outlined">notifications</span>
-            </button>
-            <button className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors" onClick={() => navigate('/settings')}>
-              <span className="material-symbols-outlined">settings</span>
-            </button>
-            <div className="h-8 w-px bg-border-light dark:bg-slate-800 mx-2"></div>
-            <div className="flex items-center gap-3">
-              <div className="text-right hidden sm:block">
-                <p className="text-sm font-bold text-slate-900 dark:text-slate-100">{user?.full_name || user?.email || 'User'}</p>
-                <p className="text-xs text-slate-500 capitalize">{user?.role || t('calls.representative')}</p>
-              </div>
-              <div className="h-10 w-10 rounded-full bg-primary/20 bg-cover bg-center border border-primary/10 flex items-center justify-center text-primary font-bold">
-                {user?.full_name?.charAt(0) || user?.email?.charAt(0) || 'U'}
-              </div>
-            </div>
-          </div>
-        </header>
-
-        <div className="p-8 max-w-7xl mx-auto space-y-8">
+    <PageLayout title={t('dashboard.title')}>
+        <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8">
           {user?.manager_name && (
             <div className="bg-primary/5 border border-primary/10 rounded-xl p-4 flex items-center gap-4">
               <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
@@ -228,7 +199,6 @@ export const UserDashboardPage: React.FC = () => {
             </div>
           </div>
         </div>
-      </main>
-    </div>
+    </PageLayout>
   );
 };

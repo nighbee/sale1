@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { notificationApi } from "../entities/notification/api";
-import { Sidebar } from "../widgets/Sidebar";
+import type { Notification } from "../entities/notification/types";
+import { PageLayout } from "../widgets/PageLayout";
 
 const Notifications: React.FC = () => {
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchNotifications = async () => {
@@ -26,10 +27,8 @@ const Notifications: React.FC = () => {
   };
 
   return (
-    <div className="flex">
-      <Sidebar />
-      <div className="p-8 flex-1">
-        <h2 className="text-2xl font-bold mb-4">Notifications</h2>
+    <PageLayout title="Notifications">
+      <div className="p-4 md:p-8 max-w-4xl mx-auto">
         {loading ? (
           <div>Loading...</div>
         ) : notifications.length === 0 ? (
@@ -60,7 +59,7 @@ const Notifications: React.FC = () => {
           </ul>
         )}
       </div>
-    </div>
+    </PageLayout>
   );
 };
 

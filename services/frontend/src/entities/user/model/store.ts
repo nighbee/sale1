@@ -1,15 +1,15 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type { User } from '../types';
+import type { User, UserCompany } from '../types';
 
 interface UserState {
   user: User | null;
   isLogged: boolean;
-  companies: any[];
+  companies: UserCompany[];
   currentCompanyId: string | null;
   currentTeamId: string | null;
   setUser: (user: User | null) => void;
-  setCompanies: (companies: any[]) => void;
+  setCompanies: (companies: UserCompany[]) => void;
   setCurrentCompany: (companyId: string) => void;
   setCurrentTeam: (teamId: string | null) => void;
   logout: () => void;
