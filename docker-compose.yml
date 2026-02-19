@@ -184,10 +184,11 @@ services:
       - "9121:9121"
 
   bullmq-exporter:
-    image: felixmosh/bull-exporter:latest
+    image: ron96g/bullmq-exporter:latest
     restart: unless-stopped
     environment:
-      - EXPORTER_REDIS_URL=redis://redis:6379
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     ports:
       - "9800:9800"
 
