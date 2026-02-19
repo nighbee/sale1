@@ -2,7 +2,11 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '../utils/cn';
 
-const LanguageSwitcher: React.FC = () => {
+interface LanguageSwitcherProps {
+  className?: string;
+}
+
+const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ className }) => {
   const { i18n } = useTranslation();
 
   const changeLanguage = (lng: string) => {
@@ -18,8 +22,8 @@ const LanguageSwitcher: React.FC = () => {
   ];
 
   return (
-    <div className="flex items-center gap-1 px-3 py-2 bg-white/5 rounded-lg mb-4 mx-3">
-      <span className="material-icons text-slate-400 text-sm mr-1">language</span>
+    <div className={cn("flex items-center gap-1 px-3 py-2 bg-white/5 rounded-lg mb-4 mx-3", className)}>
+      <span className="material-symbols-outlined text-slate-400 text-[20px] mr-1">language</span>
       <div className="flex gap-2">
         {languages.map((lang) => (
           <button
