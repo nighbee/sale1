@@ -13,16 +13,30 @@ func NewScriptRepository(db *sql.DB) *ScriptRepository {
 	return &ScriptRepository{db: db}
 }
 
-func (r *ScriptRepository) Create(ctx context.Context, id, companyID, name, filePath, parsedText string) error {
+func (r *ScriptRepository) Create(ctx context.Context, id, companyID, name, filePath, parsedText string, teamID *string) error {
 	query := `
 		INSERT INTO scripts_schema.scripts
-		(id, company_id, name, file_path_minio, parsed_text, structure, version, is_active)
-		VALUES ($1, $2, $3, $4, $5, $6, 1, true)
+		(id, company_id, name, file_path_minio, parsed_text, structure, version, is_active, team_id)
+		VALUES ($1, $2, $3, $4, $5, $6, 1, true, $7)
 	`
 	// Initialize empty structure
 	structure := "{}"
-	_, err := r.db.ExecContext(ctx, query, id, companyID, name, filePath, parsedText, structure)
+	_, err := r.db.ExecContext(ctx, query, id, companyID, name, filePath, parsedText, structure, teamID)
 	return err
+}
+
+func (r *ScriptRepository) GetByID(ctx context.Context, id string) (map[string]interface{}, error) {
+	query := `SELECT id, name, file_path_minio FROM scripts_schema.scripts WHERE id = $1`
+	var resId, name, filePath string
+	err := r.db.QueryRowContext(ctx, query, id).Scan(&resId, &name, &filePath)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]interface{}{
+		"id":               resId,
+		"name":             name,
+		"file_path_minio": filePath,
+	}, nil
 }
 
 func (r *ScriptRepository) List(ctx context.Context, companyID string) ([]map[string]interface{}, error) {

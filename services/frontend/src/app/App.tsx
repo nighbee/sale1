@@ -21,6 +21,7 @@ import { LeaderboardPage } from "../pages/Leaderboard";
 import { CallDetailPage } from "../pages/CallDetail";
 import { CallsListPage } from "../pages/CallsList";
 import { SuperAdminPage } from "../pages/SuperAdmin";
+import UserProfile from "../pages/UserProfile";
 import ProtectedRoute from "./providers/ProtectedRoute";
 import "./styles/App.css";
 
@@ -144,6 +145,14 @@ function App() {
           element={
             <ProtectedRoute>
               <CallDetailPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <UserProfile />
             </ProtectedRoute>
           }
         />

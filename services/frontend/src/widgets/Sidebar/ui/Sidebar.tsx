@@ -1,12 +1,39 @@
-import React from "react";
-import { NavLink } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { NavLink, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useUserStore } from "../../../entities/user/model/store";
 import LanguageSwitcher from "../../../shared/ui/LanguageSwitcher";
+import { userApi } from "../../../entities/user/api";
+import { teamApi } from "../../../entities/team/api";
 
 const Sidebar: React.FC = () => {
   const { t } = useTranslation();
-  const { user } = useUserStore();
+  const navigate = useNavigate();
+  const { user, companies, setCompanies, currentCompanyId, setCurrentCompany, currentTeamId, setCurrentTeam } = useUserStore();
+  const [teams, setTeams] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchCompanies = async () => {
+        try {
+            const res = await userApi.listCompanies();
+            setCompanies(res.data.companies);
+        } catch (err) {
+            console.error("Failed to fetch companies", err);
+        }
+    }
+    const fetchTeams = async () => {
+        try {
+            const res = await teamApi.list();
+            setTeams(res.data.teams);
+        } catch (err) {
+            console.error("Failed to fetch teams", err);
+        }
+    }
+    if (user) {
+        fetchCompanies();
+        fetchTeams();
+    }
+  }, [user]);
 
   const getNavItems = () => {
     if (user?.role === "super_admin") {
@@ -69,12 +96,43 @@ const Sidebar: React.FC = () => {
 
   return (
     <aside className="w-64 bg-slate-900 flex-shrink-0 flex flex-col text-white transition-all duration-300">
-      <div className="h-16 flex items-center px-6 border-b border-white/10">
-        <div className="flex items-center gap-2">
+      <div className="p-6 border-b border-white/10">
+        <div className="flex items-center gap-2 mb-6">
           <div className="w-8 h-8 rounded bg-primary flex items-center justify-center">
             <span className="material-icons text-lg">insights</span>
           </div>
           <span className="font-bold text-lg tracking-tight">SalesAI</span>
+        </div>
+
+        <div className="space-y-4">
+            <div>
+                <label className="block text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-2">Company</label>
+                <select
+                    className="w-full bg-slate-800 border-none rounded-lg text-sm p-2 focus:ring-1 focus:ring-primary transition-all"
+                    value={currentCompanyId || ""}
+                    onChange={(e) => setCurrentCompany(e.target.value)}
+                >
+                    {companies.map(c => (
+                        <option key={c.company_id} value={c.company_id}>{c.company_id.slice(0,8)} ({c.role})</option>
+                    ))}
+                </select>
+            </div>
+
+            {user?.role !== 'super_admin' && (
+                <div>
+                    <label className="block text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-2">Active Team</label>
+                    <select
+                        className="w-full bg-slate-800 border-none rounded-lg text-sm p-2 focus:ring-1 focus:ring-primary transition-all"
+                        value={currentTeamId || ""}
+                        onChange={(e) => setCurrentTeam(e.target.value || null)}
+                    >
+                        <option value="">All Teams</option>
+                        {teams.map(t => (
+                            <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
+                    </select>
+                </div>
+            )}
         </div>
       </div>
       <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto">
@@ -99,12 +157,15 @@ const Sidebar: React.FC = () => {
       </nav>
       <div className="p-4 border-t border-white/10">
         <LanguageSwitcher />
-        <button className="flex items-center gap-3 w-full hover:bg-white/5 p-2 rounded-lg transition-colors text-left mt-4">
+        <button
+            onClick={() => navigate('/profile')}
+            className="flex items-center gap-3 w-full hover:bg-white/5 p-2 rounded-lg transition-colors text-left mt-4"
+        >
           <div className="w-9 h-9 rounded-full border-2 border-primary bg-primary/20 flex items-center justify-center text-primary font-bold">
-            {user?.full_name?.charAt(0) || user?.email?.charAt(0) || "U"}
+            {user?.first_name?.charAt(0) || user?.email?.charAt(0) || "U"}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-white truncate">{user?.full_name || user?.email || 'User'}</p>
+            <p className="text-sm font-medium text-white truncate">{(user?.first_name || '') + ' ' + (user?.last_name || '') || user?.email || 'User'}</p>
             <p className="text-xs text-slate-400 truncate capitalize">{user?.role || t('common.role')}</p>
           </div>
           <span className="material-icons text-slate-400 text-lg">

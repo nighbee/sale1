@@ -9,4 +9,6 @@ export const userApi = {
   get: (id: string) => api.get<{ user: User }>(`/users/${id}`),
   update: (id: string, data: Partial<User>) => api.put<{ user: User }>(`/users/${id}`, data),
   delete: (id: string) => api.delete(`/users/${id}`),
+  listCompanies: () => api.get<{ companies: any[] }>('/user/companies'),
+  getMe: () => api.get<User>('/user/me'),
 };

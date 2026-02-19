@@ -29,7 +29,8 @@ class AnalyzeCallUseCase:
             logger.error(f"Call not found for {call_id}")
             return
 
-        script = get_active_script(company_id)
+        manager_id = call['manager_id']
+        script = get_team_script(company_id, manager_id)
         script_text = script['parsed_text'] if script else "No active script found."
         script_id = script['id'] if script else None
 

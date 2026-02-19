@@ -5,6 +5,7 @@ import { Sidebar } from '../../../widgets/Sidebar';
 import { teamApi } from '../../../entities/team/api';
 import { userApi } from '../../../entities/user/api';
 import Button from '../../../shared/ui/Button';
+import TeamModal from '../../../features/team-management/ui/TeamModal';
 
 const TeamDetailPage: React.FC = () => {
   const { t } = useTranslation();
@@ -13,24 +14,26 @@ const TeamDetailPage: React.FC = () => {
   const [team, setTeam] = useState<any>(null);
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  const fetchData = async () => {
+    if (!id) return;
+    try {
+      const [teamRes, usersRes] = await Promise.all([
+        teamApi.get(id),
+        userApi.listUsers(),
+      ]);
+      setTeam(teamRes.data);
+      const userData = usersRes.data as any;
+      setUsers(userData.users.filter((u: any) => u.team_id === id));
+    } catch {
+      console.error('Failed to fetch team details');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      if (!id) return;
-      try {
-        const [teamRes, usersRes] = await Promise.all([
-          teamApi.get(id),
-          userApi.listUsers(),
-        ]);
-        setTeam(teamRes.data);
-        const userData = usersRes.data as any;
-        setUsers(userData.users.filter((u: any) => u.team_id === id));
-      } catch {
-        console.error('Failed to fetch team details');
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchData();
   }, [id]);
 
@@ -58,9 +61,16 @@ const TeamDetailPage: React.FC = () => {
           </div>
           <div className="flex gap-3">
              <Button variant="secondary" onClick={handleDelete} className="text-red-700 hover:bg-red-200">{t('teams.delete_team')}</Button>
-             <Button>{t('teams.edit_details')}</Button>
+             <Button onClick={() => setIsEditModalOpen(true)}>{t('teams.edit_details')}</Button>
           </div>
         </div>
+
+        <TeamModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          teamId={id}
+          onSuccess={fetchData}
+        />
 
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
           <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">

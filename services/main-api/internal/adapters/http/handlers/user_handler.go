@@ -40,6 +40,25 @@ func (h *UserHandler) ListUsers(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"users": users})
 }
 
+// ListUserCompanies godoc
+// @Summary List user's companies
+// @Description Get all companies associated with the current user
+// @Tags users
+// @Accept json
+// @Produce json
+// @Success 200 {object} fiber.Map
+// @Failure 500 {object} fiber.Map
+// @Security BearerAuth
+// @Router /user/companies [get]
+func (h *UserHandler) ListUserCompanies(c *fiber.Ctx) error {
+	userID := c.Locals("user_id").(string)
+	companies, err := h.userRepo.GetUserCompanies(c.Context(), userID)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"companies": companies})
+}
+
 // InviteUser godoc
 // @Summary Invite a new user
 // @Description Invite a new user to the company and assign a role
@@ -68,18 +87,19 @@ func (h *UserHandler) InviteUser(c *fiber.Ctx) error {
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid body"})
 	}
-    // Log the parsed request struct
-    reqJson, _ := json.MarshalIndent(req, "", "  ")
-    log.Printf("InviteUser request: %s", reqJson)
+	// Log the parsed request struct
+	reqJson, _ := json.MarshalIndent(req, "", "  ")
+	log.Printf("InviteUser request: %s", reqJson)
 
 	emails := req.Emails
 	if req.Email != "" {
 		emails = append(emails, req.Email)
 	}
 
-	teamId := req.TeamID
-	if teamId == "" {
-		teamId = "" // Replace with your default team ID if needed
+	var teamIDPtr *string
+	if req.TeamID != "" {
+		tID := req.TeamID
+		teamIDPtr = &tID
 	}
 
 	if len(emails) == 0 {
@@ -93,6 +113,16 @@ func (h *UserHandler) InviteUser(c *fiber.Ctx) error {
 
 	var invitedUsers []*domain.User
 	for _, email := range emails {
+		existingUser, err := h.userRepo.GetByEmail(c.Context(), email)
+		if err == nil && existingUser != nil {
+			// User exists, add to company
+			if err := h.userRepo.AddUserToCompany(c.Context(), existingUser.ID, companyID, domain.UserRole(role)); err != nil {
+				continue
+			}
+			invitedUsers = append(invitedUsers, existingUser)
+			continue
+		}
+
 		hash, err := bcrypt.GenerateFromPassword([]byte(req.TemporaryPassword), bcrypt.DefaultCost)
 		if err != nil {
 			continue
@@ -106,10 +136,13 @@ func (h *UserHandler) InviteUser(c *fiber.Ctx) error {
 			ManagerName:  req.ManagerName,
 			ManagerID:    &req.ManagerID,
 			PasswordHash: string(hash),
-			TeamID:       teamId,
+			TeamID:       teamIDPtr,
+			IsActive:     true,
 		}
 		if err := h.userRepo.Create(c.Context(), user); err != nil {
-			// Skip duplicates or log error
+			continue
+		}
+		if err := h.userRepo.AddUserToCompany(c.Context(), user.ID, companyID, domain.UserRole(role)); err != nil {
 			continue
 		}
 		invitedUsers = append(invitedUsers, user)
@@ -164,6 +197,10 @@ func (h *UserHandler) UpdateUser(c *fiber.Ctx) error {
 	}
 
 	var update struct {
+		FirstName   string `json:"first_name"`
+		LastName    string `json:"last_name"`
+		Email       string `json:"email"`
+		Password    string `json:"password"`
 		ManagerName string `json:"manager_name"`
 		Role        string `json:"role"`
 	}
@@ -172,6 +209,19 @@ func (h *UserHandler) UpdateUser(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid body"})
 	}
 
+	if update.FirstName != "" {
+		user.FirstName = update.FirstName
+	}
+	if update.LastName != "" {
+		user.LastName = update.LastName
+	}
+	if update.Email != "" {
+		user.Email = update.Email
+	}
+	if update.Password != "" {
+		hash, _ := bcrypt.GenerateFromPassword([]byte(update.Password), bcrypt.DefaultCost)
+		user.PasswordHash = string(hash)
+	}
 	if update.ManagerName != "" {
 		user.ManagerName = update.ManagerName
 	}
@@ -183,6 +233,26 @@ func (h *UserHandler) UpdateUser(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 
+	return c.JSON(user)
+}
+
+// GetMe godoc
+// @Summary Get current user profile
+// @Description Get profile details of the currently authenticated user
+// @Tags users
+// @Accept json
+// @Produce json
+// @Success 200 {object} domain.User
+// @Failure 404 {object} fiber.Map
+// @Security BearerAuth
+// @Router /user/me [get]
+func (h *UserHandler) GetMe(c *fiber.Ctx) error {
+	id := c.Locals("user_id").(string)
+	companyID := c.Locals("company_id").(string)
+	user, err := h.userRepo.GetByID(c.Context(), companyID, id)
+	if err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "User not found"})
+	}
 	return c.JSON(user)
 }
 

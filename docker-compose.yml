@@ -9,6 +9,8 @@ services:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
+    networks:
+      - sale1-network
 
   redis:
     image: redis:7.2-alpine
@@ -16,9 +18,11 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    networks:
+      - sale1-network
 
   minio:
-    image: minio/minio:RELEASE.2024-01-01T16-36-33Z
+    image: minio/minio:latest
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: minioadmin
@@ -28,6 +32,8 @@ services:
     ports:
       - "9000:9000"
       - "9001:9001"
+    networks:
+      - sale1-network
 
   main-api:
     build: ./services/main-api
@@ -40,6 +46,10 @@ services:
     depends_on:
       - postgres
       - redis
+    networks:
+      - sale1-network
+    volumes:
+      - ./services/main-api/internal/infrastructure/database/migrations:/app/internal/infrastructure/database/migrations:ro
 
   sipuni-listener:
     build: ./services/sipuni-listener
@@ -52,6 +62,8 @@ services:
     depends_on:
       - postgres
       - redis
+    networks:
+      - sale1-network
 
   script-service:
     build: ./services/script-service
@@ -65,21 +77,23 @@ services:
     depends_on:
       - postgres
       - minio
+    networks:
+      - sale1-network
 
   stt-service:
     build: ./services/stt-service
     environment:
       DATABASE_URL: "host=postgres port=5432 user=salesai_user password=strong_password dbname=salesai sslmode=disable"
       REDIS_URL: "redis://redis:6379"
-      # LOCAL_STT_URL: "http://stt-local:5001"
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY}
       GOOGLE_AI_MODEL: ${GOOGLE_AI_MODEL}
-      STT_PROVIDER: "openai" # or "gemini"
+      STT_PROVIDER: "openai"
     depends_on:
       - postgres
       - redis
-      # - stt-local
+    networks:
+      - sale1-network
 
   ai-analytics:
     build: ./services/ai-analytics
@@ -92,6 +106,8 @@ services:
     depends_on:
       - postgres
       - redis
+    networks:
+      - sale1-network
 
   frontend:
     build: ./services/frontend
@@ -100,11 +116,8 @@ services:
       - "80:80"
     depends_on:
       - main-api
-
-  # stt-local:
-  #   build: ./ai-services/stt-local
-  #   ports:
-  #     - "5001:5001"
+    networks:
+      - sale1-network
 
   nginx:
     image: nginx:1.25-alpine
@@ -117,8 +130,107 @@ services:
       - sipuni-listener
       - script-service
       - frontend
+    networks:
+      - sale1-network
+
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+    ports:
+      - "9090:9090"
+    networks:
+      - sale1-network
+
+  loki:
+    image: grafana/loki:2.8.2
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/loki/loki-config.yml:/etc/loki/local-config.yaml
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    ports:
+      - "3100:3100"
+    networks:
+      - sale1-network
+
+  promtail:
+    image: grafana/promtail:2.8.2
+    user: root
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/promtail/promtail-config.yml:/etc/promtail/config.yml
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - sale1-network
+
+  grafana:
+    image: grafana/grafana:10.0.3
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitoring/grafana/dashboards:/etc/grafana/dashboards
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+      - loki
+    networks:
+      - sale1-network
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.47.2
+    restart: unless-stopped
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    ports:
+      - "8082:8080"
+    networks:
+      - sale1-network
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.52.0
+    restart: unless-stopped
+    environment:
+      - REDIS_ADDR=redis:6379
+    ports:
+      - "9121:9121"
+    networks:
+      - sale1-network
+
+  bullmq-exporter:
+    image: igrek8/bullmq-prometheus:latest
+    container_name: bullmq_exporter
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PORT=3000
+    networks:
+      - sale1-network
+    restart: unless-stopped
 
 volumes:
   postgres_data:
   redis_data:
   minio_data:
+  prometheus_data:
+  loki_data:
+  grafana_data:
+
+networks:
+  sale1-network:
+    driver: bridge

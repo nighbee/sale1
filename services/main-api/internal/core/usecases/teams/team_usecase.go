@@ -8,11 +8,21 @@ import (
 )
 
 type TeamUseCase struct {
-	teamRepo ports.TeamRepository
+	teamRepo   ports.TeamRepository
+	userRepo   ports.UserRepository
+	scriptRepo ports.ScriptRepository
 }
 
-func NewTeamUseCase(teamRepo ports.TeamRepository) *TeamUseCase {
-	return &TeamUseCase{teamRepo: teamRepo}
+func NewTeamUseCase(
+	teamRepo ports.TeamRepository,
+	userRepo ports.UserRepository,
+	scriptRepo ports.ScriptRepository,
+) *TeamUseCase {
+	return &TeamUseCase{
+		teamRepo:   teamRepo,
+		userRepo:   userRepo,
+		scriptRepo: scriptRepo,
+	}
 }
 
 func (uc *TeamUseCase) Create(ctx context.Context, companyID string, name, description string, autoAssign bool) (*domain.Team, error) {
@@ -28,7 +38,30 @@ func (uc *TeamUseCase) Create(ctx context.Context, companyID string, name, descr
 }
 
 func (uc *TeamUseCase) GetByID(ctx context.Context, companyID, id string) (*domain.Team, error) {
-	return uc.teamRepo.GetByID(ctx, companyID, id)
+	team, err := uc.teamRepo.GetByID(ctx, companyID, id)
+	if err != nil {
+		return nil, err
+	}
+
+	// Fetch members
+	users, _ := uc.userRepo.ListByCompany(ctx, companyID)
+	for _, u := range users {
+		if u.TeamID != nil && *u.TeamID == id {
+			team.Members = append(team.Members, u)
+		}
+	}
+
+	// Fetch script - we need a way to get script by team_id
+	// I'll add GetByTeamID to scriptRepo
+	scripts, _ := uc.scriptRepo.ListByCompany(ctx, companyID)
+	for _, s := range scripts {
+		if s.TeamID != nil && *s.TeamID == id {
+			team.Script = s
+			break
+		}
+	}
+
+	return team, nil
 }
 
 func (uc *TeamUseCase) ListByCompany(ctx context.Context, companyID string) ([]*domain.Team, error) {
@@ -37,6 +70,27 @@ func (uc *TeamUseCase) ListByCompany(ctx context.Context, companyID string) ([]*
 
 func (uc *TeamUseCase) Update(ctx context.Context, team *domain.Team) error {
 	return uc.teamRepo.Update(ctx, team)
+}
+
+func (uc *TeamUseCase) AddMember(ctx context.Context, companyID, teamID, userID string) error {
+	user, err := uc.userRepo.GetByID(ctx, companyID, userID)
+	if err != nil {
+		return err
+	}
+	user.TeamID = &teamID
+	return uc.userRepo.Update(ctx, user)
+}
+
+func (uc *TeamUseCase) RemoveMember(ctx context.Context, companyID, teamID, userID string) error {
+	user, err := uc.userRepo.GetByID(ctx, companyID, userID)
+	if err != nil {
+		return err
+	}
+	if user.TeamID != nil && *user.TeamID == teamID {
+		user.TeamID = nil
+		return uc.userRepo.Update(ctx, user)
+	}
+	return nil
 }
 
 func (uc *TeamUseCase) Delete(ctx context.Context, companyID, id string) error {

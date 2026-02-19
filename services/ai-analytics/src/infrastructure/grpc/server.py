@@ -4,11 +4,13 @@ import logging
 from . import analytics_service_pb2
 from . import analytics_service_pb2_grpc
 from src.adapters.storage.postgres_repo import get_pool
+from src.infrastructure.monitoring.metrics import REQUEST_COUNT, REQUEST_LATENCY
 
 logger = logging.getLogger(__name__)
 
 class AnalyticsServiceServicer(analytics_service_pb2_grpc.AnalyticsServiceServicer):
     def GetAnalysis(self, request, context):
+        start_time = REQUEST_LATENCY.labels(app_name='ai-analytics', method='GRPC', path='/GetAnalysis').time()
         call_id = request.call_id
         logger.info(f"gRPC GetAnalysis called for call_id: {call_id}")
 
@@ -24,6 +26,7 @@ class AnalyticsServiceServicer(analytics_service_pb2_grpc.AnalyticsServiceServic
             cur.close()
 
             if row:
+                REQUEST_COUNT.labels(app_name='ai-analytics', method='GRPC', path='/GetAnalysis', status_code='200').inc()
                 return analytics_service_pb2.AnalysisResponse(
                     call_id=call_id,
                     quality_score=row[0],
@@ -36,8 +39,13 @@ class AnalyticsServiceServicer(analytics_service_pb2_grpc.AnalyticsServiceServic
                     next_best_action=row[7]
                 )
             else:
+                REQUEST_COUNT.labels(app_name='ai-analytics', method='GRPC', path='/GetAnalysis', status_code='404').inc()
                 context.abort(grpc.StatusCode.NOT_FOUND, "Analysis not found")
+        except Exception as e:
+            REQUEST_COUNT.labels(app_name='ai-analytics', method='GRPC', path='/GetAnalysis', status_code='500').inc()
+            raise e
         finally:
+            start_time.stop()
             get_pool().putconn(conn)
 
 import os

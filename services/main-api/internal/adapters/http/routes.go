@@ -50,6 +50,8 @@ func SetupRoutes(
 	// Users
 	users := protected.Group("/users", middleware.RequireRole("super_admin", "tenant_admin"))
 	users.Get("/", userHandler.ListUsers)
+	protected.Get("/user/companies", userHandler.ListUserCompanies)
+	protected.Get("/user/me", userHandler.GetMe)
 	users.Post("/invite", userHandler.InviteUser)
 	users.Get("/:id", userHandler.GetUser)
 	users.Put("/:id", userHandler.UpdateUser)
@@ -70,6 +72,7 @@ func SetupRoutes(
 	scripts.Get("/", scriptHandler.ListScripts)
 	scripts.Get("/:id", scriptHandler.GetScript)
 	scripts.Get("/:id/content", scriptHandler.GetScriptContent)
+	scripts.Get("/:id/download", scriptHandler.DownloadScript)
 	scripts.Put("/:id", middleware.RequireRole("super_admin", "tenant_admin"), scriptHandler.UpdateScript)
 	scripts.Delete("/:id", middleware.RequireRole("super_admin", "tenant_admin"), scriptHandler.DeleteScript)
 
@@ -77,11 +80,14 @@ func SetupRoutes(
 	analytics := protected.Group("/analytics")
 	analytics.Get("/team-performance", middleware.RequireRole("super_admin", "tenant_admin"), analyticsHandler.GetTeamPerformance)
 	analytics.Get("/leaderboard", analyticsHandler.GetLeaderboard)
+	analytics.Get("/leaderboard/export/:format", analyticsHandler.ExportLeaderboard)
 
 	// Company
 	companies := protected.Group("/companies", middleware.RequireRole("super_admin", "tenant_admin"))
 	companies.Get("/:id", companyHandler.GetCompany)
 	companies.Put("/:id/settings", companyHandler.UpdateSettings)
+	companies.Get("/:id/billing", companyHandler.GetBilling)
+	companies.Put("/:id/billing", companyHandler.UpdateBilling)
 
 	// Teams
 	teams := protected.Group("/teams", middleware.RequireRole("super_admin", "tenant_admin"))
@@ -90,6 +96,8 @@ func SetupRoutes(
 	teams.Get("/:id", teamHandler.Get)
 	teams.Put("/:id", teamHandler.Update)
 	teams.Delete("/:id", teamHandler.Delete)
+	teams.Post("/:id/members", teamHandler.AddMember)
+	teams.Delete("/:id/members/:userID", teamHandler.RemoveMember)
 
 	// Integrations
 	integrations := protected.Group("/integrations", middleware.RequireRole("super_admin", "tenant_admin"))

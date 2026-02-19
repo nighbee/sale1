@@ -14,6 +14,7 @@ type RegisterRequest struct {
 	CompanyName string `json:"company_name"`
 	Email       string `json:"email"`
 	Password    string `json:"password"`
+	FullName    string `json:"full_name"`
 	ManagerName string `json:"manager_name"`
 	ManagerID   string `json:"manager_id,omitempty"`
 }
@@ -80,6 +81,7 @@ func (uc *RegisterUseCase) Execute(ctx context.Context, req *RegisterRequest) (*
 		ID:           uuid.New().String(),
 		CompanyID:    company.ID,
 		Email:        req.Email,
+		FirstName:    req.FullName, // Simplified for now, or split if needed
 		PasswordHash: string(passwordHash),
 		Role:         domain.RoleTenantAdmin,
 		ManagerID:    &managerID,

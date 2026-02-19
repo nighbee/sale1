@@ -10,4 +10,6 @@ type Team struct {
 	AutoAssign  bool      `json:"auto_assign"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
+	Members     []*User   `json:"members,omitempty"`
+	Script      *Script   `json:"script,omitempty"`
 }

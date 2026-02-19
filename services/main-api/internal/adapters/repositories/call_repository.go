@@ -125,6 +125,12 @@ func (r *callRepository) ListByCompany(ctx context.Context, companyID string, fi
 		argIdx++
 	}
 
+	if teamID, ok := filters["team_id"].(string); ok && teamID != "" {
+		where = append(where, fmt.Sprintf("manager_id IN (SELECT manager_id FROM auth_schema.users WHERE team_id = $%d)", argIdx))
+		args = append(args, teamID)
+		argIdx++
+	}
+
 	if status, ok := filters["status"].(string); ok && status != "" {
 		where = append(where, fmt.Sprintf("status = $%d", argIdx))
 		args = append(args, status)

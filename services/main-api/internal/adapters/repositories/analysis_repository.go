@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 
 	"github.com/salesai/main-api/internal/core/domain"
 	"github.com/salesai/main-api/internal/core/ports"
@@ -31,7 +32,15 @@ func (r *analysisRepository) Create(ctx context.Context, a *domain.AnalysisRepor
 }
 
 func (r *analysisRepository) GetTeamPerformance(ctx context.Context, companyID string, filters map[string]interface{}) ([]map[string]interface{}, error) {
-	query := `
+	where := "company_id = $1"
+	args := []interface{}{companyID}
+
+	if teamID, ok := filters["team_id"].(string); ok && teamID != "" {
+		where += " AND manager_id IN (SELECT manager_id FROM auth_schema.users WHERE team_id = $2)"
+		args = append(args, teamID)
+	}
+
+	query := fmt.Sprintf(`
 		SELECT
 			manager_id,
 			manager_name,
@@ -43,9 +52,9 @@ func (r *analysisRepository) GetTeamPerformance(ctx context.Context, companyID s
 			avg_kpi,
 			total_duration_seconds
 		FROM calls_schema.v_manager_performance
-		WHERE company_id = $1
-	`
-	rows, err := r.db.QueryContext(ctx, query, companyID)
+		WHERE %s
+	`, where)
+	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}

@@ -59,6 +59,7 @@ func (h *CompanyHandler) UpdateSettings(c *fiber.Ctx) error {
 
 	var update struct {
 		Name               string `json:"name"`
+		Description        string `json:"description"`
 		Industry           string `json:"industry"`
 		Size               string `json:"size"`
 		TimeZone           string `json:"time_zone"`
@@ -72,6 +73,9 @@ func (h *CompanyHandler) UpdateSettings(c *fiber.Ctx) error {
 
 	if update.Name != "" {
 		company.Name = update.Name
+	}
+	if update.Description != "" {
+		company.Description = update.Description
 	}
 	if update.Industry != "" {
 		company.Industry = update.Industry
@@ -97,4 +101,50 @@ func (h *CompanyHandler) UpdateSettings(c *fiber.Ctx) error {
 		"message": "Settings updated successfully",
 		"company": company,
 	})
+}
+
+// GetBilling godoc
+// @Summary Get company billing info
+// @Description Get billing details, card info, and token usage for a company
+// @Tags companies
+// @Accept json
+// @Produce json
+// @Param id path string true "Company ID"
+// @Success 200 {object} domain.BillingInfo
+// @Failure 500 {object} fiber.Map
+// @Security BearerAuth
+// @Router /companies/{id}/billing [get]
+func (h *CompanyHandler) GetBilling(c *fiber.Ctx) error {
+	companyID := c.Params("id")
+	billing, err := h.companyRepo.GetBillingInfo(c.Context(), companyID)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(billing)
+}
+
+// UpdateBilling godoc
+// @Summary Update company billing info
+// @Description Update card details and billing preferences
+// @Tags companies
+// @Accept json
+// @Produce json
+// @Param id path string true "Company ID"
+// @Param request body domain.BillingInfo true "Billing Update Request"
+// @Success 200 {object} domain.BillingInfo
+// @Failure 400 {object} fiber.Map
+// @Failure 500 {object} fiber.Map
+// @Security BearerAuth
+// @Router /companies/{id}/billing [put]
+func (h *CompanyHandler) UpdateBilling(c *fiber.Ctx) error {
+	companyID := c.Params("id")
+	var billing domain.BillingInfo
+	if err := c.BodyParser(&billing); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid body"})
+	}
+	billing.CompanyID = companyID
+	if err := h.companyRepo.UpdateBillingInfo(c.Context(), &billing); err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(billing)
 }

@@ -24,8 +24,11 @@ import (
 	"context"
 	"database/sql"
 	"log"
+	"net/url"
 	"os"
+	"strings"
 
+	"github.com/ansrivas/fiberprometheus/v2"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	_ "github.com/lib/pq"
@@ -98,12 +101,24 @@ func main() {
 	refreshUC := auth.NewRefreshUseCase(userRepo, jwtService)
 	listCallsUC := calls.NewListCallsUseCase(callRepo)
 	teamPerformanceUC := analytics.NewTeamPerformanceUseCase(analysisRepo)
-	teamUC := teams.NewTeamUseCase(teamRepo)
+	teamUC := teams.NewTeamUseCase(teamRepo, userRepo, scriptRepo)
 	integrationUC := integrations.NewIntegrationUseCase(integrationRepo)
 
 	// Redis client
+	redisAddr := strings.TrimSpace(cfg.RedisURL)
+	if strings.Contains(redisAddr, "://") {
+		u, err := url.Parse(redisAddr)
+		if err == nil && u.Host != "" {
+			redisAddr = u.Host
+		} else {
+			// Fallback: manually strip prefix if parsing fails or host is empty
+			redisAddr = strings.TrimPrefix(redisAddr, "redis://")
+			redisAddr = strings.TrimPrefix(redisAddr, "rediss://") // and secure variant
+		}
+	}
+
 	rdb := redis.NewClient(&redis.Options{
-		Addr: cfg.RedisURL,
+		Addr: redisAddr,
 	})
 
 	// WebSocket Hub
@@ -111,7 +126,7 @@ func main() {
 	go hub.Run()
 
 	// Redis Consumer for Notifications
-	redisConsumer := events.NewRedisConsumer(rdb, hub, callRepo)
+	redisConsumer := events.NewRedisConsumer(rdb, hub, callRepo, integrationRepo)
 	go redisConsumer.Start(context.Background())
 
 	// Handlers
@@ -128,6 +143,10 @@ func main() {
 
 	app := fiber.New()
 	app.Use(logger.New())
+
+	prometheus := fiberprometheus.New("main-api")
+	prometheus.RegisterAt(app, "/metrics")
+	app.Use(prometheus.Middleware)
 
 	http.SetupRoutes(app, authHandler, callHandler, analyticsHandler, companyHandler, userHandler, teamHandler, integrationHandler, scriptHandler, notificationHandler, wsHandler, jwtService)
 
