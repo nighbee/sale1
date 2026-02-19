@@ -2,7 +2,6 @@ import {
   BrowserRouter as Router,
   Routes,
   Route,
-  Navigate,
 } from "react-router-dom";
 import { Toaster } from "sonner";
 import { RegisterPage } from "@pages/Register";
@@ -22,6 +21,7 @@ import { CallDetailPage } from "../pages/CallDetail";
 import { CallsListPage } from "../pages/CallsList";
 import { SuperAdminPage } from "../pages/SuperAdmin";
 import UserProfile from "../pages/UserProfile";
+import { LandingPage } from "../pages/LandingPage";
 import ProtectedRoute from "./providers/ProtectedRoute";
 import "./styles/App.css";
 
@@ -157,7 +157,7 @@ function App() {
           }
         />
 
-        <Route path="/" element={<Navigate to="/register" replace />} />
+        <Route path="/" element={<LandingPage />} />
       </Routes>
     </Router>
   );
