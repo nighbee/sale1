@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Sidebar } from '../../../widgets/Sidebar';
+import { PageLayout } from '../../../widgets/PageLayout';
 import { callApi } from '../../../entities/call/api';
+import type { Call } from '../../../entities/call/types';
 import Skeleton from '../../../shared/ui/Skeleton';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -9,7 +10,7 @@ import { useUserStore } from '../../../entities/user/model/store';
 const CallsListPage: React.FC = () => {
   const { t } = useTranslation();
   const { currentTeamId } = useUserStore();
-  const [calls, setCalls] = useState<any[]>([]);
+  const [calls, setCalls] = useState<Call[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ total: 0, avgScore: 0, failed: 0 });
 
@@ -18,7 +19,7 @@ const CallsListPage: React.FC = () => {
       setLoading(true);
       try {
         const res = await callApi.listCalls({ team_id: currentTeamId });
-        const data = res.data as any;
+        const data = res.data;
         setCalls(data.calls || []);
         // Simulated stats calculation
         const total = data.total || (data.calls ? data.calls.length : 0);
@@ -34,9 +35,8 @@ const CallsListPage: React.FC = () => {
   }, [currentTeamId]);
 
   return (
-    <div className="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display min-h-screen flex">
-      <Sidebar />
-      <main className="flex-1 p-6 lg:p-8 overflow-y-auto">
+    <PageLayout title={t('calls.list_title')}>
+      <div className="p-4 md:p-8">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
           <div>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('calls.list_title')}</h1>
@@ -118,8 +118,8 @@ const CallsListPage: React.FC = () => {
             </table>
           </div>
         </div>
-      </main>
-    </div>
+      </div>
+    </PageLayout>
   );
 };
 

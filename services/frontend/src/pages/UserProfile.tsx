@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { userApi } from "../entities/user/api";
 import { useNavigate } from "react-router-dom";
-import { Sidebar } from "../widgets/Sidebar";
+import { PageLayout } from "../widgets/PageLayout";
 import { useTranslation } from "react-i18next";
+import type { User } from "../entities/user/types";
 import Button from "../shared/ui/Button";
 import Input from "../shared/ui/Input";
 import { toast } from "sonner";
@@ -12,7 +13,7 @@ const UserProfile: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { setUser } = useUserStore();
-  const [user, setUserData] = useState<any>(null);
+  const [user, setUserData] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ first_name: "", last_name: "", email: "", password: "" });
@@ -40,6 +41,7 @@ const UserProfile: React.FC = () => {
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) return;
     setSaving(true);
     try {
         const res = await userApi.update(user.id, form);
@@ -53,16 +55,21 @@ const UserProfile: React.FC = () => {
     }
   };
 
-  if (loading) return <div className="p-8">Loading...</div>;
-  if (!user) return <div className="p-8">User not found.</div>;
+  if (loading) return (
+    <PageLayout title="My Profile">
+        <div className="p-8">Loading...</div>
+    </PageLayout>
+  );
+  if (!user) return (
+    <PageLayout title="My Profile">
+        <div className="p-8">User not found.</div>
+    </PageLayout>
+  );
 
   return (
-    <div className="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex font-display">
-      <Sidebar />
-      <main className="flex-1 p-8 overflow-y-auto max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8">My Profile</h1>
-
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-8">
+    <PageLayout title="My Profile">
+      <div className="p-4 md:p-8 max-w-4xl mx-auto">
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-4 md:p-8">
             <form onSubmit={handleUpdate} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <Input
@@ -99,8 +106,8 @@ const UserProfile: React.FC = () => {
                 </div>
             </form>
         </div>
-      </main>
-    </div>
+      </div>
+    </PageLayout>
   );
 };
 
