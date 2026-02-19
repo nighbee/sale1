@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useUserStore } from "../../../entities/user/model/store";
 import LanguageSwitcher from "../../../shared/ui/LanguageSwitcher";
+import ProfileCard from "./ProfileCard";
 import { userApi } from "../../../entities/user/api";
 import { teamApi } from "../../../entities/team/api";
 import type { Team } from "@/entities/team/types";
@@ -15,7 +16,6 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const {
     user,
     companies,
@@ -211,29 +211,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           </NavLink>
         ))}
       </nav>
-      <div className="p-4 border-t border-white/10">
-        <LanguageSwitcher />
-        <button
-          onClick={() => navigate("/profile")}
-          className="flex items-center gap-3 w-full hover:bg-white/5 p-2 rounded-lg transition-colors text-left mt-4"
-        >
-          <div className="w-9 h-9 rounded-full border-2 border-primary bg-primary/20 flex items-center justify-center text-primary font-bold">
-            {user?.first_name?.charAt(0) || user?.email?.charAt(0) || "U"}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-white truncate">
-              {(user?.first_name || "") + " " + (user?.last_name || "") ||
-                user?.email ||
-                "User"}
-            </p>
-            <p className="text-xs text-slate-400 truncate capitalize">
-              {user?.role || t("common.role")}
-            </p>
-          </div>
-          <span className="material-icons text-slate-400 text-lg">
-            more_vert
-          </span>
-        </button>
+      <div className="mt-auto">
+        <div className="px-4 py-2 border-t border-white/10">
+          <LanguageSwitcher />
+        </div>
+        <ProfileCard />
       </div>
       </aside>
     </>
