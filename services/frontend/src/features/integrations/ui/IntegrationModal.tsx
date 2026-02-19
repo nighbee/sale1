@@ -60,6 +60,10 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ isOpen, onClose, ty
           case 'slack':
               return (
                   <div className="space-y-4">
+                      <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-xs text-blue-700 dark:text-blue-300 mb-4">
+                          <strong>How to setup:</strong>
+                          <p className="mt-1">Create an "Incoming Webhook" in your Slack App settings and paste the URL below.</p>
+                      </div>
                       <Input label="Webhook URL" value={credentials.webhook_url || ''} onChange={e => setCredentials({...credentials, webhook_url: e.target.value})} />
                       <Input label="Channel Name" value={config.channel || ''} onChange={e => setConfig({...config, channel: e.target.value})} />
                   </div>
@@ -67,6 +71,14 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ isOpen, onClose, ty
           case 'telegram':
               return (
                   <div className="space-y-4">
+                      <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-xs text-blue-700 dark:text-blue-300 mb-4">
+                          <strong>How to setup:</strong>
+                          <ol className="list-decimal ml-4 mt-1 space-y-1">
+                              <li>Create a bot via @BotFather to get the <b>Bot Token</b>.</li>
+                              <li>Add the bot to your group or channel.</li>
+                              <li>Use @userinfobot to find your <b>Chat ID</b>.</li>
+                          </ol>
+                      </div>
                       <Input label="Bot Token" value={credentials.bot_token || ''} onChange={e => setCredentials({...credentials, bot_token: e.target.value})} />
                       <Input label="Chat ID" value={config.chat_id || ''} onChange={e => setConfig({...config, chat_id: e.target.value})} />
                   </div>

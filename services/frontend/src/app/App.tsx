@@ -8,7 +8,6 @@ import { Toaster } from "sonner";
 import { RegisterPage } from "@pages/Register";
 import { LoginPage } from "@pages/Login";
 import { CompanySetupPage } from "@pages/CompanySetup";
-import { TeamCreationPage } from "../pages/TeamCreation";
 import { ScriptUploadPage } from "../pages/ScriptUpload";
 import { InviteMembersPage } from "../pages/InviteMembers";
 import { DirectorDashboardPage } from "../pages/DirectorDashboard";
@@ -40,14 +39,6 @@ function App() {
           element={
             <ProtectedRoute>
               <CompanySetupPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/team-creation"
-          element={
-            <ProtectedRoute>
-              <TeamCreationPage />
             </ProtectedRoute>
           }
         />

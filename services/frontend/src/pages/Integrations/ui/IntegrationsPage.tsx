@@ -68,14 +68,14 @@ const IntegrationsPage: React.FC = () => {
             <p className="text-slate-500 dark:text-slate-400 text-lg max-w-xl">{t('integrations.subtitle')}</p>
           </div>
           <button className="bg-primary/10 text-primary hover:bg-primary/20 font-bold px-6 py-3 rounded-lg flex items-center gap-2">
-            <span className="material-symbols-outlined">add_circle</span>
+            <span className="material-icons">add_circle</span>
             {t('integrations.request')}
           </button>
         </div>
 
         <section className="mb-16">
           <div className="flex items-center gap-2 mb-6">
-            <span className="material-symbols-outlined text-green-500">check_circle</span>
+            <span className="material-icons text-green-500">check_circle</span>
             <h2 className="text-slate-900 dark:text-white text-2xl font-bold tracking-tight">{t('integrations.connected')}</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -86,10 +86,10 @@ const IntegrationsPage: React.FC = () => {
                 </div>
                 <div className="flex items-start gap-4 mb-6">
                   <div className="size-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <span className="material-symbols-outlined text-primary text-3xl">hub</span>
+                    <span className="material-icons text-primary text-3xl">hub</span>
                   </div>
                   <div>
-                    <h3 className="text-slate-900 dark:text-white font-bold text-lg">{i.integration_type}</h3>
+                    <h3 className="text-slate-900 dark:text-white font-bold text-lg capitalize">{i.integration_type}</h3>
                     <p className="text-slate-400 text-sm">{t('integrations.crm_connector')}</p>
                   </div>
                 </div>
@@ -97,7 +97,7 @@ const IntegrationsPage: React.FC = () => {
                   <button
                     onClick={() => handleConnect(i.integration_type)}
                     className="flex-1 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 text-slate-700 dark:text-slate-300 font-semibold py-2 rounded-lg text-sm border border-slate-200 dark:border-slate-700 flex items-center justify-center gap-2">
-                    <span className="material-symbols-outlined text-base">settings</span>
+                    <span className="material-icons text-base">settings</span>
                     {t('integrations.configure')}
                   </button>
                   <button
@@ -105,7 +105,7 @@ const IntegrationsPage: React.FC = () => {
                     disabled={actionLoading === i.integration_type}
                     className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50"
                   >
-                    <span className="material-symbols-outlined">delete</span>
+                    <span className="material-icons">delete</span>
                   </button>
                 </div>
               </div>
@@ -116,7 +116,7 @@ const IntegrationsPage: React.FC = () => {
 
         <section>
           <div className="flex items-center gap-2 mb-6">
-            <span className="material-symbols-outlined text-primary">apps</span>
+            <span className="material-icons text-primary">apps</span>
             <h2 className="text-slate-900 dark:text-white text-2xl font-bold tracking-tight">{t('integrations.available')}</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -124,7 +124,7 @@ const IntegrationsPage: React.FC = () => {
               <div key={app.id} className={`bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm transition-all flex flex-col ${isConnected(app.id) ? 'opacity-50 grayscale' : 'hover:border-primary/30'}`}>
                 <div className="flex items-start gap-4 mb-4">
                   <div className={`size-12 rounded-lg bg-slate-50 dark:bg-slate-800 flex items-center justify-center`}>
-                    <span className={`material-symbols-outlined text-primary text-3xl`}>{app.icon}</span>
+                    <span className={`material-icons text-primary text-3xl`}>{app.icon}</span>
                   </div>
                   <div>
                     <h3 className="text-slate-900 dark:text-white font-bold text-lg">{app.name}</h3>
@@ -140,7 +140,7 @@ const IntegrationsPage: React.FC = () => {
                   {actionLoading === app.id ? (
                     <span className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
                   ) : (
-                    <span className="material-symbols-outlined text-base">add</span>
+                    <span className="material-icons text-base">add</span>
                   )}
                   {isConnected(app.id) ? t('integrations.connected_status') : t('integrations.connect_now')}
                 </button>

@@ -134,7 +134,7 @@ func main() {
 	callHandler := handlers.NewCallHandler(listCallsUC, callRepo, transcriptRepo, analysisRepo, minioClient, grpcClient)
 	analyticsHandler := handlers.NewAnalyticsHandler(teamPerformanceUC)
 	companyHandler := handlers.NewCompanyHandler(companyRepo)
-	userHandler := handlers.NewUserHandler(userRepo)
+	userHandler := handlers.NewUserHandler(userRepo, teamRepo)
 	teamHandler := handlers.NewTeamHandler(teamUC)
 	integrationHandler := handlers.NewIntegrationHandler(integrationUC)
 	scriptHandler := handlers.NewScriptHandler(scriptRepo, cfg.ScriptServiceURL)

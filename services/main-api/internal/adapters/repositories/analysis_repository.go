@@ -36,7 +36,7 @@ func (r *analysisRepository) GetTeamPerformance(ctx context.Context, companyID s
 	args := []interface{}{companyID}
 
 	if teamID, ok := filters["team_id"].(string); ok && teamID != "" {
-		where += " AND manager_id IN (SELECT manager_id FROM auth_schema.users WHERE team_id = $2)"
+		where += " AND team_id = $2"
 		args = append(args, teamID)
 	}
 

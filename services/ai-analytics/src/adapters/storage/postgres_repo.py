@@ -26,27 +26,36 @@ def get_transcript(call_id):
     finally:
         get_pool().putconn(conn)
 
-def get_team_script(company_id, manager_id):
+def get_team_script(company_id, manager_id, team_id=None):
     conn = get_pool().getconn()
     try:
         cur = conn.cursor(cursor_factory=RealDictCursor)
-        # Find team of manager
-        cur.execute("SELECT team_id FROM auth_schema.users WHERE manager_id = %s AND company_id = %s", (manager_id, company_id))
-        res = cur.fetchone()
-        if not res or not res['team_id']:
-            # Fallback to company active script
-            return get_active_script(company_id)
 
-        team_id = res['team_id']
-        cur.execute("""
-            SELECT * FROM scripts_schema.scripts
-            WHERE team_id = %s AND is_active = true
-            ORDER BY version DESC LIMIT 1
-        """, (team_id,))
-        script = cur.fetchone()
-        if not script:
-            return get_active_script(company_id)
-        return script
+        if not team_id:
+            # Find team of manager
+            cur.execute("SELECT team_id FROM auth_schema.user_teams WHERE user_id = %s LIMIT 1", (manager_id,))
+            res = cur.fetchone()
+            if res and res['team_id']:
+                team_id = res['team_id']
+            else:
+                # Fallback to users table
+                cur.execute("SELECT team_id FROM auth_schema.users WHERE id = %s AND company_id = %s", (manager_id, company_id))
+                res = cur.fetchone()
+                if res and res['team_id']:
+                    team_id = res['team_id']
+
+        if team_id:
+            cur.execute("""
+                SELECT * FROM scripts_schema.scripts
+                WHERE team_id = %s AND is_active = true
+                ORDER BY version DESC LIMIT 1
+            """, (team_id,))
+            script = cur.fetchone()
+            if script:
+                return script
+
+        # Fallback to company active script
+        return get_active_script(company_id)
     finally:
         get_pool().putconn(conn)
 

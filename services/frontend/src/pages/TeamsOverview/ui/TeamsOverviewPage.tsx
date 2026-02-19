@@ -38,6 +38,11 @@ const TeamsOverviewPage: React.FC = () => {
     setIsModalOpen(true);
   };
 
+  const handleEditClick = (id: string) => {
+    setSelectedTeamId(id);
+    setIsModalOpen(true);
+  };
+
   return (
     <div className="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex font-display">
       <Sidebar />
@@ -57,7 +62,7 @@ const TeamsOverviewPage: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {teams.map((team) => (
-              <TeamCard key={team.id} team={team} />
+              <TeamCard key={team.id} team={team} onEdit={handleEditClick} />
             ))}
             {teams.length === 0 && <p className="text-slate-500 col-span-full text-center py-12">{t('teams.no_teams')}</p>}
           </div>

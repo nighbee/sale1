@@ -48,16 +48,16 @@ export const UserDashboardPage: React.FC = () => {
         <header className="sticky top-0 z-10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-border-light dark:border-slate-800 px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4 flex-1">
             <div className="relative w-full max-w-md">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+              <span className="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
               <input className="w-full pl-10 pr-4 py-2 bg-slate-100 dark:bg-slate-800 border-none rounded-lg focus:ring-2 focus:ring-primary text-sm" placeholder={t('calls.search')} type="text"/>
             </div>
           </div>
           <div className="flex items-center gap-4">
             <button className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
-              <span className="material-symbols-outlined">notifications</span>
+              <span className="material-icons">notifications</span>
             </button>
             <button className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors" onClick={() => navigate('/settings')}>
-              <span className="material-symbols-outlined">settings</span>
+              <span className="material-icons">settings</span>
             </button>
             <div className="h-8 w-px bg-border-light dark:bg-slate-800 mx-2"></div>
             <div className="flex items-center gap-3">
@@ -76,7 +76,7 @@ export const UserDashboardPage: React.FC = () => {
           {user?.manager_name && (
             <div className="bg-primary/5 border border-primary/10 rounded-xl p-4 flex items-center gap-4">
               <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                <span className="material-symbols-outlined">groups</span>
+                <span className="material-icons">groups</span>
               </div>
               <div>
                 <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">{t('dashboard.your_team')}</p>
@@ -91,7 +91,7 @@ export const UserDashboardPage: React.FC = () => {
               <div className="flex items-end justify-between">
                 <h3 className="text-3xl font-bold">{stats.calls}</h3>
                 <span className="text-emerald-500 text-sm font-bold flex items-center gap-1">
-                  <span className="material-symbols-outlined text-xs">trending_up</span>+5%
+                  <span className="material-icons text-xs">trending_up</span>+5%
                 </span>
               </div>
             </div>
@@ -100,7 +100,7 @@ export const UserDashboardPage: React.FC = () => {
               <div className="flex items-end justify-between">
                 <h3 className="text-3xl font-bold">{stats.score}</h3>
                 <span className="text-emerald-500 text-sm font-bold flex items-center gap-1">
-                  <span className="material-symbols-outlined text-xs">trending_up</span>+1.2%
+                  <span className="material-icons text-xs">trending_up</span>+1.2%
                 </span>
               </div>
             </div>
@@ -109,7 +109,7 @@ export const UserDashboardPage: React.FC = () => {
               <div className="flex items-end justify-between">
                 <h3 className="text-3xl font-bold">#{stats.rank}<span className="text-slate-400 text-lg font-medium">/{stats.totalReps}</span></h3>
                 <span className="text-emerald-500 text-sm font-bold flex items-center gap-1">
-                  <span className="material-symbols-outlined text-xs">expand_less</span>1
+                  <span className="material-icons text-xs">expand_less</span>1
                 </span>
               </div>
             </div>
@@ -118,7 +118,7 @@ export const UserDashboardPage: React.FC = () => {
               <div className="flex items-end justify-between">
                 <h3 className="text-3xl font-bold">+{stats.improvement}%</h3>
                 <span className="text-emerald-500 text-sm font-bold flex items-center gap-1">
-                  <span className="material-symbols-outlined text-xs">trending_up</span>0.4%
+                  <span className="material-icons text-xs">trending_up</span>0.4%
                 </span>
               </div>
             </div>
@@ -126,24 +126,24 @@ export const UserDashboardPage: React.FC = () => {
 
           <div className="bg-white dark:bg-slate-900 rounded-xl border border-border-light dark:border-slate-800 shadow-sm overflow-hidden">
             <div className="p-6 border-b border-border-light dark:border-slate-800 flex items-center gap-3">
-              <span className="material-symbols-outlined text-primary">psychology</span>
+              <span className="material-icons text-primary">psychology</span>
               <h2 className="text-xl font-bold">{t('dashboard.ai_coach')}</h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2">
               <div className="p-8 border-b md:border-b-0 md:border-r border-border-light dark:border-slate-800 bg-emerald-50/30 dark:bg-emerald-500/5">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="bg-emerald-100 dark:bg-emerald-500/20 p-2 rounded-lg text-emerald-600">
-                    <span className="material-symbols-outlined">trending_up</span>
+                    <span className="material-icons">trending_up</span>
                   </div>
                   <h3 className="font-bold text-slate-900 dark:text-slate-100">{t('dashboard.great_improvements')}</h3>
                 </div>
                 <ul className="space-y-4">
                   <li className="flex gap-3 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-                    <span className="material-symbols-outlined text-emerald-500 shrink-0">check_circle</span>
+                    <span className="material-icons text-emerald-500 shrink-0">check_circle</span>
                     <span>Discovery questions are up <strong>15%</strong> this week. Excellent job identifying prospect pain points earlier in the conversation.</span>
                   </li>
                   <li className="flex gap-3 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-                    <span className="material-symbols-outlined text-emerald-500 shrink-0">check_circle</span>
+                    <span className="material-icons text-emerald-500 shrink-0">check_circle</span>
                     <span>Closing velocity has increased by 10% since using the new value-based pitch deck.</span>
                   </li>
                 </ul>
@@ -151,17 +151,17 @@ export const UserDashboardPage: React.FC = () => {
               <div className="p-8 bg-amber-50/30 dark:bg-amber-500/5">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="bg-amber-100 dark:bg-amber-500/20 p-2 rounded-lg text-amber-600">
-                    <span className="material-symbols-outlined">target</span>
+                    <span className="material-icons">target</span>
                   </div>
                   <h3 className="font-bold text-slate-900 dark:text-slate-100">{t('dashboard.focus_areas')}</h3>
                 </div>
                 <ul className="space-y-4">
                   <li className="flex gap-3 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-                    <span className="material-symbols-outlined text-amber-500 shrink-0">lightbulb</span>
+                    <span className="material-icons text-amber-500 shrink-0">lightbulb</span>
                     <span>Try using more <strong>open-ended questions</strong> during the objection handling phase to understand deeper concerns.</span>
                   </li>
                   <li className="flex gap-3 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-                    <span className="material-symbols-outlined text-amber-500 shrink-0">lightbulb</span>
+                    <span className="material-icons text-amber-500 shrink-0">lightbulb</span>
                     <span>Reduce your talk-to-listen ratio in enterprise calls. Target is 45% talk / 55% listen.</span>
                   </li>
                 </ul>
@@ -203,7 +203,7 @@ export const UserDashboardPage: React.FC = () => {
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
                             <div className="size-8 rounded bg-primary/10 flex items-center justify-center text-primary">
-                              <span className="material-symbols-outlined text-sm">corporate_fare</span>
+                              <span className="material-icons text-sm">corporate_fare</span>
                             </div>
                             <span className="font-semibold">{call.customer_phone || 'N/A'}</span>
                           </div>

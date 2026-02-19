@@ -29,13 +29,16 @@ const LeaderboardPage: React.FC = () => {
   const handleExport = async (format: string) => {
       try {
           const res = await analyticsApi.exportLeaderboard(format, { team_id: currentTeamId });
-          const url = window.URL.createObjectURL(new Blob([res.data as any]));
+          const blob = res.data instanceof Blob ? res.data : new Blob([res.data as any]);
+          const url = window.URL.createObjectURL(blob);
           const link = document.createElement('a');
           link.href = url;
-          link.setAttribute('download', `leaderboard.${format === 'excel' ? 'xlsx' : format}`);
+          const extension = format === 'excel' ? 'xlsx' : format;
+          link.setAttribute('download', `leaderboard_${new Date().toISOString().split('T')[0]}.${extension}`);
           document.body.appendChild(link);
           link.click();
           link.remove();
+          window.URL.revokeObjectURL(url);
       } catch (err) {
           console.error("Export failed", err);
       }

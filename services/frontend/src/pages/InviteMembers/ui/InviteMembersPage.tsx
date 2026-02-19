@@ -62,7 +62,7 @@ const InviteMembersPage: React.FC = () => {
               </div>
               <h1 className="text-3xl font-bold text-slate-900 dark:text-white">{t('setup.invite_title')}</h1>
               <p className="text-slate-500 dark:text-slate-400 max-w-lg mx-auto">
-                {t('setup.invite_subtitle')}
+                Enter team member emails to register them instantly. They will be able to log in with their email and the password shown below.
               </p>
             </div>
 
@@ -113,10 +113,10 @@ const InviteMembersPage: React.FC = () => {
                   </div>
                 </div>
                 <div className="bg-blue-50 dark:bg-primary/10 rounded-lg p-4 border border-blue-100 dark:border-primary/20 flex items-start gap-3">
-                  <span className="material-icons text-primary text-xl mt-0.5">mail_outline</span>
+                  <span className="material-icons text-primary text-xl mt-0.5">lock_open</span>
                   <div className="text-sm text-slate-600 dark:text-slate-300">
-                    <p className="font-medium text-primary mb-1">{t('setup.invite_details_title')}</p>
-                    {t('setup.invite_details_desc')}
+                    <p className="font-medium text-primary mb-1">Direct Registration</p>
+                    Users are registered immediately. No email invitations are sent. Provide them with their password manually.
                   </div>
                 </div>
               </div>

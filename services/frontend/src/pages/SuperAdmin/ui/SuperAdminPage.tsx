@@ -137,7 +137,7 @@ export const SuperAdminPage: React.FC = () => {
 
               {activeTab === 'subscriptions' && (
                 <div className="p-12 text-center text-slate-500">
-                  <span className="material-symbols-outlined text-4xl mb-4">payments</span>
+                  <span className="material-icons text-4xl mb-4">payments</span>
                   <p>{t('superadmin.sub_mgmt_soon')}</p>
                 </div>
               )}

@@ -201,3 +201,27 @@ func (r *userRepository) GetUserCompanies(ctx context.Context, userID string) ([
 	}
 	return companies, nil
 }
+
+func (r *userRepository) GetUserTeams(ctx context.Context, userID string) ([]*domain.Team, error) {
+	query := `
+		SELECT t.id, t.company_id, t.name, t.description, t.auto_assign, t.created_at, t.updated_at
+		FROM auth_schema.teams t
+		JOIN auth_schema.user_teams ut ON t.id = ut.team_id
+		WHERE ut.user_id = $1
+	`
+	rows, err := r.db.QueryContext(ctx, query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var teams []*domain.Team
+	for rows.Next() {
+		t := &domain.Team{}
+		if err := rows.Scan(&t.ID, &t.CompanyID, &t.Name, &t.Description, &t.AutoAssign, &t.CreatedAt, &t.UpdatedAt); err != nil {
+			return nil, err
+		}
+		teams = append(teams, t)
+	}
+	return teams, nil
+}

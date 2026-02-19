@@ -44,12 +44,8 @@ func (uc *TeamUseCase) GetByID(ctx context.Context, companyID, id string) (*doma
 	}
 
 	// Fetch members
-	users, _ := uc.userRepo.ListByCompany(ctx, companyID)
-	for _, u := range users {
-		if u.TeamID != nil && *u.TeamID == id {
-			team.Members = append(team.Members, u)
-		}
-	}
+	members, _ := uc.teamRepo.GetMembers(ctx, id)
+	team.Members = members
 
 	// Fetch script - we need a way to get script by team_id
 	// I'll add GetByTeamID to scriptRepo
@@ -73,24 +69,21 @@ func (uc *TeamUseCase) Update(ctx context.Context, team *domain.Team) error {
 }
 
 func (uc *TeamUseCase) AddMember(ctx context.Context, companyID, teamID, userID string) error {
-	user, err := uc.userRepo.GetByID(ctx, companyID, userID)
+	// Verify user belongs to company
+	_, err := uc.userRepo.GetByID(ctx, companyID, userID)
 	if err != nil {
 		return err
 	}
-	user.TeamID = &teamID
-	return uc.userRepo.Update(ctx, user)
+	return uc.teamRepo.AddMember(ctx, teamID, userID)
 }
 
 func (uc *TeamUseCase) RemoveMember(ctx context.Context, companyID, teamID, userID string) error {
-	user, err := uc.userRepo.GetByID(ctx, companyID, userID)
+	// Verify user belongs to company
+	_, err := uc.userRepo.GetByID(ctx, companyID, userID)
 	if err != nil {
 		return err
 	}
-	if user.TeamID != nil && *user.TeamID == teamID {
-		user.TeamID = nil
-		return uc.userRepo.Update(ctx, user)
-	}
-	return nil
+	return uc.teamRepo.RemoveMember(ctx, teamID, userID)
 }
 
 func (uc *TeamUseCase) Delete(ctx context.Context, companyID, id string) error {

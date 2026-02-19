@@ -30,7 +30,8 @@ class AnalyzeCallUseCase:
             return
 
         manager_id = call['manager_id']
-        script = get_team_script(company_id, manager_id)
+        team_id = call.get('team_id')
+        script = get_team_script(company_id, manager_id, team_id)
         script_text = script['parsed_text'] if script else "No active script found."
         script_id = script['id'] if script else None
 

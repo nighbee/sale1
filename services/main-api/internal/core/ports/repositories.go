@@ -14,6 +14,7 @@ type UserRepository interface {
 	ListByCompany(ctx context.Context, companyID string) ([]*domain.User, error)
 	AddUserToCompany(ctx context.Context, userID, companyID string, role domain.UserRole) error
 	GetUserCompanies(ctx context.Context, userID string) ([]domain.UserCompany, error)
+	GetUserTeams(ctx context.Context, userID string) ([]*domain.Team, error)
 }
 
 type CompanyRepository interface {
@@ -64,6 +65,9 @@ type TeamRepository interface {
 	ListByCompany(ctx context.Context, companyID string) ([]*domain.Team, error)
 	Update(ctx context.Context, team *domain.Team) error
 	Delete(ctx context.Context, companyID, id string) error
+	AddMember(ctx context.Context, teamID, userID string) error
+	RemoveMember(ctx context.Context, teamID, userID string) error
+	GetMembers(ctx context.Context, teamID string) ([]*domain.User, error)
 }
 
 type IntegrationRepository interface {

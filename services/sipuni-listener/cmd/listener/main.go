@@ -49,6 +49,7 @@ type SipuniNotifyRequest struct {
 }
 
 var (
+	db        *sql.DB
 	publisher *queue.BullMQPublisher
 	callRepo  repositories.CallRepository
 	companyID string
@@ -68,7 +69,8 @@ func main() {
 		dbURL = "host=postgres port=5432 user=salesai_user password=strong_password dbname=salesai sslmode=disable"
 	}
 
-	db, err := sql.Open("postgres", dbURL)
+	var err error
+	db, err = sql.Open("postgres", dbURL)
 	if err != nil {
 		log.Fatal("database connection:", err)
 	}
@@ -255,6 +257,13 @@ func handleNotify(request json.RawMessage) {
 			clientPhone = notify.SrcNum
 		}
 
+		// Get manager's team_id
+		var teamID *string
+		err := db.QueryRow("SELECT team_id FROM auth_schema.user_teams WHERE user_id = $1 LIMIT 1", notify.UserID).Scan(&teamID)
+		if err != nil && err != sql.ErrNoRows {
+			log.Println("Error fetching team_id for manager:", err)
+		}
+
 		call := &domain.Call{
 			ID:          callID,
 			CompanyID:   companyID,
@@ -267,6 +276,7 @@ func handleNotify(request json.RawMessage) {
 			CallTime:    callDate,
 			Status:      domain.StatusPending,
 			Source:      "webhook",
+			TeamID:      teamID,
 		}
 
 		if err := callRepo.Create(context.Background(), call); err != nil {

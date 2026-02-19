@@ -15,7 +15,7 @@ const UserProfile: React.FC = () => {
   const [user, setUserData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ first_name: "", last_name: "", email: "", password: "" });
+  const [form, setForm] = useState({ first_name: "", last_name: "", email: "", password: "", current_password: "" });
 
   useEffect(() => {
     fetchMe();
@@ -29,7 +29,8 @@ const UserProfile: React.FC = () => {
               first_name: res.data.first_name || "",
               last_name: res.data.last_name || "",
               email: res.data.email || "",
-              password: ""
+              password: "",
+              current_password: ""
           });
       } catch (err) {
           console.error("Failed to fetch user", err);
@@ -83,14 +84,23 @@ const UserProfile: React.FC = () => {
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
                 />
                 <div className="border-t border-slate-100 dark:border-slate-800 pt-6">
-                    <h3 className="font-bold mb-4">Change Password</h3>
-                    <Input
-                        label="New Password"
-                        type="password"
-                        placeholder="Leave blank to keep current"
-                        value={form.password}
-                        onChange={(e) => setForm({ ...form, password: e.target.value })}
-                    />
+                    <h3 className="font-bold mb-4">Update Password</h3>
+                    <div className="space-y-4">
+                        <Input
+                            label="Current Password"
+                            type="password"
+                            placeholder="Required to change password"
+                            value={form.current_password}
+                            onChange={(e) => setForm({ ...form, current_password: e.target.value })}
+                        />
+                        <Input
+                            label="New Password"
+                            type="password"
+                            placeholder="Enter new password"
+                            value={form.password}
+                            onChange={(e) => setForm({ ...form, password: e.target.value })}
+                        />
+                    </div>
                 </div>
 
                 <div className="flex justify-end gap-3 pt-6 border-t border-slate-100 dark:border-slate-800">

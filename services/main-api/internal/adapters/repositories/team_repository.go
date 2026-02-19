@@ -83,3 +83,41 @@ func (r *teamRepository) Delete(ctx context.Context, companyID, id string) error
 	_, err := r.db.ExecContext(ctx, query, id, companyID)
 	return err
 }
+
+func (r *teamRepository) AddMember(ctx context.Context, teamID, userID string) error {
+	query := `INSERT INTO auth_schema.user_teams (user_id, team_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`
+	_, err := r.db.ExecContext(ctx, query, userID, teamID)
+	return err
+}
+
+func (r *teamRepository) RemoveMember(ctx context.Context, teamID, userID string) error {
+	query := `DELETE FROM auth_schema.user_teams WHERE user_id = $1 AND team_id = $2`
+	_, err := r.db.ExecContext(ctx, query, userID, teamID)
+	return err
+}
+
+func (r *teamRepository) GetMembers(ctx context.Context, teamID string) ([]*domain.User, error) {
+	query := `
+		SELECT u.id, u.company_id, u.first_name, u.last_name, u.email, u.role, u.manager_id, u.manager_name, u.is_active, u.created_at, u.updated_at
+		FROM auth_schema.users u
+		JOIN auth_schema.user_teams ut ON u.id = ut.user_id
+		WHERE ut.team_id = $1
+	`
+	rows, err := r.db.QueryContext(ctx, query, teamID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	users := []*domain.User{}
+	for rows.Next() {
+		u := &domain.User{}
+		if err := rows.Scan(
+			&u.ID, &u.CompanyID, &u.FirstName, &u.LastName, &u.Email, &u.Role, &u.ManagerID, &u.ManagerName, &u.IsActive, &u.CreatedAt, &u.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		users = append(users, u)
+	}
+	return users, nil
+}

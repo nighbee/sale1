@@ -7,6 +7,7 @@ import { integrationApi } from '../../../entities/integration/api';
 import type { Company } from '../../../entities/company/types';
 import Button from '../../../shared/ui/Button';
 import Input from '../../../shared/ui/Input';
+import IntegrationModal from '../../../features/integrations/ui/IntegrationModal';
 
 const CompanySettingsPage: React.FC = () => {
   const { t } = useTranslation();
@@ -16,6 +17,8 @@ const CompanySettingsPage: React.FC = () => {
   const [integrations, setIntegrations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [isIntegrationModalOpen, setIsIntegrationModalOpen] = useState(false);
+  const [selectedIntegrationType, setSelectedIntegrationType] = useState<string | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -121,6 +124,20 @@ const CompanySettingsPage: React.FC = () => {
                             onChange={(e) => setCompany({ ...company, size: e.target.value })}
                         />
                     </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Time Zone</label>
+                        <select
+                            className="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 text-sm text-slate-900 dark:text-white"
+                            value={company.time_zone || ''}
+                            onChange={(e) => setCompany({ ...company, time_zone: e.target.value })}
+                        >
+                            <option value="UTC">UTC</option>
+                            <option value="Europe/Moscow">Europe/Moscow (MSK)</option>
+                            <option value="America/New_York">America/New_York (EST)</option>
+                            <option value="Europe/London">Europe/London (GMT)</option>
+                            <option value="Asia/Almaty">Asia/Almaty</option>
+                        </select>
+                    </div>
                 </section>
             )}
 
@@ -222,12 +239,30 @@ const CompanySettingsPage: React.FC = () => {
                                     </div>
                                     <h3 className="font-bold">{int.name}</h3>
                                     <p className="text-xs text-slate-500 mt-1 mb-4">{int.desc}</p>
-                                    <Button variant="outline" className="w-full text-xs">Configure</Button>
+                                    <Button
+                                        variant="outline"
+                                        className="w-full text-xs"
+                                        onClick={() => {
+                                            setSelectedIntegrationType(int.id);
+                                            setIsIntegrationModalOpen(true);
+                                        }}
+                                    >
+                                        Configure
+                                    </Button>
                                 </div>
                             )
                         })}
                     </div>
                 </section>
+            )}
+
+            {selectedIntegrationType && (
+                <IntegrationModal
+                    isOpen={isIntegrationModalOpen}
+                    onClose={() => setIsIntegrationModalOpen(false)}
+                    type={selectedIntegrationType}
+                    onSuccess={fetchData}
+                />
             )}
 
             {activeTab === 'billing' && billing && (

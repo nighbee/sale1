@@ -25,6 +25,7 @@ type Call struct {
 	CallTime     time.Time  `json:"call_time"`
 	Status       CallStatus `json:"status"`
 	Source       string     `json:"source"`
+	TeamID       *string    `json:"team_id,omitempty"`
 	CreatedAt    time.Time  `json:"created_at"`
 	UpdatedAt    time.Time  `json:"updated_at"`
 }

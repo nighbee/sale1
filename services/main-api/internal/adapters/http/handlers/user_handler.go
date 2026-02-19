@@ -13,11 +13,13 @@ import (
 
 type UserHandler struct {
 	userRepo ports.UserRepository
+	teamRepo ports.TeamRepository
 }
 
-func NewUserHandler(userRepo ports.UserRepository) *UserHandler {
+func NewUserHandler(userRepo ports.UserRepository, teamRepo ports.TeamRepository) *UserHandler {
 	return &UserHandler{
 		userRepo: userRepo,
+		teamRepo: teamRepo,
 	}
 }
 
@@ -145,6 +147,9 @@ func (h *UserHandler) InviteUser(c *fiber.Ctx) error {
 		if err := h.userRepo.AddUserToCompany(c.Context(), user.ID, companyID, domain.UserRole(role)); err != nil {
 			continue
 		}
+		if teamIDPtr != nil {
+			h.teamRepo.AddMember(c.Context(), *teamIDPtr, user.ID)
+		}
 		invitedUsers = append(invitedUsers, user)
 	}
 
@@ -172,7 +177,21 @@ func (h *UserHandler) GetUser(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "User not found"})
 	}
-	return c.JSON(user)
+
+	teams, _ := h.userRepo.GetUserTeams(c.Context(), user.ID)
+
+	return c.JSON(fiber.Map{
+		"id":           user.ID,
+		"company_id":    user.CompanyID,
+		"email":        user.Email,
+		"role":         user.Role,
+		"manager_id":   user.ManagerID,
+		"manager_name": user.ManagerName,
+		"is_active":    user.IsActive,
+		"first_name":   user.FirstName,
+		"last_name":    user.LastName,
+		"teams":        teams,
+	})
 }
 
 // UpdateUser godoc
@@ -197,12 +216,13 @@ func (h *UserHandler) UpdateUser(c *fiber.Ctx) error {
 	}
 
 	var update struct {
-		FirstName   string `json:"first_name"`
-		LastName    string `json:"last_name"`
-		Email       string `json:"email"`
-		Password    string `json:"password"`
-		ManagerName string `json:"manager_name"`
-		Role        string `json:"role"`
+		FirstName       string `json:"first_name"`
+		LastName        string `json:"last_name"`
+		Email           string           `json:"email"`
+		Password        string           `json:"password"`
+		CurrentPassword string           `json:"current_password"`
+		ManagerName     string           `json:"manager_name"`
+		Role            string           `json:"role"`
 	}
 
 	if err := c.BodyParser(&update); err != nil {
@@ -219,6 +239,10 @@ func (h *UserHandler) UpdateUser(c *fiber.Ctx) error {
 		user.Email = update.Email
 	}
 	if update.Password != "" {
+		// Check current password
+		if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(update.CurrentPassword)); err != nil {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Current password incorrect"})
+		}
 		hash, _ := bcrypt.GenerateFromPassword([]byte(update.Password), bcrypt.DefaultCost)
 		user.PasswordHash = string(hash)
 	}
@@ -253,7 +277,21 @@ func (h *UserHandler) GetMe(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "User not found"})
 	}
-	return c.JSON(user)
+
+	teams, _ := h.userRepo.GetUserTeams(c.Context(), user.ID)
+
+	return c.JSON(fiber.Map{
+		"id":           user.ID,
+		"company_id":    user.CompanyID,
+		"email":        user.Email,
+		"role":         user.Role,
+		"manager_id":   user.ManagerID,
+		"manager_name": user.ManagerName,
+		"is_active":    user.IsActive,
+		"first_name":   user.FirstName,
+		"last_name":    user.LastName,
+		"teams":        teams,
+	})
 }
 
 // DeleteUser godoc

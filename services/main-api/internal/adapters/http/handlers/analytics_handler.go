@@ -97,7 +97,7 @@ func (h *AnalyticsHandler) exportCSV(c *fiber.Ctx, data []map[string]interface{}
 	c.Set("Content-Disposition", "attachment; filename=leaderboard.csv")
 
 	writer := csv.NewWriter(c.Response().BodyWriter())
-	writer.Write([]string{"Rank", "Manager", "Total Calls", "Avg Quality", "Avg Script Match", "Overall KPI"})
+	writer.Write([]string{"Rank", "Manager", "Total Calls", "Avg Quality", "Avg Script Match", "Avg Errors Free", "Overall KPI", "Total Duration (min)"})
 
 	for i, m := range data {
 		writer.Write([]string{
@@ -106,7 +106,9 @@ func (h *AnalyticsHandler) exportCSV(c *fiber.Ctx, data []map[string]interface{}
 			fmt.Sprintf("%v", m["total_calls"]),
 			fmt.Sprintf("%.2f", m["avg_quality"]),
 			fmt.Sprintf("%.2f", m["avg_script_match"]),
+			fmt.Sprintf("%.2f", m["avg_errors_free"]),
 			fmt.Sprintf("%.2f", m["avg_kpi"]),
+			fmt.Sprintf("%.2f", m["total_duration_minutes"]),
 		})
 	}
 	writer.Flush()
@@ -119,7 +121,7 @@ func (h *AnalyticsHandler) exportExcel(c *fiber.Ctx, data []map[string]interface
 	f.NewSheet(sheet)
 	f.DeleteSheet("Sheet1")
 
-	headers := []string{"Rank", "Manager", "Total Calls", "Avg Quality", "Avg Script Match", "Overall KPI"}
+	headers := []string{"Rank", "Manager", "Total Calls", "Avg Quality", "Avg Script Match", "Avg Errors Free", "Overall KPI", "Total Duration (min)"}
 	for i, h := range headers {
 		cell, _ := excelize.CoordinatesToCellName(i+1, 1)
 		f.SetCellValue(sheet, cell, h)
@@ -131,7 +133,9 @@ func (h *AnalyticsHandler) exportExcel(c *fiber.Ctx, data []map[string]interface
 		f.SetCellValue(sheet, fmt.Sprintf("C%d", i+2), m["total_calls"])
 		f.SetCellValue(sheet, fmt.Sprintf("D%d", i+2), m["avg_quality"])
 		f.SetCellValue(sheet, fmt.Sprintf("E%d", i+2), m["avg_script_match"])
-		f.SetCellValue(sheet, fmt.Sprintf("F%d", i+2), m["avg_kpi"])
+		f.SetCellValue(sheet, fmt.Sprintf("F%d", i+2), m["avg_errors_free"])
+		f.SetCellValue(sheet, fmt.Sprintf("G%d", i+2), m["avg_kpi"])
+		f.SetCellValue(sheet, fmt.Sprintf("H%d", i+2), m["total_duration_minutes"])
 	}
 
 	var buf bytes.Buffer
@@ -145,15 +149,15 @@ func (h *AnalyticsHandler) exportExcel(c *fiber.Ctx, data []map[string]interface
 }
 
 func (h *AnalyticsHandler) exportPDF(c *fiber.Ctx, data []map[string]interface{}) error {
-	pdf := gofpdf.New("P", "mm", "A4", "")
+	pdf := gofpdf.New("L", "mm", "A4", "") // Landscape for more columns
 	pdf.AddPage()
 	pdf.SetFont("Arial", "B", 16)
 	pdf.Cell(40, 10, "Sales Leaderboard")
 	pdf.Ln(12)
 
 	pdf.SetFont("Arial", "B", 10)
-	headers := []string{"Rank", "Manager", "Calls", "Quality", "Script", "KPI"}
-	widths := []float64{15, 60, 20, 30, 30, 30}
+	headers := []string{"Rank", "Manager", "Calls", "Qual", "Script", "ErrFree", "KPI", "Dur(m)"}
+	widths := []float64{15, 60, 20, 30, 30, 30, 30, 30}
 
 	for i, head := range headers {
 		pdf.CellFormat(widths[i], 10, head, "1", 0, "C", false, 0, "")
@@ -167,7 +171,9 @@ func (h *AnalyticsHandler) exportPDF(c *fiber.Ctx, data []map[string]interface{}
 		pdf.CellFormat(widths[2], 10, fmt.Sprintf("%v", m["total_calls"]), "1", 0, "C", false, 0, "")
 		pdf.CellFormat(widths[3], 10, fmt.Sprintf("%.1f", m["avg_quality"]), "1", 0, "C", false, 0, "")
 		pdf.CellFormat(widths[4], 10, fmt.Sprintf("%.1f", m["avg_script_match"]), "1", 0, "C", false, 0, "")
-		pdf.CellFormat(widths[5], 10, fmt.Sprintf("%.2f", m["avg_kpi"]), "1", 0, "C", false, 0, "")
+		pdf.CellFormat(widths[5], 10, fmt.Sprintf("%.1f", m["avg_errors_free"]), "1", 0, "C", false, 0, "")
+		pdf.CellFormat(widths[6], 10, fmt.Sprintf("%.2f", m["avg_kpi"]), "1", 0, "C", false, 0, "")
+		pdf.CellFormat(widths[7], 10, fmt.Sprintf("%.1f", m["total_duration_minutes"]), "1", 0, "C", false, 0, "")
 		pdf.Ln(-1)
 	}
 
