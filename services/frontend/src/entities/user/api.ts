@@ -11,4 +11,5 @@ export const userApi = {
   delete: (id: string) => api.delete(`/users/${id}`),
   listCompanies: () => api.get<{ companies: UserCompany[] }>('/user/companies'),
   getMe: () => api.get<User>('/user/me'),
+  logout: () => api.post('/auth/logout'),
 };

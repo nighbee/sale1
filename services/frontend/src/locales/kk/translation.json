@@ -53,6 +53,8 @@
     "log_in": "Кіру",
     "welcome_back": "Қош келдіңіз!",
     "account_created": "Тіркелгі сәтті жасалды!",
+    "logout_success": "Жүйеден сәтті шықтыңыз",
+    "logout_failed": "Шығу сәтсіз аяқталды",
     "login_failed": "Жүйеге кіру сәтсіз аяқталды",
     "registration_failed": "Тіркелу сәтсіз аяқталды",
     "continue_google": "Google арқылы жалғастыру",
