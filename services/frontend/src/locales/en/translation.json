@@ -293,5 +293,89 @@
     "auto_assign_off": "Auto-assign OFF",
     "delete_failed": "Failed to delete team",
     "fetch_details_failed": "Failed to fetch team details"
+  },
+  "landing": {
+    "nav": {
+      "features": "Features",
+      "pricing": "Pricing",
+      "tech": "Tech",
+      "login": "Login",
+      "get_started": "Get Started"
+    },
+    "hero": {
+      "badge": "New: Custom LLM Analysis",
+      "title": "Turn Every Sales Call into a",
+      "title_highlight": "Data-Driven Victory",
+      "subtitle": "Unlock actionable insights from your sales conversations with AI-powered analysis. Coach your team based on data, not hunches.",
+      "cta_trial": "Start 14-Day Free Trial",
+      "cta_demo": "View Demo",
+      "trusted": "Trusted by <highlight>500+</highlight> Sales Teams"
+    },
+    "social": {
+      "trusted": "Trusted by Industry Leaders"
+    },
+    "features": {
+      "badge": "Enterprise-Grade Features",
+      "title": "Supercharge your sales team",
+      "subtitle": "Cutting-edge AI technology designed to scale with your organization.",
+      "transcription": {
+        "title": "AI-Powered Transcription",
+        "desc": "Leverage WhisperX/OpenAI models for industry-leading 99% accurate call transcripts, even in noisy environments."
+      },
+      "scoring": {
+        "title": "Automated Quality Scoring",
+        "desc": "Get instant, unbiased feedback on rep performance, objection handling, and sentiment analysis for every call."
+      },
+      "crm": {
+        "title": "CRM Integration",
+        "desc": "Seamless two-way sync with AmoCRM, Salesforce, and HubSpot to keep your deal data unified and up-to-date."
+      }
+    },
+    "how_it_works": {
+      "title": "How SalesAI Works",
+      "subtitle": "Turn raw audio into revenue in three simple steps.",
+      "step_1": {
+        "title": "1. Sync",
+        "desc": "Connect your VoIP provider and CRM with one click securely."
+      },
+      "step_2": {
+        "title": "2. Analyze",
+        "desc": "Our Custom LLM processes audio instantly to extract key insights."
+      },
+      "step_3": {
+        "title": "3. Coach",
+        "desc": "Use data-driven scorecards to train your team and close more deals."
+      }
+    },
+    "tech": {
+      "title": "Built for Modern Engineering Teams",
+      "desc": "SalesAI isn't just a tool; it's a robust platform built on the latest stack to ensure speed, security, and scalability.",
+      "feat_1": "Built on <strong>Next.js 14</strong> for superior performance",
+      "feat_2": "Custom LLM Analysis pipeline optimized for sales context",
+      "feat_3": "Enterprise-grade Security (SOC2 Type II Compliant)"
+    },
+    "cta": {
+      "title": "Ready to transform your sales process?",
+      "subtitle": "Join the 500+ forward-thinking sales teams using SalesAI to drive revenue growth.",
+      "btn_free": "Get Started for Free",
+      "btn_demo": "Book a Demo"
+    },
+    "footer": {
+      "desc": "Empowering sales teams with the intelligence they need to win more deals. Built for the modern enterprise.",
+      "product": "Product",
+      "integrations": "Integrations",
+      "changelog": "Changelog",
+      "company": "Company",
+      "about": "About Us",
+      "careers": "Careers",
+      "blog": "Blog",
+      "contact": "Contact",
+      "legal": "Legal",
+      "privacy": "Privacy Policy",
+      "terms": "Terms of Service",
+      "cookie": "Cookie Policy",
+      "copyright": "© 2024 SalesAI Inc. All rights reserved.",
+      "status": "Systems Operational"
+    }
   }
 }

@@ -1,7 +1,11 @@
 import React from 'react';
+import { useTranslation, Trans } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import LanguageSwitcher from '@shared/ui/LanguageSwitcher';
 
 const LandingPage: React.FC = () => {
+  const { t } = useTranslation();
+
   return (
     <div className="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-sans overflow-x-hidden min-h-screen">
       {/* Navbar */}
@@ -14,14 +18,15 @@ const LandingPage: React.FC = () => {
             <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">SalesAI</span>
           </div>
           <nav className="hidden md:flex items-center gap-8">
-            <a className="text-sm font-medium text-slate-600 hover:text-primary dark:text-slate-300 dark:hover:text-white transition-colors" href="#features">Features</a>
-            <a className="text-sm font-medium text-slate-600 hover:text-primary dark:text-slate-300 dark:hover:text-white transition-colors" href="#pricing">Pricing</a>
-            <a className="text-sm font-medium text-slate-600 hover:text-primary dark:text-slate-300 dark:hover:text-white transition-colors" href="#tech">Tech</a>
+            <a className="text-sm font-medium text-slate-600 hover:text-primary dark:text-slate-300 dark:hover:text-white transition-colors" href="#features">{t('landing.nav.features')}</a>
+            <a className="text-sm font-medium text-slate-600 hover:text-primary dark:text-slate-300 dark:hover:text-white transition-colors" href="#pricing">{t('landing.nav.pricing')}</a>
+            <a className="text-sm font-medium text-slate-600 hover:text-primary dark:text-slate-300 dark:hover:text-white transition-colors" href="#tech">{t('landing.nav.tech')}</a>
           </nav>
           <div className="flex items-center gap-4">
-            <Link className="hidden text-sm font-medium text-slate-600 hover:text-primary dark:text-slate-300 dark:hover:text-white sm:block" to="/login">Login</Link>
+            <LanguageSwitcher className="mb-0 mx-0 bg-slate-100 dark:bg-slate-800" />
+            <Link className="hidden text-sm font-medium text-slate-600 hover:text-primary dark:text-slate-300 dark:hover:text-white sm:block" to="/login">{t('landing.nav.login')}</Link>
             <Link className="inline-flex h-9 items-center justify-center rounded-lg bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 dark:focus:ring-offset-slate-900" to="/register">
-              Get Started
+              {t('landing.nav.get_started')}
             </Link>
           </div>
         </div>
@@ -36,21 +41,21 @@ const LandingPage: React.FC = () => {
               <div className="flex flex-col justify-center text-center lg:text-left">
                 <div className="mb-6 inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-sm font-medium text-primary dark:border-blue-900 dark:bg-blue-900/30 dark:text-blue-300 mx-auto lg:mx-0 w-fit">
                   <span className="mr-2 flex h-2 w-2 rounded-full bg-primary"></span>
-                  New: Custom LLM Analysis
+                  {t('landing.hero.badge')}
                 </div>
                 <h1 className="text-4xl font-black tracking-tight text-slate-900 dark:text-white sm:text-5xl md:text-6xl lg:leading-[1.1]">
-                  Turn Every Sales Call into a <span className="text-primary bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent-blue">Data-Driven Victory</span>
+                  {t('landing.hero.title')} <span className="text-primary bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent-blue">{t('landing.hero.title_highlight')}</span>
                 </h1>
                 <p className="mt-6 text-lg leading-8 text-slate-600 dark:text-slate-400 max-w-2xl mx-auto lg:mx-0">
-                  Unlock actionable insights from your sales conversations with AI-powered analysis. Coach your team based on data, not hunches.
+                  {t('landing.hero.subtitle')}
                 </p>
                 <div className="mt-8 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
                   <Link className="w-full sm:w-auto inline-flex h-12 items-center justify-center rounded-lg bg-primary px-6 text-base font-semibold text-white shadow-sm hover:bg-primary-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary transition-all hover:shadow-lg hover:shadow-primary/25" to="/register">
-                    Start 14-Day Free Trial
+                    {t('landing.hero.cta_trial')}
                   </Link>
                   <a className="w-full sm:w-auto inline-flex h-12 items-center justify-center rounded-lg border border-slate-200 bg-white px-6 text-base font-semibold text-slate-900 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:hover:bg-slate-700 transition-colors" href="#">
                     <span className="material-symbols-outlined mr-2 text-xl">play_circle</span>
-                    View Demo
+                    {t('landing.hero.cta_demo')}
                   </a>
                 </div>
                 <div className="mt-10 flex items-center justify-center lg:justify-start gap-x-6">
@@ -60,7 +65,12 @@ const LandingPage: React.FC = () => {
                     <img alt="User avatar" className="inline-block h-8 w-8 rounded-full ring-2 ring-white dark:ring-slate-900" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCHjAXpgNDH8B_xVhk7Gma6LJbYN9yvNxXigxLCfjzJ99se4dVtvjFZk2Fi75fGzqXXY6gLdlHTJe7zT0wfwV4pLLEc6ErGK3fon4Yf4aeIIzo4wWMCIbBbVozbzTy85PrzpgQhcUPiRyP_n-8qmny3LQcBxnTNncGp8nBR-F-8TP10oaVrynk4OmFgvP0cYxrXQncf8RNAEpoBxd1wy9s1SVq90-UwmkB-2VMFcadlj69LPEdtDQEWERoQcNdHpZBwwEMtGwe5_ls" />
                   </div>
                   <div className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                    Trusted by <span className="text-primary dark:text-blue-400 font-bold">500+</span> Sales Teams
+                    <Trans
+                      i18nKey="landing.hero.trusted"
+                      components={{
+                        highlight: <span className="text-primary dark:text-blue-400 font-bold" />
+                      }}
+                    />
                   </div>
                 </div>
               </div>
@@ -110,7 +120,7 @@ const LandingPage: React.FC = () => {
         {/* Social Proof */}
         <section className="border-y border-slate-200 bg-white py-12 dark:border-slate-800 dark:bg-slate-900">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <p className="text-center text-sm font-semibold text-slate-500 dark:text-slate-400 mb-8 uppercase tracking-wider">Trusted by Industry Leaders</p>
+            <p className="text-center text-sm font-semibold text-slate-500 dark:text-slate-400 mb-8 uppercase tracking-wider">{t('landing.social.trusted')}</p>
             <div className="grid grid-cols-2 gap-8 md:grid-cols-5 items-center opacity-70 grayscale hover:grayscale-0 transition-all duration-500">
               <div className="flex justify-center items-center h-12">
                 <span className="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2"><span className="material-symbols-outlined">diamond</span> AcmeCorp</span>
@@ -135,10 +145,10 @@ const LandingPage: React.FC = () => {
         <section className="py-24 bg-background-light dark:bg-background-dark" id="features">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="mx-auto max-w-2xl text-center mb-16">
-              <h2 className="text-base font-semibold leading-7 text-primary">Enterprise-Grade Features</h2>
-              <p className="mt-2 text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-4xl">Supercharge your sales team</p>
+              <h2 className="text-base font-semibold leading-7 text-primary">{t('landing.features.badge')}</h2>
+              <p className="mt-2 text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-4xl">{t('landing.features.title')}</p>
               <p className="mt-6 text-lg leading-8 text-slate-600 dark:text-slate-400">
-                Cutting-edge AI technology designed to scale with your organization.
+                {t('landing.features.subtitle')}
               </p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -146,27 +156,27 @@ const LandingPage: React.FC = () => {
                 <div className="mb-6 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-blue-50 text-primary dark:bg-blue-900/20 dark:text-blue-300 group-hover:bg-primary group-hover:text-white transition-colors">
                   <span className="material-symbols-outlined">mic</span>
                 </div>
-                <h3 className="mb-3 text-xl font-bold text-slate-900 dark:text-white">AI-Powered Transcription</h3>
+                <h3 className="mb-3 text-xl font-bold text-slate-900 dark:text-white">{t('landing.features.transcription.title')}</h3>
                 <p className="text-slate-600 dark:text-slate-400">
-                  Leverage WhisperX/OpenAI models for industry-leading 99% accurate call transcripts, even in noisy environments.
+                  {t('landing.features.transcription.desc')}
                 </p>
               </div>
               <div className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-8 shadow-sm transition-all hover:shadow-md hover:border-primary/50 dark:border-slate-800 dark:bg-slate-900">
                 <div className="mb-6 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-blue-50 text-primary dark:bg-blue-900/20 dark:text-blue-300 group-hover:bg-primary group-hover:text-white transition-colors">
                   <span className="material-symbols-outlined">bar_chart</span>
                 </div>
-                <h3 className="mb-3 text-xl font-bold text-slate-900 dark:text-white">Automated Quality Scoring</h3>
+                <h3 className="mb-3 text-xl font-bold text-slate-900 dark:text-white">{t('landing.features.scoring.title')}</h3>
                 <p className="text-slate-600 dark:text-slate-400">
-                  Get instant, unbiased feedback on rep performance, objection handling, and sentiment analysis for every call.
+                  {t('landing.features.scoring.desc')}
                 </p>
               </div>
               <div className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-8 shadow-sm transition-all hover:shadow-md hover:border-primary/50 dark:border-slate-800 dark:bg-slate-900">
                 <div className="mb-6 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-blue-50 text-primary dark:bg-blue-900/20 dark:text-blue-300 group-hover:bg-primary group-hover:text-white transition-colors">
                   <span className="material-symbols-outlined">sync_alt</span>
                 </div>
-                <h3 className="mb-3 text-xl font-bold text-slate-900 dark:text-white">CRM Integration</h3>
+                <h3 className="mb-3 text-xl font-bold text-slate-900 dark:text-white">{t('landing.features.crm.title')}</h3>
                 <p className="text-slate-600 dark:text-slate-400">
-                  Seamless two-way sync with AmoCRM, Salesforce, and HubSpot to keep your deal data unified and up-to-date.
+                  {t('landing.features.crm.desc')}
                 </p>
               </div>
             </div>
@@ -178,8 +188,8 @@ const LandingPage: React.FC = () => {
           <div className="absolute right-0 top-0 -mt-20 -mr-20 h-full w-1/2 bg-gradient-to-b from-blue-50 to-transparent opacity-50 dark:from-slate-800/30 dark:to-transparent blur-3xl rounded-full"></div>
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
             <div className="mb-16 md:text-center">
-              <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-4xl">How SalesAI Works</h2>
-              <p className="mt-4 text-lg text-slate-600 dark:text-slate-400">Turn raw audio into revenue in three simple steps.</p>
+              <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-4xl">{t('landing.how_it_works.title')}</h2>
+              <p className="mt-4 text-lg text-slate-600 dark:text-slate-400">{t('landing.how_it_works.subtitle')}</p>
             </div>
             <div className="relative">
               <div className="absolute top-12 left-0 hidden w-full md:block">
@@ -190,22 +200,22 @@ const LandingPage: React.FC = () => {
                   <div className="flex h-24 w-24 items-center justify-center rounded-full bg-white border-4 border-blue-50 text-primary shadow-lg dark:bg-slate-800 dark:border-slate-700 z-10 mb-6">
                     <span className="material-symbols-outlined text-4xl">cable</span>
                   </div>
-                  <h3 className="text-xl font-bold text-slate-900 dark:text-white">1. Sync</h3>
-                  <p className="mt-2 text-slate-600 dark:text-slate-400">Connect your VoIP provider and CRM with one click securely.</p>
+                  <h3 className="text-xl font-bold text-slate-900 dark:text-white">{t('landing.how_it_works.step_1.title')}</h3>
+                  <p className="mt-2 text-slate-600 dark:text-slate-400">{t('landing.how_it_works.step_1.desc')}</p>
                 </div>
                 <div className="relative flex flex-col items-center text-center">
                   <div className="flex h-24 w-24 items-center justify-center rounded-full bg-white border-4 border-blue-50 text-primary shadow-lg dark:bg-slate-800 dark:border-slate-700 z-10 mb-6">
                     <span className="material-symbols-outlined text-4xl">psychology</span>
                   </div>
-                  <h3 className="text-xl font-bold text-slate-900 dark:text-white">2. Analyze</h3>
-                  <p className="mt-2 text-slate-600 dark:text-slate-400">Our Custom LLM processes audio instantly to extract key insights.</p>
+                  <h3 className="text-xl font-bold text-slate-900 dark:text-white">{t('landing.how_it_works.step_2.title')}</h3>
+                  <p className="mt-2 text-slate-600 dark:text-slate-400">{t('landing.how_it_works.step_2.desc')}</p>
                 </div>
                 <div className="relative flex flex-col items-center text-center">
                   <div className="flex h-24 w-24 items-center justify-center rounded-full bg-white border-4 border-blue-50 text-primary shadow-lg dark:bg-slate-800 dark:border-slate-700 z-10 mb-6">
                     <span className="material-symbols-outlined text-4xl">trending_up</span>
                   </div>
-                  <h3 className="text-xl font-bold text-slate-900 dark:text-white">3. Coach</h3>
-                  <p className="mt-2 text-slate-600 dark:text-slate-400">Use data-driven scorecards to train your team and close more deals.</p>
+                  <h3 className="text-xl font-bold text-slate-900 dark:text-white">{t('landing.how_it_works.step_3.title')}</h3>
+                  <p className="mt-2 text-slate-600 dark:text-slate-400">{t('landing.how_it_works.step_3.desc')}</p>
                 </div>
               </div>
             </div>
@@ -218,20 +228,25 @@ const LandingPage: React.FC = () => {
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
             <div className="flex flex-col md:flex-row items-center justify-between gap-10">
               <div className="flex-1">
-                <h2 className="text-3xl font-bold tracking-tight mb-6">Built for Modern Engineering Teams</h2>
-                <p className="text-slate-300 mb-8 text-lg">SalesAI isn't just a tool; it's a robust platform built on the latest stack to ensure speed, security, and scalability.</p>
+                <h2 className="text-3xl font-bold tracking-tight mb-6">{t('landing.tech.title')}</h2>
+                <p className="text-slate-300 mb-8 text-lg">{t('landing.tech.desc')}</p>
                 <ul className="space-y-4">
                   <li className="flex items-center gap-3">
                     <span className="material-symbols-outlined text-primary-light">check_circle</span>
-                    <span>Built on <strong>Next.js 14</strong> for superior performance</span>
+                    <Trans
+                      i18nKey="landing.tech.feat_1"
+                      components={{
+                        strong: <strong />
+                      }}
+                    />
                   </li>
                   <li className="flex items-center gap-3">
                     <span className="material-symbols-outlined text-primary-light">check_circle</span>
-                    <span>Custom LLM Analysis pipeline optimized for sales context</span>
+                    <span>{t('landing.tech.feat_2')}</span>
                   </li>
                   <li className="flex items-center gap-3">
                     <span className="material-symbols-outlined text-primary-light">check_circle</span>
-                    <span>Enterprise-grade Security (SOC2 Type II Compliant)</span>
+                    <span>{t('landing.tech.feat_3')}</span>
                   </li>
                 </ul>
               </div>
@@ -270,14 +285,14 @@ console.log('Analysis complete. 🚀');`}
           <div className="absolute top-0 left-0 -ml-20 -mt-20 h-64 w-64 rounded-full bg-white opacity-5 blur-3xl"></div>
           <div className="absolute bottom-0 right-0 -mr-20 -mb-20 h-64 w-64 rounded-full bg-white opacity-5 blur-3xl"></div>
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10 text-center">
-            <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl mb-6">Ready to transform your sales process?</h2>
-            <p className="text-blue-100 text-lg mb-10 max-w-2xl mx-auto">Join the 500+ forward-thinking sales teams using SalesAI to drive revenue growth.</p>
+            <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl mb-6">{t('landing.cta.title')}</h2>
+            <p className="text-blue-100 text-lg mb-10 max-w-2xl mx-auto">{t('landing.cta.subtitle')}</p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
               <Link className="bg-white text-primary hover:bg-slate-100 font-bold py-3 px-8 rounded-lg shadow-lg transition-colors leading-normal inline-block" to="/register">
-                Get Started for Free
+                {t('landing.cta.btn_free')}
               </Link>
               <button className="bg-primary-dark border border-blue-400/30 text-white hover:bg-blue-900 font-bold py-3 px-8 rounded-lg transition-colors">
-                Book a Demo
+                {t('landing.cta.btn_demo')}
               </button>
             </div>
           </div>
@@ -296,7 +311,7 @@ console.log('Analysis complete. 🚀');`}
                 <span className="text-lg font-bold text-slate-900 dark:text-white">SalesAI</span>
               </div>
               <p className="text-slate-500 dark:text-slate-400 text-sm max-w-xs mb-6">
-                Empowering sales teams with the intelligence they need to win more deals. Built for the modern enterprise.
+                {t('landing.footer.desc')}
               </p>
               <div className="flex gap-4">
                 <a className="text-slate-400 hover:text-primary transition-colors" href="#"><span className="sr-only">Twitter</span><svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M8.29 20.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0022 5.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.072 4.072 0 012.8 9.713v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 012 18.407a11.616 11.616 0 006.29 1.84"></path></svg></a>
@@ -304,37 +319,37 @@ console.log('Analysis complete. 🚀');`}
               </div>
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-4">Product</h3>
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-4">{t('landing.footer.product')}</h3>
               <ul className="space-y-3 text-sm text-slate-600 dark:text-slate-400">
-                <li><a className="hover:text-primary transition-colors" href="#">Features</a></li>
-                <li><a className="hover:text-primary transition-colors" href="#">Integrations</a></li>
-                <li><a className="hover:text-primary transition-colors" href="#">Pricing</a></li>
-                <li><a className="hover:text-primary transition-colors" href="#">Changelog</a></li>
+                <li><a className="hover:text-primary transition-colors" href="#">{t('landing.nav.features')}</a></li>
+                <li><a className="hover:text-primary transition-colors" href="#">{t('landing.footer.integrations')}</a></li>
+                <li><a className="hover:text-primary transition-colors" href="#">{t('landing.nav.pricing')}</a></li>
+                <li><a className="hover:text-primary transition-colors" href="#">{t('landing.footer.changelog')}</a></li>
               </ul>
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-4">Company</h3>
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-4">{t('landing.footer.company')}</h3>
               <ul className="space-y-3 text-sm text-slate-600 dark:text-slate-400">
-                <li><a className="hover:text-primary transition-colors" href="#">About Us</a></li>
-                <li><a className="hover:text-primary transition-colors" href="#">Careers</a></li>
-                <li><a className="hover:text-primary transition-colors" href="#">Blog</a></li>
-                <li><a className="hover:text-primary transition-colors" href="#">Contact</a></li>
+                <li><a className="hover:text-primary transition-colors" href="#">{t('landing.footer.about')}</a></li>
+                <li><a className="hover:text-primary transition-colors" href="#">{t('landing.footer.careers')}</a></li>
+                <li><a className="hover:text-primary transition-colors" href="#">{t('landing.footer.blog')}</a></li>
+                <li><a className="hover:text-primary transition-colors" href="#">{t('landing.footer.contact')}</a></li>
               </ul>
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-4">Legal</h3>
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-4">{t('landing.footer.legal')}</h3>
               <ul className="space-y-3 text-sm text-slate-600 dark:text-slate-400">
-                <li><a className="hover:text-primary transition-colors" href="#">Privacy Policy</a></li>
-                <li><a className="hover:text-primary transition-colors" href="#">Terms of Service</a></li>
-                <li><a className="hover:text-primary transition-colors" href="#">Cookie Policy</a></li>
+                <li><a className="hover:text-primary transition-colors" href="#">{t('landing.footer.privacy')}</a></li>
+                <li><a className="hover:text-primary transition-colors" href="#">{t('landing.footer.terms')}</a></li>
+                <li><a className="hover:text-primary transition-colors" href="#">{t('landing.footer.cookie')}</a></li>
               </ul>
             </div>
           </div>
           <div className="border-t border-slate-200 dark:border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-sm text-slate-500 text-center md:text-left">© 2024 SalesAI Inc. All rights reserved.</p>
+            <p className="text-sm text-slate-500 text-center md:text-left">{t('landing.footer.copyright')}</p>
             <div className="flex items-center gap-2 text-sm text-slate-500">
               <span className="w-2 h-2 rounded-full bg-green-500"></span>
-              Systems Operational
+              {t('landing.footer.status')}
             </div>
           </div>
         </div>

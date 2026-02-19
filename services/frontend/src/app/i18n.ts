@@ -24,7 +24,7 @@ i18n
   .use(initReactI18next)
   .init({
     resources,
-    lng: localStorage.getItem('i18nextLng') || 'kk',
+    lng: localStorage.getItem('i18nextLng') || 'kk', // Default language is Kazakh
     fallbackLng: 'kk',
     interpolation: {
       escapeValue: false, // react already safes from xss
