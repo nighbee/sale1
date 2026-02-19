@@ -24,7 +24,9 @@ import (
 	"context"
 	"database/sql"
 	"log"
+	"net/url"
 	"os"
+	"strings"
 
 	"github.com/ansrivas/fiberprometheus/v2"
 	"github.com/gofiber/fiber/v2"
@@ -103,12 +105,21 @@ func main() {
 	integrationUC := integrations.NewIntegrationUseCase(integrationRepo)
 
 	// Redis client
-	redisOpts, err := redis.ParseURL(cfg.RedisURL)
-	if err != nil {
-		log.Printf("Warning: Redis URL parse error: %v. Using default options.", err)
-		redisOpts = &redis.Options{Addr: cfg.RedisURL}
+	redisAddr := strings.TrimSpace(cfg.RedisURL)
+	if strings.Contains(redisAddr, "://") {
+		u, err := url.Parse(redisAddr)
+		if err == nil && u.Host != "" {
+			redisAddr = u.Host
+		} else {
+			// Fallback: manually strip prefix if parsing fails or host is empty
+			redisAddr = strings.TrimPrefix(redisAddr, "redis://")
+			redisAddr = strings.TrimPrefix(redisAddr, "rediss://") // and secure variant
+		}
 	}
-	rdb := redis.NewClient(redisOpts)
+
+	rdb := redis.NewClient(&redis.Options{
+		Addr: redisAddr,
+	})
 
 	// WebSocket Hub
 	hub := ws.NewHub()

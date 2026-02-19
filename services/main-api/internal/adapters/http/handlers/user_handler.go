@@ -68,18 +68,19 @@ func (h *UserHandler) InviteUser(c *fiber.Ctx) error {
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid body"})
 	}
-    // Log the parsed request struct
-    reqJson, _ := json.MarshalIndent(req, "", "  ")
-    log.Printf("InviteUser request: %s", reqJson)
+	// Log the parsed request struct
+	reqJson, _ := json.MarshalIndent(req, "", "  ")
+	log.Printf("InviteUser request: %s", reqJson)
 
 	emails := req.Emails
 	if req.Email != "" {
 		emails = append(emails, req.Email)
 	}
 
-	teamId := req.TeamID
-	if teamId == "" {
-		teamId = "" // Replace with your default team ID if needed
+	var teamIDPtr *string
+	if req.TeamID != "" {
+		tID := req.TeamID
+		teamIDPtr = &tID
 	}
 
 	if len(emails) == 0 {
@@ -106,7 +107,7 @@ func (h *UserHandler) InviteUser(c *fiber.Ctx) error {
 			ManagerName:  req.ManagerName,
 			ManagerID:    &req.ManagerID,
 			PasswordHash: string(hash),
-			TeamID:       teamId,
+			TeamID:       teamIDPtr,
 		}
 		if err := h.userRepo.Create(c.Context(), user); err != nil {
 			// Skip duplicates or log error
