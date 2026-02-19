@@ -45,7 +45,7 @@ func (r *userRepository) Create(ctx context.Context, user *domain.User) error {
 func (r *userRepository) GetByID(ctx context.Context, companyID, id string) (*domain.User, error) {
 	query := `
 		SELECT id, company_id, email, password_hash, role, manager_id, manager_name,
-		       is_active, last_login, created_at, updated_at
+		       is_active, last_login, created_at, updated_at, team_id
 		FROM auth_schema.users
 		WHERE id = $1 AND company_id = $2
 	`
@@ -63,6 +63,7 @@ func (r *userRepository) GetByID(ctx context.Context, companyID, id string) (*do
 		&user.LastLogin,
 		&user.CreatedAt,
 		&user.UpdatedAt,
+		&user.TeamID,
 	)
 
 	if err == sql.ErrNoRows {
@@ -75,7 +76,7 @@ func (r *userRepository) GetByID(ctx context.Context, companyID, id string) (*do
 func (r *userRepository) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
 	query := `
 		SELECT id, company_id, email, password_hash, role, manager_id, manager_name,
-		       is_active, last_login, created_at, updated_at
+		       is_active, last_login, created_at, updated_at, team_id
 		FROM auth_schema.users
 		WHERE LOWER(email) = LOWER($1)
 	`
@@ -93,6 +94,7 @@ func (r *userRepository) GetByEmail(ctx context.Context, email string) (*domain.
 		&user.LastLogin,
 		&user.CreatedAt,
 		&user.UpdatedAt,
+		&user.TeamID,
 	)
 
 	if err == sql.ErrNoRows {
@@ -122,7 +124,7 @@ func (r *userRepository) Delete(ctx context.Context, companyID, id string) error
 func (r *userRepository) ListByCompany(ctx context.Context, companyID string) ([]*domain.User, error) {
 	query := `
 		SELECT id, company_id, email, role, manager_id, manager_name,
-		       is_active, created_at, updated_at
+		       is_active, created_at, updated_at, team_id
 		FROM auth_schema.users
 		WHERE company_id = $1
 		ORDER BY created_at DESC
@@ -147,6 +149,7 @@ func (r *userRepository) ListByCompany(ctx context.Context, companyID string) ([
 			&user.IsActive,
 			&user.CreatedAt,
 			&user.UpdatedAt,
+			&user.TeamID,
 		)
 		if err != nil {
 			return nil, err

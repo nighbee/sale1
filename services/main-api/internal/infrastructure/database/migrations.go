@@ -7,6 +7,7 @@ import (
 	"log"
 	"path/filepath"
 	"sort"
+	"time"
 
 	_ "github.com/lib/pq"
 )
@@ -20,16 +21,27 @@ type Migration struct {
 func RunMigrations(db *sql.DB, migrationsDir string) error {
 	log.Printf("Starting migrations from directory: %s", migrationsDir)
 
-	// Create migrations table
-	_, err := db.Exec(`
-		CREATE TABLE IF NOT EXISTS schema_migrations (
-			version INT PRIMARY KEY,
-			filename VARCHAR(255) NOT NULL,
-			executed_at TIMESTAMP DEFAULT NOW()
-		)
-	`)
+	// Retry logic for database connection
+	var err error
+	maxRetries := 10
+	for i := 0; i < maxRetries; i++ {
+		// Create migrations table (this will also test the connection)
+		_, err = db.Exec(`
+			CREATE TABLE IF NOT EXISTS schema_migrations (
+				version INT PRIMARY KEY,
+				filename VARCHAR(255) NOT NULL,
+				executed_at TIMESTAMP DEFAULT NOW()
+			)
+		`)
+		if err == nil {
+			break
+		}
+		log.Printf("[MIGRATE] Database not ready, retrying in 2s... (%d/%d)", i+1, maxRetries)
+		time.Sleep(2 * time.Second)
+	}
+
 	if err != nil {
-		return fmt.Errorf("failed to create migrations table: %w", err)
+		return fmt.Errorf("failed to connect to database or create migrations table after retries: %w", err)
 	}
 
 	// Load migration files
