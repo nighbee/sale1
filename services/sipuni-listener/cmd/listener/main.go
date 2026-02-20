@@ -46,16 +46,20 @@ type SipuniEvent struct {
 }
 
 type SipuniNotifyRequest struct {
-	CallID             string      `json:"call_id"`
-	Event              json.Number `json:"event"`
-	DstNum             string      `json:"dst_num"`
-	SrcNum             string      `json:"src_num"`
-	Timestamp          json.Number `json:"timestamp"`
-	UserID             string      `json:"user_id"`
-	Status             string      `json:"status"`
-	CallStartTimestamp json.Number `json:"call_start_timestamp"`
-	CallRecordLink     string      `json:"call_record_link"`
-	TreeName           string      `json:"treeName"`
+	CallID              string      `json:"call_id"`
+	Event               json.Number `json:"event"`
+	DstNum              string      `json:"dst_num"`
+	SrcNum              string      `json:"src_num"`
+	SrcType             int         `json:"src_type"`
+	DstType             int         `json:"dst_type"`
+	Timestamp           json.Number `json:"timestamp"`
+	UserID              string      `json:"user_id"`
+	User                string      `json:"user"`
+	Status              string      `json:"status"`
+	CallStartTimestamp  json.Number `json:"call_start_timestamp"`
+	CallAnswerTimestamp json.Number `json:"call_answer_timestamp"`
+	CallRecordLink      string      `json:"call_record_link"`
+	TreeName            string      `json:"treeName"`
 }
 
 var (
@@ -321,22 +325,18 @@ func handleNotify(request json.RawMessage) {
 	// Determine client phone using src_type / dst_type:
 	//   src_type=1 means the caller is external (incoming call scenario)
 	//   dst_type=1 means the destination is external (outbound call scenario)
-	var clientPhone, managerNum string
+	var clientPhone string
 	if notify.SrcType == 1 {
 		// Incoming: external caller → internal operator
 		clientPhone = notify.SrcNum
-		managerNum = notify.DstNum
 	} else if notify.DstType == 1 {
 		// Outbound: internal operator → external client
 		clientPhone = notify.DstNum
-		managerNum = notify.SrcNum
 	} else {
 		// Fallback: both internal — use length heuristic
 		clientPhone = notify.SrcNum
-		managerNum = notify.DstNum
 		if len(notify.DstNum) > len(notify.SrcNum) {
 			clientPhone = notify.DstNum
-			managerNum = notify.SrcNum
 		}
 	}
 
@@ -368,7 +368,7 @@ func handleNotify(request json.RawMessage) {
 	}
 	log.Info("call record created",
 		zap.String("call_id", callID), zap.String("manager_id", notify.UserID),
-		zap.String("client_phone", clientPhone), zap.Int("duration_s", duration))
+		zap.String("client_phone", clientPhone), zap.Int("duration_s", talkDuration))
 
 	job := queue.AudioProcessingJob{
 		CallID:    callID,
