@@ -103,6 +103,7 @@ func SetupRoutes(
 	integrations := protected.Group("/integrations", middleware.RequireRole("super_admin", "tenant_admin"))
 	integrations.Post("/", integrationHandler.Save)
 	integrations.Get("/", integrationHandler.List)
+	integrations.Post("/google-sheets/sync", integrationHandler.TriggerSheetSync)
 	integrations.Get("/:type", integrationHandler.Get)
 	integrations.Delete("/:type", integrationHandler.Delete)
 }

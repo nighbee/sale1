@@ -6,4 +6,5 @@ export const integrationApi = {
   list: () => api.get<{ integrations: Integration[] }>('/integrations'),
   get: (type: string) => api.get<Integration>(`/integrations/${type}`),
   delete: (type: string) => api.delete(`/integrations/${type}`),
+  triggerSheetSync: () => api.post('/integrations/google-sheets/sync'),
 };

@@ -7,9 +7,17 @@ export interface Call {
   team_id: string;
   customer_phone?: string;
   score?: number;
+  manager_id?: string;
   manager_name?: string;
+  client_phone?: string;
   call_date: string;
+  call_link?: string;
+  source?: string;
   audio_url?: string;
+  // Analysis scores – joined from analysis_reports in list query
+  quality_score?: number;
+  script_match?: number;
+  errors_free?: number;
 }
 
 export interface TranscriptSegment {

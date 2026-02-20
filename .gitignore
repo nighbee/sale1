@@ -76,3 +76,5 @@ ai-services/stt-local/.venv/
 
 *.tsbuildinfo
 .eslintcache
+gcp-sa*.json
+*-sa.json

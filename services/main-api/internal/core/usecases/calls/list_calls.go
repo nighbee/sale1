@@ -2,17 +2,23 @@ package calls
 
 import (
 	"context"
+
 	"github.com/salesai/main-api/internal/core/domain"
 	"github.com/salesai/main-api/internal/core/ports"
 )
 
 type ListCallsRequest struct {
-	CompanyID string `json:"company_id"`
-	ManagerID string `json:"manager_id"`
-	TeamID    string `json:"team_id"`
-	Status    string `json:"status"`
-	Page      int    `json:"page"`
-	Limit     int    `json:"limit"`
+	CompanyID   string `json:"company_id"`
+	ManagerID   string `json:"manager_id"`
+	ManagerName string `json:"manager_name"`
+	ClientPhone string `json:"client_phone"`
+	TeamID      string `json:"team_id"`
+	Status      string `json:"status"`
+	Source      string `json:"source"`
+	DateFrom    string `json:"date_from"`
+	DateTo      string `json:"date_to"`
+	Page        int    `json:"page"`
+	Limit       int    `json:"limit"`
 }
 
 type ListCallsResponse struct {
@@ -32,11 +38,16 @@ func NewListCallsUseCase(callRepo ports.CallRepository) *ListCallsUseCase {
 
 func (uc *ListCallsUseCase) Execute(ctx context.Context, req ListCallsRequest) (*ListCallsResponse, error) {
 	filters := map[string]interface{}{
-		"manager_id": req.ManagerID,
-		"team_id":    req.TeamID,
-		"status":     req.Status,
-		"page":       req.Page,
-		"limit":      req.Limit,
+		"manager_id":   req.ManagerID,
+		"manager_name": req.ManagerName,
+		"client_phone": req.ClientPhone,
+		"team_id":      req.TeamID,
+		"status":       req.Status,
+		"source":       req.Source,
+		"date_from":    req.DateFrom,
+		"date_to":      req.DateTo,
+		"page":         req.Page,
+		"limit":        req.Limit,
 	}
 
 	calls, total, err := uc.callRepo.ListByCompany(ctx, req.CompanyID, filters)

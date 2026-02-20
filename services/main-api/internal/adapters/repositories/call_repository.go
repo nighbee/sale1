@@ -115,25 +115,55 @@ func (r *callRepository) GetByIDInternal(ctx context.Context, id string) (*domai
 }
 
 func (r *callRepository) ListByCompany(ctx context.Context, companyID string, filters map[string]interface{}) ([]*domain.Call, int, error) {
-	where := []string{"company_id = $1"}
+	where := []string{"c.company_id = $1"}
 	args := []interface{}{companyID}
 	argIdx := 2
 
 	if managerID, ok := filters["manager_id"].(string); ok && managerID != "" {
-		where = append(where, fmt.Sprintf("manager_id = $%d", argIdx))
+		where = append(where, fmt.Sprintf("c.manager_id = $%d", argIdx))
 		args = append(args, managerID)
 		argIdx++
 	}
 
 	if teamID, ok := filters["team_id"].(string); ok && teamID != "" {
-		where = append(where, fmt.Sprintf("manager_id IN (SELECT manager_id FROM auth_schema.users WHERE team_id = $%d)", argIdx))
+		where = append(where, fmt.Sprintf("c.manager_id IN (SELECT manager_id FROM auth_schema.users WHERE team_id = $%d)", argIdx))
 		args = append(args, teamID)
 		argIdx++
 	}
 
 	if status, ok := filters["status"].(string); ok && status != "" {
-		where = append(where, fmt.Sprintf("status = $%d", argIdx))
+		where = append(where, fmt.Sprintf("c.status = $%d", argIdx))
 		args = append(args, status)
+		argIdx++
+	}
+
+	if source, ok := filters["source"].(string); ok && source != "" {
+		where = append(where, fmt.Sprintf("c.source = $%d", argIdx))
+		args = append(args, source)
+		argIdx++
+	}
+
+	if managerName, ok := filters["manager_name"].(string); ok && managerName != "" {
+		where = append(where, fmt.Sprintf("c.manager_name ILIKE $%d", argIdx))
+		args = append(args, "%"+managerName+"%")
+		argIdx++
+	}
+
+	if clientPhone, ok := filters["client_phone"].(string); ok && clientPhone != "" {
+		where = append(where, fmt.Sprintf("c.client_phone ILIKE $%d", argIdx))
+		args = append(args, "%"+clientPhone+"%")
+		argIdx++
+	}
+
+	if dateFrom, ok := filters["date_from"].(string); ok && dateFrom != "" {
+		where = append(where, fmt.Sprintf("c.call_date >= $%d", argIdx))
+		args = append(args, dateFrom)
+		argIdx++
+	}
+
+	if dateTo, ok := filters["date_to"].(string); ok && dateTo != "" {
+		where = append(where, fmt.Sprintf("c.call_date <= $%d", argIdx))
+		args = append(args, dateTo)
 		argIdx++
 	}
 
@@ -149,10 +179,14 @@ func (r *callRepository) ListByCompany(ctx context.Context, companyID string, fi
 	offset := (page - 1) * limit
 
 	query := fmt.Sprintf(`
-		SELECT id, company_id, manager_id, manager_name, client_phone, client_id, duration, call_link, chat_link, call_date, call_time, status, source, created_at, updated_at
-		FROM calls_schema.calls
+		SELECT c.id, c.company_id, c.manager_id, c.manager_name, c.client_phone, c.client_id,
+		       c.duration, c.call_link, c.chat_link, c.call_date, c.call_time,
+		       c.status, c.source, c.created_at, c.updated_at,
+		       ar.quality_score, ar.script_match, ar.errors_free
+		FROM calls_schema.calls c
+		LEFT JOIN calls_schema.analysis_reports ar ON ar.call_id = c.id
 		WHERE %s
-		ORDER BY created_at DESC
+		ORDER BY c.created_at DESC
 		LIMIT $%d OFFSET $%d
 	`, strings.Join(where, " AND "), argIdx, argIdx+1)
 
@@ -181,6 +215,9 @@ func (r *callRepository) ListByCompany(ctx context.Context, companyID string, fi
 			&call.Source,
 			&call.CreatedAt,
 			&call.UpdatedAt,
+			&call.QualityScore,
+			&call.ScriptMatch,
+			&call.ErrorsFree,
 		)
 		if err != nil {
 			return nil, 0, err
@@ -189,7 +226,7 @@ func (r *callRepository) ListByCompany(ctx context.Context, companyID string, fi
 	}
 
 	// Count total
-	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM calls_schema.calls WHERE %s", strings.Join(where, " AND "))
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM calls_schema.calls c WHERE %s", strings.Join(where, " AND "))
 	var total int
 	err = r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total)
 	if err != nil {

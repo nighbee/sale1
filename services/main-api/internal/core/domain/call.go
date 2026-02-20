@@ -27,4 +27,8 @@ type Call struct {
 	Source      string     `json:"source"`
 	CreatedAt   time.Time  `json:"created_at"`
 	UpdatedAt   time.Time  `json:"updated_at"`
+	// Analysis scores – populated in list queries via LEFT JOIN
+	QualityScore *int `json:"quality_score,omitempty"`
+	ScriptMatch  *int `json:"script_match,omitempty"`
+	ErrorsFree   *int `json:"errors_free,omitempty"`
 }

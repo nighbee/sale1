@@ -67,12 +67,17 @@ func (h *CallHandler) ListCalls(c *fiber.Ctx) error {
 	limit, _ := strconv.Atoi(c.Query("limit", "20"))
 
 	req := calls.ListCallsRequest{
-		CompanyID: companyID,
-		ManagerID: c.Query("manager_id"),
-		TeamID:    c.Query("team_id"),
-		Status:    c.Query("status"),
-		Page:      page,
-		Limit:     limit,
+		CompanyID:   companyID,
+		ManagerID:   c.Query("manager_id"),
+		ManagerName: c.Query("manager_name"),
+		ClientPhone: c.Query("client_phone"),
+		TeamID:      c.Query("team_id"),
+		Status:      c.Query("status"),
+		Source:      c.Query("source"),
+		DateFrom:    c.Query("date_from"),
+		DateTo:      c.Query("date_to"),
+		Page:        page,
+		Limit:       limit,
 	}
 
 	log.Debug("listing calls", zap.String("company_id", companyID),

@@ -152,6 +152,32 @@ services:
     networks:
       - sale1-network
 
+  sheets-sync:
+    build: ./services/sheets-sync
+    environment:
+      DATABASE_URL: "host=postgres port=5432 user=salesai_user password=strong_password dbname=salesai sslmode=disable"
+      REDIS_URL: "redis://redis:6379"
+      GOOGLE_SHEETS_ID: ${GOOGLE_SHEETS_ID}
+      GOOGLE_SERVICE_ACCOUNT_JSON: ${GOOGLE_SERVICE_ACCOUNT_JSON}
+      SYNC_INTERVAL: ${SHEETS_SYNC_INTERVAL:-5m}
+      SHEET_NAME: ${SHEET_NAME:-Sheet1}
+      COMPANY_ID: ${COMPANY_ID:-}
+      RUN_MODE: "api"
+      PORT: "8085"
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    ports:
+      - "8085:8085"
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - sale1-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
   nginx:
     image: nginx:1.25-alpine
     ports:
