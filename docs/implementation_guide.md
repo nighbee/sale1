@@ -10,7 +10,7 @@
 
 1. [Implementation Order](#implementation-order)
 2. [Main API Service (Golang)](#main-api-service-golang)
-3. [Webhook Service (Golang)](#webhook-service-golang)
+3. [Sipuni Listener (Golang)](#sipuni-listener-golang)
 4. [STT Service (Python)](#stt-service-python)
 5. [AI Analytics Service (Python)](#ai-analytics-service-python)
 6. [Frontend Integration](#frontend-integration)
@@ -25,7 +25,7 @@
 1. Database setup & migrations ✅
 2. Main API: Auth endpoints
 3. Main API: User management
-4. Webhook service: Basic ingestion
+4. Sipuni Listener: WebSocket ingestion
 
 **Phase 2: AI Pipeline (Week 2)** 5. STT service: Audio processing 6. AI Analytics: LLM integration 7. Redis queue setup (BullMQ)
 
@@ -677,9 +677,9 @@ func customErrorHandler(c *fiber.Ctx, err error) error {
 
 ---
 
-## 3. Webhook Service (Golang)
+## 3. Sipuni Listener (Golang)
 
-### 3.1 Webhook Handler
+### 3.1 Sipuni WebSocket Handler
 
 **File:** `internal/adapters/http/handlers/amocrm_webhook.go`
 
@@ -1292,12 +1292,13 @@ async def test_process_audio_success():
 - [ ] Call CRUD endpoints
 - [ ] Analytics endpoints
 
-### Webhook Service
+### Sipuni Listener
 
-- [ ] AmoCRM webhook handler
+- [ ] Sipuni WebSocket connection
+- [ ] Event parsing and normalization
 - [ ] BullMQ publisher
 - [ ] Database integration
-- [ ] Fast response (<100ms)
+- [ ] Reconnection logic with exponential backoff
 
 ### STT Service
 

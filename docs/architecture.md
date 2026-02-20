@@ -94,7 +94,7 @@
 | --------------------- | ----------- | ---- | ------------------------------------------------ | ------------------ |
 | **Main API**          | Golang      | 8080 | Auth, CRUD, Analytics APIs                       | ✅                 |
 | **Sipuni Listener**   | Golang      | 8081 | Maintain WS to Sipuni, enqueue call jobs         | ✅                 |
-| **Script Management** | Python | 8082 | Upload, parse, store scripts                     | ✅                 |
+| **Script Service**    | Golang      | 8083 | Upload, parse, store scripts                     | ✅                 |
 | **STT Service**       | Python      | 5001 | Speech-to-Text processing                        | ✅                 |
 | **AI Analytics**      | Python      | 5002 | LLM-based call analysis and KPI computation      | ✅                 |
 
@@ -222,12 +222,12 @@ sipuni-listener/
 
 ---
 
-#### **Service 4: Script Management (Python)**
+#### **Service 3: Script Management (Golang)**
 
 **Responsibilities:**
 
 - Upload script files (DOCX/PDF) to MinIO
-- Parse text content (Python subprocess)
+- Parse text content using Python scripts (subprocess)
 - Store parsed text in PostgreSQL
 - Provide retrieval API for AI service
 
@@ -237,27 +237,29 @@ sipuni-listener/
 script-service/
 ├── cmd/
 │   └── script/
-│       └── main.py
+│       └── main.go
 ├── internal/
 │   ├── adapters/
 │   │   ├── http/
 │   │   │   └── handlers/
-│   │   │       ├── upload.py
-│   │   │       ├── list.py
-│   │   │       └── delete.py
+│   │   │       ├── upload.go
+│   │   │       ├── list.go
+│   │   │       └── delete.go
 │   │   ├── storage/
-│   │   │   └── minio.py
-│   │   ├── parser/         # Calls Python script
-│   │   │   └── document_parser.py
+│   │   │   └── minio.go
 │   │   └── repositories/
-│   │       └── script_repo.py
+│   │       └── script_repo.go
 │   ├── core/
 │   │   ├── domain/
-│   │   │   └── script.py
+│   │   │   └── script.go
+│   │   ├── ports/
+│   │   │   └── script_repository.go
 │   │   └── usecases/
-│   │       ├── upload_script.py
-│   │       └── parse_script.py
+│   │       ├── upload_script.go
+│   │       └── parse_script.go
 │   └── infrastructure/
+│       ├── config/
+│       └── logger/
 └── scripts/                # Python parsers
     ├── parse_docx.py
     └── parse_pdf.py
@@ -468,11 +470,10 @@ users (1) ────────────── (N) notifications
 | Component             | Technology            | Version      |
 | --------------------- | --------------------- | ------------ |
 | **Main API**          | Golang (Fiber)        | 1.22 / 2.52  |
-| **Webhook Service**   | Golang (Fiber)        | 1.22 / 2.52  |
-| **Sheets Sync**       | Golang (Fiber + Cron) | 1.22 / 2.52  |
-| **Script Management** | Golang + Python       | 1.22 / 3.11  |
+| **Sipuni Listener**   | Golang (Fiber)        | 1.22 / 2.52  |
+| **Script Service**    | Golang (Fiber)        | 1.22 / 2.52  |
+| **Sheets Sync**       | Golang                | 1.24         |
 | **STT Service**       | Python (FastAPI)      | 3.11 / 0.109 |
-| **AI Analytics**      | Python (FastAPI)      | 3.11 / 0.109 |
 
 ### 7.2 Infrastructure Stack
 

@@ -37,16 +37,21 @@ type SipuniEvent struct {
 }
 
 type SipuniNotifyRequest struct {
-	CallID             string      `json:"call_id"`
-	Event              json.Number `json:"event"`
-	DstNum             string      `json:"dst_num"`
-	SrcNum             string      `json:"src_num"`
-	Timestamp          json.Number `json:"timestamp"`
-	UserID             string      `json:"user_id"`
-	Status             string      `json:"status"`
-	CallStartTimestamp json.Number `json:"call_start_timestamp"`
-	CallRecordLink     string      `json:"call_record_link"`
-	TreeName           string      `json:"treeName"`
+	CallID              string      `json:"call_id"`
+	Event               json.Number `json:"event"`
+	DstNum              string      `json:"dst_num"`
+	DstType             int         `json:"dst_type"` // 1=external, 2=internal
+	SrcNum              string      `json:"src_num"`
+	SrcType             int         `json:"src_type"` // 1=external, 2=internal
+	Timestamp           json.Number `json:"timestamp"`
+	Status              string      `json:"status"`
+	CallStartTimestamp  json.Number `json:"call_start_timestamp"`
+	CallAnswerTimestamp json.Number `json:"call_answer_timestamp"`
+	CallRecordLink      string      `json:"call_record_link"`
+	IsInnerCall         bool        `json:"is_inner_call"`
+	TreeName            string      `json:"treeName"`
+	TreeNumber          string      `json:"treeNumber"`
+	Channel             string      `json:"channel"`
 }
 
 var (
@@ -254,14 +259,25 @@ func handleNotify(request json.RawMessage) {
 		zap.String("event", notify.Event.String()),
 		zap.String("status", notify.Status),
 		zap.String("src_num", notify.SrcNum),
+		zap.Int("src_type", notify.SrcType),
 		zap.String("dst_num", notify.DstNum),
+		zap.Int("dst_type", notify.DstType),
 		zap.Bool("has_recording", notify.CallRecordLink != ""))
 
-	// Only process answered calls — NOANSWER/BUSY/FAILED/CANCEL have no actual audio
+	// Only process final hang-up events (event=2). event=4 is intermediate
+	// (consultation transfer) and should not be treated as a completed call.
+	if notify.Event.String() != "2" {
+		log.Debug("skipping notify — not a final hang-up",
+			zap.String("sipuni_call_id", notify.CallID),
+			zap.String("event", notify.Event.String()))
+		return
+	}
+
+	// Only process answered calls — NOANSWER/BUSY/CANCEL/CONGESTION/CHANUNAVAIL
+	// have no audio to analyse.
 	if notify.Status != "ANSWER" {
 		log.Info("skipping notify — call not answered",
 			zap.String("sipuni_call_id", notify.CallID),
-			zap.String("event", notify.Event.String()),
 			zap.String("status", notify.Status))
 		return
 	}
@@ -269,42 +285,67 @@ func handleNotify(request json.RawMessage) {
 	// We only care about calls with a record link
 	if notify.CallRecordLink == "" {
 		log.Info("skipping notify — no recording link despite ANSWER status",
-			zap.String("sipuni_call_id", notify.CallID),
-			zap.String("event", notify.Event.String()),
-			zap.String("status", notify.Status))
+			zap.String("sipuni_call_id", notify.CallID))
 		return
 	}
 
 	callID := uuid.New().String()
 
-	// Parse timestamps for duration
+	// Parse timestamps.
+	// Talk duration = hang-up timestamp − answer timestamp (not start timestamp,
+	// which would include ring time).
 	startTime, _ := notify.CallStartTimestamp.Int64()
+	answerTime, _ := notify.CallAnswerTimestamp.Int64()
 	endTime, _ := notify.Timestamp.Int64()
-	duration := int(endTime - startTime)
-	if duration <= 0 {
-		duration = 1
+
+	talkDuration := int(endTime - answerTime)
+	if talkDuration <= 0 {
+		talkDuration = 1
 	}
 
 	callDate := time.Unix(startTime, 0)
 
-	// Determine client phone (usually the longer one)
-	clientPhone := notify.DstNum
-	if len(notify.SrcNum) > len(notify.DstNum) {
+	// Determine client phone using src_type / dst_type:
+	//   src_type=1 means the caller is external (incoming call scenario)
+	//   dst_type=1 means the destination is external (outbound call scenario)
+	var clientPhone, managerNum string
+	if notify.SrcType == 1 {
+		// Incoming: external caller → internal operator
 		clientPhone = notify.SrcNum
+		managerNum = notify.DstNum
+	} else if notify.DstType == 1 {
+		// Outbound: internal operator → external client
+		clientPhone = notify.DstNum
+		managerNum = notify.SrcNum
+	} else {
+		// Fallback: both internal — use length heuristic
+		clientPhone = notify.SrcNum
+		managerNum = notify.DstNum
+		if len(notify.DstNum) > len(notify.SrcNum) {
+			clientPhone = notify.DstNum
+			managerNum = notify.SrcNum
+		}
+	}
+
+	// call_record_link is URL-encoded per Sipuni docs — decode before storing.
+	recordLink, err := url.QueryUnescape(notify.CallRecordLink)
+	if err != nil {
+		// If decoding fails keep the raw value
+		recordLink = notify.CallRecordLink
 	}
 
 	call := &domain.Call{
 		ID:          callID,
 		CompanyID:   companyID,
-		ManagerID:   notify.UserID,
+		ManagerID:   managerNum, // internal extension number; resolved to user later
 		ManagerName: "Sipuni Manager",
 		ClientPhone: clientPhone,
-		Duration:    duration,
-		CallLink:    notify.CallRecordLink,
+		Duration:    talkDuration,
+		CallLink:    recordLink,
 		CallDate:    callDate,
 		CallTime:    callDate,
 		Status:      domain.StatusPending,
-		Source:      "webhook",
+		Source:      "sipuni",
 	}
 
 	if err := callRepo.Create(context.Background(), call); err != nil {
@@ -313,14 +354,14 @@ func handleNotify(request json.RawMessage) {
 		return
 	}
 	log.Info("call record created",
-		zap.String("call_id", callID), zap.String("manager_id", notify.UserID),
-		zap.String("client_phone", clientPhone), zap.Int("duration_s", duration))
+		zap.String("call_id", callID), zap.String("manager_num", managerNum),
+		zap.String("client_phone", clientPhone), zap.Int("talk_duration_s", talkDuration))
 
 	job := queue.AudioProcessingJob{
 		CallID:    callID,
 		CompanyID: companyID,
-		AudioURL:  notify.CallRecordLink,
-		ManagerID: notify.UserID,
+		AudioURL:  recordLink,
+		ManagerID: managerNum,
 	}
 
 	if err := publisher.EnqueueAudioProcessing(context.Background(), job); err != nil {
