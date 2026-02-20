@@ -9,19 +9,49 @@ clients:
   - url: http://loki:3100/loki/api/v1/push
 
 scrape_configs:
-- job_name: system
-  static_configs:
-  - targets:
-      - localhost
-    labels:
-      job: varlogs
-      __path__: /var/log/*log
+  - job_name: docker_containers
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: docker
+          __path__: /var/lib/docker/containers/*/*-json.log
 
-- job_name: docker
-  docker_sd_configs:
-    - host: unix:///var/run/docker.sock
-      refresh_interval: 5s
-  relabel_configs:
-    - source_labels: ['__meta_docker_container_name']
-      regex: '/(.*)'
-      target_label: 'container'
+    pipeline_stages:
+      # 1. Unwrap the Docker json-file log envelope: {"log":"...","stream":"stdout","time":"..."}
+      - json:
+          expressions:
+            output: log
+            stream: stream
+            timestamp: time
+
+      # 2. Promote the inner timestamp so Loki indexes the real log time
+      - timestamp:
+          source: timestamp
+          format: RFC3339Nano
+
+      # 3. Label stdout vs stderr
+      - labels:
+          stream:
+
+      # 4. Replace the Promtail line with the actual log content (drop the outer JSON wrapper)
+      - output:
+          source: output
+
+      # 5. For our structured services the output line is itself JSON.
+      #    Extract "service" and "level" as Loki labels so you can filter in Grafana.
+      - json:
+          expressions:
+            service: service
+            level: level
+
+      - labels:
+          service:
+          level:
+
+    relabel_configs:
+      # Attach a short container_id label (first 12 chars of the directory name)
+      - source_labels: [__path__]
+        regex: '/var/lib/docker/containers/([a-f0-9]{12})[a-f0-9]*/.*'
+        target_label: container_id
+        replacement: '${1}'
