@@ -30,6 +30,15 @@ type SipuniAuthMessage struct {
 	Body SipuniAuthBody `json:"body"`
 }
 
+type SipuniSubscribeBody struct {
+	Event string `json:"event"`
+}
+
+type SipuniSubscribeMessage struct {
+	Type string              `json:"type"`
+	Body SipuniSubscribeBody `json:"body"`
+}
+
 type SipuniEvent struct {
 	Action  string          `json:"action"`
 	Request json.RawMessage `json:"request"`
@@ -37,21 +46,16 @@ type SipuniEvent struct {
 }
 
 type SipuniNotifyRequest struct {
-	CallID              string      `json:"call_id"`
-	Event               json.Number `json:"event"`
-	DstNum              string      `json:"dst_num"`
-	DstType             int         `json:"dst_type"` // 1=external, 2=internal
-	SrcNum              string      `json:"src_num"`
-	SrcType             int         `json:"src_type"` // 1=external, 2=internal
-	Timestamp           json.Number `json:"timestamp"`
-	Status              string      `json:"status"`
-	CallStartTimestamp  json.Number `json:"call_start_timestamp"`
-	CallAnswerTimestamp json.Number `json:"call_answer_timestamp"`
-	CallRecordLink      string      `json:"call_record_link"`
-	IsInnerCall         bool        `json:"is_inner_call"`
-	TreeName            string      `json:"treeName"`
-	TreeNumber          string      `json:"treeNumber"`
-	Channel             string      `json:"channel"`
+	CallID             string      `json:"call_id"`
+	Event              json.Number `json:"event"`
+	DstNum             string      `json:"dst_num"`
+	SrcNum             string      `json:"src_num"`
+	Timestamp          json.Number `json:"timestamp"`
+	UserID             string      `json:"user_id"`
+	Status             string      `json:"status"`
+	CallStartTimestamp json.Number `json:"call_start_timestamp"`
+	CallRecordLink     string      `json:"call_record_link"`
+	TreeName           string      `json:"treeName"`
 }
 
 var (
@@ -193,6 +197,8 @@ func main() {
 					return
 				}
 
+				log.Info("Message received from Sipuni", zap.String("raw", string(message)))
+
 				// Try to parse as event message (notify or auth response)
 				var event SipuniEvent
 				err = json.Unmarshal(message, &event)
@@ -201,6 +207,18 @@ func main() {
 					if event.Action == "auth" {
 						if event.Status == 1 {
 							log.Info("Sipuni authentication successful")
+
+							// Some Sipuni versions or specific integrations might require a subscribe message
+							// even if not explicitly documented in the main guide.
+							subMsg := SipuniSubscribeMessage{
+								Type: "subscribe",
+								Body: SipuniSubscribeBody{Event: "*"},
+							}
+							if err := c.WriteJSON(subMsg); err != nil {
+								log.Error("subscription send error", zap.Error(err))
+							} else {
+								log.Info("Subscription message sent for all events (*)")
+							}
 						} else {
 							log.Error("Sipuni authentication failed",
 								zap.Int("status", event.Status), zap.String("raw", string(message)))
@@ -254,6 +272,12 @@ func handleNotify(request json.RawMessage) {
 		return
 	}
 
+	// Unify UserID and User
+	managerID := notify.UserID
+	if managerID == "" {
+		managerID = notify.User
+	}
+
 	log.Info("processing Sipuni notify",
 		zap.String("sipuni_call_id", notify.CallID),
 		zap.String("event", notify.Event.String()),
@@ -261,20 +285,9 @@ func handleNotify(request json.RawMessage) {
 		zap.String("src_num", notify.SrcNum),
 		zap.Int("src_type", notify.SrcType),
 		zap.String("dst_num", notify.DstNum),
-		zap.Int("dst_type", notify.DstType),
 		zap.Bool("has_recording", notify.CallRecordLink != ""))
 
-	// Only process final hang-up events (event=2). event=4 is intermediate
-	// (consultation transfer) and should not be treated as a completed call.
-	if notify.Event.String() != "2" {
-		log.Debug("skipping notify — not a final hang-up",
-			zap.String("sipuni_call_id", notify.CallID),
-			zap.String("event", notify.Event.String()))
-		return
-	}
-
-	// Only process answered calls — NOANSWER/BUSY/CANCEL/CONGESTION/CHANUNAVAIL
-	// have no audio to analyse.
+	// Only process answered calls — NOANSWER/BUSY/FAILED/CANCEL have no actual audio
 	if notify.Status != "ANSWER" {
 		log.Info("skipping notify — call not answered",
 			zap.String("sipuni_call_id", notify.CallID),
@@ -337,7 +350,7 @@ func handleNotify(request json.RawMessage) {
 	call := &domain.Call{
 		ID:          callID,
 		CompanyID:   companyID,
-		ManagerID:   managerNum, // internal extension number; resolved to user later
+		ManagerID:   notify.UserID,
 		ManagerName: "Sipuni Manager",
 		ClientPhone: clientPhone,
 		Duration:    talkDuration,
@@ -354,14 +367,14 @@ func handleNotify(request json.RawMessage) {
 		return
 	}
 	log.Info("call record created",
-		zap.String("call_id", callID), zap.String("manager_num", managerNum),
-		zap.String("client_phone", clientPhone), zap.Int("talk_duration_s", talkDuration))
+		zap.String("call_id", callID), zap.String("manager_id", notify.UserID),
+		zap.String("client_phone", clientPhone), zap.Int("duration_s", duration))
 
 	job := queue.AudioProcessingJob{
 		CallID:    callID,
 		CompanyID: companyID,
-		AudioURL:  recordLink,
-		ManagerID: managerNum,
+		AudioURL:  notify.CallRecordLink,
+		ManagerID: notify.UserID,
 	}
 
 	if err := publisher.EnqueueAudioProcessing(context.Background(), job); err != nil {
