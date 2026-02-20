@@ -21,7 +21,7 @@ class QueueClient:
         job = {
             "call_id": call_id,
             "company_id": company_id,
-            "call_link": call_link,
+            "audio_url": call_link,
             "chat_link": chat_link,
             "retry_count": 0,
             "max_retries": 3,
@@ -29,5 +29,11 @@ class QueueClient:
         self._r.rpush(self._queue, json.dumps(job))
         logger.info(
             "Job queued",
-            extra={"call_id": call_id, "queue": self._queue},
+            extra={
+                "call_id": call_id,
+                "company_id": company_id,
+                "queue": self._queue,
+                "call_link": call_link,
+                "chat_link": chat_link or '—',
+            },
         )

@@ -30,15 +30,6 @@ type SipuniAuthMessage struct {
 	Body SipuniAuthBody `json:"body"`
 }
 
-type SipuniSubscribeBody struct {
-	Event string `json:"event"`
-}
-
-type SipuniSubscribeMessage struct {
-	Type string              `json:"type"`
-	Body SipuniSubscribeBody `json:"body"`
-}
-
 type SipuniEvent struct {
 	Action  string          `json:"action"`
 	Request json.RawMessage `json:"request"`
@@ -210,19 +201,7 @@ func main() {
 					// Handle auth response
 					if event.Action == "auth" {
 						if event.Status == 1 {
-							log.Info("Sipuni authentication successful")
-
-							// Some Sipuni versions or specific integrations might require a subscribe message
-							// even if not explicitly documented in the main guide.
-							subMsg := SipuniSubscribeMessage{
-								Type: "subscribe",
-								Body: SipuniSubscribeBody{Event: "*"},
-							}
-							if err := c.WriteJSON(subMsg); err != nil {
-								log.Error("subscription send error", zap.Error(err))
-							} else {
-								log.Info("Subscription message sent for all events (*)")
-							}
+							log.Info("Sipuni authentication successful — waiting for events")
 						} else {
 							log.Error("Sipuni authentication failed",
 								zap.Int("status", event.Status), zap.String("raw", string(message)))
@@ -373,7 +352,7 @@ func handleNotify(request json.RawMessage) {
 	job := queue.AudioProcessingJob{
 		CallID:    callID,
 		CompanyID: companyID,
-		AudioURL:  notify.CallRecordLink,
+		AudioURL:  recordLink,
 		ManagerID: notify.UserID,
 	}
 

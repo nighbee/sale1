@@ -27,7 +27,11 @@ class ProcessAudioUseCase:
     async def execute(self, job: dict):
         call_id = job.get('call_id')
         company_id = job.get('company_id')
-        audio_url = job.get('audio_url')
+        # Support both key names: 'audio_url' (sipuni-listener) and 'call_link' (sheets-sync legacy)
+        audio_url = job.get('audio_url') or job.get('call_link')
+
+        if not audio_url:
+            raise ValueError(f"Missing audio URL for call_id={call_id}: job has no 'audio_url' or 'call_link' field")
 
         logger.info(
             "processing audio job",

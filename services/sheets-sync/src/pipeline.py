@@ -79,8 +79,33 @@ class Pipeline:
         skipped = 0
         for row in rows:
             if not row.needs_processing:
+                logger.debug(
+                    "Skipping row (already processed or no call link)",
+                    extra={
+                        "row": row.sheet_row_number,
+                        "manager": row.man_name,
+                        "client_phone": row.client_phone,
+                        "stt_status": getattr(row, 'stt_status', '?'),
+                        "call_link": row.call_link or '—',
+                    },
+                )
                 skipped += 1
                 continue
+
+            logger.info(
+                "Processing row",
+                extra={
+                    "row": row.sheet_row_number,
+                    "manager_id": row.man_id,
+                    "manager_name": row.man_name,
+                    "client_phone": row.client_phone,
+                    "date": row.date,
+                    "time": row.time,
+                    "duration_s": row.duration_seconds,
+                    "call_link": row.call_link,
+                    "chat_link": row.chat_link or '—',
+                },
+            )
 
             parsed_date = _parse_date(row.date)
             parsed_time = _parse_time(row.time)
@@ -106,6 +131,17 @@ class Pipeline:
                     chat_link=row.chat_link or None,
                     call_date=parsed_date,
                     call_time=parsed_time,
+                )
+                logger.info(
+                    "Call upserted to DB",
+                    extra={
+                        "call_id": call_id,
+                        "row": row.sheet_row_number,
+                        "manager": row.man_name,
+                        "client_phone": row.client_phone,
+                        "call_date": str(parsed_date),
+                        "call_time": str(parsed_time),
+                    },
                 )
                 self.queue.push_job(
                     call_id=call_id,
@@ -155,6 +191,19 @@ class Pipeline:
                 processed_at_raw.isoformat() if processed_at_raw else ""
             )
 
+            logger.info(
+                "Writing result back to sheet",
+                extra={
+                    "call_id": call.get("id"),
+                    "row": row_number,
+                    "stt_status": stt_status,
+                    "quality_score": call.get("quality_score"),
+                    "script_match": call.get("script_match"),
+                    "errors_free": call.get("errors_free"),
+                    "llm_provider": call.get("llm_provider"),
+                    "processed_at": processed_at_str,
+                },
+            )
             try:
                 self.sheets.write_analysis_result(
                     row_number=row_number,
@@ -168,6 +217,10 @@ class Pipeline:
                     llm_provider=call.get("llm_provider") or "",
                     processed_at=processed_at_str,
                     error_message=call.get("error_message") or "",
+                )
+                logger.info(
+                    "Sheet row updated",
+                    extra={"call_id": call.get("id"), "row": row_number, "stt_status": stt_status},
                 )
                 written += 1
             except Exception as e:
