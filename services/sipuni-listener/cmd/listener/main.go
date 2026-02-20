@@ -205,7 +205,8 @@ func main() {
 
 					// Handle notify message
 					if event.Action == "notify" {
-						log.Info("Received Sipuni notify event")
+						log.Info("Sipuni notify event received",
+							zap.String("raw", string(message)))
 						handleNotify(event.Request)
 						continue
 					}
@@ -257,6 +258,14 @@ func handleNotify(request json.RawMessage) {
 		zap.Bool("has_recording", notify.CallRecordLink != ""))
 
 	// We only care about calls with a record link
+	if notify.CallRecordLink == "" {
+		log.Info("skipping notify — no recording",
+			zap.String("sipuni_call_id", notify.CallID),
+			zap.String("event", notify.Event.String()),
+			zap.String("status", notify.Status))
+		return
+	}
+
 	if notify.CallRecordLink != "" {
 
 		callID := uuid.New().String()
@@ -314,8 +323,5 @@ func handleNotify(request json.RawMessage) {
 			log.Info("audio processing job enqueued",
 				zap.String("call_id", callID), zap.String("audio_url", notify.CallRecordLink))
 		}
-	} else {
-		log.Debug("ignored notify - no recording link yet",
-			zap.String("sipuni_call_id", notify.CallID))
 	}
 }

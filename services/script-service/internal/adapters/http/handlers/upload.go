@@ -38,6 +38,12 @@ func (h *ScriptHandler) Upload(c *fiber.Ctx) error {
 	name := c.FormValue("name")
 	companyID := c.FormValue("company_id") // In production, get from JWT
 	teamID := c.FormValue("team_id")
+
+	if companyID == "" {
+		log.Warn("upload rejected: company_id is required")
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "company_id is required"})
+	}
+
 	log.Info("script upload started",
 		zap.String("company_id", companyID),
 		zap.String("name", name),
