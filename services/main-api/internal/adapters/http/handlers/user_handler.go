@@ -2,12 +2,13 @@ package handlers
 
 import (
 	"encoding/json"
-	"log"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/salesai/main-api/internal/core/domain"
 	"github.com/salesai/main-api/internal/core/ports"
+	applogger "github.com/salesai/main-api/internal/infrastructure/logger"
+	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -32,11 +33,14 @@ func NewUserHandler(userRepo ports.UserRepository) *UserHandler {
 // @Security BearerAuth
 // @Router /users [get]
 func (h *UserHandler) ListUsers(c *fiber.Ctx) error {
+	log := applogger.FromFiberCtx(c.Locals).With(zap.String("operation", "list_users"))
 	companyID := c.Locals("company_id").(string)
 	users, err := h.userRepo.ListByCompany(c.Context(), companyID)
 	if err != nil {
+		log.Error("list users failed", zap.String("company_id", companyID), zap.Error(err))
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
+	log.Debug("users listed", zap.String("company_id", companyID), zap.Int("count", len(users)))
 	return c.JSON(fiber.Map{"users": users})
 }
 
@@ -72,6 +76,7 @@ func (h *UserHandler) ListUserCompanies(c *fiber.Ctx) error {
 // @Security BearerAuth
 // @Router /users/invite [post]
 func (h *UserHandler) InviteUser(c *fiber.Ctx) error {
+	log := applogger.FromFiberCtx(c.Locals).With(zap.String("operation", "invite_user"))
 	companyID := c.Locals("company_id").(string)
 
 	var req struct {
@@ -85,11 +90,11 @@ func (h *UserHandler) InviteUser(c *fiber.Ctx) error {
 	}
 
 	if err := c.BodyParser(&req); err != nil {
+		log.Warn("body parse error", zap.Error(err))
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid body"})
 	}
-	// Log the parsed request struct
-	reqJson, _ := json.MarshalIndent(req, "", "  ")
-	log.Printf("InviteUser request: %s", reqJson)
+	reqJson, _ := json.Marshal(req)
+	log.Debug("InviteUser request parsed", zap.String("payload", string(reqJson)))
 
 	emails := req.Emails
 	if req.Email != "" {
@@ -148,6 +153,7 @@ func (h *UserHandler) InviteUser(c *fiber.Ctx) error {
 		invitedUsers = append(invitedUsers, user)
 	}
 
+	log.Info("users invited", zap.String("company_id", companyID), zap.Int("count", len(invitedUsers)))
 	return c.Status(201).JSON(fiber.Map{
 		"users":   invitedUsers,
 		"message": "Invitations sent successfully",

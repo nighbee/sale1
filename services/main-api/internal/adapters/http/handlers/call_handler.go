@@ -12,6 +12,8 @@ import (
 	"github.com/salesai/main-api/internal/core/domain"
 	"github.com/salesai/main-api/internal/core/ports"
 	"github.com/salesai/main-api/internal/core/usecases/calls"
+	applogger "github.com/salesai/main-api/internal/infrastructure/logger"
+	"go.uber.org/zap"
 )
 
 var _ = domain.Transcript{}
@@ -58,6 +60,7 @@ func NewCallHandler(
 // @Security BearerAuth
 // @Router /calls [get]
 func (h *CallHandler) ListCalls(c *fiber.Ctx) error {
+	log := applogger.FromFiberCtx(c.Locals).With(zap.String("operation", "list_calls"))
 	companyID := c.Locals("company_id").(string)
 
 	page, _ := strconv.Atoi(c.Query("page", "1"))
@@ -72,8 +75,13 @@ func (h *CallHandler) ListCalls(c *fiber.Ctx) error {
 		Limit:     limit,
 	}
 
+	log.Debug("listing calls", zap.String("company_id", companyID),
+		zap.String("manager_id", req.ManagerID), zap.String("status", req.Status),
+		zap.Int("page", page), zap.Int("limit", limit))
+
 	resp, err := h.listCallsUC.Execute(c.Context(), req)
 	if err != nil {
+		log.Error("list calls failed", zap.String("company_id", companyID), zap.Error(err))
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": err.Error(),
 		})
@@ -94,16 +102,20 @@ func (h *CallHandler) ListCalls(c *fiber.Ctx) error {
 // @Security BearerAuth
 // @Router /calls/{id} [get]
 func (h *CallHandler) GetCall(c *fiber.Ctx) error {
+	log := applogger.FromFiberCtx(c.Locals).With(zap.String("operation", "get_call"))
 	id := c.Params("id")
 	companyID := c.Locals("company_id").(string)
+	log.Debug("fetching call", zap.String("call_id", id), zap.String("company_id", companyID))
 	call, err := h.callRepo.GetByID(c.Context(), companyID, id)
 	if err != nil {
+		log.Warn("call not found", zap.String("call_id", id), zap.Error(err))
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Call not found"})
 	}
 
 	transcript, _ := h.transcriptRepo.GetByCallID(c.Context(), id)
 	analysis, _ := h.analysisRepo.GetByCallID(c.Context(), id)
 
+	log.Info("call fetched", zap.String("call_id", id), zap.String("status", string(call.Status)))
 	return c.JSON(fiber.Map{
 		"call":       call,
 		"transcript": transcript,
@@ -123,20 +135,26 @@ func (h *CallHandler) GetCall(c *fiber.Ctx) error {
 // @Security BearerAuth
 // @Router /calls/{id}/transcript [get]
 func (h *CallHandler) GetTranscript(c *fiber.Ctx) error {
+	log := applogger.FromFiberCtx(c.Locals).With(zap.String("operation", "get_transcript"))
 	id := c.Params("id")
+	log.Debug("fetching transcript", zap.String("call_id", id))
 
 	// Try gRPC first if client is available
 	if h.grpcClient != nil {
 		resp, err := h.grpcClient.GetTranscript(c.Context(), id)
 		if err == nil {
+			log.Debug("transcript fetched via gRPC", zap.String("call_id", id))
 			return c.JSON(resp)
 		}
+		log.Debug("gRPC transcript fetch failed, falling back to DB", zap.String("call_id", id), zap.Error(err))
 	}
 
 	transcript, err := h.transcriptRepo.GetByCallID(c.Context(), id)
 	if err != nil {
+		log.Warn("transcript not found", zap.String("call_id", id), zap.Error(err))
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Transcript not found"})
 	}
+	log.Info("transcript fetched from DB", zap.String("call_id", id))
 	return c.JSON(transcript)
 }
 
@@ -152,20 +170,26 @@ func (h *CallHandler) GetTranscript(c *fiber.Ctx) error {
 // @Security BearerAuth
 // @Router /calls/{id}/analysis [get]
 func (h *CallHandler) GetAnalysis(c *fiber.Ctx) error {
+	log := applogger.FromFiberCtx(c.Locals).With(zap.String("operation", "get_analysis"))
 	id := c.Params("id")
+	log.Debug("fetching analysis", zap.String("call_id", id))
 
 	// Try gRPC first if client is available
 	if h.grpcClient != nil {
 		resp, err := h.grpcClient.GetAnalysis(c.Context(), id)
 		if err == nil {
+			log.Debug("analysis fetched via gRPC", zap.String("call_id", id))
 			return c.JSON(resp)
 		}
+		log.Debug("gRPC analysis fetch failed, falling back to DB", zap.String("call_id", id), zap.Error(err))
 	}
 
 	analysis, err := h.analysisRepo.GetByCallID(c.Context(), id)
 	if err != nil {
+		log.Warn("analysis not found", zap.String("call_id", id), zap.Error(err))
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Analysis not found"})
 	}
+	log.Info("analysis fetched from DB", zap.String("call_id", id))
 	return c.JSON(analysis)
 }
 
@@ -180,7 +204,10 @@ func (h *CallHandler) GetAnalysis(c *fiber.Ctx) error {
 // @Security BearerAuth
 // @Router /calls/{id}/reprocess [post]
 func (h *CallHandler) ReprocessCall(c *fiber.Ctx) error {
+	log := applogger.FromFiberCtx(c.Locals).With(zap.String("operation", "reprocess_call"))
 	id := c.Params("id")
+	userID, _ := c.Locals("user_id").(string)
+	log.Info("call reprocess requested", zap.String("call_id", id), zap.String("user_id", userID))
 	// Logic to re-enqueue job would go here
 	return c.JSON(fiber.Map{
 		"call_id": id,

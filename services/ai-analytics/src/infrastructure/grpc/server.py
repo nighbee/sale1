@@ -10,9 +10,9 @@ logger = logging.getLogger(__name__)
 
 class AnalyticsServiceServicer(analytics_service_pb2_grpc.AnalyticsServiceServicer):
     def GetAnalysis(self, request, context):
-        start_time = REQUEST_LATENCY.labels(app_name='ai-analytics', method='GRPC', path='/GetAnalysis').time()
+        timer = REQUEST_LATENCY.labels(app_name='ai-analytics', method='GRPC', path='/GetAnalysis').time()
         call_id = request.call_id
-        logger.info(f"gRPC GetAnalysis called for call_id: {call_id}")
+        logger.info("gRPC GetAnalysis called", extra={"call_id": call_id, "method": "GetAnalysis"})
 
         conn = get_pool().getconn()
         try:
@@ -27,6 +27,8 @@ class AnalyticsServiceServicer(analytics_service_pb2_grpc.AnalyticsServiceServic
 
             if row:
                 REQUEST_COUNT.labels(app_name='ai-analytics', method='GRPC', path='/GetAnalysis', status_code='200').inc()
+                logger.info("gRPC GetAnalysis success",
+                            extra={"call_id": call_id, "overall_rating": float(row[3])})
                 return analytics_service_pb2.AnalysisResponse(
                     call_id=call_id,
                     quality_score=row[0],
@@ -40,12 +42,14 @@ class AnalyticsServiceServicer(analytics_service_pb2_grpc.AnalyticsServiceServic
                 )
             else:
                 REQUEST_COUNT.labels(app_name='ai-analytics', method='GRPC', path='/GetAnalysis', status_code='404').inc()
+                logger.warning("gRPC GetAnalysis not found", extra={"call_id": call_id})
                 context.abort(grpc.StatusCode.NOT_FOUND, "Analysis not found")
         except Exception as e:
             REQUEST_COUNT.labels(app_name='ai-analytics', method='GRPC', path='/GetAnalysis', status_code='500').inc()
+            logger.error("gRPC GetAnalysis error", extra={"call_id": call_id, "error": str(e)})
             raise e
         finally:
-            start_time.stop()
+            timer.stop()
             get_pool().putconn(conn)
 
 import os
@@ -56,5 +60,5 @@ def serve():
     analytics_service_pb2_grpc.add_AnalyticsServiceServicer_to_server(AnalyticsServiceServicer(), server)
     server.add_insecure_port(f'[::]:{port}')
     server.start()
-    logger.info(f"Analytics gRPC server started on port {port}")
+    logger.info("Analytics gRPC server started", extra={"grpc_port": port})
     return server

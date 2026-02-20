@@ -29,7 +29,11 @@ class ProcessAudioUseCase:
         company_id = job.get('company_id')
         audio_url = job.get('audio_url')
 
-        logger.info(f"Executing ProcessAudioUseCase for call: {call_id}")
+        logger.info(
+            "processing audio job",
+            extra={"call_id": call_id, "company_id": company_id,
+                   "audio_url": audio_url, "stt_provider": self.stt_provider_name},
+        )
 
         tmp_path = None
         wav_path = None
@@ -96,9 +100,9 @@ class ProcessAudioUseCase:
             # Publish event
             await publish_transcript_ready(call_id, company_id)
 
-            logger.info(f"Successfully processed call {call_id}")
+            logger.info("audio job completed successfully", extra={"call_id": call_id, "company_id": company_id})
         except Exception as e:
-            logger.error(f"Error in ProcessAudioUseCase for call {call_id}: {e}")
+            logger.error("audio job failed", extra={"call_id": call_id, "company_id": company_id, "error": str(e)})
             raise
         finally:
             if tmp_path and os.path.exists(tmp_path):

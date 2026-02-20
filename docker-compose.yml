@@ -43,6 +43,7 @@ services:
       DATABASE_URL: "host=postgres port=5432 user=salesai_user password=strong_password dbname=salesai sslmode=disable"
       JWT_SECRET: "mysecret"
       REDIS_URL: "redis://redis:6379"
+      LOG_LEVEL: ${LOG_LEVEL:-info}
     depends_on:
       - postgres
       - redis
@@ -50,6 +51,11 @@ services:
       - sale1-network
     volumes:
       - ./services/main-api/internal/infrastructure/database/migrations:/app/internal/infrastructure/database/migrations:ro
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
 
   sipuni-listener:
     build: ./services/sipuni-listener
@@ -59,11 +65,17 @@ services:
       DATABASE_URL: "host=postgres port=5432 user=salesai_user password=strong_password dbname=salesai sslmode=disable"
       REDIS_URL: "redis://redis:6379"
       SIPUNI_API_KEY: ${SIPUNI_API_KEY}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
     depends_on:
       - postgres
       - redis
     networks:
       - sale1-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
 
   script-service:
     build: ./services/script-service
@@ -74,11 +86,17 @@ services:
       MINIO_ENDPOINT: "minio:9000"
       MINIO_ACCESS_KEY: "minioadmin"
       MINIO_SECRET_KEY: "minioadmin123"
+      LOG_LEVEL: ${LOG_LEVEL:-info}
     depends_on:
       - postgres
       - minio
     networks:
       - sale1-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
 
   stt-service:
     build: ./services/stt-service
@@ -89,11 +107,17 @@ services:
       GOOGLE_API_KEY: ${GOOGLE_API_KEY}
       GOOGLE_AI_MODEL: ${GOOGLE_AI_MODEL}
       STT_PROVIDER: "openai"
+      LOG_LEVEL: ${LOG_LEVEL:-info}
     depends_on:
       - postgres
       - redis
     networks:
       - sale1-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
 
   ai-analytics:
     build: ./services/ai-analytics
@@ -103,11 +127,17 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY}
       GOOGLE_AI_MODEL: ${GOOGLE_AI_MODEL}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
     depends_on:
       - postgres
       - redis
     networks:
       - sale1-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
 
   frontend:
     build: ./services/frontend

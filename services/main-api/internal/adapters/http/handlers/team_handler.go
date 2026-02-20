@@ -4,6 +4,8 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/salesai/main-api/internal/core/domain"
 	"github.com/salesai/main-api/internal/core/usecases/teams"
+	applogger "github.com/salesai/main-api/internal/infrastructure/logger"
+	"go.uber.org/zap"
 )
 
 type TeamHandler struct {
@@ -27,6 +29,7 @@ func NewTeamHandler(teamUC *teams.TeamUseCase) *TeamHandler {
 // @Security BearerAuth
 // @Router /teams [post]
 func (h *TeamHandler) Create(c *fiber.Ctx) error {
+	log := applogger.FromFiberCtx(c.Locals).With(zap.String("operation", "create_team"))
 	companyID := c.Locals("company_id").(string)
 	var req struct {
 		Name        string `json:"name"`
@@ -34,12 +37,15 @@ func (h *TeamHandler) Create(c *fiber.Ctx) error {
 		AutoAssign  bool   `json:"auto_assign"`
 	}
 	if err := c.BodyParser(&req); err != nil {
+		log.Warn("body parse error", zap.Error(err))
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid body"})
 	}
 	team, err := h.teamUC.Create(c.Context(), companyID, req.Name, req.Description, req.AutoAssign)
 	if err != nil {
+		log.Error("team creation failed", zap.String("company_id", companyID), zap.String("name", req.Name), zap.Error(err))
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
+	log.Info("team created", zap.String("company_id", companyID), zap.String("team_id", team.ID), zap.String("name", team.Name))
 	return c.Status(201).JSON(team)
 }
 

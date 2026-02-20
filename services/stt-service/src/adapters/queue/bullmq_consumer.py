@@ -15,7 +15,7 @@ async def start_consumer():
 
     use_case = ProcessAudioUseCase()
 
-    logger.info("STT Consumer started, waiting for jobs in 'bullmq:audio_processing'...")
+    logger.info("STT BullMQ consumer started", extra={"queue": "bullmq:audio_processing", "redis_url": redis_url})
 
     while True:
         try:
@@ -26,30 +26,46 @@ async def start_consumer():
                 job = json.loads(job_data)
 
                 call_id = job.get('call_id')
+                company_id = job.get('company_id')
                 retry_count = job.get('retry_count', 0)
                 max_retries = job.get('max_retries', 3)
 
-                logger.info(f"Processing job for call: {call_id} (Attempt {retry_count + 1})")
+                logger.info(
+                    "processing STT job",
+                    extra={"call_id": call_id, "company_id": company_id,
+                           "attempt": retry_count + 1, "max_retries": max_retries},
+                )
                 log_processing_event(call_id, "stt-service", "processing", retry_count=retry_count)
 
                 try:
                     await use_case.execute(job)
                     log_processing_event(call_id, "stt-service", "completed", retry_count=retry_count)
                     JOBS_PROCESSED.labels(status='completed').inc()
+                    logger.info(
+                        "STT job completed",
+                        extra={"call_id": call_id, "company_id": company_id, "attempt": retry_count + 1},
+                    )
                 except Exception as e:
-                    logger.error(f"Failed to execute use case: {e}")
                     JOBS_PROCESSED.labels(status='error').inc()
-
                     log_processing_event(call_id, "stt-service", "error", error_message=str(e), retry_count=retry_count)
+
                     if retry_count < max_retries:
-                        job['retry_count'] = retry_count + 1
-                        logger.info(f"Retrying job for call: {call_id}. New attempt: {job['retry_count']}")
-                        # Wait a bit before retrying (exponential backoff mock)
-                        await asyncio.sleep(5 * (retry_count + 1))
+                        next_attempt = retry_count + 1
+                        backoff = 5 * (retry_count + 1)
+                        job['retry_count'] = next_attempt
+                        logger.warning(
+                            "STT job failed, retrying",
+                            extra={"call_id": call_id, "attempt": next_attempt,
+                                   "backoff_s": backoff, "error": str(e)},
+                        )
+                        await asyncio.sleep(backoff)
                         await r.rpush("bullmq:audio_processing", json.dumps(job))
                     else:
-                        logger.error(f"Max retries reached for call: {call_id}")
+                        logger.error(
+                            "STT job max retries reached",
+                            extra={"call_id": call_id, "max_retries": max_retries, "error": str(e)},
+                        )
 
         except Exception as e:
-            logger.error(f"Consumer error: {e}")
+            logger.error("BullMQ consumer loop error", extra={"error": str(e)})
             await asyncio.sleep(5)

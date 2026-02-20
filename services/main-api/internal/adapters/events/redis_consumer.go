@@ -1,20 +1,18 @@
 package events
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
-	"log"
+	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/salesai/main-api/internal/adapters/http/ws"
 	"github.com/salesai/main-api/internal/core/ports"
-)
-
-import (
-	"fmt"
-	"net/http"
-	"bytes"
+	applogger "github.com/salesai/main-api/internal/infrastructure/logger"
+	"go.uber.org/zap"
 )
 
 type RedisConsumer struct {
@@ -39,12 +37,14 @@ func NewRedisConsumer(
 }
 
 func (c *RedisConsumer) Start(ctx context.Context) {
+	log := applogger.With(zap.String("component", "redis_consumer"))
 	streams := []string{"analysis_completed", "critical_error"}
 	groupName := "main_api_group"
 	consumerName := "main_api_consumer_1"
 
 	// Initial group creation
 	c.ensureGroups(ctx, streams, groupName)
+	log.Info("Redis consumer started", zap.Strings("streams", streams), zap.String("group", groupName))
 
 	for {
 		entries, err := c.client.XReadGroup(ctx, &redis.XReadGroupArgs{
@@ -57,14 +57,14 @@ func (c *RedisConsumer) Start(ctx context.Context) {
 
 		if err != nil {
 			if err != redis.Nil {
-				log.Printf("Redis error: %v", err)
+				log.Error("Redis read error", zap.Error(err))
 				// If error is NOGROUP, try to recreate groups
 				if err.Error() == "NOGROUP No such key 'analysis_completed' or consumer group 'main_api_group' in XREADGROUP with GROUP option" ||
 					err.Error() == "NOGROUP No such key 'critical_error' or consumer group 'main_api_group' in XREADGROUP with GROUP option" {
-					log.Println("Consumer group missing, attempting to recreate...")
+					log.Warn("Consumer group missing, attempting to recreate")
 					c.ensureGroups(ctx, streams, groupName)
 				}
-				time.Sleep(2 * time.Second) // Small backoff on error
+				time.Sleep(2 * time.Second)
 			}
 			continue
 		}
@@ -79,12 +79,17 @@ func (c *RedisConsumer) Start(ctx context.Context) {
 
 				var payload map[string]interface{}
 				if err := json.Unmarshal([]byte(payloadStr), &payload); err != nil {
-					log.Printf("Unmarshal error: %v", err)
+					log.Error("unmarshal payload error", zap.String("stream", streamName), zap.Error(err))
 					continue
 				}
 
 				callID, _ := payload["call_id"].(string)
 				companyID, _ := payload["company_id"].(string)
+				log.Info("processing Redis event",
+					zap.String("stream", streamName),
+					zap.String("call_id", callID),
+					zap.String("company_id", companyID),
+					zap.String("message_id", message.ID))
 
 				if streamName == "analysis_completed" {
 					call, err := c.callRepo.GetByIDInternal(ctx, callID)
@@ -146,8 +151,8 @@ func (c *RedisConsumer) notifyExternal(ctx context.Context, companyID, subject, 
 			if botToken != "" && chatID != "" {
 				apiURL := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", botToken)
 				payload := map[string]string{
-					"chat_id": chatID,
-					"text":    fmt.Sprintf("<b>%s</b>\n%s", subject, message),
+					"chat_id":    chatID,
+					"text":       fmt.Sprintf("<b>%s</b>\n%s", subject, message),
 					"parse_mode": "HTML",
 				}
 				body, _ := json.Marshal(payload)
@@ -158,15 +163,16 @@ func (c *RedisConsumer) notifyExternal(ctx context.Context, companyID, subject, 
 }
 
 func (c *RedisConsumer) ensureGroups(ctx context.Context, streams []string, groupName string) {
+	log := applogger.With(zap.String("component", "redis_consumer"))
 	for _, stream := range streams {
 		err := c.client.XGroupCreateMkStream(ctx, stream, groupName, "0").Err()
 		if err != nil {
 			if err.Error() == "BUSYGROUP Consumer Group name already exists" {
 				continue
 			}
-			log.Printf("XGroupCreate error for %s: %v", stream, err)
+			log.Error("XGroupCreate error", zap.String("stream", stream), zap.Error(err))
 		} else {
-			log.Printf("Successfully created consumer group %s for stream %s", groupName, stream)
+			log.Info("Consumer group created", zap.String("group", groupName), zap.String("stream", stream))
 		}
 	}
 }

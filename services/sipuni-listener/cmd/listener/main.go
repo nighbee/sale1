@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"log"
 	"net/url"
 	"os"
 	"os/signal"
@@ -18,6 +17,8 @@ import (
 	"github.com/salesai/sipuni-listener/internal/adapters/queue"
 	"github.com/salesai/sipuni-listener/internal/adapters/repositories"
 	"github.com/salesai/sipuni-listener/internal/core/domain"
+	applogger "github.com/salesai/sipuni-listener/internal/infrastructure/logger"
+	"go.uber.org/zap"
 )
 
 type SipuniAuthBody struct {
@@ -55,6 +56,10 @@ var (
 )
 
 func main() {
+	applogger.Init("sipuni-listener")
+	defer applogger.Sync()
+	log := applogger.L
+
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
@@ -70,9 +75,10 @@ func main() {
 
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
-		log.Fatal("database connection:", err)
+		log.Fatal("database connection failed", zap.Error(err))
 	}
 	defer db.Close()
+	log.Info("PostgreSQL connected")
 
 	callRepo = repositories.NewCallRepository(db)
 
@@ -81,11 +87,13 @@ func main() {
 	if companyID == "" {
 		companyID = "550e8400-e29b-41d4-a716-446655440000"
 	}
+	log.Info("company configured", zap.String("company_id", companyID))
 
 	publisher, err = queue.NewBullMQPublisher(redisURL)
 	if err != nil {
-		log.Fatal("redis publisher:", err)
+		log.Fatal("redis publisher init failed", zap.Error(err))
 	}
+	log.Info("BullMQ publisher ready", zap.String("redis_url", redisURL))
 
 	// Start a simple HTTP server for metrics
 	go func() {
@@ -98,9 +106,9 @@ func main() {
 		if port == "" {
 			port = "8081"
 		}
-		log.Printf("Metrics server starting on port %s", port)
+		log.Info("Metrics server starting", zap.String("port", port))
 		if err := app.Listen(":" + port); err != nil {
-			log.Printf("Metrics server error: %v", err)
+			log.Error("Metrics server error", zap.Error(err))
 		}
 	}()
 
@@ -109,14 +117,18 @@ func main() {
 
 	backoff := 2 * time.Second
 	maxBackoff := 60 * time.Second
+	retryCount := 0
 
 	for {
-		log.Printf("Connecting to %s...", u.String())
+		log.Info("Connecting to Sipuni WebSocket", zap.String("url", u.String()), zap.Int("retry_count", retryCount))
 		c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 		if err != nil {
-			log.Printf("Dial error: %v. Retrying in %v...", err, backoff)
+			log.Warn("WebSocket dial error, will retry",
+				zap.Error(err), zap.Duration("backoff", backoff), zap.Int("retry_count", retryCount))
+			retryCount++
 			select {
 			case <-interrupt:
+				log.Info("Interrupt received during reconnect, shutting down")
 				return
 			case <-time.After(backoff):
 				backoff *= 2
@@ -129,7 +141,8 @@ func main() {
 
 		// Connected successfully
 		backoff = 2 * time.Second
-		log.Println("Connected to Sipuni WebSocket server.")
+		retryCount = 0
+		log.Info("Connected to Sipuni WebSocket server")
 
 		// Auth
 		authMsg := SipuniAuthMessage{
@@ -137,11 +150,11 @@ func main() {
 			Body: SipuniAuthBody{Key: apiKey},
 		}
 		if err := c.WriteJSON(authMsg); err != nil {
-			log.Printf("Auth send error: %v", err)
+			log.Error("auth send error", zap.Error(err))
 			c.Close()
 			continue
 		}
-		log.Println("Authentication message sent.")
+		log.Info("Authentication message sent to Sipuni")
 
 		// Keepalive goroutine
 		keepaliveStop := make(chan struct{})
@@ -153,9 +166,10 @@ func main() {
 				case <-ticker.C:
 					keepalive := map[string]string{"type": "keepalive"}
 					if err := c.WriteJSON(keepalive); err != nil {
-						log.Printf("Keepalive error: %v", err)
+						log.Warn("keepalive send error", zap.Error(err))
 						return
 					}
+					log.Debug("keepalive sent")
 				case <-keepaliveStop:
 					return
 				}
@@ -170,7 +184,7 @@ func main() {
 			for {
 				_, message, err := c.ReadMessage()
 				if err != nil {
-					log.Printf("[WS] Read error: %v", err)
+					log.Warn("WebSocket read error", zap.Error(err))
 					return
 				}
 
@@ -181,16 +195,17 @@ func main() {
 					// Handle auth response
 					if event.Action == "auth" {
 						if event.Status == 1 {
-							log.Println("[WS] Authentication successful")
+							log.Info("Sipuni authentication successful")
 						} else {
-							log.Printf("[WS] Authentication failed! Status: %d, Message: %s", event.Status, string(message))
+							log.Error("Sipuni authentication failed",
+								zap.Int("status", event.Status), zap.String("raw", string(message)))
 						}
 						continue
 					}
 
 					// Handle notify message
 					if event.Action == "notify" {
-						log.Printf("[WS] Received notify event")
+						log.Info("Received Sipuni notify event")
 						handleNotify(event.Request)
 						continue
 					}
@@ -200,23 +215,24 @@ func main() {
 				var directNotify SipuniNotifyRequest
 				err = json.Unmarshal(message, &directNotify)
 				if err == nil && directNotify.CallID != "" {
-					log.Printf("[WS] Received direct notify (unwrapped) for CallID: %s", directNotify.CallID)
+					log.Info("received direct notify (unwrapped)",
+						zap.String("call_id", directNotify.CallID))
 					// We need to re-marshal to RawMessage to use existing handleNotify
 					rawRequest, _ := json.Marshal(directNotify)
 					handleNotify(rawRequest)
 					continue
 				}
 
-				log.Printf("[DIAGNOSTIC] Unrecognized message format: %s", string(message))
+				log.Debug("unrecognized message format", zap.String("raw", string(message)))
 			}
 		}()
 
 		select {
 		case <-done:
-			log.Println("Listen loop terminated. Reconnecting...")
+			log.Warn("Listen loop terminated, reconnecting")
 			c.Close()
 		case <-interrupt:
-			log.Println("Interrupt received. Closing connection...")
+			log.Info("Interrupt received, closing WebSocket connection")
 			c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 			c.Close()
 			return
@@ -225,14 +241,20 @@ func main() {
 }
 
 func handleNotify(request json.RawMessage) {
+	log := applogger.L.With(zap.String("operation", "handle_notify"))
 	var notify SipuniNotifyRequest
 	if err := json.Unmarshal(request, &notify); err != nil {
-		log.Println("Unmarshal notify error:", err)
+		log.Error("unmarshal notify error", zap.Error(err))
 		return
 	}
 
-	// Log all notifications for debugging
-	log.Printf("Processing notify: ID=%s, Event=%s, Status=%s, Link=%s", notify.CallID, notify.Event.String(), notify.Status, notify.CallRecordLink)
+	log.Info("processing Sipuni notify",
+		zap.String("sipuni_call_id", notify.CallID),
+		zap.String("event", notify.Event.String()),
+		zap.String("status", notify.Status),
+		zap.String("src_num", notify.SrcNum),
+		zap.String("dst_num", notify.DstNum),
+		zap.Bool("has_recording", notify.CallRecordLink != ""))
 
 	// We only care about calls with a record link
 	if notify.CallRecordLink != "" {
@@ -270,11 +292,13 @@ func handleNotify(request json.RawMessage) {
 		}
 
 		if err := callRepo.Create(context.Background(), call); err != nil {
-			log.Println("Database error saving call:", err)
+			log.Error("database error saving call",
+				zap.String("call_id", callID), zap.Error(err))
 			return
 		}
-
-		log.Printf("Enqueuing audio processing job for call %s", callID)
+		log.Info("call record created",
+			zap.String("call_id", callID), zap.String("manager_id", notify.UserID),
+			zap.String("client_phone", clientPhone), zap.Int("duration_s", duration))
 
 		job := queue.AudioProcessingJob{
 			CallID:    callID,
@@ -284,9 +308,14 @@ func handleNotify(request json.RawMessage) {
 		}
 
 		if err := publisher.EnqueueAudioProcessing(context.Background(), job); err != nil {
-			log.Println("Queue error enqueuing job:", err)
+			log.Error("queue error enqueuing audio job",
+				zap.String("call_id", callID), zap.Error(err))
+		} else {
+			log.Info("audio processing job enqueued",
+				zap.String("call_id", callID), zap.String("audio_url", notify.CallRecordLink))
 		}
 	} else {
-		log.Printf("Ignored notify for call %s (no recording link yet)", notify.CallID)
+		log.Debug("ignored notify - no recording link yet",
+			zap.String("sipuni_call_id", notify.CallID))
 	}
 }

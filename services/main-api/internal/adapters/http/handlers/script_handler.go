@@ -10,6 +10,8 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/salesai/main-api/internal/core/domain"
 	"github.com/salesai/main-api/internal/core/ports"
+	applogger "github.com/salesai/main-api/internal/infrastructure/logger"
+	"go.uber.org/zap"
 )
 
 var _ = domain.Script{}
@@ -37,11 +39,14 @@ func NewScriptHandler(scriptRepo ports.ScriptRepository, scriptServiceURL string
 // @Security BearerAuth
 // @Router /scripts [get]
 func (h *ScriptHandler) ListScripts(c *fiber.Ctx) error {
+	log := applogger.FromFiberCtx(c.Locals).With(zap.String("operation", "list_scripts"))
 	companyID := c.Locals("company_id").(string)
 	scripts, err := h.scriptRepo.ListByCompany(c.Context(), companyID)
 	if err != nil {
+		log.Error("list scripts failed", zap.String("company_id", companyID), zap.Error(err))
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
+	log.Debug("scripts listed", zap.String("company_id", companyID), zap.Int("count", len(scripts)))
 	return c.JSON(fiber.Map{"scripts": scripts})
 }
 
@@ -106,17 +111,23 @@ func (h *ScriptHandler) GetScriptContent(c *fiber.Ctx) error {
 // @Security BearerAuth
 // @Router /scripts [post]
 func (h *ScriptHandler) CreateScript(c *fiber.Ctx) error {
+	log := applogger.FromFiberCtx(c.Locals).With(zap.String("operation", "create_script"))
 	companyID := c.Locals("company_id").(string)
 
 	file, err := c.FormFile("file")
 	if err != nil {
+		log.Warn("missing file in form", zap.Error(err))
 		return c.Status(400).JSON(fiber.Map{"error": "File is required"})
 	}
 
 	name := c.FormValue("name")
 	if name == "" {
+		log.Warn("missing script name")
 		return c.Status(400).JSON(fiber.Map{"error": "Name is required"})
 	}
+
+	log.Info("proxying script upload", zap.String("company_id", companyID),
+		zap.String("name", name), zap.String("filename", file.Filename), zap.Int64("size", file.Size))
 
 	// Proxy to script-service
 	body := &bytes.Buffer{}
@@ -137,16 +148,19 @@ func (h *ScriptHandler) CreateScript(c *fiber.Ctx) error {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
+		log.Error("script-service call failed", zap.String("company_id", companyID), zap.Error(err))
 		return c.Status(500).JSON(fiber.Map{"error": fmt.Sprintf("Script service error: %v", err)})
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		respBody, _ := io.ReadAll(resp.Body)
+		log.Warn("script-service returned error", zap.Int("status", resp.StatusCode))
 		return c.Status(resp.StatusCode).Send(respBody)
 	}
 
-	io.Copy(io.Discard, resp.Body) // We don't really need the body here if we just want to return success
+	io.Copy(io.Discard, resp.Body)
+	log.Info("script uploaded successfully", zap.String("company_id", companyID), zap.String("name", name))
 
 	return c.Status(201).JSON(fiber.Map{
 		"message": "Script uploaded and parsed successfully via script-service",
@@ -211,11 +225,14 @@ func (h *ScriptHandler) UpdateScript(c *fiber.Ctx) error {
 // @Security BearerAuth
 // @Router /scripts/{id} [delete]
 func (h *ScriptHandler) DeleteScript(c *fiber.Ctx) error {
+	log := applogger.FromFiberCtx(c.Locals).With(zap.String("operation", "delete_script"))
 	id := c.Params("id")
 	companyID := c.Locals("company_id").(string)
 	if err := h.scriptRepo.Delete(c.Context(), companyID, id); err != nil {
+		log.Error("delete script failed", zap.String("script_id", id), zap.Error(err))
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
+	log.Info("script deleted", zap.String("script_id", id), zap.String("company_id", companyID))
 	return c.SendStatus(fiber.StatusNoContent)
 }
 

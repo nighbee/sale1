@@ -16,17 +16,17 @@ class AnalyzeCallUseCase:
         self.gemini_client = GeminiClient()
 
     async def execute(self, call_id: str, company_id: str):
-        logger.info(f"Analyzing call {call_id} for company {company_id}")
+        logger.info("analyzing call", extra={"call_id": call_id, "company_id": company_id})
 
         # 1. Fetch data
         transcript = get_transcript(call_id)
         if not transcript:
-            logger.error(f"Transcript not found for call {call_id}")
+            logger.error("transcript not found", extra={"call_id": call_id})
             return
 
         call = get_call(call_id)
         if not call:
-            logger.error(f"Call not found for {call_id}")
+            logger.error("call record not found", extra={"call_id": call_id})
             return
 
         manager_id = call['manager_id']
@@ -87,7 +87,9 @@ class AnalyzeCallUseCase:
         }
 
         save_analysis(report)
-        logger.info(f"Analysis saved for call {call_id}")
+        logger.info("analysis saved",
+                    extra={"call_id": call_id, "llm_provider": llm_provider,
+                           "overall_rating": round(overall_rating, 2), "kpi": round(kpi, 2)})
 
         # Publish event for real-time notifications
         await publish_analysis_completed(call_id, overall_rating)
@@ -100,7 +102,8 @@ class AnalyzeCallUseCase:
         found = [kw for kw in critical_keywords if kw in transcript_text.lower()]
 
         if found:
-            logger.warning(f"CRITICAL ERROR DETECTED in call {call_id}: {found}")
+            logger.warning("critical keywords detected",
+                           extra={"call_id": call_id, "company_id": company_id, "keywords": found})
             message = f"A critical error (mentions of {', '.join(found)}) was detected in call {call_id}."
             admin = get_company_admin(company_id)
             if admin:

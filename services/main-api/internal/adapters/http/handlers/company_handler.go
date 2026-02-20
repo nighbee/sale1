@@ -2,8 +2,10 @@ package handlers
 
 import (
 	"github.com/gofiber/fiber/v2"
-	"github.com/salesai/main-api/internal/core/ports"
 	"github.com/salesai/main-api/internal/core/domain"
+	"github.com/salesai/main-api/internal/core/ports"
+	applogger "github.com/salesai/main-api/internal/infrastructure/logger"
+	"go.uber.org/zap"
 )
 
 type CompanyHandler struct {
@@ -28,11 +30,14 @@ func NewCompanyHandler(companyRepo ports.CompanyRepository) *CompanyHandler {
 // @Security BearerAuth
 // @Router /companies/{id} [get]
 func (h *CompanyHandler) GetCompany(c *fiber.Ctx) error {
+	log := applogger.FromFiberCtx(c.Locals).With(zap.String("operation", "get_company"))
 	id := c.Params("id")
 	company, err := h.companyRepo.GetByID(c.Context(), id)
 	if err != nil {
+		log.Warn("company not found", zap.String("company_id", id), zap.Error(err))
 		return c.Status(404).JSON(fiber.Map{"error": "Company not found"})
 	}
+	log.Debug("company fetched", zap.String("company_id", id))
 	return c.JSON(company)
 }
 

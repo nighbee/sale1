@@ -19,9 +19,12 @@ async def publish_analysis_completed(call_id, overall_rating):
 
     try:
         await r.xadd("analysis_completed", {"payload": json.dumps(event)})
-        logger.info(f"Published analysis_completed for call {call_id}")
+        logger.info("published analysis_completed event",
+                    extra={"call_id": call_id, "overall_rating": overall_rating,
+                           "stream": "analysis_completed"})
     except Exception as e:
-        logger.error(f"Failed to publish analysis_completed: {e}")
+        logger.error("failed to publish analysis_completed",
+                     extra={"call_id": call_id, "error": str(e)})
     finally:
         await r.close()
 
@@ -40,8 +43,11 @@ async def publish_critical_error(call_id, company_id, error_type, message):
 
     try:
         await r.xadd("critical_error", {"payload": json.dumps(event)})
-        logger.info(f"Published critical_error for call {call_id}")
+        logger.warning("published critical_error event",
+                       extra={"call_id": call_id, "company_id": company_id,
+                              "error_type": error_type, "stream": "critical_error"})
     except Exception as e:
-        logger.error(f"Failed to publish critical_error: {e}")
+        logger.error("failed to publish critical_error",
+                     extra={"call_id": call_id, "error": str(e)})
     finally:
         await r.close()

@@ -2,9 +2,12 @@ package handlers
 
 import (
 	"encoding/json"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/salesai/main-api/internal/core/domain"
 	"github.com/salesai/main-api/internal/core/usecases/integrations"
+	applogger "github.com/salesai/main-api/internal/infrastructure/logger"
+	"go.uber.org/zap"
 )
 
 type IntegrationHandler struct {
@@ -28,6 +31,7 @@ func NewIntegrationHandler(integrationUC *integrations.IntegrationUseCase) *Inte
 // @Security BearerAuth
 // @Router /integrations [post]
 func (h *IntegrationHandler) Save(c *fiber.Ctx) error {
+	log := applogger.FromFiberCtx(c.Locals).With(zap.String("operation", "save_integration"))
 	companyID := c.Locals("company_id").(string)
 	var req struct {
 		IntegrationType string          `json:"integration_type"`
@@ -36,12 +40,16 @@ func (h *IntegrationHandler) Save(c *fiber.Ctx) error {
 		IsActive        bool            `json:"is_active"`
 	}
 	if err := c.BodyParser(&req); err != nil {
+		log.Warn("body parse error", zap.Error(err))
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid body"})
 	}
+	log.Info("saving integration", zap.String("company_id", companyID), zap.String("type", req.IntegrationType), zap.Bool("active", req.IsActive))
 	integration, err := h.integrationUC.Save(c.Context(), companyID, domain.IntegrationType(req.IntegrationType), req.Credentials, req.Config, req.IsActive)
 	if err != nil {
+		log.Error("save integration failed", zap.String("company_id", companyID), zap.String("type", req.IntegrationType), zap.Error(err))
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
+	log.Info("integration saved", zap.String("company_id", companyID), zap.String("integration_id", integration.ID))
 	return c.JSON(integration)
 }
 

@@ -23,23 +23,23 @@ package main
 import (
 	"context"
 	"database/sql"
-	"log"
 	"net/url"
 	"os"
 	"strings"
 
 	"github.com/ansrivas/fiberprometheus/v2"
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/logger"
 	_ "github.com/lib/pq"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
+	"go.uber.org/zap"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/salesai/main-api/internal/adapters/events"
 	"github.com/salesai/main-api/internal/adapters/grpc"
-	"github.com/salesai/main-api/internal/adapters/http"
+	httpAdapter "github.com/salesai/main-api/internal/adapters/http"
 	"github.com/salesai/main-api/internal/adapters/http/handlers"
+	"github.com/salesai/main-api/internal/adapters/http/middleware"
 	"github.com/salesai/main-api/internal/adapters/http/ws"
 	"github.com/salesai/main-api/internal/adapters/repositories"
 	"github.com/salesai/main-api/internal/core/usecases/analytics"
@@ -49,23 +49,26 @@ import (
 	"github.com/salesai/main-api/internal/core/usecases/teams"
 	"github.com/salesai/main-api/internal/infrastructure/config"
 	"github.com/salesai/main-api/internal/infrastructure/database"
+	applogger "github.com/salesai/main-api/internal/infrastructure/logger"
 	"github.com/salesai/main-api/internal/infrastructure/security"
 )
 
 func main() {
+	applogger.Init("main-api")
+	defer applogger.Sync()
+	log := applogger.L
+
 	cfg := config.Load()
 
 	db, err := sql.Open("postgres", cfg.DatabaseURL)
 	if err != nil {
-		log.Fatal("Failed to connect to database:", err)
+		log.Fatal("Failed to connect to database", zap.Error(err))
 	}
 	defer db.Close()
 
 	// Run automatic migrations
 	if err := database.RunMigrations(db, cfg.MigrationsPath); err != nil {
-		log.Printf("Warning: Database migrations failed: %v", err)
-		// We continue anyway, as the DB might be schema-correct but the tool might have issues
-		// However, for a fresh start, this is where it would stop.
+		log.Warn("Database migrations warning", zap.Error(err))
 	}
 
 	// Repositories
@@ -79,6 +82,8 @@ func main() {
 	teamRepo := repositories.NewTeamRepository(db)
 	integrationRepo := repositories.NewIntegrationRepository(db)
 
+	log.Info("PostgreSQL connected")
+
 	// Services
 	jwtService := security.NewJWTService(cfg.JWTSecret, cfg.JWTExpiry)
 
@@ -87,12 +92,18 @@ func main() {
 		Secure: false,
 	})
 	if err != nil {
-		log.Printf("Warning: Failed to connect to MinIO: %v", err)
+		log.Warn("Failed to connect to MinIO", zap.Error(err))
+	} else {
+		log.Info("MinIO connected", zap.String("endpoint", cfg.MinioEndpoint))
 	}
 
 	grpcClient, err := grpc.NewGRPCClient(cfg.STTServiceGRPC, cfg.AnalyticsGRPC)
 	if err != nil {
-		log.Printf("Warning: Failed to connect to gRPC services: %v", err)
+		log.Warn("Failed to connect to gRPC services", zap.Error(err))
+	} else {
+		log.Info("gRPC clients connected",
+			zap.String("stt", cfg.STTServiceGRPC),
+			zap.String("analytics", cfg.AnalyticsGRPC))
 	}
 
 	// Use Cases
@@ -111,15 +122,15 @@ func main() {
 		if err == nil && u.Host != "" {
 			redisAddr = u.Host
 		} else {
-			// Fallback: manually strip prefix if parsing fails or host is empty
 			redisAddr = strings.TrimPrefix(redisAddr, "redis://")
-			redisAddr = strings.TrimPrefix(redisAddr, "rediss://") // and secure variant
+			redisAddr = strings.TrimPrefix(redisAddr, "rediss://")
 		}
 	}
 
 	rdb := redis.NewClient(&redis.Options{
 		Addr: redisAddr,
 	})
+	log.Info("Redis client initialised", zap.String("addr", redisAddr))
 
 	// WebSocket Hub
 	hub := ws.NewHub()
@@ -142,19 +153,24 @@ func main() {
 	wsHandler := handlers.NewWSHandler(hub)
 
 	app := fiber.New()
-	app.Use(logger.New())
+
+	// Structured logging middlewares (replaces fiber's built-in logger)
+	app.Use(middleware.CorrelationID())
+	app.Use(middleware.RequestLogger())
 
 	prometheus := fiberprometheus.New("main-api")
 	prometheus.RegisterAt(app, "/metrics")
 	app.Use(prometheus.Middleware)
 
-	http.SetupRoutes(app, authHandler, callHandler, analyticsHandler, companyHandler, userHandler, teamHandler, integrationHandler, scriptHandler, notificationHandler, wsHandler, jwtService)
+	httpAdapter.SetupRoutes(app, authHandler, callHandler, analyticsHandler, companyHandler, userHandler, teamHandler, integrationHandler, scriptHandler, notificationHandler, wsHandler, jwtService)
 
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
 
-	log.Printf("Main API starting on port %s", port)
-	log.Fatal(app.Listen(":" + port))
+	log.Info("Main API starting", zap.String("port", port))
+	if err := app.Listen(":" + port); err != nil {
+		log.Fatal("Server exited with error", zap.Error(err))
+	}
 }

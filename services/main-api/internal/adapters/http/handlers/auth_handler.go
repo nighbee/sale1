@@ -1,11 +1,11 @@
 package handlers
 
 import (
-	"log"
-
 	"github.com/gofiber/fiber/v2"
 	"github.com/salesai/main-api/internal/core/ports"
 	"github.com/salesai/main-api/internal/core/usecases/auth"
+	applogger "github.com/salesai/main-api/internal/infrastructure/logger"
+	"go.uber.org/zap"
 )
 
 var _ = ports.TokenPair{}
@@ -40,26 +40,27 @@ func NewAuthHandler(
 // @Failure 500 {object} fiber.Map
 // @Router /auth/register [post]
 func (h *AuthHandler) Register(c *fiber.Ctx) error {
+	log := applogger.FromFiberCtx(c.Locals).With(zap.String("operation", "register"))
 	var req auth.RegisterRequest
 
 	if err := c.BodyParser(&req); err != nil {
-		log.Printf("[AUTH] Register body parse error: %v", err)
+		log.Warn("body parse error", zap.Error(err))
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Invalid request body",
 		})
 	}
 
-	log.Printf("[AUTH] Processing registration for email: %s, company: %s", req.Email, req.CompanyName)
+	log.Info("registration requested", zap.String("email", req.Email), zap.String("company", req.CompanyName))
 
 	resp, err := h.registerUC.Execute(c.Context(), &req)
 	if err != nil {
-		log.Printf("[AUTH] Registration failed for %s: %v", req.Email, err)
+		log.Error("registration failed", zap.String("email", req.Email), zap.Error(err))
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": err.Error(),
 		})
 	}
 
-	log.Printf("[AUTH] Registration successful for %s (Company ID: %s)", req.Email, resp.Company.ID)
+	log.Info("registration successful", zap.String("email", req.Email), zap.String("company_id", resp.Company.ID))
 	return c.Status(fiber.StatusCreated).JSON(resp)
 }
 
@@ -74,9 +75,11 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 // @Failure 401 {object} fiber.Map
 // @Router /auth/login [post]
 func (h *AuthHandler) Login(c *fiber.Ctx) error {
+	log := applogger.FromFiberCtx(c.Locals).With(zap.String("operation", "login"))
 	var req auth.LoginRequest
 
 	if err := c.BodyParser(&req); err != nil {
+		log.Warn("body parse error", zap.Error(err))
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Invalid request body",
 		})
@@ -84,11 +87,13 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 
 	resp, err := h.loginUC.Execute(c.Context(), &req)
 	if err != nil {
+		log.Warn("login failed", zap.String("email", req.Email), zap.Error(err))
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": "Invalid credentials",
 		})
 	}
 
+	log.Info("login successful", zap.String("email", req.Email))
 	return c.JSON(resp)
 }
 
@@ -103,11 +108,13 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 // @Failure 401 {object} fiber.Map
 // @Router /auth/refresh [post]
 func (h *AuthHandler) Refresh(c *fiber.Ctx) error {
+	log := applogger.FromFiberCtx(c.Locals).With(zap.String("operation", "refresh_token"))
 	var req struct {
 		RefreshToken string `json:"refresh_token"`
 	}
 
 	if err := c.BodyParser(&req); err != nil {
+		log.Warn("body parse error", zap.Error(err))
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Invalid request body",
 		})
@@ -115,11 +122,13 @@ func (h *AuthHandler) Refresh(c *fiber.Ctx) error {
 
 	resp, err := h.refreshUC.Execute(c.Context(), req.RefreshToken)
 	if err != nil {
+		log.Warn("token refresh failed", zap.Error(err))
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": err.Error(),
 		})
 	}
 
+	log.Debug("token refreshed successfully")
 	return c.JSON(resp)
 }
 
@@ -130,6 +139,13 @@ func (h *AuthHandler) Refresh(c *fiber.Ctx) error {
 // @Success 204
 // @Router /auth/logout [post]
 func (h *AuthHandler) Logout(c *fiber.Ctx) error {
+	log := applogger.FromFiberCtx(c.Locals).With(zap.String("operation", "logout"))
+	log.Info("user logged out", zap.String("user_id", func() string {
+		if v, ok := c.Locals("user_id").(string); ok {
+			return v
+		}
+		return ""
+	}()))
 	// In a stateless JWT implementation, logout usually happens on the client side
 	// by deleting the token. Server-side logout would require a blacklist.
 	// For this task, we'll just return success.

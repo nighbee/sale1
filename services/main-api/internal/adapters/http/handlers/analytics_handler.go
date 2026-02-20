@@ -4,10 +4,13 @@ import (
 	"bytes"
 	"encoding/csv"
 	"fmt"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/jung-kurt/gofpdf"
 	"github.com/salesai/main-api/internal/core/usecases/analytics"
+	applogger "github.com/salesai/main-api/internal/infrastructure/logger"
 	"github.com/xuri/excelize/v2"
+	"go.uber.org/zap"
 )
 
 type AnalyticsHandler struct {
@@ -21,6 +24,7 @@ func NewAnalyticsHandler(teamPerformanceUC *analytics.TeamPerformanceUseCase) *A
 }
 
 func (h *AnalyticsHandler) GetTeamPerformance(c *fiber.Ctx) error {
+	log := applogger.FromFiberCtx(c.Locals).With(zap.String("operation", "team_performance"))
 	companyID := c.Locals("company_id").(string)
 
 	filters := map[string]interface{}{
@@ -28,11 +32,14 @@ func (h *AnalyticsHandler) GetTeamPerformance(c *fiber.Ctx) error {
 		"team_id": c.Query("team_id"),
 	}
 
+	log.Debug("fetching team performance", zap.String("company_id", companyID), zap.Any("filters", filters))
 	result, err := h.teamPerformanceUC.Execute(c.Context(), companyID, filters)
 	if err != nil {
+		log.Error("team performance query failed", zap.String("company_id", companyID), zap.Error(err))
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 
+	log.Info("team performance fetched", zap.String("company_id", companyID), zap.Int("manager_count", len(result)))
 	return c.JSON(fiber.Map{
 		"period":   filters["period"],
 		"managers": result,
@@ -40,17 +47,21 @@ func (h *AnalyticsHandler) GetTeamPerformance(c *fiber.Ctx) error {
 }
 
 func (h *AnalyticsHandler) GetLeaderboard(c *fiber.Ctx) error {
+	log := applogger.FromFiberCtx(c.Locals).With(zap.String("operation", "get_leaderboard"))
 	companyID := c.Locals("company_id").(string)
 
 	filters := map[string]interface{}{
 		"team_id": c.Query("team_id"),
 	}
 
+	log.Debug("fetching leaderboard", zap.String("company_id", companyID))
 	result, err := h.teamPerformanceUC.Execute(c.Context(), companyID, filters)
 	if err != nil {
+		log.Error("leaderboard query failed", zap.String("company_id", companyID), zap.Error(err))
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 
+	log.Info("leaderboard fetched", zap.String("company_id", companyID), zap.Int("entries", len(result)))
 	return c.JSON(fiber.Map{
 		"leaderboard": result,
 	})
