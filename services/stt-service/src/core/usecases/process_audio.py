@@ -9,6 +9,8 @@ from src.adapters.storage.minio_client import MinioClient
 from src.infrastructure.audio.diarization import DiarizationService, merge_transcript_with_diarization
 from src.adapters.stt.openai_provider import OpenAISTTProvider
 from src.adapters.stt.gemini_provider import GeminiSTTProvider
+from src.adapters.stt.groq_provider import GroqSTTProvider
+from src.adapters.stt.deepgram_provider import DeepgramSTTProvider
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +23,10 @@ class ProcessAudioUseCase:
         self.stt_provider_name = os.getenv("STT_PROVIDER", "openai")
         if self.stt_provider_name == "gemini":
             self.stt_provider = GeminiSTTProvider()
+        elif self.stt_provider_name == "groq":
+            self.stt_provider = GroqSTTProvider()
+        elif self.stt_provider_name == "deepgram":
+            self.stt_provider = DeepgramSTTProvider()
         else:
             self.stt_provider = OpenAISTTProvider()
 
@@ -75,9 +81,13 @@ class ProcessAudioUseCase:
             #     transcript_data = resp.json()
 
             # New API logic:
-            transcript_data = await self.stt_provider.transcribe(wav_path)
+            # Send the original compressed MP3 to the STT API — WAV is uncompressed
+            # and can exceed provider size limits (e.g. Groq 25 MB free tier).
+            # All API providers (OpenAI, Groq, Gemini) handle MP3 natively and
+            # do their own 16 kHz downsampling server-side.
+            transcript_data = await self.stt_provider.transcribe(tmp_path)
 
-            # 5. Diarization
+            # 5. Diarization (still uses the 16 kHz WAV for local processing)
             diarization_segments = self.diarization_service.process(wav_path)
 
             # 6. Transform and Merge

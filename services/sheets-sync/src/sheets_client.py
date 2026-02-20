@@ -63,7 +63,9 @@ TOTAL_COLS = 21
 
 # A row is "ready to process" when Call Link is set AND STT Status is
 # empty, "error", or "pending" (re-queue on error to allow retries).
-PROCESSABLE_STATUSES = {"", "error", "pending"}
+# Include 'processing' so rows stuck in that state (e.g. after Redis wipe)
+# are re-queued on the next sync cycle instead of being silently skipped.
+PROCESSABLE_STATUSES = {"", "error", "pending", "processing"}
 
 
 class SheetRow:

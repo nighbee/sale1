@@ -24,6 +24,7 @@ from src.db import (
     resolve_company_id,
     upsert_call,
     get_pending_sheet_calls,
+    get_analysis_result,
 )
 from src.queue_client import QueueClient
 
@@ -143,6 +144,19 @@ class Pipeline:
                         "call_time": str(parsed_time),
                     },
                 )
+
+                # If the call is already completed in the DB (e.g. Redis was wiped
+                # but processing had finished), skip re-queuing — the write-back
+                # phase will update the sheet on this same cycle.
+                db_result = get_analysis_result(Config.DATABASE_URL, call_id)
+                if db_result and db_result.get("status") == "completed":
+                    logger.info(
+                        "Call already completed in DB, skipping queue",
+                        extra={"call_id": call_id, "row": row.sheet_row_number},
+                    )
+                    skipped += 1
+                    continue
+
                 self.queue.push_job(
                     call_id=call_id,
                     company_id=self.company_id,

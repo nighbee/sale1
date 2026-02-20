@@ -1,7 +1,7 @@
 import logging
 import os
 from src.adapters.storage.postgres_repo import (
-    get_transcript, get_call, get_active_script, save_analysis,
+    get_transcript, get_call, get_active_script, get_team_script, save_analysis,
     create_notification, get_company_admin, get_company_settings
 )
 from src.infrastructure.llm.openai_client import OpenAIClient
@@ -41,14 +41,14 @@ class AnalyzeCallUseCase:
         system_prompt = """
         You are a sales quality analyst. Analyze the call transcript against the provided sales script.
 
-        You must output a JSON object with the following fields:
+        You must output a JSON object with exactly the following fields (no additional fields allowed):
         {
-          "quality_score": (integer 0-100, based on tone, clarity, professionalism),
-          "script_match": (integer 0-100, based on adherence to script phases and keywords),
-          "errors_free": (integer 0-100, 100 if no rude language or prohibited words found),
-          "recommendation": (string, 3 sentences of actionable feedback),
-          "brief": (string, 3 sentence summary of the call),
-          "next_best_action": (string, one concrete next step for the representative)
+          "qualityOfCall": (number 0-100, overall call quality based on tone, clarity, professionalism),
+          "scriptMatch": (number 0-100, adherence to required steps and script guidelines),
+          "errorsFree": (number 0-100, 100 means no incorrect promises, policy violations or data errors),
+          "recommendation": (string, 3-6 sentences of concrete improvement recommendations for the agent),
+          "brief": (string, 2-5 sentence summary of the conversation essence),
+          "nextBestAction": (string, 1-3 bulleted next steps for the representative)
         }
         """
 
@@ -61,11 +61,14 @@ class AnalyzeCallUseCase:
         else:
             analysis = await self.openai_client.analyze(system_prompt, user_prompt)
 
+        # 3.5 Validate LLM response
+        self._validate_llm_response(analysis, call_id)
+
         # 4. Calculate KPI
         # KPI = (quality*0.4 + script_match*0.4 + errors_free*0.2) * (duration/60)
-        quality = analysis['quality_score']
-        script_match = analysis['script_match']
-        errors_free = analysis['errors_free']
+        quality = analysis['qualityOfCall']
+        script_match = analysis['scriptMatch']
+        errors_free = analysis['errorsFree']
         duration = call['duration']
 
         overall_rating = quality * 0.4 + script_match * 0.4 + errors_free * 0.2
@@ -82,7 +85,7 @@ class AnalyzeCallUseCase:
             'kpi': round(kpi, 2),
             'recommendation': analysis.get('recommendation', ''),
             'brief': analysis.get('brief', ''),
-            'next_best_action': analysis.get('next_best_action', ''),
+            'next_best_action': analysis.get('nextBestAction', ''),
             'llm_provider': llm_provider
         }
 
@@ -96,6 +99,33 @@ class AnalyzeCallUseCase:
 
         # 6. Check for Critical Errors
         await self._check_critical_errors(call_id, company_id, transcript_text)
+
+    def _validate_llm_response(self, analysis: dict, call_id: str):
+        required_fields = ['qualityOfCall', 'scriptMatch', 'errorsFree', 'recommendation', 'brief', 'nextBestAction']
+        numeric_fields = ['qualityOfCall', 'scriptMatch', 'errorsFree']
+        string_fields = {
+            'recommendation': 10,
+            'brief': 10,
+            'nextBestAction': 5,
+        }
+
+        missing = [f for f in required_fields if f not in analysis]
+        if missing:
+            raise ValueError(f"LLM response missing required fields: {missing} for call_id={call_id}")
+
+        for field in numeric_fields:
+            value = analysis[field]
+            if not isinstance(value, (int, float)):
+                raise ValueError(f"LLM response field '{field}' must be numeric, got {type(value)} for call_id={call_id}")
+            if not (0 <= value <= 100):
+                raise ValueError(f"LLM response field '{field}' out of range [0, 100]: {value} for call_id={call_id}")
+
+        for field, min_len in string_fields.items():
+            value = analysis[field]
+            if not isinstance(value, str) or len(value.strip()) < min_len:
+                raise ValueError(f"LLM response field '{field}' too short or not a string for call_id={call_id}")
+
+        logger.debug("LLM response validated", extra={"call_id": call_id})
 
     async def _check_critical_errors(self, call_id, company_id, transcript_text):
         critical_keywords = ["sue", "litigation", "lawyer", "court", "legal action"]

@@ -43,7 +43,9 @@ class AnalyticsServiceServicer(analytics_service_pb2_grpc.AnalyticsServiceServic
             else:
                 REQUEST_COUNT.labels(app_name='ai-analytics', method='GRPC', path='/GetAnalysis', status_code='404').inc()
                 logger.warning("gRPC GetAnalysis not found", extra={"call_id": call_id})
-                context.abort(grpc.StatusCode.NOT_FOUND, "Analysis not found")
+                context.set_code(grpc.StatusCode.NOT_FOUND)
+                context.set_details("Analysis not found")
+                return analytics_service_pb2.AnalysisResponse()
         except Exception as e:
             REQUEST_COUNT.labels(app_name='ai-analytics', method='GRPC', path='/GetAnalysis', status_code='500').inc()
             logger.error("gRPC GetAnalysis error", extra={"call_id": call_id, "error": str(e)})

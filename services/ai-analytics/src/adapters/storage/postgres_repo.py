@@ -31,7 +31,7 @@ def get_team_script(company_id, manager_id):
     try:
         cur = conn.cursor(cursor_factory=RealDictCursor)
         # Find team of manager
-        cur.execute("SELECT team_id FROM auth_schema.users WHERE manager_id = %s AND company_id = %s", (manager_id, company_id))
+        cur.execute("SELECT team_id FROM auth_schema.users WHERE id = %s AND company_id = %s", (manager_id, company_id))
         res = cur.fetchone()
         if not res or not res['team_id']:
             # Fallback to company active script

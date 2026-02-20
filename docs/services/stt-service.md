@@ -249,7 +249,31 @@ json
 - **Configuration**: `STT_PROVIDER=gemini`
 - **API Key**: `GOOGLE_API_KEY`
 
-### 5.3 Local WhisperX
+### 5.3 Google Cloud Speech
+
+- **Provider**: Google Cloud Speech-to-Text
+- **Model**: Configurable via `GOOGLE_CLOUD_SPEECH_MODEL`
+- **Configuration**: `STT_PROVIDER=google_cloud`
+- **API Key**: `GOOGLE_APPLICATION_CREDENTIALS`
+
+### 5.4 Groq STT
+
+- **Provider**: Groq (OpenAI-compatible API)
+- **Model**: `whisper-large-v3-turbo` (default)
+- **Configuration**: `STT_PROVIDER=groq`
+- **API Key**: `GROQ_API_KEY`
+- **Advantage**: Fast inference, competitive pricing, OpenAI-compatible SDK
+
+### 5.5 Deepgram STT
+
+- **Provider**: Deepgram
+- **Model**: `nova-2` (default)
+- **Configuration**: `STT_PROVIDER=deepgram`
+- **API Key**: `DEEPGRAM_API_KEY`
+- **Model Config**: `DEEPGRAM_MODEL` (optional)
+- **Advantage**: Fast, accurate, excellent for Russian language
+
+### 5.6 Local WhisperX
 
 - **Provider**: Local WhisperX
 - **Model**: `base`, `small`, `medium`, `large`
@@ -308,10 +332,16 @@ message TranscribeResponse {
 |----------|-------------|---------|
 | `DATABASE_URL` | PostgreSQL connection string | - |
 | `REDIS_URL` | Redis connection string | redis://redis:6379 |
-| `STT_PROVIDER` | STT provider: openai, gemini, local | openai |
+| `STT_PROVIDER` | STT provider: openai, gemini, google_cloud, groq, deepgram, local | openai |
 | `OPENAI_API_KEY` | OpenAI API key | - |
 | `GOOGLE_API_KEY` | Google API key | - |
 | `GOOGLE_AI_MODEL` | Google STT model name | - |
+| `GOOGLE_CLOUD_SPEECH_MODEL` | Google Cloud Speech model name | - |
+| `GOOGLE_APPLICATION_CREDENTIALS` | Google Cloud credentials path | - |
+| `GROQ_API_KEY` | Groq API key | - |
+| `GROQ_STT_MODEL` | Groq Whisper model | whisper-large-v3-turbo |
+| `DEEPGRAM_API_KEY` | Deepgram API key | - |
+| `DEEPGRAM_MODEL` | Deepgram model | nova-2 |
 | `WHISPER_MODEL` | WhisperX model size | base |
 | `METRICS_PORT` | Prometheus metrics port | 8001 |
 
@@ -451,7 +481,9 @@ json
 | Service | Integration | Purpose |
 |---------|------------|---------|
 | OpenAI | API | Whisper transcription |
-| Google | API | Gemini transcription |
+| Google | API | Gemini transcription, Cloud Speech |
+| Groq | API | Fast Whisper transcription |
+| Deepgram | API | Fast transcription with excellent Russian support |
 | Sipuni | HTTP | Download audio files |
 
 ---
