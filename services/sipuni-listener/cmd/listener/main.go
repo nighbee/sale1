@@ -31,15 +31,6 @@ type SipuniAuthMessage struct {
 	Body SipuniAuthBody `json:"body"`
 }
 
-type SipuniSubscribeBody struct {
-	Event string `json:"event"`
-}
-
-type SipuniSubscribeMessage struct {
-	Type string              `json:"type"`
-	Body SipuniSubscribeBody `json:"body"`
-}
-
 type SipuniEvent struct {
 	Action  string          `json:"action"`
 	Request json.RawMessage `json:"request"`
@@ -57,6 +48,7 @@ type SipuniNotifyRequest struct {
 	Status             string      `json:"status"`
 	CallStartTimestamp json.Number `json:"call_start_timestamp"`
 	CallRecordLink     string      `json:"call_record_link"`
+	RecordURL          string      `json:"record_url"` // Alias found in some docs
 	TreeName           string      `json:"treeName"`
 }
 
@@ -199,7 +191,7 @@ func main() {
 					return
 				}
 
-				log.Info("Message received from Sipuni", zap.String("raw", string(message)))
+				log.Debug("Message received from Sipuni", zap.String("raw", string(message)))
 
 				// Try to parse as event message (notify or auth response)
 				var event SipuniEvent
@@ -209,18 +201,6 @@ func main() {
 					if event.Action == "auth" {
 						if event.Status == 1 {
 							log.Info("Sipuni authentication successful")
-
-							// Some Sipuni versions or specific integrations might require a subscribe message
-							// even if not explicitly documented in the main guide.
-							subMsg := SipuniSubscribeMessage{
-								Type: "subscribe",
-								Body: SipuniSubscribeBody{Event: "*"},
-							}
-							if err := c.WriteJSON(subMsg); err != nil {
-								log.Error("subscription send error", zap.Error(err))
-							} else {
-								log.Info("Subscription message sent for all events (*)")
-							}
 						} else {
 							log.Error("Sipuni authentication failed",
 								zap.Int("status", event.Status), zap.String("raw", string(message)))
@@ -280,6 +260,12 @@ func handleNotify(request json.RawMessage) {
 		managerID = notify.User
 	}
 
+	// Unify CallRecordLink and RecordURL
+	recordLink := notify.CallRecordLink
+	if recordLink == "" {
+		recordLink = notify.RecordURL
+	}
+
 	log.Info("processing Sipuni notify",
 		zap.String("sipuni_call_id", notify.CallID),
 		zap.String("event", notify.Event.String()),
@@ -287,12 +273,16 @@ func handleNotify(request json.RawMessage) {
 		zap.String("src_num", notify.SrcNum),
 		zap.String("dst_num", notify.DstNum),
 		zap.String("manager_id", managerID),
-		zap.Bool("has_recording", notify.CallRecordLink != ""))
+		zap.Bool("has_recording", recordLink != ""))
 
-	// Only process answered calls — NOANSWER/BUSY/FAILED/CANCEL have no actual audio
+	// Only process answered/completed calls — NOANSWER/BUSY/FAILED/CANCEL have no actual audio
 	// Using case-insensitive comparison for robustness
-	if !strings.EqualFold(notify.Status, "ANSWER") {
-		log.Info("skipping notify — call not answered",
+	isSuccessful := strings.EqualFold(notify.Status, "ANSWER") ||
+		strings.EqualFold(notify.Status, "completed") ||
+		strings.EqualFold(notify.Status, "success")
+
+	if !isSuccessful {
+		log.Info("skipping notify — call status not successful",
 			zap.String("sipuni_call_id", notify.CallID),
 			zap.String("event", notify.Event.String()),
 			zap.String("status", notify.Status))
@@ -300,8 +290,8 @@ func handleNotify(request json.RawMessage) {
 	}
 
 	// We only care about calls with a record link
-	if notify.CallRecordLink == "" {
-		log.Info("skipping notify — no recording link despite ANSWER status",
+	if recordLink == "" {
+		log.Info("skipping notify — no recording link despite successful status",
 			zap.String("sipuni_call_id", notify.CallID),
 			zap.String("event", notify.Event.String()),
 			zap.String("status", notify.Status))
@@ -333,7 +323,7 @@ func handleNotify(request json.RawMessage) {
 		ManagerName: "Sipuni Manager",
 		ClientPhone: clientPhone,
 		Duration:    duration,
-		CallLink:    notify.CallRecordLink,
+		CallLink:    recordLink,
 		CallDate:    callDate,
 		CallTime:    callDate,
 		Status:      domain.StatusPending,
@@ -352,7 +342,7 @@ func handleNotify(request json.RawMessage) {
 	job := queue.AudioProcessingJob{
 		CallID:    callID,
 		CompanyID: companyID,
-		AudioURL:  notify.CallRecordLink,
+		AudioURL:  recordLink,
 		ManagerID: managerID,
 	}
 
@@ -361,6 +351,6 @@ func handleNotify(request json.RawMessage) {
 			zap.String("call_id", callID), zap.Error(err))
 	} else {
 		log.Info("audio processing job enqueued",
-			zap.String("call_id", callID), zap.String("audio_url", notify.CallRecordLink))
+			zap.String("call_id", callID), zap.String("audio_url", recordLink))
 	}
 }
