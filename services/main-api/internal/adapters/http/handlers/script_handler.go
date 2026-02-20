@@ -39,7 +39,7 @@ func NewScriptHandler(scriptRepo ports.ScriptRepository, scriptServiceURL string
 // @Security BearerAuth
 // @Router /scripts [get]
 func (h *ScriptHandler) ListScripts(c *fiber.Ctx) error {
-	log := applogger.FromFiberCtx(c.Locals).With(zap.String("operation", "list_scripts"))
+	log := applogger.FromFiberCtx(c).With(zap.String("operation", "list_scripts"))
 	companyID := c.Locals("company_id").(string)
 	scripts, err := h.scriptRepo.ListByCompany(c.Context(), companyID)
 	if err != nil {
@@ -111,7 +111,7 @@ func (h *ScriptHandler) GetScriptContent(c *fiber.Ctx) error {
 // @Security BearerAuth
 // @Router /scripts [post]
 func (h *ScriptHandler) CreateScript(c *fiber.Ctx) error {
-	log := applogger.FromFiberCtx(c.Locals).With(zap.String("operation", "create_script"))
+	log := applogger.FromFiberCtx(c).With(zap.String("operation", "create_script"))
 	companyID := c.Locals("company_id").(string)
 
 	file, err := c.FormFile("file")
@@ -225,7 +225,7 @@ func (h *ScriptHandler) UpdateScript(c *fiber.Ctx) error {
 // @Security BearerAuth
 // @Router /scripts/{id} [delete]
 func (h *ScriptHandler) DeleteScript(c *fiber.Ctx) error {
-	log := applogger.FromFiberCtx(c.Locals).With(zap.String("operation", "delete_script"))
+	log := applogger.FromFiberCtx(c).With(zap.String("operation", "delete_script"))
 	id := c.Params("id")
 	companyID := c.Locals("company_id").(string)
 	if err := h.scriptRepo.Delete(c.Context(), companyID, id); err != nil {

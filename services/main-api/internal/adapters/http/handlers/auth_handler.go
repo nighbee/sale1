@@ -40,7 +40,7 @@ func NewAuthHandler(
 // @Failure 500 {object} fiber.Map
 // @Router /auth/register [post]
 func (h *AuthHandler) Register(c *fiber.Ctx) error {
-	log := applogger.FromFiberCtx(c.Locals).With(zap.String("operation", "register"))
+	log := applogger.FromFiberCtx(c).With(zap.String("operation", "register"))
 	var req auth.RegisterRequest
 
 	if err := c.BodyParser(&req); err != nil {
@@ -75,7 +75,7 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 // @Failure 401 {object} fiber.Map
 // @Router /auth/login [post]
 func (h *AuthHandler) Login(c *fiber.Ctx) error {
-	log := applogger.FromFiberCtx(c.Locals).With(zap.String("operation", "login"))
+	log := applogger.FromFiberCtx(c).With(zap.String("operation", "login"))
 	var req auth.LoginRequest
 
 	if err := c.BodyParser(&req); err != nil {
@@ -108,7 +108,7 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 // @Failure 401 {object} fiber.Map
 // @Router /auth/refresh [post]
 func (h *AuthHandler) Refresh(c *fiber.Ctx) error {
-	log := applogger.FromFiberCtx(c.Locals).With(zap.String("operation", "refresh_token"))
+	log := applogger.FromFiberCtx(c).With(zap.String("operation", "refresh_token"))
 	var req struct {
 		RefreshToken string `json:"refresh_token"`
 	}
@@ -139,7 +139,7 @@ func (h *AuthHandler) Refresh(c *fiber.Ctx) error {
 // @Success 204
 // @Router /auth/logout [post]
 func (h *AuthHandler) Logout(c *fiber.Ctx) error {
-	log := applogger.FromFiberCtx(c.Locals).With(zap.String("operation", "logout"))
+	log := applogger.FromFiberCtx(c).With(zap.String("operation", "logout"))
 	log.Info("user logged out", zap.String("user_id", func() string {
 		if v, ok := c.Locals("user_id").(string); ok {
 			return v

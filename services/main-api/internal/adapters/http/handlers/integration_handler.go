@@ -31,7 +31,7 @@ func NewIntegrationHandler(integrationUC *integrations.IntegrationUseCase) *Inte
 // @Security BearerAuth
 // @Router /integrations [post]
 func (h *IntegrationHandler) Save(c *fiber.Ctx) error {
-	log := applogger.FromFiberCtx(c.Locals).With(zap.String("operation", "save_integration"))
+	log := applogger.FromFiberCtx(c).With(zap.String("operation", "save_integration"))
 	companyID := c.Locals("company_id").(string)
 	var req struct {
 		IntegrationType string          `json:"integration_type"`

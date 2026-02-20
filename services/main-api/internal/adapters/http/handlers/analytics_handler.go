@@ -24,7 +24,7 @@ func NewAnalyticsHandler(teamPerformanceUC *analytics.TeamPerformanceUseCase) *A
 }
 
 func (h *AnalyticsHandler) GetTeamPerformance(c *fiber.Ctx) error {
-	log := applogger.FromFiberCtx(c.Locals).With(zap.String("operation", "team_performance"))
+	log := applogger.FromFiberCtx(c).With(zap.String("operation", "team_performance"))
 	companyID := c.Locals("company_id").(string)
 
 	filters := map[string]interface{}{
@@ -47,7 +47,7 @@ func (h *AnalyticsHandler) GetTeamPerformance(c *fiber.Ctx) error {
 }
 
 func (h *AnalyticsHandler) GetLeaderboard(c *fiber.Ctx) error {
-	log := applogger.FromFiberCtx(c.Locals).With(zap.String("operation", "get_leaderboard"))
+	log := applogger.FromFiberCtx(c).With(zap.String("operation", "get_leaderboard"))
 	companyID := c.Locals("company_id").(string)
 
 	filters := map[string]interface{}{

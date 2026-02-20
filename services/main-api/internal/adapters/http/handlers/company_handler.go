@@ -30,7 +30,7 @@ func NewCompanyHandler(companyRepo ports.CompanyRepository) *CompanyHandler {
 // @Security BearerAuth
 // @Router /companies/{id} [get]
 func (h *CompanyHandler) GetCompany(c *fiber.Ctx) error {
-	log := applogger.FromFiberCtx(c.Locals).With(zap.String("operation", "get_company"))
+	log := applogger.FromFiberCtx(c).With(zap.String("operation", "get_company"))
 	id := c.Params("id")
 	company, err := h.companyRepo.GetByID(c.Context(), id)
 	if err != nil {

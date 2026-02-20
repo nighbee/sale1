@@ -29,7 +29,7 @@ func NewTeamHandler(teamUC *teams.TeamUseCase) *TeamHandler {
 // @Security BearerAuth
 // @Router /teams [post]
 func (h *TeamHandler) Create(c *fiber.Ctx) error {
-	log := applogger.FromFiberCtx(c.Locals).With(zap.String("operation", "create_team"))
+	log := applogger.FromFiberCtx(c).With(zap.String("operation", "create_team"))
 	companyID := c.Locals("company_id").(string)
 	var req struct {
 		Name        string `json:"name"`

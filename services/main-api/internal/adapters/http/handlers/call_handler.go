@@ -60,7 +60,7 @@ func NewCallHandler(
 // @Security BearerAuth
 // @Router /calls [get]
 func (h *CallHandler) ListCalls(c *fiber.Ctx) error {
-	log := applogger.FromFiberCtx(c.Locals).With(zap.String("operation", "list_calls"))
+	log := applogger.FromFiberCtx(c).With(zap.String("operation", "list_calls"))
 	companyID := c.Locals("company_id").(string)
 
 	page, _ := strconv.Atoi(c.Query("page", "1"))
@@ -102,7 +102,7 @@ func (h *CallHandler) ListCalls(c *fiber.Ctx) error {
 // @Security BearerAuth
 // @Router /calls/{id} [get]
 func (h *CallHandler) GetCall(c *fiber.Ctx) error {
-	log := applogger.FromFiberCtx(c.Locals).With(zap.String("operation", "get_call"))
+	log := applogger.FromFiberCtx(c).With(zap.String("operation", "get_call"))
 	id := c.Params("id")
 	companyID := c.Locals("company_id").(string)
 	log.Debug("fetching call", zap.String("call_id", id), zap.String("company_id", companyID))
@@ -135,7 +135,7 @@ func (h *CallHandler) GetCall(c *fiber.Ctx) error {
 // @Security BearerAuth
 // @Router /calls/{id}/transcript [get]
 func (h *CallHandler) GetTranscript(c *fiber.Ctx) error {
-	log := applogger.FromFiberCtx(c.Locals).With(zap.String("operation", "get_transcript"))
+	log := applogger.FromFiberCtx(c).With(zap.String("operation", "get_transcript"))
 	id := c.Params("id")
 	log.Debug("fetching transcript", zap.String("call_id", id))
 
@@ -170,7 +170,7 @@ func (h *CallHandler) GetTranscript(c *fiber.Ctx) error {
 // @Security BearerAuth
 // @Router /calls/{id}/analysis [get]
 func (h *CallHandler) GetAnalysis(c *fiber.Ctx) error {
-	log := applogger.FromFiberCtx(c.Locals).With(zap.String("operation", "get_analysis"))
+	log := applogger.FromFiberCtx(c).With(zap.String("operation", "get_analysis"))
 	id := c.Params("id")
 	log.Debug("fetching analysis", zap.String("call_id", id))
 
@@ -204,7 +204,7 @@ func (h *CallHandler) GetAnalysis(c *fiber.Ctx) error {
 // @Security BearerAuth
 // @Router /calls/{id}/reprocess [post]
 func (h *CallHandler) ReprocessCall(c *fiber.Ctx) error {
-	log := applogger.FromFiberCtx(c.Locals).With(zap.String("operation", "reprocess_call"))
+	log := applogger.FromFiberCtx(c).With(zap.String("operation", "reprocess_call"))
 	id := c.Params("id")
 	userID, _ := c.Locals("user_id").(string)
 	log.Info("call reprocess requested", zap.String("call_id", id), zap.String("user_id", userID))

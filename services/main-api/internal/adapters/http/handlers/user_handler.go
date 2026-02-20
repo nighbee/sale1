@@ -33,7 +33,7 @@ func NewUserHandler(userRepo ports.UserRepository) *UserHandler {
 // @Security BearerAuth
 // @Router /users [get]
 func (h *UserHandler) ListUsers(c *fiber.Ctx) error {
-	log := applogger.FromFiberCtx(c.Locals).With(zap.String("operation", "list_users"))
+	log := applogger.FromFiberCtx(c).With(zap.String("operation", "list_users"))
 	companyID := c.Locals("company_id").(string)
 	users, err := h.userRepo.ListByCompany(c.Context(), companyID)
 	if err != nil {
@@ -76,7 +76,7 @@ func (h *UserHandler) ListUserCompanies(c *fiber.Ctx) error {
 // @Security BearerAuth
 // @Router /users/invite [post]
 func (h *UserHandler) InviteUser(c *fiber.Ctx) error {
-	log := applogger.FromFiberCtx(c.Locals).With(zap.String("operation", "invite_user"))
+	log := applogger.FromFiberCtx(c).With(zap.String("operation", "invite_user"))
 	companyID := c.Locals("company_id").(string)
 
 	var req struct {

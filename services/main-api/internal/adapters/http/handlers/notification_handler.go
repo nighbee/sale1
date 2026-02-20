@@ -26,7 +26,7 @@ func NewNotificationHandler(repo ports.NotificationRepository) *NotificationHand
 // @Security BearerAuth
 // @Router /notifications [get]
 func (h *NotificationHandler) ListNotifications(c *fiber.Ctx) error {
-	log := applogger.FromFiberCtx(c.Locals).With(zap.String("operation", "list_notifications"))
+	log := applogger.FromFiberCtx(c).With(zap.String("operation", "list_notifications"))
 	userID := c.Locals("user_id").(string)
 	notifications, err := h.repo.ListByUser(c.Context(), userID)
 	if err != nil {
@@ -49,7 +49,7 @@ func (h *NotificationHandler) ListNotifications(c *fiber.Ctx) error {
 // @Security BearerAuth
 // @Router /notifications/{id}/read [put]
 func (h *NotificationHandler) MarkAsRead(c *fiber.Ctx) error {
-	log := applogger.FromFiberCtx(c.Locals).With(zap.String("operation", "mark_notification_read"))
+	log := applogger.FromFiberCtx(c).With(zap.String("operation", "mark_notification_read"))
 	userID := c.Locals("user_id").(string)
 	id := c.Params("id")
 	if err := h.repo.MarkAsRead(c.Context(), userID, id); err != nil {
