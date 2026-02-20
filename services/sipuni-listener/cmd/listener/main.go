@@ -85,7 +85,7 @@ func main() {
 	// Resolve company ID from environment
 	companyID = os.Getenv("COMPANY_ID")
 	if companyID == "" {
-		companyID = "550e8400-e29b-41d4-a716-446655440000"
+		log.Fatal("COMPANY_ID environment variable is required — set it to the UUID of the company in auth_schema.companies")
 	}
 	log.Info("company configured", zap.String("company_id", companyID))
 
@@ -257,71 +257,77 @@ func handleNotify(request json.RawMessage) {
 		zap.String("dst_num", notify.DstNum),
 		zap.Bool("has_recording", notify.CallRecordLink != ""))
 
-	// We only care about calls with a record link
-	if notify.CallRecordLink == "" {
-		log.Info("skipping notify — no recording",
+	// Only process answered calls — NOANSWER/BUSY/FAILED/CANCEL have no actual audio
+	if notify.Status != "ANSWER" {
+		log.Info("skipping notify — call not answered",
 			zap.String("sipuni_call_id", notify.CallID),
 			zap.String("event", notify.Event.String()),
 			zap.String("status", notify.Status))
 		return
 	}
 
-	if notify.CallRecordLink != "" {
+	// We only care about calls with a record link
+	if notify.CallRecordLink == "" {
+		log.Info("skipping notify — no recording link despite ANSWER status",
+			zap.String("sipuni_call_id", notify.CallID),
+			zap.String("event", notify.Event.String()),
+			zap.String("status", notify.Status))
+		return
+	}
 
-		callID := uuid.New().String()
+	callID := uuid.New().String()
 
-		// Parse timestamps for duration
-		startTime, _ := notify.CallStartTimestamp.Int64()
-		endTime, _ := notify.Timestamp.Int64()
-		duration := int(endTime - startTime)
-		if duration <= 0 {
-			duration = 1
-		}
+	// Parse timestamps for duration
+	startTime, _ := notify.CallStartTimestamp.Int64()
+	endTime, _ := notify.Timestamp.Int64()
+	duration := int(endTime - startTime)
+	if duration <= 0 {
+		duration = 1
+	}
 
-		callDate := time.Unix(startTime, 0)
+	callDate := time.Unix(startTime, 0)
 
-		// Determine client phone (usually the longer one)
-		clientPhone := notify.DstNum
-		if len(notify.SrcNum) > len(notify.DstNum) {
-			clientPhone = notify.SrcNum
-		}
+	// Determine client phone (usually the longer one)
+	clientPhone := notify.DstNum
+	if len(notify.SrcNum) > len(notify.DstNum) {
+		clientPhone = notify.SrcNum
+	}
 
-		call := &domain.Call{
-			ID:          callID,
-			CompanyID:   companyID,
-			ManagerID:   notify.UserID,
-			ManagerName: "Sipuni Manager",
-			ClientPhone: clientPhone,
-			Duration:    duration,
-			CallLink:    notify.CallRecordLink,
-			CallDate:    callDate,
-			CallTime:    callDate,
-			Status:      domain.StatusPending,
-			Source:      "webhook",
-		}
+	call := &domain.Call{
+		ID:          callID,
+		CompanyID:   companyID,
+		ManagerID:   notify.UserID,
+		ManagerName: "Sipuni Manager",
+		ClientPhone: clientPhone,
+		Duration:    duration,
+		CallLink:    notify.CallRecordLink,
+		CallDate:    callDate,
+		CallTime:    callDate,
+		Status:      domain.StatusPending,
+		Source:      "webhook",
+	}
 
-		if err := callRepo.Create(context.Background(), call); err != nil {
-			log.Error("database error saving call",
-				zap.String("call_id", callID), zap.Error(err))
-			return
-		}
-		log.Info("call record created",
-			zap.String("call_id", callID), zap.String("manager_id", notify.UserID),
-			zap.String("client_phone", clientPhone), zap.Int("duration_s", duration))
+	if err := callRepo.Create(context.Background(), call); err != nil {
+		log.Error("database error saving call",
+			zap.String("call_id", callID), zap.Error(err))
+		return
+	}
+	log.Info("call record created",
+		zap.String("call_id", callID), zap.String("manager_id", notify.UserID),
+		zap.String("client_phone", clientPhone), zap.Int("duration_s", duration))
 
-		job := queue.AudioProcessingJob{
-			CallID:    callID,
-			CompanyID: companyID,
-			AudioURL:  notify.CallRecordLink,
-			ManagerID: notify.UserID,
-		}
+	job := queue.AudioProcessingJob{
+		CallID:    callID,
+		CompanyID: companyID,
+		AudioURL:  notify.CallRecordLink,
+		ManagerID: notify.UserID,
+	}
 
-		if err := publisher.EnqueueAudioProcessing(context.Background(), job); err != nil {
-			log.Error("queue error enqueuing audio job",
-				zap.String("call_id", callID), zap.Error(err))
-		} else {
-			log.Info("audio processing job enqueued",
-				zap.String("call_id", callID), zap.String("audio_url", notify.CallRecordLink))
-		}
+	if err := publisher.EnqueueAudioProcessing(context.Background(), job); err != nil {
+		log.Error("queue error enqueuing audio job",
+			zap.String("call_id", callID), zap.Error(err))
+	} else {
+		log.Info("audio processing job enqueued",
+			zap.String("call_id", callID), zap.String("audio_url", notify.CallRecordLink))
 	}
 }

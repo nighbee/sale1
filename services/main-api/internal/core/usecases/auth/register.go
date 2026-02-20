@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
+
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 
@@ -90,6 +91,12 @@ func (uc *RegisterUseCase) Execute(ctx context.Context, req *RegisterRequest) (*
 	}
 
 	err = uc.userRepo.Create(ctx, user)
+	if err != nil {
+		return nil, err
+	}
+
+	// Link user to company in user_companies table
+	err = uc.userRepo.AddUserToCompany(ctx, user.ID, company.ID, domain.RoleTenantAdmin)
 	if err != nil {
 		return nil, err
 	}
