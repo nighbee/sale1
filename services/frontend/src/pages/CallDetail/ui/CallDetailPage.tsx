@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 import { callApi } from '../../../entities/call/api';
 import type { Call, CallTranscript, CallAnalysis } from '../../../entities/call/types';
+import { useWebSocket } from '../../../shared/hooks/useWebSocket';
 
 const CallDetailPage: React.FC = () => {
   const { t } = useTranslation();
@@ -67,26 +69,39 @@ const CallDetailPage: React.FC = () => {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!id) return;
-      try {
-        const [callRes, transRes, analRes] = await Promise.all([
-          callApi.getCall(id),
-          callApi.getTranscript(id),
-          callApi.getAnalysis(id),
-        ]);
-        setCall(callRes.data as Call);
-        setTranscript(transRes.data as CallTranscript);
-        setAnalysis(analRes.data as CallAnalysis);
-      } catch {
-        console.error('Failed to fetch call data');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
+  const fetchData = useCallback(async () => {
+    if (!id) return;
+    try {
+      const [callRes, transRes, analRes] = await Promise.all([
+        callApi.getCall(id),
+        callApi.getTranscript(id),
+        callApi.getAnalysis(id),
+      ]);
+      setCall(callRes.data as Call);
+      setTranscript(transRes.data as CallTranscript);
+      setAnalysis(analRes.data as CallAnalysis);
+    } catch {
+      console.error('Failed to fetch call data');
+    } finally {
+      setLoading(false);
+    }
   }, [id]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  useWebSocket(useCallback((msg) => {
+    if (msg.payload?.call_id === id) {
+      if (msg.type === 'transcript_ready') {
+        toast.info(t('calls.transcript_ready_toast'));
+        fetchData();
+      } else if (msg.type === 'analysis_completed') {
+        toast.success(t('calls.analysis_ready_toast'));
+        fetchData();
+      }
+    }
+  }, [id, fetchData, t]));
 
   if (loading) return <div className="p-8">{t('calls.loading')}</div>;
   if (!call) return <div className="p-8">{t('calls.not_found')}</div>;
@@ -256,6 +271,16 @@ const CallDetailPage: React.FC = () => {
               </h2>
               {analysis ? (
                 <div className="space-y-4">
+                  <div className="bg-primary/5 dark:bg-primary/10 rounded-xl p-4 border border-primary/20 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-primary font-bold uppercase tracking-wider">{t('calls.kpi_score')}</p>
+                      <p className="text-3xl font-black text-primary mt-1">{analysis.kpi?.toFixed(1) || '0.0'}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-neutral-500">{t('calls.overall_rating')}</p>
+                      <p className="text-lg font-bold text-neutral-700 dark:text-neutral-300">{analysis.overall_rating?.toFixed(1)}%</p>
+                    </div>
+                  </div>
                   <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-xl p-4 border border-neutral-100 dark:border-neutral-700 flex items-center justify-between">
                     <div>
                       <p className="text-xs text-neutral-500">{t('calls.quality_score')}</p>

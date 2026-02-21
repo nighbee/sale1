@@ -326,11 +326,32 @@ func handleNotify(request json.RawMessage) {
 		recordLink = notify.CallRecordLink
 	}
 
+	managerName := "Sipuni Manager"
+	if notify.User != "" {
+		managerName = notify.User
+	}
+
+	// Step 0: Ensure user exists and get deterministic UUID
+	userID := managerID
+	if managerID != "" {
+		if err := callRepo.EnsureUserExists(context.Background(), companyID, managerID, managerName); err != nil {
+			log.Warn("could not ensure manager user exists",
+				zap.String("manager_id", managerID), zap.Error(err))
+		}
+		// We could call a helper here too, but for simplicity let's rely on the repo
+		// or just use the same logic if we want consistency in the calls table.
+		// To be safe, let's use the same deterministic UUID logic.
+		_, err := uuid.Parse(managerID)
+		if err != nil {
+			userID = uuid.NewSHA1(uuid.NameSpaceDNS, []byte(managerID)).String()
+		}
+	}
+
 	call := &domain.Call{
 		ID:          callID,
 		CompanyID:   companyID,
-		ManagerID:   notify.UserID,
-		ManagerName: "Sipuni Manager",
+		ManagerID:   userID,
+		ManagerName: managerName,
 		ClientPhone: clientPhone,
 		Duration:    talkDuration,
 		CallLink:    recordLink,
@@ -353,7 +374,7 @@ func handleNotify(request json.RawMessage) {
 		CallID:    callID,
 		CompanyID: companyID,
 		AudioURL:  recordLink,
-		ManagerID: notify.UserID,
+		ManagerID: userID,
 	}
 
 	if err := publisher.EnqueueAudioProcessing(context.Background(), job); err != nil {

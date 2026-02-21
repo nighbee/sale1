@@ -38,7 +38,7 @@ func NewRedisConsumer(
 
 func (c *RedisConsumer) Start(ctx context.Context) {
 	log := applogger.With(zap.String("component", "redis_consumer"))
-	streams := []string{"analysis_completed", "critical_error"}
+	streams := []string{"transcript_ready", "analysis_completed", "critical_error"}
 	groupName := "main_api_group"
 	consumerName := "main_api_consumer_1"
 
@@ -50,7 +50,7 @@ func (c *RedisConsumer) Start(ctx context.Context) {
 		entries, err := c.client.XReadGroup(ctx, &redis.XReadGroupArgs{
 			Group:    groupName,
 			Consumer: consumerName,
-			Streams:  []string{"analysis_completed", "critical_error", ">", ">"},
+			Streams:  []string{"transcript_ready", "analysis_completed", "critical_error", ">", ">", ">"},
 			Count:    1,
 			Block:    5 * time.Second,
 		}).Result()
@@ -91,7 +91,17 @@ func (c *RedisConsumer) Start(ctx context.Context) {
 					zap.String("company_id", companyID),
 					zap.String("message_id", message.ID))
 
-				if streamName == "analysis_completed" {
+				if streamName == "transcript_ready" {
+					call, err := c.callRepo.GetByIDInternal(ctx, callID)
+					if err == nil {
+						c.hub.Broadcast(ws.Message{
+							UserID:    call.ManagerID,
+							CompanyID: call.CompanyID,
+							Type:      "transcript_ready",
+							Payload:   payload,
+						})
+					}
+				} else if streamName == "analysis_completed" {
 					call, err := c.callRepo.GetByIDInternal(ctx, callID)
 					if err == nil {
 						c.hub.Broadcast(ws.Message{

@@ -182,7 +182,7 @@ func (r *callRepository) ListByCompany(ctx context.Context, companyID string, fi
 		SELECT c.id, c.company_id, c.manager_id, c.manager_name, c.client_phone, c.client_id,
 		       c.duration, c.call_link, c.chat_link, c.call_date, c.call_time,
 		       c.status, c.source, c.created_at, c.updated_at,
-		       ar.quality_score, ar.script_match, ar.errors_free
+		       ar.quality_score, ar.script_match, ar.errors_free, ar.overall_rating, ar.kpi
 		FROM calls_schema.calls c
 		LEFT JOIN calls_schema.analysis_reports ar ON ar.call_id = c.id
 		WHERE %s
@@ -218,6 +218,8 @@ func (r *callRepository) ListByCompany(ctx context.Context, companyID string, fi
 			&call.QualityScore,
 			&call.ScriptMatch,
 			&call.ErrorsFree,
+			&call.OverallRating,
+			&call.KPI,
 		)
 		if err != nil {
 			return nil, 0, err

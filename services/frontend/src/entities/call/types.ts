@@ -18,6 +18,8 @@ export interface Call {
   quality_score?: number;
   script_match?: number;
   errors_free?: number;
+  overall_rating?: number;
+  kpi?: number;
 }
 
 export interface TranscriptSegment {

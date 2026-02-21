@@ -199,7 +199,11 @@
     "agent": "Агент",
     "client": "Клиент",
     "transcript_processing": "Транскрипт өңделуде...",
-    "analysis_pending": "Талдау күтілуде..."
+    "analysis_pending": "Талдау күтілуде...",
+    "kpi_score": "KPI көрсеткіші",
+    "overall_rating": "Жалпы рейтинг",
+    "transcript_ready_toast": "Транскрипт дайын",
+    "analysis_ready_toast": "Талдау дайын"
   },
   "leaderboard": {
     "title": "Командалық көшбасшылар тақтасы",

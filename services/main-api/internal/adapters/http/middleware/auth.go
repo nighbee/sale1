@@ -10,20 +10,25 @@ import (
 func JWTAuth(jwtService ports.JWTService) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		authHeader := c.Get("Authorization")
-		if authHeader == "" {
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-				"error": "Missing authorization header",
-			})
+		var tokenString string
+
+		if authHeader != "" {
+			parts := strings.Split(authHeader, " ")
+			if len(parts) == 2 && parts[0] == "Bearer" {
+				tokenString = parts[1]
+			}
 		}
 
-		parts := strings.Split(authHeader, " ")
-		if len(parts) != 2 || parts[0] != "Bearer" {
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-				"error": "Invalid authorization format",
-			})
+		// Fallback to query parameter for WebSockets
+		if tokenString == "" {
+			tokenString = c.Query("token")
 		}
 
-		tokenString := parts[1]
+		if tokenString == "" {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+				"error": "Missing authentication token",
+			})
+		}
 
 		claims, err := jwtService.ValidateToken(tokenString)
 		if err != nil {

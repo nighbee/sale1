@@ -13,8 +13,8 @@ _pool = None
 def get_pool():
     global _pool
     if _pool is None:
-        # Use simple pool for now
-        _pool = pool.SimpleConnectionPool(1, 10, os.getenv("DATABASE_URL"))
+        # Use ThreadedConnectionPool for thread safety in gRPC server
+        _pool = pool.ThreadedConnectionPool(1, 20, os.getenv("DATABASE_URL"))
     return _pool
 
 def get_transcript(call_id):

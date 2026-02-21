@@ -6,6 +6,8 @@ import Skeleton from '../../../shared/ui/Skeleton';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useUserStore } from '../../../entities/user/model/store';
+import { useWebSocket } from '../../../shared/hooks/useWebSocket';
+import { useCallback } from 'react';
 
 const CallsListPage: React.FC = () => {
   const { t } = useTranslation();
@@ -14,25 +16,32 @@ const CallsListPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ total: 0, avgScore: 0, failed: 0 });
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const res = await callApi.listCalls({ team_id: currentTeamId });
-        const data = res.data;
-        setCalls(data.calls || []);
-        // Simulated stats calculation
-        const total = data.total || (data.calls ? data.calls.length : 0);
-        const avg = data.calls && data.calls.length > 0 ? 78.4 : 0; // Mocked avg
-        setStats({ total, avgScore: avg, failed: 12 });
-      } catch {
-        console.error('Failed to fetch calls');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await callApi.listCalls({ team_id: currentTeamId });
+      const data = res.data;
+      setCalls(data.calls || []);
+      // Simulated stats calculation
+      const total = data.total || (data.calls ? data.calls.length : 0);
+      const avg = data.calls && data.calls.length > 0 ? 78.4 : 0; // Mocked avg
+      setStats({ total, avgScore: avg, failed: 12 });
+    } catch {
+      console.error('Failed to fetch calls');
+    } finally {
+      setLoading(false);
+    }
   }, [currentTeamId]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  useWebSocket(useCallback((msg) => {
+    if (msg.type === 'analysis_completed') {
+      fetchData();
+    }
+  }, [fetchData]));
 
   return (
     <PageLayout title={t('calls.list_title')}>
@@ -98,8 +107,11 @@ const CallsListPage: React.FC = () => {
                       {call.manager_name}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        92
+                      <span className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                        (call.kpi || 0) > 50 ? 'bg-green-100 text-green-800' :
+                        (call.kpi || 0) > 20 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
+                      }`}>
+                        {call.kpi?.toFixed(1) || '0.0'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">

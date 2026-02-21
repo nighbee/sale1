@@ -199,7 +199,11 @@
     "agent": "Агент",
     "client": "Клиент",
     "transcript_processing": "Транскрипт обрабатывается...",
-    "analysis_pending": "Анализ ожидается..."
+    "analysis_pending": "Анализ ожидается...",
+    "kpi_score": "Показатель KPI",
+    "overall_rating": "Общий рейтинг",
+    "transcript_ready_toast": "Транскрипт готов",
+    "analysis_ready_toast": "Анализ готов"
   },
   "leaderboard": {
     "title": "Лидерборд команды",

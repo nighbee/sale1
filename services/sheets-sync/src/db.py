@@ -27,6 +27,53 @@ def get_connection(database_url: str):
     return psycopg2.connect(_dsn(database_url))
 
 
+def get_user_uuid(manager_id: str) -> str:
+    """Return a deterministic UUID for a given manager_id string."""
+    try:
+        # Check if already a valid UUID
+        return str(uuid.UUID(manager_id))
+    except (ValueError, AttributeError):
+        # Generate deterministic UUID from name/string
+        return str(uuid.uuid5(uuid.NAMESPACE_DNS, str(manager_id)))
+
+
+def ensure_user_exists(database_url: str, company_id: str, manager_id: str, manager_name: str):
+    """Ensure a user record exists for the given manager_id in auth_schema.users."""
+    user_id = get_user_uuid(manager_id)
+    conn = get_connection(database_url)
+    try:
+        with conn.cursor() as cur:
+            # Try to find by ID
+            cur.execute("SELECT id FROM auth_schema.users WHERE id = %s", (user_id,))
+            if cur.fetchone():
+                return
+
+            # Not found, create it
+            # Generate a dummy email
+            email = f"manager_{user_id[:8]}@example.com"
+            if "@" in manager_id:
+                email = manager_id
+
+            cur.execute(
+                """
+                INSERT INTO auth_schema.users
+                (id, company_id, email, password_hash, role, manager_name, is_active, first_name, last_name)
+                VALUES (%s, %s, %s, %s, %s, %s, TRUE, %s, '')
+                ON CONFLICT (id) DO NOTHING
+                """,
+                (user_id, company_id, email, 'disabled', 'sales_rep', manager_name, manager_name)
+            )
+            conn.commit()
+            logger.info("Auto-created user for manager",
+                        extra={"manager_id": manager_id, "user_id": user_id, "manager_name": manager_name})
+    except Exception as e:
+        logger.warning("Could not auto-create user", extra={"manager_id": manager_id, "error": str(e)})
+        if not conn.closed:
+            conn.rollback()
+    finally:
+        conn.close()
+
+
 def resolve_company_id(database_url: str, forced_company_id: str) -> str:
     """Return the company_id to use.
 
@@ -76,6 +123,12 @@ def upsert_call(
       - should_enqueue=True  → existing with status 'error', reset to pending and retry
       - should_enqueue=False → already pending/processing/completed, skip push
     """
+    # Ensure user exists before inserting call
+    user_id = manager_id
+    if manager_id:
+        ensure_user_exists(database_url, company_id, manager_id, manager_name)
+        user_id = get_user_uuid(manager_id)
+
     conn = get_connection(database_url)
     try:
         with conn.cursor() as cur:
@@ -123,7 +176,7 @@ def upsert_call(
                 (
                     call_id,
                     company_id,
-                    manager_id,
+                    user_id,
                     manager_name,
                     client_phone,
                     client_id or None,

@@ -199,7 +199,11 @@
     "agent": "Agent",
     "client": "Client",
     "transcript_processing": "Transcript being processed...",
-    "analysis_pending": "Analysis pending..."
+    "analysis_pending": "Analysis pending...",
+    "kpi_score": "KPI Score",
+    "overall_rating": "Overall Rating",
+    "transcript_ready_toast": "Transcript is ready",
+    "analysis_ready_toast": "Analysis is ready"
   },
   "leaderboard": {
     "title": "Team Leaderboard",

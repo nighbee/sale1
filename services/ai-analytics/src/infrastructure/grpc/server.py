@@ -10,58 +10,57 @@ logger = logging.getLogger(__name__)
 
 class AnalyticsServiceServicer(analytics_service_pb2_grpc.AnalyticsServiceServicer):
     def GetAnalysis(self, request, context):
-        timer = REQUEST_LATENCY.labels(app_name='ai-analytics', method='GRPC', path='/GetAnalysis').time()
-        call_id = request.call_id
-        logger.info("gRPC GetAnalysis called", extra={"call_id": call_id, "method": "GetAnalysis"})
+        with REQUEST_LATENCY.labels(app_name='ai-analytics', method='GRPC', path='/GetAnalysis').time():
+            call_id = request.call_id
+            logger.info("gRPC GetAnalysis called", extra={"call_id": call_id, "method": "GetAnalysis"})
 
-        conn = get_pool().getconn()
-        try:
-            cur = conn.cursor()
-            cur.execute("""
-                SELECT quality_score, script_match, errors_free, overall_rating, kpi, recommendation, brief, next_best_action
-                FROM calls_schema.analysis_reports
-                WHERE call_id = %s
-            """, (call_id,))
-            row = cur.fetchone()
-            cur.close()
+            conn = get_pool().getconn()
+            try:
+                cur = conn.cursor()
+                cur.execute("""
+                    SELECT quality_score, script_match, errors_free, overall_rating, kpi, recommendation, brief, next_best_action
+                    FROM calls_schema.analysis_reports
+                    WHERE call_id = %s
+                """, (call_id,))
+                row = cur.fetchone()
+                cur.close()
 
-            if row:
-                REQUEST_COUNT.labels(app_name='ai-analytics', method='GRPC', path='/GetAnalysis', status_code='200').inc()
-                logger.info(
-                    "gRPC GetAnalysis success",
-                    extra={
-                        "call_id": call_id,
-                        "overall_rating": float(row[3]),
-                        "quality_score": row[0],
-                        "script_match": row[1],
-                        "errors_free": row[2],
-                        "kpi": float(row[4]),
-                    },
-                )
-                return analytics_service_pb2.AnalysisResponse(
-                    call_id=call_id,
-                    quality_score=row[0],
-                    script_match=row[1],
-                    errors_free=row[2],
-                    overall_rating=float(row[3]),
-                    kpi=float(row[4]),
-                    recommendation=row[5],
-                    brief=row[6],
-                    next_best_action=row[7]
-                )
-            else:
-                REQUEST_COUNT.labels(app_name='ai-analytics', method='GRPC', path='/GetAnalysis', status_code='404').inc()
-                logger.warning("gRPC GetAnalysis not found", extra={"call_id": call_id})
-                context.set_code(grpc.StatusCode.NOT_FOUND)
-                context.set_details("Analysis not found")
-                return analytics_service_pb2.AnalysisResponse()
-        except Exception as e:
-            REQUEST_COUNT.labels(app_name='ai-analytics', method='GRPC', path='/GetAnalysis', status_code='500').inc()
-            logger.error("gRPC GetAnalysis error", extra={"call_id": call_id, "error": str(e)})
-            raise e
-        finally:
-            timer.stop()
-            get_pool().putconn(conn)
+                if row:
+                    REQUEST_COUNT.labels(app_name='ai-analytics', method='GRPC', path='/GetAnalysis', status_code='200').inc()
+                    logger.info(
+                        "gRPC GetAnalysis success",
+                        extra={
+                            "call_id": call_id,
+                            "overall_rating": float(row[3]),
+                            "quality_score": row[0],
+                            "script_match": row[1],
+                            "errors_free": row[2],
+                            "kpi": float(row[4]),
+                        },
+                    )
+                    return analytics_service_pb2.AnalysisResponse(
+                        call_id=call_id,
+                        quality_score=row[0],
+                        script_match=row[1],
+                        errors_free=row[2],
+                        overall_rating=float(row[3]),
+                        kpi=float(row[4]),
+                        recommendation=row[5],
+                        brief=row[6],
+                        next_best_action=row[7]
+                    )
+                else:
+                    REQUEST_COUNT.labels(app_name='ai-analytics', method='GRPC', path='/GetAnalysis', status_code='404').inc()
+                    logger.warning("gRPC GetAnalysis not found", extra={"call_id": call_id})
+                    context.set_code(grpc.StatusCode.NOT_FOUND)
+                    context.set_details("Analysis not found")
+                    return analytics_service_pb2.AnalysisResponse()
+            except Exception as e:
+                REQUEST_COUNT.labels(app_name='ai-analytics', method='GRPC', path='/GetAnalysis', status_code='500').inc()
+                logger.error("gRPC GetAnalysis error", extra={"call_id": call_id, "error": str(e)})
+                raise e
+            finally:
+                get_pool().putconn(conn)
 
 import os
 
