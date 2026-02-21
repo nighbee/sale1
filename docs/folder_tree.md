@@ -208,7 +208,7 @@ services/webhook-service/
 
 ---
 
-## Service 3: Google Sheets Sync (Golang)
+## Service 3: Google Sheets Sync (Python)
 
 ```
 services/sheets-sync/

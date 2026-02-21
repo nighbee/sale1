@@ -43,7 +43,7 @@ SalesAI is an Intelligent Revenue Intelligence & Coaching SaaS platform that pro
 | **Script Service** | Golang (Fiber) | 8083 | HTTP | Script upload, parsing, storage |
 | **STT Service** | Python (FastAPI) | 5001* | gRPC | Speech-to-text processing |
 | **AI Analytics** | Python (FastAPI) | 5002* | gRPC | LLM-based call analysis |
-| **Sheets Sync** | Golang | - | - | Google Sheets synchronization |
+| **Sheets Sync** | Python | - | - | Google Sheets synchronization |
 | **Frontend** | React/Vite | 80* | HTTP | Web UI (via Nginx) |
 
 *Internal ports (not exposed outside docker network)
@@ -336,12 +336,37 @@ services/ai-analytics/
 
 ### 3.6 Sheets Sync Service
 
-**Technology**: Golang 1.24  
-**Protocol**: Scheduled (Cron-like)
+**Technology**: Python 3.11  
+**Protocol**: Scheduled (Cron-like) + HTTP API
 
 #### Responsibilities
 - Sync data to Google Sheets
+- Bidirectional sync: import calls from sheets, export analysis results back to sheets
 - Periodic data export
+- Push jobs to BullMQ for audio processing
+
+#### Clean Architecture Structure
+```
+services/sheets-sync/
+├── main.py                        # Entry point (scheduler/api modes)
+├── src/
+│   ├── config.py                  # Configuration
+│   ├── db.py                      # PostgreSQL client
+│   ├── logging_setup.py           # Logging configuration
+│   ├── pipeline.py                # Sync pipeline
+│   ├── queue_client.py            # Redis queue client
+│   └── sheets_client.py           # Google Sheets client
+├── requirements.txt
+└── Dockerfile
+```
+
+#### Processing Pipeline
+1. **Ingest Phase**: Read sheet rows → Parse date/time → Upsert call → Push to BullMQ → Mark row "processing"
+2. **Write-back Phase**: Fetch completed calls → Write analysis results back to sheet
+
+#### Service Modes
+- **Scheduler Mode** (default): Runs sync on configurable interval
+- **API Mode**: Exposes HTTP endpoints for manual sync (/health, /sync, /sync/blocking)
 
 ---
 
@@ -510,7 +535,7 @@ Sipuni Listener (WebSocket)
 | Main API | Go | Fiber | 1.22 / 2.52 |
 | Sipuni Listener | Go | Fiber | 1.22 / 2.52 |
 | Script Service | Go | Fiber | 1.22 / 2.52 |
-| Sheets Sync | Go | - | 1.24 |
+| Sheets Sync | Python | - | - |
 | STT Service | Python | FastAPI | 3.11 / 0.109 |
 | AI Analytics | Python | FastAPI | 3.11 / 0.109 |
 | Frontend | TypeScript | React/Vite | 18.x |

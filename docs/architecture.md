@@ -472,7 +472,7 @@ users (1) ────────────── (N) notifications
 | **Main API**          | Golang (Fiber)        | 1.22 / 2.52  |
 | **Sipuni Listener**   | Golang (Fiber)        | 1.22 / 2.52  |
 | **Script Service**    | Golang (Fiber)        | 1.22 / 2.52  |
-| **Sheets Sync**       | Golang                | 1.24         |
+| **Sheets Sync**       | Python                | 3.11         |
 | **STT Service**       | Python (FastAPI)      | 3.11 / 0.109 |
 
 ### 7.2 Infrastructure Stack
