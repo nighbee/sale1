@@ -44,5 +44,9 @@ export interface CallAnalysis {
   quality_score?: number;
   script_match?: number;
   errors_free?: number;
+  overall_rating?: number;
+  kpi?: number;
   recommendation?: string;
+  brief?: string;
+  next_best_action?: string;
 }

@@ -9,6 +9,7 @@ import {
 import * as XLSX from 'xlsx';
 import { analyticsApi } from '../../../entities/analytics/api';
 import { callApi } from '../../../entities/call/api';
+import type { CallAnalysis } from '../../../entities/call/types';
 import { integrationApi } from '../../../entities/integration/api';
 import { PageLayout } from '../../../widgets/PageLayout';
 import Skeleton from '../../../shared/ui/Skeleton';
@@ -132,6 +133,29 @@ const DirectorDashboardPage: React.FC = () => {
 
   // Table page
   const [tablePage, setTablePage] = useState(1);
+
+  // Call detail modal
+  const [selectedCall, setSelectedCall] = useState<SheetCall | null>(null);
+  const [modalAnalysis, setModalAnalysis] = useState<CallAnalysis | null>(null);
+  const [modalLoading, setModalLoading] = useState(false);
+
+  const openModal = async (call: SheetCall) => {
+    setSelectedCall(call);
+    setModalAnalysis(null);
+    if (call.status === 'completed') {
+      setModalLoading(true);
+      try {
+        const res = await callApi.getAnalysis(call.id);
+        setModalAnalysis(res.data as CallAnalysis);
+      } catch {
+        // analysis may not exist yet
+      } finally {
+        setModalLoading(false);
+      }
+    }
+  };
+
+  const closeModal = () => { setSelectedCall(null); setModalAnalysis(null); };
 
   // ── Analytics fetch ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -556,7 +580,7 @@ const DirectorDashboardPage: React.FC = () => {
                       : tableRows.map(call => (
                         <tr
                           key={call.id}
-                          onClick={() => navigate(`/calls/${call.id}`)}
+                          onClick={() => openModal(call)}
                           className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors cursor-pointer"
                         >
                           <td className="px-6 py-3 text-slate-600 dark:text-slate-400 whitespace-nowrap">
@@ -639,6 +663,138 @@ const DirectorDashboardPage: React.FC = () => {
 
         </div>
       </div>
+
+      {/* ── Call detail modal ─────────────────────────────────────────── */}
+      {selectedCall && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          onClick={closeModal}
+        >
+          <div
+            className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">
+                  {selectedCall.manager_name?.[0] || '?'}
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-slate-900 dark:text-white">{selectedCall.manager_name || '—'}</h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {selectedCall.client_phone || '—'} &nbsp;·&nbsp;
+                    {selectedCall.call_date ? new Date(selectedCall.call_date).toLocaleDateString() : '—'} &nbsp;·&nbsp;
+                    {selectedCall.duration ? `${Math.floor(selectedCall.duration / 60)}m ${selectedCall.duration % 60}s` : '—'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_PILL[selectedCall.status] || STATUS_PILL.pending}`}>
+                  {selectedCall.status}
+                </span>
+                <button
+                  onClick={closeModal}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                >
+                  <span className="material-icons text-xl">close</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Modal body */}
+            <div className="overflow-y-auto flex-1 px-6 py-5 space-y-5">
+              {/* Score cards */}
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { label: 'Quality', value: selectedCall.quality_score, color: 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600' },
+                  { label: 'Script Match', value: selectedCall.script_match, color: 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600' },
+                  { label: 'Errors Free', value: selectedCall.errors_free, color: 'bg-amber-50 dark:bg-amber-900/20 text-amber-600' },
+                ].map(s => (
+                  <div key={s.label} className={`rounded-xl p-4 ${s.color} text-center`}>
+                    <p className="text-xs font-medium opacity-70 mb-1">{s.label}</p>
+                    <p className="text-2xl font-bold">{s.value != null ? s.value : '—'}</p>
+                    {s.value != null && <p className="text-xs opacity-60">/100</p>}
+                  </div>
+                ))}
+              </div>
+
+              {selectedCall.status !== 'completed' && (
+                <div className="text-center py-6 text-slate-400 dark:text-slate-500">
+                  <span className="material-icons text-3xl block mb-2">hourglass_empty</span>
+                  <p className="text-sm">Analysis not yet available — call is <strong>{selectedCall.status}</strong></p>
+                </div>
+              )}
+
+              {selectedCall.status === 'completed' && modalLoading && (
+                <div className="space-y-3">
+                  <div className="h-20 bg-slate-100 dark:bg-slate-700 rounded-xl animate-pulse" />
+                  <div className="h-28 bg-slate-100 dark:bg-slate-700 rounded-xl animate-pulse" />
+                  <div className="h-20 bg-slate-100 dark:bg-slate-700 rounded-xl animate-pulse" />
+                </div>
+              )}
+
+              {!modalLoading && modalAnalysis && (
+                <>
+                  {/* Brief */}
+                  {modalAnalysis.brief && (
+                    <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                      <div className="flex items-center gap-2 px-4 py-2.5 bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700">
+                        <span className="material-icons text-base text-slate-500">summarize</span>
+                        <h3 className="text-xs font-bold uppercase tracking-wide text-slate-600 dark:text-slate-300">Call Brief</h3>
+                      </div>
+                      <p className="px-4 py-3 text-sm text-slate-700 dark:text-slate-200 leading-relaxed">{modalAnalysis.brief}</p>
+                    </div>
+                  )}
+
+                  {/* Recommendation */}
+                  {modalAnalysis.recommendation && (
+                    <div className="rounded-xl border border-blue-100 dark:border-blue-900/40 overflow-hidden">
+                      <div className="flex items-center gap-2 px-4 py-2.5 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-900/40">
+                        <span className="material-icons text-base text-blue-500">tips_and_updates</span>
+                        <h3 className="text-xs font-bold uppercase tracking-wide text-blue-700 dark:text-blue-400">Coaching Recommendation</h3>
+                      </div>
+                      <p className="px-4 py-3 text-sm text-slate-700 dark:text-slate-200 leading-relaxed">{modalAnalysis.recommendation}</p>
+                    </div>
+                  )}
+
+                  {/* Next Best Action */}
+                  {modalAnalysis.next_best_action && (
+                    <div className="rounded-xl border border-emerald-100 dark:border-emerald-900/40 overflow-hidden">
+                      <div className="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 dark:bg-emerald-900/20 border-b border-emerald-100 dark:border-emerald-900/40">
+                        <span className="material-icons text-base text-emerald-500">rocket_launch</span>
+                        <h3 className="text-xs font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">Next Best Action</h3>
+                      </div>
+                      <p className="px-4 py-3 text-sm text-slate-700 dark:text-slate-200 leading-relaxed whitespace-pre-line">{modalAnalysis.next_best_action}</p>
+                    </div>
+                  )}
+
+                  {!modalAnalysis.brief && !modalAnalysis.recommendation && !modalAnalysis.next_best_action && (
+                    <p className="text-center text-sm text-slate-400 py-4">No textual analysis fields available for this call.</p>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Modal footer */}
+            <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center shrink-0">
+              <button
+                onClick={closeModal}
+                className="px-4 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => navigate(`/calls/${selectedCall.id}`)}
+                className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-lg text-sm font-medium transition-colors"
+              >
+                <span className="material-icons text-base">open_in_full</span>
+                View Full Call
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </PageLayout>
   );
 };

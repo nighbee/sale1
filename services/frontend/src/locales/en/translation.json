@@ -182,6 +182,8 @@
     "script_match": "Script Match",
     "errors_free": "Errors Free",
     "recommendation": "Recommendation",
+    "brief": "Call Brief",
+    "next_best_action": "Next Best Action",
     "list_title": "Calls List",
     "list_subtitle": "Monitor call quality, processing status, and team performance.",
     "representative": "Sales Representative",

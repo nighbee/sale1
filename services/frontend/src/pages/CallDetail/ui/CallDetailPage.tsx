@@ -272,10 +272,33 @@ const CallDetailPage: React.FC = () => {
                       <span className="text-xl font-bold">{analysis.errors_free}%</span>
                     </div>
                   </div>
-                  <div className="bg-blue-50 dark:bg-primary/10 rounded-xl p-4 border border-blue-100">
-                     <h3 className="text-xs font-bold uppercase mb-2">{t('calls.recommendation')}</h3>
-                     <p className="text-sm">{analysis.recommendation}</p>
-                  </div>
+                  {analysis.brief && (
+                    <div className="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <span className="material-icons text-sm text-slate-500">summarize</span>
+                        <h3 className="text-xs font-bold uppercase text-slate-600 dark:text-slate-300">{t('calls.brief')}</h3>
+                      </div>
+                      <p className="text-sm leading-relaxed">{analysis.brief}</p>
+                    </div>
+                  )}
+                  {analysis.recommendation && (
+                    <div className="bg-blue-50 dark:bg-primary/10 rounded-xl p-4 border border-blue-100">
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <span className="material-icons text-sm text-blue-500">tips_and_updates</span>
+                        <h3 className="text-xs font-bold uppercase text-blue-700 dark:text-blue-400">{t('calls.recommendation')}</h3>
+                      </div>
+                      <p className="text-sm leading-relaxed">{analysis.recommendation}</p>
+                    </div>
+                  )}
+                  {analysis.next_best_action && (
+                    <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-4 border border-emerald-100 dark:border-emerald-900/40">
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <span className="material-icons text-sm text-emerald-500">rocket_launch</span>
+                        <h3 className="text-xs font-bold uppercase text-emerald-700 dark:text-emerald-400">{t('calls.next_best_action')}</h3>
+                      </div>
+                      <p className="text-sm leading-relaxed whitespace-pre-line">{analysis.next_best_action}</p>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <p className="text-sm text-slate-500">{t('calls.analysis_pending')}</p>
