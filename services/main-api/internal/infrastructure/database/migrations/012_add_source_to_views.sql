@@ -1,0 +1,28 @@
+-- =============================================
+-- Migration 012: Add source column to views
+-- Description: Include source in v_calls_with_analysis for leaderboard filtering
+-- Date: 2026-02-21
+-- =============================================
+
+CREATE OR REPLACE VIEW calls_schema.v_calls_with_analysis AS
+SELECT
+    c.id,
+    c.company_id,
+    c.manager_id,
+    c.manager_name,
+    c.client_phone,
+    c.duration,
+    c.call_date,
+    c.call_time,
+    c.status,
+    c.source,
+    ar.quality_score,
+    ar.script_match,
+    ar.errors_free,
+    ar.overall_rating,
+    ar.kpi,
+    ar.brief,
+    ar.recommendation,
+    ar.next_best_action
+FROM calls_schema.calls c
+LEFT JOIN calls_schema.analysis_reports ar ON c.id = ar.call_id;

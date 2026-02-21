@@ -32,28 +32,66 @@ func (r *analysisRepository) Create(ctx context.Context, a *domain.AnalysisRepor
 }
 
 func (r *analysisRepository) GetTeamPerformance(ctx context.Context, companyID string, filters map[string]interface{}) ([]map[string]interface{}, error) {
-	where := "company_id = $1"
+	argIdx := 2
+	where := "c.company_id = $1 AND c.status = 'completed'"
 	args := []interface{}{companyID}
 
 	if teamID, ok := filters["team_id"].(string); ok && teamID != "" {
-		where += " AND manager_id IN (SELECT manager_id FROM auth_schema.users WHERE team_id = $2)"
+		where += fmt.Sprintf(" AND c.manager_id IN (SELECT manager_id FROM auth_schema.users WHERE team_id = $%d)", argIdx)
 		args = append(args, teamID)
+		argIdx++
+	}
+
+	if source, ok := filters["source"].(string); ok && source != "" {
+		where += fmt.Sprintf(" AND c.source = $%d", argIdx)
+		args = append(args, source)
+		argIdx++
+	}
+
+	if period, ok := filters["period"].(string); ok && period != "" {
+		var interval string
+		switch period {
+		case "7d":
+			interval = "7 days"
+		case "30d":
+			interval = "30 days"
+		case "90d":
+			interval = "90 days"
+		}
+		if interval != "" {
+			where += fmt.Sprintf(" AND c.call_date >= NOW() - INTERVAL '%s'", interval)
+		}
+	}
+
+	sortBy := "avg_kpi"
+	if s, ok := filters["sort_by"].(string); ok {
+		allowed := map[string]bool{
+			"avg_kpi": true, "avg_quality": true, "avg_script_match": true,
+			"avg_errors_free": true, "total_calls": true,
+		}
+		if allowed[s] {
+			sortBy = s
+		}
 	}
 
 	query := fmt.Sprintf(`
 		SELECT
-			manager_id,
-			manager_name,
-			total_calls,
-			avg_quality,
-			avg_script_match,
-			avg_errors_free,
-			avg_overall_rating,
-			avg_kpi,
-			total_duration_seconds
-		FROM calls_schema.v_manager_performance
+			c.manager_id,
+			c.manager_name,
+			COUNT(c.id)                AS total_calls,
+			COALESCE(AVG(ar.quality_score), 0)   AS avg_quality,
+			COALESCE(AVG(ar.script_match), 0)    AS avg_script_match,
+			COALESCE(AVG(ar.errors_free), 0)     AS avg_errors_free,
+			COALESCE(AVG(ar.overall_rating), 0)  AS avg_overall_rating,
+			COALESCE(AVG(ar.kpi), 0)             AS avg_kpi,
+			COALESCE(SUM(c.duration), 0)         AS total_duration_seconds
+		FROM calls_schema.calls c
+		LEFT JOIN calls_schema.analysis_reports ar ON c.id = ar.call_id
 		WHERE %s
-	`, where)
+		GROUP BY c.manager_id, c.manager_name
+		ORDER BY %s DESC NULLS LAST
+	`, where, sortBy)
+
 	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err

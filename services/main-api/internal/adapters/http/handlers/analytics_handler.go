@@ -52,9 +52,12 @@ func (h *AnalyticsHandler) GetLeaderboard(c *fiber.Ctx) error {
 
 	filters := map[string]interface{}{
 		"team_id": c.Query("team_id"),
+		"period":  c.Query("period"),
+		"source":  c.Query("source"),
+		"sort_by": c.Query("sort_by"),
 	}
 
-	log.Debug("fetching leaderboard", zap.String("company_id", companyID))
+	log.Debug("fetching leaderboard", zap.String("company_id", companyID), zap.Any("filters", filters))
 	result, err := h.teamPerformanceUC.Execute(c.Context(), companyID, filters)
 	if err != nil {
 		log.Error("leaderboard query failed", zap.String("company_id", companyID), zap.Error(err))
