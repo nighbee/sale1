@@ -93,10 +93,15 @@ def run_api():
 
 
 def _run_pipeline(pipeline: Pipeline):
+    logger.info("Starting pipeline._run_pipeline", extra={"caller": "_run_pipeline"})
+    start_t = time.perf_counter()
     try:
         pipeline.run()
-    except Exception as e:
-        logger.error("Background sync cycle failed", extra={"error": str(e)})
+        duration = time.perf_counter() - start_t
+        logger.info("pipeline._run_pipeline completed", extra={"duration_s": duration})
+    except Exception:
+        duration = time.perf_counter() - start_t
+        logger.exception("pipeline._run_pipeline failed", extra={"duration_s": duration, "trace": traceback.format_exc()})
 
 
 # ── Entry ─────────────────────────────────────────────────────────────────────
