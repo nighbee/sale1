@@ -21,7 +21,6 @@ from typing import Optional
 from src.config import Config
 from src.sheets_client import SheetsClient, SheetRow
 from src.db import (
-    resolve_company_id,
     upsert_call,
     get_pending_sheet_calls,
     get_analysis_result,
@@ -52,19 +51,26 @@ def _parse_time(raw: str) -> Optional[time]:
 
 
 class Pipeline:
-    def __init__(self):
+    def __init__(self, company_id: str, spreadsheet_id: str, sheet_name: str):
         sa_info = Config.service_account_info()
         self.sheets = SheetsClient(
             service_account_info=sa_info,
-            spreadsheet_id=Config.GOOGLE_SHEETS_ID,
-            sheet_name=Config.SHEET_NAME,
+            spreadsheet_id=spreadsheet_id,
+            sheet_name=sheet_name,
         )
         self.queue = QueueClient(
             redis_url=Config.REDIS_URL,
             queue_name=Config.QUEUE_NAME,
         )
-        self.company_id = resolve_company_id(Config.DATABASE_URL, Config.COMPANY_ID)
-        logger.info("Pipeline initialised", extra={"company_id": self.company_id})
+        self.company_id = company_id
+        logger.info(
+            "Pipeline initialised",
+            extra={
+                "company_id": self.company_id,
+                "spreadsheet_id": spreadsheet_id,
+                "sheet_name": sheet_name,
+            },
+        )
 
     def run(self):
         logger.info("Starting sync cycle")
