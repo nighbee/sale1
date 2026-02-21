@@ -68,10 +68,13 @@ def upsert_call(
     chat_link: Optional[str],
     call_date: date,
     call_time: time,
-) -> str:
+) -> tuple[str, bool]:
     """Insert or re-use (by call_link + company_id) a call record.
 
-    Returns the call UUID.
+    Returns (call_uuid, should_enqueue):
+      - should_enqueue=True  → freshly inserted, push to queue
+      - should_enqueue=True  → existing with status 'error', reset to pending and retry
+      - should_enqueue=False → already pending/processing/completed, skip push
     """
     conn = get_connection(database_url)
     try:
@@ -88,10 +91,24 @@ def upsert_call(
             existing = cur.fetchone()
             if existing:
                 call_id = str(existing[0])
+                existing_status = existing[1]
+                if existing_status == "error":
+                    # Reset to pending so it gets retried
+                    cur.execute(
+                        "UPDATE calls_schema.calls SET status = 'pending' WHERE id = %s",
+                        (call_id,),
+                    )
+                    conn.commit()
+                    logger.info(
+                        "Call reset for retry",
+                        extra={"call_id": call_id, "prev_status": existing_status},
+                    )
+                    return call_id, True
                 logger.debug(
-                    "Call already exists", extra={"call_id": call_id, "status": existing[1]}
+                    "Call already queued or completed, skipping",
+                    extra={"call_id": call_id, "status": existing_status},
                 )
-                return call_id
+                return call_id, False
 
             call_id = str(uuid.uuid4())
             cur.execute(
@@ -119,7 +136,7 @@ def upsert_call(
             )
             conn.commit()
             logger.info("Inserted call", extra={"call_id": call_id, "call_link": call_link})
-            return call_id
+            return call_id, True
     finally:
         conn.close()
 

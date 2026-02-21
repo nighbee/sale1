@@ -120,7 +120,7 @@ class Pipeline:
                 continue
 
             try:
-                call_id = upsert_call(
+                call_id, should_enqueue = upsert_call(
                     database_url=Config.DATABASE_URL,
                     company_id=self.company_id,
                     manager_id=row.man_id,
@@ -133,6 +133,13 @@ class Pipeline:
                     call_date=parsed_date,
                     call_time=parsed_time,
                 )
+                if not should_enqueue:
+                    logger.debug(
+                        "Skipping row (job already in queue or completed)",
+                        extra={"call_id": call_id, "row": row.sheet_row_number},
+                    )
+                    skipped += 1
+                    continue
                 logger.info(
                     "Call upserted to DB",
                     extra={
@@ -144,19 +151,6 @@ class Pipeline:
                         "call_time": str(parsed_time),
                     },
                 )
-
-                # If the call is already completed in the DB (e.g. Redis was wiped
-                # but processing had finished), skip re-queuing — the write-back
-                # phase will update the sheet on this same cycle.
-                db_result = get_analysis_result(Config.DATABASE_URL, call_id)
-                if db_result and db_result.get("status") == "completed":
-                    logger.info(
-                        "Call already completed in DB, skipping queue",
-                        extra={"call_id": call_id, "row": row.sheet_row_number},
-                    )
-                    skipped += 1
-                    continue
-
                 self.queue.push_job(
                     call_id=call_id,
                     company_id=self.company_id,
@@ -183,10 +177,10 @@ class Pipeline:
         if not completed_calls:
             return
 
-        # Build a lookup: call_link → sheet row number
+        # Build a lookup: call_link → (sheet row number, current stt_status)
         rows = self.sheets.read_data_rows()
-        link_to_row: dict[str, int] = {
-            r.call_link: r.sheet_row_number
+        link_to_row: dict[str, tuple[int, str]] = {
+            r.call_link: (r.sheet_row_number, r.stt_status)
             for r in rows
             if r.call_link
         }
@@ -194,12 +188,21 @@ class Pipeline:
         written = 0
         for call in completed_calls:
             call_link = call.get("call_link", "")
-            row_number = link_to_row.get(call_link)
-            if not row_number:
+            entry = link_to_row.get(call_link)
+            if not entry:
                 continue
+            row_number, current_status = entry
 
             status = call.get("status", "error")
-            stt_status = "completed" if status == "completed" else "error"
+            stt_status = "done" if status == "completed" else "error"
+
+            # Skip rows already written back to avoid redundant API calls
+            if current_status in ("done", "error"):
+                logger.debug(
+                    "Skipping write-back (already synced)",
+                    extra={"call_id": call.get("id"), "row": row_number, "stt_status": current_status},
+                )
+                continue
             processed_at_raw = call.get("processed_at")
             processed_at_str = (
                 processed_at_raw.isoformat() if processed_at_raw else ""
