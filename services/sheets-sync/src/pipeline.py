@@ -1,3 +1,4 @@
+# ...existing code...
 """
 Main sync pipeline.
 
@@ -17,6 +18,8 @@ Cycle (runs every SYNC_INTERVAL seconds):
 import logging
 from datetime import date, time, datetime
 from typing import Optional
+import time as _time
+import traceback
 
 from src.config import Config
 from src.sheets_client import SheetsClient, SheetRow
@@ -59,10 +62,18 @@ class Pipeline:
             spreadsheet_id=Config.GOOGLE_SHEETS_ID,
             sheet_name=Config.SHEET_NAME,
         )
-        self.queue = QueueClient(
-            redis_url=Config.REDIS_URL,
-            queue_name=Config.QUEUE_NAME,
-        )
+
+        # Initialise queue client with logging and fail-fast on error
+        try:
+            self.queue = QueueClient(
+                redis_url=Config.REDIS_URL,
+                queue_name=Config.QUEUE_NAME,
+            )
+            logger.info("Queue client initialised", extra={"redis_url": Config.REDIS_URL, "queue_name": Config.QUEUE_NAME})
+        except Exception:
+            logger.exception("Failed to initialise QueueClient", extra={"redis_url": Config.REDIS_URL, "queue_name": Config.QUEUE_NAME})
+            raise
+
         self.company_id = resolve_company_id(Config.DATABASE_URL, Config.COMPANY_ID)
         logger.info("Pipeline initialised", extra={"company_id": self.company_id})
 
@@ -151,18 +162,37 @@ class Pipeline:
                         "call_time": str(parsed_time),
                     },
                 )
-                self.queue.push_job(
-                    call_id=call_id,
-                    company_id=self.company_id,
-                    call_link=row.call_link,
-                    chat_link=row.chat_link or "",
-                )
-                self.sheets.mark_row_processing(row.sheet_row_number)
+
+                # Push job to queue with timing and payload logging
+                payload = {"call_id": call_id, "company_id": self.company_id, "call_link": row.call_link, "chat_link": row.chat_link or ""}
+                logger.debug("Pushing job to queue", extra={"payload_sample": payload})
+                push_start = _time.perf_counter()
+                try:
+                    self.queue.push_job(
+                        call_id=call_id,
+                        company_id=self.company_id,
+                        call_link=row.call_link,
+                        chat_link=row.chat_link or "",
+                    )
+                    push_duration = _time.perf_counter() - push_start
+                    logger.info("Job pushed to queue", extra={"call_id": call_id, "duration_s": push_duration})
+                except Exception:
+                    logger.exception("Failed to push job to queue", extra={"call_id": call_id, "row": row.sheet_row_number, "payload": payload})
+                    # Do not mark row as processing if queue push failed
+                    skipped += 1
+                    continue
+
+                # Mark sheet row as processing only after queue push succeeded
+                try:
+                    self.sheets.mark_row_processing(row.sheet_row_number)
+                except Exception:
+                    logger.exception("Failed to mark sheet row as processing", extra={"row": row.sheet_row_number, "call_id": call_id})
+                    # still count as queued (job is in queue), but surface the sheet write failure
                 queued += 1
-            except Exception as e:
-                logger.error(
+            except Exception:
+                logger.exception(
                     "Failed to ingest row",
-                    extra={"row": row.sheet_row_number, "error": str(e)},
+                    extra={"row": row.sheet_row_number},
                 )
 
         logger.info(
@@ -173,9 +203,21 @@ class Pipeline:
     # ── Phase 2: DB results → sheet ───────────────────────────────────────
 
     def _write_back_results(self):
-        completed_calls = get_pending_sheet_calls(Config.DATABASE_URL, self.company_id)
-        if not completed_calls:
+        # Fetch pending/completed calls from DB with timing/logging
+        db_start = _time.perf_counter()
+        try:
+            completed_calls = get_pending_sheet_calls(Config.DATABASE_URL, self.company_id)
+            db_duration = _time.perf_counter() - db_start
+            logger.info("Fetched pending/completed calls from DB", extra={"count": len(completed_calls) if completed_calls else 0, "duration_s": db_duration})
+        except Exception:
+            logger.exception("Failed to fetch pending/completed calls from DB", extra={})
             return
+
+        if not completed_calls:
+            logger.info("No completed calls to write back")
+            return
+
+        logger.info("Load phase starting", extra={"completed_calls_count": len(completed_calls)})
 
         # Build a lookup: call_link → (sheet row number, current stt_status)
         rows = self.sheets.read_data_rows()
@@ -190,6 +232,7 @@ class Pipeline:
             call_link = call.get("call_link", "")
             entry = link_to_row.get(call_link)
             if not entry:
+                logger.debug("No sheet row found for call_link", extra={"call_link": call_link, "call_id": call.get("id")})
                 continue
             row_number, current_status = entry
 
@@ -222,6 +265,7 @@ class Pipeline:
                 },
             )
             try:
+                write_start = _time.perf_counter()
                 self.sheets.write_analysis_result(
                     row_number=row_number,
                     stt_status=stt_status,
@@ -235,15 +279,17 @@ class Pipeline:
                     processed_at=processed_at_str,
                     error_message=call.get("error_message") or "",
                 )
+                write_duration = _time.perf_counter() - write_start
                 logger.info(
                     "Sheet row updated",
-                    extra={"call_id": call.get("id"), "row": row_number, "stt_status": stt_status},
+                    extra={"call_id": call.get("id"), "row": row_number, "stt_status": stt_status, "write_duration_s": write_duration},
                 )
                 written += 1
-            except Exception as e:
-                logger.error(
+            except Exception:
+                logger.exception(
                     "Failed to write result back to sheet",
-                    extra={"call_id": call.get("id"), "error": str(e)},
+                    extra={"call_id": call.get("id")},
                 )
 
         logger.info("Write-back phase done", extra={"written": written})
+# ...existing code...
