@@ -27,8 +27,17 @@ class AnalyticsServiceServicer(analytics_service_pb2_grpc.AnalyticsServiceServic
 
             if row:
                 REQUEST_COUNT.labels(app_name='ai-analytics', method='GRPC', path='/GetAnalysis', status_code='200').inc()
-                logger.info("gRPC GetAnalysis success",
-                            extra={"call_id": call_id, "overall_rating": float(row[3])})
+                logger.info(
+                    "gRPC GetAnalysis success",
+                    extra={
+                        "call_id": call_id,
+                        "overall_rating": float(row[3]),
+                        "quality_score": row[0],
+                        "script_match": row[1],
+                        "errors_free": row[2],
+                        "kpi": float(row[4]),
+                    },
+                )
                 return analytics_service_pb2.AnalysisResponse(
                     call_id=call_id,
                     quality_score=row[0],

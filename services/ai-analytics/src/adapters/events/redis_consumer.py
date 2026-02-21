@@ -38,10 +38,19 @@ async def start_consumer():
                     for msg_id, payload in msg_list:
                         call_id = payload.get(b'call_id').decode('utf-8')
                         company_id = payload.get(b'company_id').decode('utf-8')
+                        event_type = payload.get(b'event_type', b'').decode('utf-8')
 
-                        logger.info("transcript_ready event received",
-                                    extra={"call_id": call_id, "company_id": company_id,
-                                           "stream": stream_name, "msg_id": msg_id})
+                        logger.info(
+                            "transcript_ready event received",
+                            extra={
+                                "call_id": call_id,
+                                "company_id": company_id,
+                                "event_type": event_type,
+                                "stream": stream_name,
+                                "msg_id": msg_id.decode() if isinstance(msg_id, bytes) else str(msg_id),
+                                "payload_keys": [k.decode() if isinstance(k, bytes) else k for k in payload.keys()],
+                            },
+                        )
                         log_processing_event(call_id, "ai-analytics", "processing")
 
                         try:

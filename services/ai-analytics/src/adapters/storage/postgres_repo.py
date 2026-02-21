@@ -30,9 +30,22 @@ def get_team_script(company_id, manager_id):
     conn = get_pool().getconn()
     try:
         cur = conn.cursor(cursor_factory=RealDictCursor)
-        # Find team of manager
-        cur.execute("SELECT team_id FROM auth_schema.users WHERE id = %s AND company_id = %s", (manager_id, company_id))
-        res = cur.fetchone()
+        # manager_id from external sources (e.g. Google Sheets) may be a short
+        # integer string, not a UUID — guard against the DB type error.
+        try:
+            cur.execute(
+                "SELECT team_id FROM auth_schema.users WHERE id = %s AND company_id = %s",
+                (manager_id, company_id),
+            )
+            res = cur.fetchone()
+        except psycopg2.errors.InvalidTextRepresentation:
+            conn.rollback()
+            logger.debug(
+                "manager_id is not a valid UUID, falling back to company script",
+                extra={"manager_id": manager_id, "company_id": company_id},
+            )
+            return get_active_script(company_id)
+
         if not res or not res['team_id']:
             # Fallback to company active script
             return get_active_script(company_id)

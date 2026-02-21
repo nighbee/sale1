@@ -14,6 +14,15 @@ async def publish_transcript_ready(call_id, company_id):
         "company_id": company_id
     }
     # Redis Streams use xadd
-    await r.xadd("transcript_ready", event)
+    msg_id = await r.xadd("transcript_ready", event)
     await r.close()
-    logger.info(f"Published transcript_ready event for call {call_id}")
+    logger.info(
+        "published transcript_ready event",
+        extra={
+            "call_id": call_id,
+            "company_id": company_id,
+            "stream": "transcript_ready",
+            "msg_id": msg_id.decode() if isinstance(msg_id, bytes) else str(msg_id),
+            "payload": event,
+        },
+    )

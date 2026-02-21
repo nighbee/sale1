@@ -3,6 +3,7 @@ import json
 import redis.asyncio as redis
 import logging
 import os
+import time
 from src.core.usecases.process_audio import ProcessAudioUseCase
 from src.adapters.storage.postgres_repo import log_processing_event
 from src.infrastructure.monitoring.metrics import JOBS_PROCESSED
@@ -30,20 +31,30 @@ async def start_consumer():
                 retry_count = job.get('retry_count', 0)
                 max_retries = job.get('max_retries', 3)
 
+                audio_url = job.get('audio_url') or job.get('call_link', '<not set>')
                 logger.info(
-                    "processing STT job",
-                    extra={"call_id": call_id, "company_id": company_id,
-                           "attempt": retry_count + 1, "max_retries": max_retries},
+                    "STT job received",
+                    extra={
+                        "call_id": call_id,
+                        "company_id": company_id,
+                        "audio_url": audio_url,
+                        "attempt": retry_count + 1,
+                        "max_retries": max_retries,
+                        "job_keys": list(job.keys()),
+                    },
                 )
                 log_processing_event(call_id, "stt-service", "processing", retry_count=retry_count)
 
+                t_start = time.monotonic()
                 try:
                     await use_case.execute(job)
+                    elapsed = round(time.monotonic() - t_start, 2)
                     log_processing_event(call_id, "stt-service", "completed", retry_count=retry_count)
                     JOBS_PROCESSED.labels(status='completed').inc()
                     logger.info(
                         "STT job completed",
-                        extra={"call_id": call_id, "company_id": company_id, "attempt": retry_count + 1},
+                        extra={"call_id": call_id, "company_id": company_id,
+                               "attempt": retry_count + 1, "elapsed_s": elapsed},
                     )
                 except Exception as e:
                     JOBS_PROCESSED.labels(status='error').inc()

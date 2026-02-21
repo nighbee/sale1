@@ -2,6 +2,7 @@ import os
 import httpx
 import logging
 import tempfile
+import time
 from pydub import AudioSegment
 from src.adapters.storage.postgres_repo import save_transcript, update_call_link
 from src.adapters.events.redis_publisher import publish_transcript_ready
@@ -47,8 +48,11 @@ class ProcessAudioUseCase:
 
         tmp_path = None
         wav_path = None
+        t_total = time.monotonic()
         try:
             # 1. Download audio
+            logger.info("[1/6] downloading audio",
+                        extra={"call_id": call_id, "audio_url": audio_url})
             with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
                 tmp_path = tmp.name
                 async with httpx.AsyncClient() as client:
@@ -56,16 +60,27 @@ class ProcessAudioUseCase:
                         response.raise_for_status()
                         async for chunk in response.aiter_bytes():
                             tmp.write(chunk)
+            file_size_kb = round(os.path.getsize(tmp_path) / 1024, 1)
+            logger.info("[1/6] audio downloaded",
+                        extra={"call_id": call_id, "file_size_kb": file_size_kb, "tmp_path": tmp_path})
 
             # 2. Convert to 16kHz WAV
+            logger.info("[2/6] converting to 16kHz WAV", extra={"call_id": call_id})
             wav_path = tmp_path.replace(".mp3", ".wav")
             audio = AudioSegment.from_file(tmp_path)
+            duration_s = round(len(audio) / 1000, 1)
             audio = audio.set_frame_rate(16000).set_channels(1)
             audio.export(wav_path, format="wav")
+            wav_size_kb = round(os.path.getsize(wav_path) / 1024, 1)
+            logger.info("[2/6] WAV conversion done",
+                        extra={"call_id": call_id, "duration_s": duration_s,
+                               "wav_size_kb": wav_size_kb, "wav_path": wav_path})
 
             # 3. Archive to MinIO
+            logger.info("[3/6] uploading to MinIO", extra={"call_id": call_id, "object_name": f"{call_id}.wav"})
             object_name = f"{call_id}.wav"
             self.minio.upload_file(object_name, wav_path)
+            logger.info("[3/6] MinIO upload done", extra={"call_id": call_id, "object_name": object_name})
 
             # Update call record with MinIO reference
             update_call_link(call_id, f"minio://audio/{object_name}")
@@ -85,12 +100,29 @@ class ProcessAudioUseCase:
             # and can exceed provider size limits (e.g. Groq 25 MB free tier).
             # All API providers (OpenAI, Groq, Gemini) handle MP3 natively and
             # do their own 16 kHz downsampling server-side.
+            logger.info("[4/6] sending to STT provider",
+                        extra={"call_id": call_id, "stt_provider": self.stt_provider_name,
+                               "file_size_kb": file_size_kb})
+            t_stt = time.monotonic()
             transcript_data = await self.stt_provider.transcribe(tmp_path)
+            stt_elapsed = round(time.monotonic() - t_stt, 2)
+            stt_text = transcript_data.get("text", "")
+            stt_segments = transcript_data.get("segments", [])
+            logger.info("[4/6] STT transcription received",
+                        extra={"call_id": call_id, "stt_provider": self.stt_provider_name,
+                               "elapsed_s": stt_elapsed, "segment_count": len(stt_segments),
+                               "text_length": len(stt_text),
+                               "text_preview": stt_text[:200] if stt_text else ""})
 
             # 5. Diarization (still uses the 16 kHz WAV for local processing)
+            logger.info("[5/6] running diarization", extra={"call_id": call_id, "wav_path": wav_path})
             diarization_segments = self.diarization_service.process(wav_path)
+            logger.info("[5/6] diarization done",
+                        extra={"call_id": call_id,
+                               "diarization_segments": len(diarization_segments) if diarization_segments else 0})
 
             # 6. Transform and Merge
+            logger.info("[6/6] merging transcript with diarization", extra={"call_id": call_id})
             transcript_segments = []
             for seg in transcript_data.get("segments", []):
                 transcript_segments.append({
@@ -114,7 +146,20 @@ class ProcessAudioUseCase:
             # Publish event
             await publish_transcript_ready(call_id, company_id)
 
-            logger.info("audio job completed successfully", extra={"call_id": call_id, "company_id": company_id})
+            total_elapsed = round(time.monotonic() - t_total, 2)
+            logger.info(
+                "[6/6] audio job completed successfully",
+                extra={
+                    "call_id": call_id,
+                    "company_id": company_id,
+                    "stt_provider": self.stt_provider_name,
+                    "duration_s": duration_s,
+                    "segment_count": len(segments),
+                    "text_length": len(stt_text),
+                    "total_elapsed_s": total_elapsed,
+                    "published_stream": "transcript_ready",
+                },
+            )
         except Exception as e:
             logger.error("audio job failed", extra={"call_id": call_id, "company_id": company_id, "error": str(e)})
             raise

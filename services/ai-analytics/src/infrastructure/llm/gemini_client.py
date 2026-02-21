@@ -14,7 +14,10 @@ class GeminiClient:
             logger.warning("GOOGLE_API_KEY is not set")
 
     async def analyze(self, system_prompt: str, user_prompt: str, model: str = "gemini-pro") -> dict:
-        logger.info(f"Calling Gemini API with model {model}")
+        logger.info("sending request to Gemini",
+                    extra={"model": model,
+                           "system_prompt_chars": len(system_prompt),
+                           "user_prompt_chars": len(user_prompt)})
 
         try:
             model_instance = genai.GenerativeModel(
@@ -31,7 +34,19 @@ class GeminiClient:
                 )
             )
 
-            return json.loads(response.text)
+            result = json.loads(response.text)
+            usage = getattr(response, 'usage_metadata', None)
+            logger.info(
+                "Gemini response received",
+                extra={
+                    "model": model,
+                    "prompt_token_count": getattr(usage, 'prompt_token_count', None) if usage else None,
+                    "candidates_token_count": getattr(usage, 'candidates_token_count', None) if usage else None,
+                    "total_token_count": getattr(usage, 'total_token_count', None) if usage else None,
+                    "response_fields": list(result.keys()),
+                },
+            )
+            return result
         except Exception as e:
-            logger.error(f"Gemini API call failed: {e}")
+            logger.error("Gemini API call failed", extra={"model": model, "error": str(e)})
             raise

@@ -36,7 +36,21 @@ class AnalyzeCallUseCase:
 
         # 2. Prepare prompt
         transcript_text = self._format_transcript(transcript['speaker_diarized_json'])
+        transcript_segments = transcript['speaker_diarized_json'] or []
         user_prompt = f"TRANSCRIPT:\n{transcript_text}\n\nSCRIPT:\n{script_text}"
+
+        logger.info(
+            "[1/4] data fetched",
+            extra={
+                "call_id": call_id,
+                "transcript_segment_count": len(transcript_segments),
+                "transcript_text_length": len(transcript_text),
+                "script_id": script_id,
+                "script_found": script is not None,
+                "call_duration_s": call.get('duration'),
+                "manager_id": manager_id,
+            },
+        )
 
         system_prompt = """
         You are a sales quality analyst. Analyze the call transcript against the provided sales script.
@@ -56,10 +70,32 @@ class AnalyzeCallUseCase:
         settings = get_company_settings(company_id)
         llm_provider = settings['llm_provider'] if settings else "openai"
 
+        logger.info(
+            "[2/4] sending to LLM",
+            extra={
+                "call_id": call_id,
+                "llm_provider": llm_provider,
+                "prompt_chars": len(system_prompt) + len(user_prompt),
+            },
+        )
+
         if llm_provider == "gemini":
             analysis = await self.gemini_client.analyze(system_prompt, user_prompt)
         else:
             analysis = await self.openai_client.analyze(system_prompt, user_prompt)
+
+        logger.info(
+            "[2/4] LLM response received",
+            extra={
+                "call_id": call_id,
+                "llm_provider": llm_provider,
+                "response_fields": list(analysis.keys()),
+                "qualityOfCall": analysis.get("qualityOfCall"),
+                "scriptMatch": analysis.get("scriptMatch"),
+                "errorsFree": analysis.get("errorsFree"),
+                "brief_preview": analysis.get("brief", "")[:100],
+            },
+        )
 
         # 3.5 Validate LLM response
         self._validate_llm_response(analysis, call_id)
@@ -73,6 +109,19 @@ class AnalyzeCallUseCase:
 
         overall_rating = quality * 0.4 + script_match * 0.4 + errors_free * 0.2
         kpi = overall_rating * (duration / 60.0)
+
+        logger.info(
+            "[3/4] KPI calculated",
+            extra={
+                "call_id": call_id,
+                "quality": quality,
+                "script_match": script_match,
+                "errors_free": errors_free,
+                "duration_s": duration,
+                "overall_rating": round(overall_rating, 2),
+                "kpi": round(kpi, 2),
+            },
+        )
 
         # 5. Save report
         report = {
@@ -90,9 +139,16 @@ class AnalyzeCallUseCase:
         }
 
         save_analysis(report)
-        logger.info("analysis saved",
-                    extra={"call_id": call_id, "llm_provider": llm_provider,
-                           "overall_rating": round(overall_rating, 2), "kpi": round(kpi, 2)})
+        logger.info(
+            "[4/4] analysis saved to DB",
+            extra={
+                "call_id": call_id,
+                "llm_provider": llm_provider,
+                "overall_rating": round(overall_rating, 2),
+                "kpi": round(kpi, 2),
+                "script_id": script_id,
+            },
+        )
 
         # Publish event for real-time notifications
         await publish_analysis_completed(call_id, overall_rating)

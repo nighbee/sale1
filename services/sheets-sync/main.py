@@ -45,11 +45,13 @@ def run_scheduler():
 # ── API mode ──────────────────────────────────────────────────────────────────
 
 def run_api():
+    import threading
     import uvicorn
     from fastapi import FastAPI, BackgroundTasks
 
     app = FastAPI(title="Sheets Sync Service", version="1.0.0")
     pipeline = Pipeline()
+    interval = Config.sync_interval_seconds()
 
     @app.get("/health")
     def health():
@@ -68,11 +70,22 @@ def run_api():
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
+    def _polling_loop():
+        logger.info("Background poller started", extra={"interval_s": interval})
+        while True:
+            time.sleep(interval)
+            logger.info("Polling cycle triggered", extra={"interval_s": interval})
+            _run_pipeline(pipeline)
+
     # Run one cycle on startup
     try:
         pipeline.run()
     except Exception as e:
         logger.error("Initial sync failed", extra={"error": str(e)})
+
+    # Start background polling thread
+    t = threading.Thread(target=_polling_loop, daemon=True)
+    t.start()
 
     port = int(os.getenv("PORT", 8085))
     logger.info("Sheets-sync API server starting", extra={"port": port})
