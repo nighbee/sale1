@@ -51,26 +51,35 @@ func (r *companyRepository) GetByID(ctx context.Context, id string) (*domain.Com
 	`
 
 	company := &domain.Company{}
+	var industry, size, timeZone, description sql.NullString
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&company.ID,
 		&company.Name,
-		&company.Industry,
-		&company.Size,
-		&company.TimeZone,
+		&industry,
+		&size,
+		&timeZone,
 		&company.STTModelPreference,
 		&company.LLMProvider,
 		&company.SubscriptionTier,
 		&company.IsActive,
 		&company.CreatedAt,
 		&company.UpdatedAt,
-		&company.Description,
+		&description,
 	)
 
 	if err == sql.ErrNoRows {
 		return nil, errors.New("company not found")
 	}
+	if err != nil {
+		return nil, err
+	}
 
-	return company, err
+	company.Industry = industry.String
+	company.Size = size.String
+	company.TimeZone = timeZone.String
+	company.Description = description.String
+
+	return company, nil
 }
 
 func (r *companyRepository) Update(ctx context.Context, company *domain.Company) error {
