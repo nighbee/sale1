@@ -6,17 +6,18 @@ import (
 )
 
 type Config struct {
-	DatabaseURL      string
-	RedisURL         string
-	MigrationsPath   string
-	JWTSecret        string
-	JWTExpiry        time.Duration
-	ScriptServiceURL string
-	MinioEndpoint    string
-	MinioAccessKey   string
-	MinioSecretKey   string
-	STTServiceGRPC   string
-	AnalyticsGRPC    string
+	DatabaseURL       string
+	RedisURL          string
+	MigrationsPath    string
+	JWTSecret         string
+	JWTExpiry         time.Duration
+	ScriptServiceURL  string
+	MinioEndpoint     string
+	MinioAccessKey    string
+	MinioSecretKey    string
+	STTServiceGRPC    string
+	AnalyticsGRPC     string
+	DefaultCompanyID  string
 }
 
 func Load() *Config {
@@ -76,5 +77,6 @@ func Load() *Config {
 		MinioSecretKey:   os.Getenv("MINIO_SECRET_KEY"),
 		STTServiceGRPC:   sttGRPC,
 		AnalyticsGRPC:    analyticsGRPC,
+		DefaultCompanyID: os.Getenv("DEFAULT_COMPANY_ID"),
 	}
 }
