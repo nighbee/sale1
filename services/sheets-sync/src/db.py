@@ -56,44 +56,6 @@ def resolve_company_id(database_url: str, forced_company_id: str) -> str:
         conn.close()
 
 
-def get_active_google_sheets_integrations(database_url: str) -> list[dict]:
-    """Return all active google_sheets integrations from the DB."""
-    conn = get_connection(database_url)
-    try:
-        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            cur.execute(
-                """
-                SELECT company_id, config
-                FROM integrations_schema.integrations
-                WHERE integration_type = 'google_sheets' AND is_active = TRUE
-                """,
-            )
-            return [dict(r) for r in cur.fetchall()]
-    finally:
-        conn.close()
-
-
-def get_integration_by_company(database_url: str, company_id: str) -> Optional[dict]:
-    """Return the google_sheets integration for a specific company."""
-    conn = get_connection(database_url)
-    try:
-        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            cur.execute(
-                """
-                SELECT company_id, config
-                FROM integrations_schema.integrations
-                WHERE integration_type = 'google_sheets' AND is_active = TRUE
-                  AND company_id = %s
-                LIMIT 1
-                """,
-                (company_id,),
-            )
-            row = cur.fetchone()
-            return dict(row) if row else None
-    finally:
-        conn.close()
-
-
 def upsert_call(
     database_url: str,
     company_id: str,

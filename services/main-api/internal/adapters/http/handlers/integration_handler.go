@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -128,13 +127,12 @@ func (h *IntegrationHandler) Delete(c *fiber.Ctx) error {
 // @Router /integrations/google-sheets/sync [post]
 func (h *IntegrationHandler) TriggerSheetSync(c *fiber.Ctx) error {
 	log := applogger.FromFiberCtx(c).With(zap.String("operation", "trigger_sheet_sync"))
-	companyID := c.Locals("company_id").(string)
 	sheetsSyncURL := os.Getenv("SHEETS_SYNC_URL")
 	if sheetsSyncURL == "" {
 		sheetsSyncURL = "http://sheets-sync:8085"
 	}
-	url := fmt.Sprintf("%s/sync?company_id=%s", sheetsSyncURL, companyID)
-	log.Info("Forwarding sync trigger to sheets-sync", zap.String("url", url), zap.String("company_id", companyID))
+	url := sheetsSyncURL + "/sync"
+	log.Info("Forwarding sync trigger to sheets-sync", zap.String("url", url))
 	resp, err := http.Post(url, "application/json", nil) //nolint:noctx
 	if err != nil {
 		log.Error("sheets-sync unreachable", zap.Error(err))
