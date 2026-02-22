@@ -211,7 +211,43 @@
     "overall_score": "Жалпы балл",
     "full_rankings": "Толық рейтинг",
     "rank": "Рейтинг",
-    "view_details": "Толығырақ көру"
+    "view_details": "Толығырақ көру",
+    "search_placeholder": "Менеджерді іздеу...",
+    "managers_count": "менеджер",
+    "sort_by": "Сұрыптау",
+    "no_data": "Әзірге деректер жоқ. Мұнда көрінуі үшін қоңыраулар толық талдануы керек.",
+    "no_results": "Іздеу критерийлеріне сәйкес менеджерлер табылмады.",
+    "periods": {
+      "7d": "7 күн",
+      "30d": "30 күн",
+      "90d": "90 күн",
+      "all": "Барлық уақыт"
+    },
+    "sources": {
+      "all": "Барлық дереккөздер",
+      "sheets": "Google Sheets",
+      "sipuni": "Sipuni"
+    },
+    "sort_options": {
+      "avg_kpi": "KPI балы",
+      "avg_quality": "Сапа",
+      "avg_script_match": "Скриптке сәйкестік",
+      "avg_errors_free": "Қатесіздік",
+      "total_calls": "Қоңыраулар саны"
+    },
+    "columns": {
+      "manager": "Менеджер",
+      "calls": "Қоңыраулар",
+      "excellent": "Үздік",
+      "avg_duration": "Орта ұзақтық",
+      "total_duration": "Жалпы ұзақтық",
+      "quality": "Сапа",
+      "errors_free": "Қатесіздік",
+      "kpi_score": "KPI балы",
+      "qual_short": "Сапа",
+      "script_short": "Скрипт",
+      "errors_short": "Қатесіз"
+    }
   },
   "settings": {
     "title": "Компания параметрлері",

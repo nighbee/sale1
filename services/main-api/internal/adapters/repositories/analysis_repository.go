@@ -91,7 +91,10 @@ func (r *analysisRepository) GetTeamPerformance(ctx context.Context, filters map
 			COALESCE(AVG(ar.errors_free), 0)     AS avg_errors_free,
 			COALESCE(AVG(ar.overall_rating), 0)  AS avg_overall_rating,
 			COALESCE(AVG(ar.kpi), 0)             AS avg_kpi,
-			COALESCE(SUM(c.duration), 0)         AS total_duration_seconds
+			COALESCE(SUM(c.duration), 0)         AS total_duration_seconds,
+			COALESCE(AVG(c.duration), 0)         AS avg_duration_seconds,
+			COUNT(CASE WHEN ar.overall_rating >= 4.0 THEN 1 END) AS excellent_calls_count,
+			MAX(c.manager_id) as external_id
 		FROM calls_schema.calls c
 		INNER JOIN auth_schema.users u ON c.manager_id = u.manager_id
 		LEFT JOIN calls_schema.analysis_reports ar ON c.id = ar.call_id
@@ -109,9 +112,10 @@ func (r *analysisRepository) GetTeamPerformance(ctx context.Context, filters map
 	result := []map[string]interface{}{}
 	for rows.Next() {
 		var managerID, managerName string
-		var totalCalls int
-		var avgQuality, avgScriptMatch, avgErrorsFree, avgOverallRating, avgKPI, totalDuration float64
-		err := rows.Scan(&managerID, &managerName, &totalCalls, &avgQuality, &avgScriptMatch, &avgErrorsFree, &avgOverallRating, &avgKPI, &totalDuration)
+		var totalCalls, excellentCalls int
+		var avgQuality, avgScriptMatch, avgErrorsFree, avgOverallRating, avgKPI, totalDuration, avgDuration float64
+		var externalID string
+		err := rows.Scan(&managerID, &managerName, &totalCalls, &avgQuality, &avgScriptMatch, &avgErrorsFree, &avgOverallRating, &avgKPI, &totalDuration, &avgDuration, &excellentCalls, &externalID)
 		if err != nil {
 			return nil, err
 		}
@@ -125,6 +129,9 @@ func (r *analysisRepository) GetTeamPerformance(ctx context.Context, filters map
 			"avg_overall_rating":     avgOverallRating,
 			"avg_kpi":                avgKPI,
 			"total_duration_minutes": totalDuration / 60,
+			"avg_duration_minutes":   avgDuration / 60,
+			"excellent_calls_count":  excellentCalls,
+			"external_id":            externalID,
 		})
 	}
 	return result, nil

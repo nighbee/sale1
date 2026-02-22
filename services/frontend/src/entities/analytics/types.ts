@@ -1,5 +1,6 @@
 export interface LeaderboardEntry {
   manager_id: string;
+  external_id: string;
   manager_name: string;
   total_calls: number;
   avg_quality: number;
@@ -8,6 +9,8 @@ export interface LeaderboardEntry {
   avg_overall_rating: number;
   avg_kpi: number;
   total_duration_minutes: number;
+  avg_duration_minutes: number;
+  excellent_calls_count: number;
 }
 
 export type SortKey =

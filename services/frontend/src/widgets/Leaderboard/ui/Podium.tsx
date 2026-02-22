@@ -1,13 +1,13 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { ScoreBar } from "../../../shared/ui/ScoreBar";
+import { Medal } from "../../../shared/ui/Medal";
 import type { LeaderboardEntry } from "../../../entities/analytics/types";
 
 interface PodiumProps {
   data: LeaderboardEntry[];
 }
 
-const MEDAL_BG = ["bg-amber-400", "bg-slate-400", "bg-orange-400"];
-const MEDAL_LABELS = ["🥇", "🥈", "🥉"];
 const BAR_COLOR = {
   quality: "bg-indigo-500",
   script: "bg-emerald-500",
@@ -20,6 +20,7 @@ const TEXT_COLOR = {
 };
 
 export const Podium: React.FC<PodiumProps> = ({ data }) => {
+  const { t } = useTranslation();
   const topThree = data.slice(0, 3);
   if (topThree.length === 0) return null;
 
@@ -30,20 +31,16 @@ export const Podium: React.FC<PodiumProps> = ({ data }) => {
         <div className="order-2 md:order-1">
           <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow border border-slate-200 dark:border-slate-800 flex flex-col items-center text-center">
             <div className="relative mb-3">
-              <div
-                className={`h-16 w-16 rounded-full flex items-center justify-center text-white font-bold text-xl ${MEDAL_BG[1]}`}
-              >
+              <div className="h-16 w-16 rounded-full bg-slate-400 flex items-center justify-center text-white font-bold text-xl">
                 {topThree[1].manager_name?.[0]?.toUpperCase()}
               </div>
-              <div className="absolute -bottom-1 -right-1 text-lg">
-                {MEDAL_LABELS[1]}
-              </div>
+              <Medal rank={2} className="absolute -bottom-1 -right-1" />
             </div>
             <p className="font-bold text-slate-900 dark:text-white">
               {topThree[1].manager_name}
             </p>
             <p className="text-xs text-slate-500 mt-0.5">
-              {topThree[1].total_calls} calls
+              {topThree[1].total_calls} {t("dashboard.calls")}
             </p>
             <div className="mt-4 w-full space-y-2">
               <ScoreBar
@@ -66,7 +63,7 @@ export const Podium: React.FC<PodiumProps> = ({ data }) => {
               <div className="text-2xl font-bold text-primary">
                 {topThree[1].avg_kpi.toFixed(1)}
               </div>
-              <div className="text-xs text-slate-500">KPI Score</div>
+              <div className="text-xs text-slate-500">{t("leaderboard.columns.kpi_score")}</div>
             </div>
           </div>
         </div>
@@ -81,21 +78,17 @@ export const Podium: React.FC<PodiumProps> = ({ data }) => {
         </div>
         <div className="bg-white dark:bg-slate-900 rounded-xl p-8 shadow-lg border-2 border-primary/20 flex flex-col items-center text-center">
           <div className="relative mb-4">
-            <div
-              className={`h-20 w-20 rounded-full ring-4 ring-yellow-400/30 flex items-center justify-center text-white font-black text-2xl ${MEDAL_BG[0]}`}
-            >
+            <div className="h-20 w-20 rounded-full ring-4 ring-yellow-400/30 bg-amber-400 flex items-center justify-center text-white font-black text-2xl">
               {topThree[0].manager_name?.[0]?.toUpperCase()}
             </div>
-            <div className="absolute -bottom-1 -right-1 text-xl">
-              {MEDAL_LABELS[0]}
-            </div>
+            <Medal rank={1} className="absolute -bottom-1 -right-1" />
           </div>
           <p className="font-bold text-lg text-slate-900 dark:text-white">
             {topThree[0].manager_name}
           </p>
           <p className="text-xs text-slate-500 mt-0.5">
-            {topThree[0].total_calls} calls ·{" "}
-            {topThree[0].total_duration_minutes.toFixed(0)} min
+            {topThree[0].total_calls} {t("dashboard.calls")} ·{" "}
+            {topThree[0].total_duration_minutes.toFixed(0)} {t("calls.duration")}
           </p>
           <div className="mt-5 w-full space-y-2">
             <ScoreBar
@@ -118,7 +111,7 @@ export const Podium: React.FC<PodiumProps> = ({ data }) => {
             <div className="text-4xl font-black text-primary tracking-tight">
               {topThree[0].avg_kpi.toFixed(1)}
             </div>
-            <div className="text-sm text-slate-500 font-medium">KPI Score</div>
+            <div className="text-sm text-slate-500 font-medium">{t("leaderboard.columns.kpi_score")}</div>
           </div>
         </div>
       </div>
@@ -128,20 +121,16 @@ export const Podium: React.FC<PodiumProps> = ({ data }) => {
         <div className="order-3 md:order-3">
           <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow border border-slate-200 dark:border-slate-800 flex flex-col items-center text-center">
             <div className="relative mb-3">
-              <div
-                className={`h-16 w-16 rounded-full flex items-center justify-center text-white font-bold text-xl ${MEDAL_BG[2]}`}
-              >
+              <div className="h-16 w-16 rounded-full bg-orange-400 flex items-center justify-center text-white font-bold text-xl">
                 {topThree[2].manager_name?.[0]?.toUpperCase()}
               </div>
-              <div className="absolute -bottom-1 -right-1 text-lg">
-                {MEDAL_LABELS[2]}
-              </div>
+              <Medal rank={3} className="absolute -bottom-1 -right-1" />
             </div>
             <p className="font-bold text-slate-900 dark:text-white">
               {topThree[2].manager_name}
             </p>
             <p className="text-xs text-slate-500 mt-0.5">
-              {topThree[2].total_calls} calls
+              {topThree[2].total_calls} {t("dashboard.calls")}
             </p>
             <div className="mt-4 w-full space-y-2">
               <ScoreBar
@@ -164,7 +153,7 @@ export const Podium: React.FC<PodiumProps> = ({ data }) => {
               <div className="text-2xl font-bold text-primary">
                 {topThree[2].avg_kpi.toFixed(1)}
               </div>
-              <div className="text-xs text-slate-500">KPI Score</div>
+              <div className="text-xs text-slate-500">{t("leaderboard.columns.kpi_score")}</div>
             </div>
           </div>
         </div>

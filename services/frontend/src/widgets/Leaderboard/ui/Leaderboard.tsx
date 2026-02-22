@@ -21,6 +21,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ teamId, showFilters = 
   const [period, setPeriod] = useState<Period>("30d");
   const [source, setSource] = useState<Source>("");
   const [sortBy, setSortBy] = useState<SortKey>("avg_kpi");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const effectiveTeamId = teamId !== undefined ? teamId : currentTeamId;
 
@@ -68,19 +69,23 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ teamId, showFilters = 
   };
 
   const SORT_OPTIONS: { key: SortKey; label: string }[] = [
-    { key: "avg_kpi", label: "KPI Score" },
-    { key: "avg_quality", label: "Quality" },
-    { key: "avg_script_match", label: "Script Match" },
-    { key: "avg_errors_free", label: "Errors Free" },
-    { key: "total_calls", label: "Calls Count" },
+    { key: "avg_kpi", label: t("leaderboard.sort_options.avg_kpi") },
+    { key: "avg_quality", label: t("leaderboard.sort_options.avg_quality") },
+    { key: "avg_script_match", label: t("leaderboard.sort_options.avg_script_match") },
+    { key: "avg_errors_free", label: t("leaderboard.sort_options.avg_errors_free") },
+    { key: "total_calls", label: t("leaderboard.sort_options.total_calls") },
   ];
 
   const PERIOD_OPTIONS: { key: Period; label: string }[] = [
-    { key: "7d", label: "7 days" },
-    { key: "30d", label: "30 days" },
-    { key: "90d", label: "90 days" },
-    { key: "", label: "All time" },
+    { key: "7d", label: t("leaderboard.periods.7d") },
+    { key: "30d", label: t("leaderboard.periods.30d") },
+    { key: "90d", label: t("leaderboard.periods.90d") },
+    { key: "", label: t("leaderboard.periods.all") },
   ];
+
+  const filteredData = data.filter((m) =>
+    m.manager_name.toLowerCase().includes(searchQuery.toLowerCase()),
+  );
 
   return (
     <div className="space-y-6">
@@ -96,7 +101,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ teamId, showFilters = 
         </div>
         <div className="relative group">
           <button className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold shadow hover:opacity-90 transition-all">
-            <span className="material-icons text-sm">download</span> Export
+            <span className="material-icons text-sm">download</span> {t("leaderboard.export")}
             <span className="material-icons text-sm">expand_more</span>
           </button>
           <div className="absolute right-0 mt-2 w-44 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-100 dark:border-slate-700 overflow-hidden hidden group-hover:block z-50">
@@ -122,6 +127,20 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ teamId, showFilters = 
 
       {showFilters && (
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 flex flex-wrap items-center gap-4">
+          {/* Search */}
+          <div className="relative flex-1 min-w-[200px]">
+            <span className="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
+              search
+            </span>
+            <input
+              type="text"
+              placeholder={t("leaderboard.search_placeholder") || "Search manager..."}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 bg-slate-100 dark:bg-slate-800 border-transparent focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-primary/20 rounded-lg text-sm transition-all outline-none"
+            />
+          </div>
+
           {/* Period */}
           <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
             {PERIOD_OPTIONS.map((opt) => (
@@ -142,13 +161,13 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ teamId, showFilters = 
           {/* Source */}
           <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
             {[
-              { key: "" as Source, label: "All sources", icon: "merge" },
+              { key: "" as Source, label: t("leaderboard.sources.all"), icon: "merge" },
               {
                 key: "google_sheets" as Source,
-                label: "Google Sheets",
+                label: t("leaderboard.sources.sheets"),
                 icon: "table_chart",
               },
-              { key: "sipuni" as Source, label: "Sipuni", icon: "call" },
+              { key: "sipuni" as Source, label: t("leaderboard.sources.sipuni"), icon: "call" },
             ].map((opt) => (
               <button
                 key={opt.key}
@@ -168,12 +187,12 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ teamId, showFilters = 
           {/* Sort */}
           <div className="flex items-center gap-2 ml-auto">
             <span className="text-xs text-slate-500 font-medium whitespace-nowrap">
-              Sort by
+              {t("leaderboard.sort_by")}
             </span>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as SortKey)}
-              title="Sort by"
+              title={t("leaderboard.sort_by")}
               className="text-sm border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/30"
             >
               {SORT_OPTIONS.map((o) => (
@@ -194,15 +213,22 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ teamId, showFilters = 
       ) : data.length === 0 ? (
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 py-20 flex flex-col items-center gap-3 text-slate-400">
           <span className="material-icons text-5xl">leaderboard</span>
-          <p className="text-sm">
-            No data yet. Calls need to be fully analyzed to appear here.
+          <p className="text-sm text-center max-w-md px-6">
+            {t("leaderboard.no_data")}
+          </p>
+        </div>
+      ) : filteredData.length === 0 ? (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 py-20 flex flex-col items-center gap-3 text-slate-400">
+          <span className="material-icons text-5xl">search_off</span>
+          <p className="text-sm text-center max-w-md px-6">
+            {t("leaderboard.no_results")}
           </p>
         </div>
       ) : (
         <>
-          <Podium data={data} />
-          <ComparisonChart data={data} />
-          <RankingsTable data={data} />
+          <Podium data={filteredData} />
+          <ComparisonChart data={filteredData} />
+          <RankingsTable data={filteredData} />
         </>
       )}
     </div>

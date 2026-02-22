@@ -83,7 +83,7 @@ func SetupRoutes(
 	scripts.Delete("/:id", middleware.RequireRole("super_admin", "tenant_admin"), scriptHandler.DeleteScript)
 
 	// Analytics
-	analytics := protected.Group("/analytics", middleware.RequireRole("super_admin"))
+	analytics := protected.Group("/analytics")
 	analytics.Get("/team-performance", analyticsHandler.GetTeamPerformance)
 	analytics.Get("/leaderboard", analyticsHandler.GetLeaderboard)
 	analytics.Get("/leaderboard/export/:format", analyticsHandler.ExportLeaderboard)

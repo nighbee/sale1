@@ -211,7 +211,43 @@
     "overall_score": "Overall Score",
     "full_rankings": "Full Rankings",
     "rank": "Rank",
-    "view_details": "View Details"
+    "view_details": "View Details",
+    "search_placeholder": "Search manager...",
+    "managers_count": "managers",
+    "sort_by": "Sort by",
+    "no_data": "No data yet. Calls need to be fully analyzed to appear here.",
+    "no_results": "No managers match your search criteria.",
+    "periods": {
+      "7d": "7 days",
+      "30d": "30 days",
+      "90d": "90 days",
+      "all": "All time"
+    },
+    "sources": {
+      "all": "All sources",
+      "sheets": "Google Sheets",
+      "sipuni": "Sipuni"
+    },
+    "sort_options": {
+      "avg_kpi": "KPI Score",
+      "avg_quality": "Quality",
+      "avg_script_match": "Script Match",
+      "avg_errors_free": "Errors Free",
+      "total_calls": "Calls Count"
+    },
+    "columns": {
+      "manager": "Manager",
+      "calls": "Calls",
+      "excellent": "Excellent",
+      "avg_duration": "Avg Dur",
+      "total_duration": "Total Dur",
+      "quality": "Quality",
+      "errors_free": "Errors Free",
+      "kpi_score": "KPI Score",
+      "qual_short": "Qual",
+      "script_short": "Script",
+      "errors_short": "ErrFree"
+    }
   },
   "settings": {
     "title": "Company Settings",
