@@ -28,14 +28,13 @@ async def publish_analysis_completed(call_id, overall_rating):
     finally:
         await r.close()
 
-async def publish_critical_error(call_id, company_id, error_type, message):
+async def publish_critical_error(call_id, error_type, message):
     redis_url = os.getenv("REDIS_URL", "redis://redis:6379")
     r = await redis.from_url(redis_url)
 
     event = {
         "event_type": "critical_error",
         "call_id": call_id,
-        "company_id": company_id,
         "error_type": error_type,
         "message": message,
         "timestamp": datetime.now().isoformat()
@@ -44,7 +43,7 @@ async def publish_critical_error(call_id, company_id, error_type, message):
     try:
         await r.xadd("critical_error", {"payload": json.dumps(event)})
         logger.warning("published critical_error event",
-                       extra={"call_id": call_id, "company_id": company_id,
+                       extra={"call_id": call_id,
                               "error_type": error_type, "stream": "critical_error"})
     except Exception as e:
         logger.error("failed to publish critical_error",

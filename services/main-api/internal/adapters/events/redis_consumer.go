@@ -19,6 +19,7 @@ type RedisConsumer struct {
 	client          *redis.Client
 	hub             *ws.Hub
 	callRepo        ports.CallRepository
+	userRepo        ports.UserRepository
 	integrationRepo ports.IntegrationRepository
 }
 
@@ -26,12 +27,14 @@ func NewRedisConsumer(
 	client *redis.Client,
 	hub *ws.Hub,
 	callRepo ports.CallRepository,
+	userRepo ports.UserRepository,
 	integrationRepo ports.IntegrationRepository,
 ) *RedisConsumer {
 	return &RedisConsumer{
 		client:          client,
 		hub:             hub,
 		callRepo:        callRepo,
+		userRepo:        userRepo,
 		integrationRepo: integrationRepo,
 	}
 }
@@ -84,34 +87,41 @@ func (c *RedisConsumer) Start(ctx context.Context) {
 				}
 
 				callID, _ := payload["call_id"].(string)
-				companyID, _ := payload["company_id"].(string)
 				log.Info("processing Redis event",
 					zap.String("stream", streamName),
 					zap.String("call_id", callID),
-					zap.String("company_id", companyID),
 					zap.String("message_id", message.ID))
 
 				if streamName == "analysis_completed" {
 					call, err := c.callRepo.GetByIDInternal(ctx, callID)
 					if err == nil {
-						c.hub.Broadcast(ws.Message{
-							UserID:    call.ManagerID,
-							CompanyID: call.CompanyID,
-							Type:      "analysis_completed",
-							Payload:   payload,
-						})
-						// External Notifications
-						go c.notifyExternal(ctx, call.CompanyID, "Call Analysis Completed", fmt.Sprintf("Call with %s completed. Rating: %v", call.ClientPhone, payload["overall_rating"]))
+						user, err := c.userRepo.GetByManagerID(ctx, call.ManagerID)
+						if err == nil {
+							c.hub.Broadcast(ws.Message{
+								UserID:    call.ManagerID,
+								CompanyID: user.CompanyID,
+								Type:      "analysis_completed",
+								Payload:   payload,
+							})
+							// External Notifications
+							go c.notifyExternal(ctx, user.CompanyID, "Call Analysis Completed", fmt.Sprintf("Call with %s completed. Rating: %v", call.ClientPhone, payload["overall_rating"]))
+						}
 					}
 				} else if streamName == "critical_error" {
-					// Broadcast to everyone in the company (admins)
-					c.hub.Broadcast(ws.Message{
-						CompanyID: companyID,
-						Type:      "critical_error",
-						Payload:   payload,
-					})
-					// External Notifications
-					go c.notifyExternal(ctx, companyID, "CRITICAL ERROR", fmt.Sprintf("%v", payload["message"]))
+					call, err := c.callRepo.GetByIDInternal(ctx, callID)
+					if err == nil {
+						user, err := c.userRepo.GetByManagerID(ctx, call.ManagerID)
+						if err == nil {
+							// Broadcast to everyone in the company (admins)
+							c.hub.Broadcast(ws.Message{
+								CompanyID: user.CompanyID,
+								Type:      "critical_error",
+								Payload:   payload,
+							})
+							// External Notifications
+							go c.notifyExternal(ctx, user.CompanyID, "CRITICAL ERROR", fmt.Sprintf("%v", payload["message"]))
+						}
+					}
 				}
 
 				c.client.XAck(ctx, streamName, groupName, message.ID)

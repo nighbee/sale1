@@ -58,13 +58,13 @@ func SetupRoutes(
 	users.Delete("/:id", userHandler.DeleteUser)
 
 	// Calls
-	calls := protected.Group("/calls")
+	calls := protected.Group("/calls", middleware.RequireRole("super_admin"))
 	calls.Get("/", callHandler.ListCalls)
 	calls.Get("/:id", callHandler.GetCall)
 	calls.Get("/:id/transcript", callHandler.GetTranscript)
 	calls.Get("/:id/analysis", callHandler.GetAnalysis)
 	calls.Get("/:id/audio", callHandler.GetAudio)
-	calls.Post("/:id/reprocess", middleware.RequireRole("super_admin", "tenant_admin"), callHandler.ReprocessCall)
+	calls.Post("/:id/reprocess", callHandler.ReprocessCall)
 
 	// Scripts
 	scripts := protected.Group("/scripts")
@@ -77,8 +77,8 @@ func SetupRoutes(
 	scripts.Delete("/:id", middleware.RequireRole("super_admin", "tenant_admin"), scriptHandler.DeleteScript)
 
 	// Analytics
-	analytics := protected.Group("/analytics")
-	analytics.Get("/team-performance", middleware.RequireRole("super_admin", "tenant_admin"), analyticsHandler.GetTeamPerformance)
+	analytics := protected.Group("/analytics", middleware.RequireRole("super_admin"))
+	analytics.Get("/team-performance", analyticsHandler.GetTeamPerformance)
 	analytics.Get("/leaderboard", analyticsHandler.GetLeaderboard)
 	analytics.Get("/leaderboard/export/:format", analyticsHandler.ExportLeaderboard)
 

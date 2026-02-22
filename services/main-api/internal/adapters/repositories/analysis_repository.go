@@ -32,10 +32,16 @@ func (r *analysisRepository) Create(ctx context.Context, a *domain.AnalysisRepor
 	).Scan(&a.ProcessedAt)
 }
 
-func (r *analysisRepository) GetTeamPerformance(ctx context.Context, companyID string, filters map[string]interface{}) ([]map[string]interface{}, error) {
-	argIdx := 2
-	where := "c.company_id = $1 AND c.status = 'completed'"
-	args := []interface{}{companyID}
+func (r *analysisRepository) GetTeamPerformance(ctx context.Context, filters map[string]interface{}) ([]map[string]interface{}, error) {
+	argIdx := 1
+	where := "c.status = 'completed'"
+	args := []interface{}{}
+
+	if companyID, ok := filters["company_id"].(string); ok && companyID != "" {
+		where += fmt.Sprintf(" AND u.company_id = $%d", argIdx)
+		args = append(args, companyID)
+		argIdx++
+	}
 
 	if teamID, ok := filters["team_id"].(string); ok && teamID != "" {
 		where += fmt.Sprintf(" AND c.manager_id IN (SELECT manager_id FROM auth_schema.users WHERE team_id = $%d)", argIdx)
@@ -87,7 +93,7 @@ func (r *analysisRepository) GetTeamPerformance(ctx context.Context, companyID s
 			COALESCE(AVG(ar.kpi), 0)             AS avg_kpi,
 			COALESCE(SUM(c.duration), 0)         AS total_duration_seconds
 		FROM calls_schema.calls c
-		LEFT JOIN auth_schema.users u ON c.manager_id = u.manager_id AND c.company_id = u.company_id
+		INNER JOIN auth_schema.users u ON c.manager_id = u.manager_id
 		LEFT JOIN calls_schema.analysis_reports ar ON c.id = ar.call_id
 		WHERE %s
 		GROUP BY COALESCE(u.id::text, c.manager_id), u.first_name, u.last_name, c.manager_name

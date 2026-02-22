@@ -56,7 +56,6 @@ type SipuniNotifyRequest struct {
 var (
 	publisher *queue.BullMQPublisher
 	callRepo  repositories.CallRepository
-	companyID string
 )
 
 func main() {
@@ -85,13 +84,6 @@ func main() {
 	log.Info("PostgreSQL connected")
 
 	callRepo = repositories.NewCallRepository(db)
-
-	// Resolve company ID from environment
-	companyID = os.Getenv("COMPANY_ID")
-	if companyID == "" {
-		log.Fatal("COMPANY_ID environment variable is required — set it to the UUID of the company in auth_schema.companies")
-	}
-	log.Info("company configured", zap.String("company_id", companyID))
 
 	publisher, err = queue.NewBullMQPublisher(redisURL)
 	if err != nil {
@@ -328,7 +320,6 @@ func handleNotify(request json.RawMessage) {
 
 	call := &domain.Call{
 		ID:          callID,
-		CompanyID:   companyID,
 		ManagerID:   notify.UserID,
 		ManagerName: "Sipuni Manager",
 		ClientPhone: clientPhone,
@@ -351,7 +342,6 @@ func handleNotify(request json.RawMessage) {
 
 	job := queue.AudioProcessingJob{
 		CallID:    callID,
-		CompanyID: companyID,
 		AudioURL:  recordLink,
 		ManagerID: notify.UserID,
 	}

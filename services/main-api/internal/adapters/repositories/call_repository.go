@@ -22,8 +22,8 @@ func NewCallRepository(db *sql.DB) ports.CallRepository {
 func (r *callRepository) Create(ctx context.Context, call *domain.Call) error {
 	query := `
 		INSERT INTO calls_schema.calls
-		(id, company_id, manager_id, manager_name, client_phone, client_id, duration, call_link, chat_link, call_date, call_time, status, source)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+		(id, manager_id, manager_name, client_phone, client_id, duration, call_link, chat_link, call_date, call_time, status, source)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 		RETURNING created_at, updated_at
 	`
 
@@ -31,7 +31,6 @@ func (r *callRepository) Create(ctx context.Context, call *domain.Call) error {
 		ctx,
 		query,
 		call.ID,
-		call.CompanyID,
 		call.ManagerID,
 		call.ManagerName,
 		call.ClientPhone,
@@ -48,17 +47,16 @@ func (r *callRepository) Create(ctx context.Context, call *domain.Call) error {
 	return err
 }
 
-func (r *callRepository) GetByID(ctx context.Context, companyID, id string) (*domain.Call, error) {
+func (r *callRepository) GetByID(ctx context.Context, id string) (*domain.Call, error) {
 	query := `
-		SELECT id, company_id, manager_id, manager_name, client_phone, client_id, duration, call_link, chat_link, call_date, call_time, status, source, created_at, updated_at
+		SELECT id, manager_id, manager_name, client_phone, client_id, duration, call_link, chat_link, call_date, call_time, status, source, created_at, updated_at
 		FROM calls_schema.calls
-		WHERE id = $1 AND company_id = $2
+		WHERE id = $1
 	`
 
 	call := &domain.Call{}
-	err := r.db.QueryRowContext(ctx, query, id, companyID).Scan(
+	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&call.ID,
-		&call.CompanyID,
 		&call.ManagerID,
 		&call.ManagerName,
 		&call.ClientPhone,
@@ -83,7 +81,7 @@ func (r *callRepository) GetByID(ctx context.Context, companyID, id string) (*do
 
 func (r *callRepository) GetByIDInternal(ctx context.Context, id string) (*domain.Call, error) {
 	query := `
-		SELECT id, company_id, manager_id, manager_name, client_phone, client_id, duration, call_link, chat_link, call_date, call_time, status, source, created_at, updated_at
+		SELECT id, manager_id, manager_name, client_phone, client_id, duration, call_link, chat_link, call_date, call_time, status, source, created_at, updated_at
 		FROM calls_schema.calls
 		WHERE id = $1
 	`
@@ -91,7 +89,6 @@ func (r *callRepository) GetByIDInternal(ctx context.Context, id string) (*domai
 	call := &domain.Call{}
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&call.ID,
-		&call.CompanyID,
 		&call.ManagerID,
 		&call.ManagerName,
 		&call.ClientPhone,
@@ -114,10 +111,18 @@ func (r *callRepository) GetByIDInternal(ctx context.Context, id string) (*domai
 	return call, err
 }
 
-func (r *callRepository) ListByCompany(ctx context.Context, companyID string, filters map[string]interface{}) ([]*domain.Call, int, error) {
-	where := []string{"c.company_id = $1"}
-	args := []interface{}{companyID}
-	argIdx := 2
+func (r *callRepository) List(ctx context.Context, filters map[string]interface{}) ([]*domain.Call, int, error) {
+	where := []string{"1=1"}
+	args := []interface{}{}
+	argIdx := 1
+	joins := ""
+
+	if companyID, ok := filters["company_id"].(string); ok && companyID != "" {
+		joins = "INNER JOIN auth_schema.users u ON c.manager_id = u.manager_id"
+		where = append(where, fmt.Sprintf("u.company_id = $%d", argIdx))
+		args = append(args, companyID)
+		argIdx++
+	}
 
 	if managerID, ok := filters["manager_id"].(string); ok && managerID != "" {
 		where = append(where, fmt.Sprintf("c.manager_id = $%d", argIdx))
@@ -179,16 +184,17 @@ func (r *callRepository) ListByCompany(ctx context.Context, companyID string, fi
 	offset := (page - 1) * limit
 
 	query := fmt.Sprintf(`
-		SELECT c.id, c.company_id, c.manager_id, c.manager_name, c.client_phone, c.client_id,
+		SELECT c.id, c.manager_id, c.manager_name, c.client_phone, c.client_id,
 		       c.duration, c.call_link, c.chat_link, c.call_date, c.call_time,
 		       c.status, c.source, c.created_at, c.updated_at,
 		       ar.quality_score, ar.script_match, ar.errors_free
 		FROM calls_schema.calls c
+		%s
 		LEFT JOIN calls_schema.analysis_reports ar ON ar.call_id = c.id
 		WHERE %s
 		ORDER BY c.created_at DESC
 		LIMIT $%d OFFSET $%d
-	`, strings.Join(where, " AND "), argIdx, argIdx+1)
+	`, joins, strings.Join(where, " AND "), argIdx, argIdx+1)
 
 	rows, err := r.db.QueryContext(ctx, query, append(args, limit, offset)...)
 	if err != nil {
@@ -201,7 +207,6 @@ func (r *callRepository) ListByCompany(ctx context.Context, companyID string, fi
 		call := &domain.Call{}
 		err := rows.Scan(
 			&call.ID,
-			&call.CompanyID,
 			&call.ManagerID,
 			&call.ManagerName,
 			&call.ClientPhone,
@@ -226,7 +231,7 @@ func (r *callRepository) ListByCompany(ctx context.Context, companyID string, fi
 	}
 
 	// Count total
-	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM calls_schema.calls c WHERE %s", strings.Join(where, " AND "))
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM calls_schema.calls c %s WHERE %s", joins, strings.Join(where, " AND "))
 	var total int
 	err = r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total)
 	if err != nil {

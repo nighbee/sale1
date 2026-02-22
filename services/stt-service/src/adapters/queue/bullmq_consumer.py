@@ -27,7 +27,6 @@ async def start_consumer():
                 job = json.loads(job_data)
 
                 call_id = job.get('call_id')
-                company_id = job.get('company_id')
                 retry_count = job.get('retry_count', 0)
                 max_retries = job.get('max_retries', 3)
 
@@ -36,7 +35,6 @@ async def start_consumer():
                     "Job received from BullMQ",
                     extra={
                         "call_id": call_id,
-                        "company_id": company_id,
                         "queue": "bullmq:audio_processing",
                         "audio_url": audio_url,
                         "attempt": retry_count + 1,
@@ -47,14 +45,14 @@ async def start_consumer():
 
                 t_start = time.monotonic()
                 try:
-                    logger.info("STT processing started", extra={"call_id": call_id, "company_id": company_id})
+                    logger.info("STT processing started", extra={"call_id": call_id})
                     await use_case.execute(job)
                     elapsed = round(time.monotonic() - t_start, 2)
                     log_processing_event(call_id, "stt-service", "completed", retry_count=retry_count)
                     JOBS_PROCESSED.labels(status='completed').inc()
                     logger.info(
                         "STT job completed successfully",
-                        extra={"call_id": call_id, "company_id": company_id,
+                        extra={"call_id": call_id,
                                "attempt": retry_count + 1, "elapsed_s": elapsed},
                     )
                 except Exception as e:
@@ -67,7 +65,7 @@ async def start_consumer():
                         job['retry_count'] = next_attempt
                         logger.warning(
                             "STT job failed, retrying",
-                            extra={"call_id": call_id, "company_id": company_id, "attempt": next_attempt,
+                            extra={"call_id": call_id, "attempt": next_attempt,
                                    "backoff_s": backoff, "error": str(e)},
                         )
                         await asyncio.sleep(backoff)
@@ -75,7 +73,7 @@ async def start_consumer():
                     else:
                         logger.error(
                             "STT job max retries reached",
-                            extra={"call_id": call_id, "company_id": company_id, "max_retries": max_retries, "error": str(e)},
+                            extra={"call_id": call_id, "max_retries": max_retries, "error": str(e)},
                         )
 
         except Exception as e:

@@ -201,3 +201,37 @@ func (r *userRepository) GetUserCompanies(ctx context.Context, userID string) ([
 	}
 	return companies, nil
 }
+
+func (r *userRepository) GetByManagerID(ctx context.Context, managerID string) (*domain.User, error) {
+	query := `
+		SELECT id, company_id, email, password_hash, role, manager_id, manager_name,
+		       is_active, last_login, created_at, updated_at, team_id, first_name, last_name
+		FROM auth_schema.users
+		WHERE manager_id = $1
+		LIMIT 1
+	`
+
+	user := &domain.User{}
+	err := r.db.QueryRowContext(ctx, query, managerID).Scan(
+		&user.ID,
+		&user.CompanyID,
+		&user.Email,
+		&user.PasswordHash,
+		&user.Role,
+		&user.ManagerID,
+		&user.ManagerName,
+		&user.IsActive,
+		&user.LastLogin,
+		&user.CreatedAt,
+		&user.UpdatedAt,
+		&user.TeamID,
+		&user.FirstName,
+		&user.LastName,
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, errors.New("user not found")
+	}
+
+	return user, err
+}

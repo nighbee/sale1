@@ -17,10 +17,9 @@ class QueueClient:
         self._queue = queue_name
         logger.info("QueueClient ready", extra={"queue": queue_name})
 
-    def push_job(self, call_id: str, company_id: str, call_link: str, chat_link: str = ""):
+    def push_job(self, call_id: str, call_link: str, chat_link: str = ""):
         job = {
             "call_id": call_id,
-            "company_id": company_id,
             "audio_url": call_link,
             "chat_link": chat_link,
             "retry_count": 0,
@@ -31,7 +30,6 @@ class QueueClient:
             "Job queued",
             extra={
                 "call_id": call_id,
-                "company_id": company_id,
                 "queue": self._queue,
                 "call_link": call_link,
                 "chat_link": chat_link or '—',

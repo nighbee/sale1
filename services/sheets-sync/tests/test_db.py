@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import MagicMock, patch
 import uuid
+import bcrypt
 from src.db import _ensure_manager_user_exists
 
 class TestDB(unittest.TestCase):
@@ -34,11 +35,16 @@ class TestDB(unittest.TestCase):
         self.assertTrue(uuid.UUID(result)) # Check if it's a valid UUID
         self.assertEqual(cur.execute.call_count, 3) # SELECT, INSERT user, INSERT user_companies
 
-        # Verify email generation
+        # Verify email generation and password hashing
         last_call_args = cur.execute.call_args_list[1][0]
-        self.assertIn("manager_man456@salesai.local", last_call_args[1])
-        self.assertIn("Jane", last_call_args[1])
-        self.assertIn("Smith", last_call_args[1])
+        params = last_call_args[1]
+        self.assertIn("manager_man456@salesai.local", params)
+        self.assertIn("Jane", params)
+        self.assertIn("Smith", params)
+
+        # params[3] should be the password hash
+        password_hash = params[3]
+        self.assertTrue(bcrypt.checkpw("SaleAI!2016".encode('utf-8'), password_hash.encode('utf-8')))
 
 if __name__ == '__main__':
     unittest.main()

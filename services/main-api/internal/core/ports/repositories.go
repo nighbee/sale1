@@ -14,6 +14,7 @@ type UserRepository interface {
 	ListByCompany(ctx context.Context, companyID string) ([]*domain.User, error)
 	AddUserToCompany(ctx context.Context, userID, companyID string, role domain.UserRole) error
 	GetUserCompanies(ctx context.Context, userID string) ([]domain.UserCompany, error)
+	GetByManagerID(ctx context.Context, managerID string) (*domain.User, error)
 }
 
 type CompanyRepository interface {
@@ -26,9 +27,9 @@ type CompanyRepository interface {
 
 type CallRepository interface {
 	Create(ctx context.Context, call *domain.Call) error
-	GetByID(ctx context.Context, companyID, id string) (*domain.Call, error)
+	GetByID(ctx context.Context, id string) (*domain.Call, error)
 	GetByIDInternal(ctx context.Context, id string) (*domain.Call, error)
-	ListByCompany(ctx context.Context, companyID string, filters map[string]interface{}) ([]*domain.Call, int, error)
+	List(ctx context.Context, filters map[string]interface{}) ([]*domain.Call, int, error)
 	UpdateStatus(ctx context.Context, id string, status domain.CallStatus) error
 }
 
@@ -40,7 +41,7 @@ type TranscriptRepository interface {
 type AnalysisRepository interface {
 	GetByCallID(ctx context.Context, callID string) (*domain.AnalysisReport, error)
 	Create(ctx context.Context, report *domain.AnalysisReport) error
-	GetTeamPerformance(ctx context.Context, companyID string, filters map[string]interface{}) ([]map[string]interface{}, error)
+	GetTeamPerformance(ctx context.Context, filters map[string]interface{}) ([]map[string]interface{}, error)
 }
 
 type ScriptRepository interface {

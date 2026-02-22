@@ -33,7 +33,6 @@ class ProcessAudioUseCase:
 
     async def execute(self, job: dict):
         call_id = job.get('call_id')
-        company_id = job.get('company_id')
         # Support both key names: 'audio_url' (sipuni-listener) and 'call_link' (sheets-sync legacy)
         audio_url = job.get('audio_url') or job.get('call_link')
 
@@ -42,7 +41,7 @@ class ProcessAudioUseCase:
 
         logger.info(
             "processing audio job",
-            extra={"call_id": call_id, "company_id": company_id,
+            extra={"call_id": call_id,
                    "audio_url": audio_url, "stt_provider": self.stt_provider_name},
         )
 
@@ -144,14 +143,13 @@ class ProcessAudioUseCase:
             save_transcript(call_id, segments, self.stt_provider_name)
 
             # Publish event
-            await publish_transcript_ready(call_id, company_id)
+            await publish_transcript_ready(call_id)
 
             total_elapsed = round(time.monotonic() - t_total, 2)
             logger.info(
                 "[6/6] audio job completed successfully",
                 extra={
                     "call_id": call_id,
-                    "company_id": company_id,
                     "stt_provider": self.stt_provider_name,
                     "duration_s": duration_s,
                     "segment_count": len(segments),
@@ -161,7 +159,7 @@ class ProcessAudioUseCase:
                 },
             )
         except Exception as e:
-            logger.error("audio job failed", extra={"call_id": call_id, "company_id": company_id, "error": str(e)})
+            logger.error("audio job failed", extra={"call_id": call_id, "error": str(e)})
             raise
         finally:
             if tmp_path and os.path.exists(tmp_path):

@@ -10,6 +10,7 @@ import uuid
 from datetime import date, time, datetime
 from typing import Optional
 
+import bcrypt
 import psycopg2
 import psycopg2.extras
 
@@ -89,14 +90,18 @@ def _ensure_manager_user_exists(cur, company_id: str, manager_id: str, manager_n
         },
     )
 
+    # Hash the default password
+    default_password = "SaleAI!2016"
+    password_hash = bcrypt.hashpw(default_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
     cur.execute(
         """
         INSERT INTO auth_schema.users
           (id, company_id, email, password_hash, role, manager_id, manager_name, first_name, last_name, is_active)
         VALUES
-          (%s, %s, %s, 'placeholder', 'sales_rep', %s, %s, %s, %s, TRUE)
+          (%s, %s, %s, %s, 'sales_rep', %s, %s, %s, %s, TRUE)
         """,
-        (user_uuid, company_id, email, manager_id, manager_name, first_name, last_name),
+        (user_uuid, company_id, email, password_hash, manager_id, manager_name, first_name, last_name),
     )
 
     # Many-to-many link
@@ -141,10 +146,10 @@ def upsert_call(
             cur.execute(
                 """
                 SELECT id, status FROM calls_schema.calls
-                WHERE company_id = %s AND call_link = %s
+                WHERE call_link = %s
                 LIMIT 1
                 """,
-                (company_id, call_link),
+                (call_link,),
             )
             existing = cur.fetchone()
             if existing:
@@ -172,15 +177,14 @@ def upsert_call(
             cur.execute(
                 """
                 INSERT INTO calls_schema.calls
-                  (id, company_id, manager_id, manager_name, client_phone,
+                  (id, manager_id, manager_name, client_phone,
                    client_id, duration, call_link, chat_link,
                    call_date, call_time, status, source)
                 VALUES
-                  (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'pending', 'google_sheets')
+                  (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'pending', 'google_sheets')
                 """,
                 (
                     call_id,
-                    company_id,
                     manager_id,
                     manager_name,
                     client_phone,
@@ -257,13 +261,14 @@ def get_pending_sheet_calls(database_url: str, company_id: str) -> list[dict]:
                     ar.processed_at,
                     pl.error_message
                 FROM calls_schema.calls c
+                INNER JOIN auth_schema.users u ON c.manager_id = u.manager_id
                 LEFT JOIN calls_schema.analysis_reports ar ON ar.call_id = c.id
                 LEFT JOIN LATERAL (
                     SELECT error_message FROM logs_schema.processing_logs
                     WHERE call_id = c.id
                     ORDER BY created_at DESC LIMIT 1
                 ) pl ON TRUE
-                WHERE c.company_id = %s
+                WHERE u.company_id = %s
                   AND c.source = 'google_sheets'
                   AND c.status IN ('completed', 'error')
                 """,

@@ -2,7 +2,7 @@ import logging
 import os
 from src.adapters.storage.postgres_repo import (
     get_transcript, get_call, get_active_script, get_team_script, save_analysis,
-    create_notification, get_company_admin, get_company_settings
+    create_notification, get_company_admin, get_company_settings, get_company_id_by_call
 )
 from src.infrastructure.llm.openai_client import OpenAIClient
 from src.infrastructure.llm.gemini_client import GeminiClient
@@ -15,8 +15,8 @@ class AnalyzeCallUseCase:
         self.openai_client = OpenAIClient()
         self.gemini_client = GeminiClient()
 
-    async def execute(self, call_id: str, company_id: str):
-        logger.info("analyzing call", extra={"call_id": call_id, "company_id": company_id})
+    async def execute(self, call_id: str):
+        logger.info("analyzing call", extra={"call_id": call_id})
 
         # 1. Fetch data
         transcript = get_transcript(call_id)
@@ -27,6 +27,11 @@ class AnalyzeCallUseCase:
         call = get_call(call_id)
         if not call:
             logger.error("call record not found", extra={"call_id": call_id})
+            return
+
+        company_id = get_company_id_by_call(call_id)
+        if not company_id:
+            logger.error("could not resolve company_id for call", extra={"call_id": call_id})
             return
 
         manager_id = call['manager_id']
@@ -201,7 +206,7 @@ class AnalyzeCallUseCase:
                 )
 
             # Real-time notification
-            await publish_critical_error(call_id, company_id, "litigation_threat", message)
+            await publish_critical_error(call_id, "litigation_threat", message)
 
     def _format_transcript(self, segments):
         if not segments:

@@ -81,6 +81,20 @@ def get_call(call_id):
     finally:
         get_pool().putconn(conn)
 
+def get_company_id_by_call(call_id):
+    conn = get_pool().getconn()
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT u.company_id FROM auth_schema.users u
+            JOIN calls_schema.calls c ON c.manager_id = u.manager_id
+            WHERE c.id = %s LIMIT 1
+        """, (call_id,))
+        row = cur.fetchone()
+        return row[0] if row else None
+    finally:
+        get_pool().putconn(conn)
+
 def get_active_script(company_id):
     conn = get_pool().getconn()
     try:
