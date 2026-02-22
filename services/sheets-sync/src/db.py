@@ -2,7 +2,6 @@
 PostgreSQL helpers.
 - Upsert a call row in calls_schema.calls (source='google_sheets').
 - Look up a completed analysis for a given call_id.
-- Resolve the company_id for the google_sheets integration.
 """
 
 import logging
@@ -29,46 +28,17 @@ def get_connection(database_url: str):
     return psycopg2.connect(_dsn(database_url))
 
 
-def resolve_company_id(database_url: str, forced_company_id: str) -> str:
-    """Return the company_id to use.
-
-    If forced_company_id is set, return it.
-    Otherwise look for the first active google_sheets integration in the DB.
-    """
-    if forced_company_id:
-        return forced_company_id
-    conn = get_connection(database_url)
-    try:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT company_id FROM integrations_schema.integrations
-                WHERE integration_type = 'google_sheets' AND is_active = TRUE
-                ORDER BY created_at LIMIT 1
-                """,
-            )
-            row = cur.fetchone()
-            if row:
-                return str(row[0])
-            raise RuntimeError(
-                "No active google_sheets integration found. "
-                "Set COMPANY_ID env var or create the integration."
-            )
-    finally:
-        conn.close()
-
-
-def _ensure_manager_user_exists(cur, company_id: str, manager_id: str, manager_name: str):
+def _ensure_manager_user_exists(cur, manager_id: str, manager_name: str):
     """Check if a user with given manager_id exists in auth_schema.users.
-    If not, create one and link to company.
+    If not, create one.
     """
     cur.execute(
-        "SELECT id FROM auth_schema.users WHERE manager_id = %s AND company_id = %s",
-        (manager_id, company_id),
+        "SELECT id FROM auth_schema.users WHERE manager_id = %s",
+        (manager_id,),
     )
     row = cur.fetchone()
     if row:
-        logger.debug("Manager user already exists", extra={"manager_id": manager_id, "company_id": company_id, "user_id": str(row[0])})
+        logger.debug("Manager user already exists", extra={"manager_id": manager_id, "user_id": str(row[0])})
         return str(row[0])
 
     # Not found, create a placeholder user. We perform an insert and handle
@@ -91,7 +61,6 @@ def _ensure_manager_user_exists(cur, company_id: str, manager_id: str, manager_n
             "manager_id": manager_id,
             "manager_name": manager_name,
             "user_uuid": user_uuid,
-            "company_id": company_id,
         },
     )
 
@@ -103,21 +72,11 @@ def _ensure_manager_user_exists(cur, company_id: str, manager_id: str, manager_n
         cur.execute(
             """
             INSERT INTO auth_schema.users
-              (id, company_id, email, password_hash, role, manager_id, manager_name, first_name, last_name, is_active)
+              (id, email, password_hash, role, manager_id, manager_name, first_name, last_name, is_active)
             VALUES
-              (%s, %s, %s, %s, 'sales_rep', %s, %s, %s, %s, TRUE)
+              (%s, %s, %s, 'sales_rep', %s, %s, %s, %s, TRUE)
             """,
-            (user_uuid, company_id, email, password_hash, manager_id, manager_name, first_name, last_name),
-        )
-
-        # Many-to-many link (ok if it already exists)
-        cur.execute(
-            """
-            INSERT INTO auth_schema.user_companies (user_id, company_id, role)
-            VALUES (%s, %s, 'sales_rep')
-            ON CONFLICT DO NOTHING
-            """,
-            (user_uuid, company_id),
+            (user_uuid, email, password_hash, manager_id, manager_name, first_name, last_name),
         )
 
         # Commit makes the creation durable for other connections
@@ -133,20 +92,19 @@ def _ensure_manager_user_exists(cur, company_id: str, manager_id: str, manager_n
             except Exception:
                 pass
             cur.execute(
-                "SELECT id FROM auth_schema.users WHERE manager_id = %s AND company_id = %s",
-                (manager_id, company_id),
+                "SELECT id FROM auth_schema.users WHERE manager_id = %s",
+                (manager_id,),
             )
             row = cur.fetchone()
             if row:
                 return str(row[0])
         # Log unexpected exception and re-raise so caller can handle it
-        logger.exception("Failed to create manager user", extra={"manager_id": manager_id, "company_id": company_id, "error": str(e)})
+        logger.exception("Failed to create manager user", extra={"manager_id": manager_id, "error": str(e)})
         raise
 
 
 def upsert_call(
     database_url: str,
-    company_id: str,
     manager_id: str,
     manager_name: str,
     client_phone: str,
@@ -157,7 +115,7 @@ def upsert_call(
     call_date: date,
     call_time: time,
 ) -> tuple[str, bool]:
-    """Insert or re-use (by call_link + company_id) a call record.
+    """Insert or re-use (by call_link) a call record.
 
     Returns (call_uuid, should_enqueue):
       - should_enqueue=True  → freshly inserted, push to queue
@@ -168,7 +126,7 @@ def upsert_call(
     try:
         with conn.cursor() as cur:
             # 0. Ensure manager user exists
-            _ensure_manager_user_exists(cur, company_id, manager_id, manager_name)
+            _ensure_manager_user_exists(cur, manager_id, manager_name)
 
             # 1. Check existing
             cur.execute(
@@ -268,7 +226,7 @@ def get_analysis_result(database_url: str, call_id: str) -> Optional[dict]:
         conn.close()
 
 
-def get_pending_sheet_calls(database_url: str, company_id: str) -> list[dict]:
+def get_pending_sheet_calls(database_url: str) -> list[dict]:
     """Return calls that originated from google_sheets and are now completed or errored."""
     conn = get_connection(database_url)
     try:
@@ -289,19 +247,85 @@ def get_pending_sheet_calls(database_url: str, company_id: str) -> list[dict]:
                     ar.processed_at,
                     pl.error_message
                 FROM calls_schema.calls c
-                INNER JOIN auth_schema.users u ON c.manager_id = u.manager_id
                 LEFT JOIN calls_schema.analysis_reports ar ON ar.call_id = c.id
                 LEFT JOIN LATERAL (
                     SELECT error_message FROM logs_schema.processing_logs
                     WHERE call_id = c.id
                     ORDER BY created_at DESC LIMIT 1
                 ) pl ON TRUE
-                WHERE u.company_id = %s
-                  AND c.source = 'google_sheets'
+                WHERE c.source = 'google_sheets'
                   AND c.status IN ('completed', 'error')
                 """,
-                (company_id,),
             )
             return [dict(r) for r in cur.fetchall()]
+    finally:
+        conn.close()
+
+
+def create_manager_user(
+    database_url: str,
+    manager_id: str,
+    manager_name: str,
+) -> str:
+    """Create or upsert a sales_rep user account for a manager.
+    
+    Returns the user UUID.
+    Email: manager_name_normalized@gmail.com (spaces → underscores, lowercase)
+    Password: manager_name (plain text stored as bcrypt hash)
+    """
+    import bcrypt
+    
+    # Normalize email: spaces to underscores, lowercase
+    email_local = manager_name.lower().replace(" ", "_")
+    email = f"{email_local}@gmail.com"
+    
+    # Password = manager_name as-is
+    password_plain = manager_name
+    password_hash = bcrypt.hashpw(password_plain.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    
+    conn = get_connection(database_url)
+    try:
+        with conn.cursor() as cur:
+            # Check if user exists
+            cur.execute(
+                """
+                SELECT id FROM auth_schema.users
+                WHERE manager_id = %s
+                LIMIT 1
+                """,
+                (manager_id,),
+            )
+            existing = cur.fetchone()
+            if existing:
+                user_id = str(existing[0])
+                logger.debug(
+                    "Manager user already exists",
+                    extra={"user_id": user_id, "manager_id": manager_id, "manager_name": manager_name},
+                )
+                return user_id
+            
+            # Create new user
+            user_id = str(uuid.uuid4())
+            cur.execute(
+                """
+                INSERT INTO auth_schema.users
+                  (id, email, password_hash, role, manager_id, manager_name, is_active)
+                VALUES
+                  (%s, %s, %s, 'sales_rep', %s, %s, TRUE)
+                ON CONFLICT (email) DO NOTHING
+                """,
+                (user_id, email, password_hash, manager_id, manager_name),
+            )
+            conn.commit()
+            logger.info(
+                "Manager user created",
+                extra={
+                    "user_id": user_id,
+                    "manager_id": manager_id,
+                    "manager_name": manager_name,
+                    "email": email,
+                },
+            )
+            return user_id
     finally:
         conn.close()

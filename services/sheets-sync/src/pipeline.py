@@ -1,4 +1,3 @@
-# ...existing code...
 """
 Main sync pipeline.
 
@@ -24,10 +23,9 @@ import traceback
 from src.config import Config
 from src.sheets_client import SheetsClient, SheetRow
 from src.db import (
-    resolve_company_id,
     upsert_call,
     get_pending_sheet_calls,
-    get_analysis_result,
+    create_manager_user,
 )
 from src.queue_client import QueueClient
 
@@ -74,8 +72,7 @@ class Pipeline:
             logger.exception("Failed to initialise QueueClient", extra={"redis_url": Config.REDIS_URL, "queue_name": Config.QUEUE_NAME})
             raise
 
-        self.company_id = resolve_company_id(Config.DATABASE_URL, Config.COMPANY_ID)
-        logger.info("Pipeline initialised", extra={"company_id": self.company_id})
+        logger.info("Pipeline initialised")
 
     def run(self):
         logger.info("Starting sync cycle")
@@ -131,9 +128,23 @@ class Pipeline:
                 continue
 
             try:
+                # Auto-create manager account
+                manager_user_id = create_manager_user(
+                    database_url=Config.DATABASE_URL,
+                    manager_id=row.man_id,
+                    manager_name=row.man_name,
+                )
+                logger.debug(
+                    "Manager user ensured",
+                    extra={
+                        "manager_user_id": manager_user_id,
+                        "manager_id": row.man_id,
+                        "manager_name": row.man_name,
+                    },
+                )
+                
                 call_id, should_enqueue = upsert_call(
                     database_url=Config.DATABASE_URL,
-                    company_id=self.company_id,
                     manager_id=row.man_id,
                     manager_name=row.man_name,
                     client_phone=row.client_phone,
@@ -206,7 +217,7 @@ class Pipeline:
         # Fetch pending/completed calls from DB with timing/logging
         db_start = _time.perf_counter()
         try:
-            completed_calls = get_pending_sheet_calls(Config.DATABASE_URL, self.company_id)
+            completed_calls = get_pending_sheet_calls(Config.DATABASE_URL)
             db_duration = _time.perf_counter() - db_start
             logger.info("Fetched pending/completed calls from DB", extra={"count": len(completed_calls) if completed_calls else 0, "duration_s": db_duration})
         except Exception:
@@ -292,4 +303,3 @@ class Pipeline:
                 )
 
         logger.info("Write-back phase done", extra={"written": written})
-# ...existing code...

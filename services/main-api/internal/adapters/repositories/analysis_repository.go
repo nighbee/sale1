@@ -37,6 +37,11 @@ func (r *analysisRepository) GetTeamPerformance(ctx context.Context, filters map
 	where := "c.status = 'completed'"
 	args := []interface{}{}
 
+	// If include_pending is true, show all statuses except 'error'
+	if includePending, ok := filters["include_pending"].(bool); ok && includePending {
+		where = "c.status IN ('completed', 'pending', 'processing')"
+	}
+
 	if companyID, ok := filters["company_id"].(string); ok && companyID != "" {
 		// Filter by the call's company_id (calls table contains company_id). Using
 		// u.company_id would drop rows when the LEFT JOIN to users yields NULL.
@@ -91,8 +96,8 @@ func (r *analysisRepository) GetTeamPerformance(ctx context.Context, filters map
 
 	query := fmt.Sprintf(`
 		SELECT
-			COALESCE(u.id::text, c.manager_id) as manager_id,
 			COALESCE(NULLIF(TRIM(u.first_name || ' ' || u.last_name), ''), c.manager_name) as manager_name,
+			COALESCE(u.id::text, c.manager_id) as manager_id,
 			COUNT(c.id)                AS total_calls,
 			COALESCE(AVG(ar.quality_score), 0)   AS avg_quality,
 			COALESCE(AVG(ar.script_match), 0)    AS avg_script_match,
@@ -107,7 +112,7 @@ func (r *analysisRepository) GetTeamPerformance(ctx context.Context, filters map
 		LEFT JOIN auth_schema.users u ON c.manager_id = u.manager_id
 		LEFT JOIN calls_schema.analysis_reports ar ON c.id = ar.call_id
 		WHERE %s
-		GROUP BY COALESCE(u.id::text, c.manager_id), u.first_name, u.last_name, c.manager_name
+		GROUP BY COALESCE(NULLIF(TRIM(u.first_name || ' ' || u.last_name), ''), c.manager_name)
 		ORDER BY %s DESC NULLS LAST
 	`, where, sortBy)
 
@@ -160,7 +165,7 @@ func (r *analysisRepository) GetByCallID(ctx context.Context, callID string) (*d
 		errorsFree     sql.NullInt64
 		overallRating  sql.NullFloat64
 		kpiVal         sql.NullFloat64
-		recommendation  sql.NullString
+		recommendation sql.NullString
 		brief          sql.NullString
 		nextBestAction sql.NullString
 		llmProvider    sql.NullString

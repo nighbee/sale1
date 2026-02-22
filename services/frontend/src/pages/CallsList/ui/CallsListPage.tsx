@@ -8,9 +8,12 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useUserStore } from "../../../entities/user/model/store";
 
+type CallSource = "sipuni" | "google_sheets";
+
 const CallsListPage: React.FC = () => {
   const { t } = useTranslation();
   const { currentTeamId, user } = useUserStore();
+  const [source, setSource] = useState<CallSource>("sipuni");
   const [calls, setCalls] = useState<Call[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ total: 0, avgScore: 0, failed: 0 });
@@ -19,19 +22,22 @@ const CallsListPage: React.FC = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Prefer calling the user-scoped endpoint so the backend can filter by manager_id (calls.manager_id)
-        // This avoids hitting the admin-only /calls endpoint which can return 403 for non-admin users.
         let res;
         if (user && user.id) {
-          res = await userApi.getUserCalls(user.id, { team_id: currentTeamId });
+          res = await userApi.getUserCalls(user.id, { 
+            team_id: currentTeamId,
+            source: source,
+          });
         } else {
-          res = await callApi.listCalls({ team_id: currentTeamId });
+          res = await callApi.listCalls({ 
+            team_id: currentTeamId,
+            source: source,
+          });
         }
         const data = res.data as { calls?: Call[]; total?: number };
         setCalls(data.calls || []);
-        // Simulated stats calculation
         const total = data.total || (data.calls ? data.calls.length : 0);
-        const avg = data.calls && data.calls.length > 0 ? 78.4 : 0; // Mocked avg
+        const avg = data.calls && data.calls.length > 0 ? 78.4 : 0;
         setStats({ total, avgScore: avg, failed: 12 });
       } catch {
         console.error("Failed to fetch calls");
@@ -40,7 +46,7 @@ const CallsListPage: React.FC = () => {
       }
     };
     fetchData();
-  }, [currentTeamId, user]);
+  }, [currentTeamId, user, source]);
 
   return (
     <PageLayout title={t("calls.list_title")}>
@@ -78,6 +84,30 @@ const CallsListPage: React.FC = () => {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Source tabs */}
+        <div className="flex gap-2 mb-6 border-b border-slate-200 dark:border-slate-700">
+          <button
+            onClick={() => setSource("sipuni")}
+            className={`px-4 py-3 font-medium text-sm border-b-2 transition-colors ${
+              source === "sipuni"
+                ? "border-primary text-primary"
+                : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+            }`}
+          >
+            📞 Sipuni Calls
+          </button>
+          <button
+            onClick={() => setSource("google_sheets")}
+            className={`px-4 py-3 font-medium text-sm border-b-2 transition-colors ${
+              source === "google_sheets"
+                ? "border-primary text-primary"
+                : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+            }`}
+          >
+            📊 Google Sheets
+          </button>
         </div>
 
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm mb-6">

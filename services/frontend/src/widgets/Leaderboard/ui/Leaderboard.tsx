@@ -20,7 +20,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ teamId, showFilters = 
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<Period>("30d");
   const [source, setSource] = useState<Source>("");
-  const [sortBy, setSortBy] = useState<SortKey>("avg_kpi");
+  const [sortBy, setSortBy] = useState<SortKey>("avg_quality");
   const [searchQuery, setSearchQuery] = useState("");
 
   const effectiveTeamId = teamId !== undefined ? teamId : currentTeamId;

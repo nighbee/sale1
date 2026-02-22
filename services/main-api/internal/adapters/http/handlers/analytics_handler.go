@@ -39,8 +39,9 @@ func (h *AnalyticsHandler) GetTeamPerformance(c *fiber.Ctx) error {
 	}
 
 	filters := map[string]interface{}{
-		"period":  c.Query("period"),
-		"team_id": c.Query("team_id"),
+		"period":          c.Query("period"),
+		"team_id":         c.Query("team_id"),
+		"include_pending": c.Query("include_pending") == "true",
 	}
 
 	log.Debug("fetching team performance", zap.String("company_id", companyID), zap.Any("filters", filters))
