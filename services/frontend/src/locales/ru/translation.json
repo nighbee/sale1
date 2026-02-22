@@ -211,7 +211,43 @@
     "overall_score": "Общий балл",
     "full_rankings": "Полный рейтинг",
     "rank": "Ранг",
-    "view_details": "Подробнее"
+    "view_details": "Подробнее",
+    "search_placeholder": "Поиск менеджера...",
+    "managers_count": "менеджеров",
+    "sort_by": "Сортировать по",
+    "no_data": "Данных пока нет. Звонки должны быть полностью проанализированы, чтобы появиться здесь.",
+    "no_results": "Менеджеры, соответствующие вашим критериям поиска, не найдены.",
+    "periods": {
+      "7d": "7 дней",
+      "30d": "30 дней",
+      "90d": "90 дней",
+      "all": "За все время"
+    },
+    "sources": {
+      "all": "Все источники",
+      "sheets": "Google Sheets",
+      "sipuni": "Sipuni"
+    },
+    "sort_options": {
+      "avg_kpi": "Балл KPI",
+      "avg_quality": "Качество",
+      "avg_script_match": "Скрипт",
+      "avg_errors_free": "Без ошибок",
+      "total_calls": "Кол-во звонков"
+    },
+    "columns": {
+      "manager": "Менеджер",
+      "calls": "Звонки",
+      "excellent": "Отличные",
+      "avg_duration": "Ср. длит.",
+      "total_duration": "Общ. длит.",
+      "quality": "Качество",
+      "errors_free": "Без ошибок",
+      "kpi_score": "Балл KPI",
+      "qual_short": "Кач-во",
+      "script_short": "Скрипт",
+      "errors_short": "Ошибки"
+    }
   },
   "settings": {
     "title": "Настройки компании",

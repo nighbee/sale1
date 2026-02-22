@@ -1,43 +1,53 @@
 import React from "react";
-import { ScoreBar } from "../../../shared/ui/ScoreBar";
+import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { ScoreBadge } from "../../../shared/ui/ScoreBadge";
 import type { LeaderboardEntry } from "../../../entities/analytics/types";
 
 interface RankingsTableProps {
   data: LeaderboardEntry[];
 }
 
-const BAR_COLOR = {
-  quality: "bg-indigo-500",
-  script: "bg-emerald-500",
-  errors: "bg-amber-400",
-};
-const TEXT_COLOR = {
-  quality: "text-indigo-500",
-  script: "text-emerald-500",
-  errors: "text-amber-500",
-};
-
 export const RankingsTable: React.FC<RankingsTableProps> = ({ data }) => {
+  const { t } = useTranslation();
+
   return (
     <div className="bg-white dark:bg-slate-900 rounded-xl shadow border border-slate-200 dark:border-slate-800 overflow-hidden">
       <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
         <h3 className="font-semibold text-slate-800 dark:text-slate-200">
-          Full Rankings
+          {t("leaderboard.full_rankings")}
         </h3>
-        <span className="text-xs text-slate-400">{data.length} managers</span>
+        <span className="text-xs text-slate-400">
+          {data.length} {t("leaderboard.managers_count")}
+        </span>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 text-xs uppercase font-semibold">
               <th className="px-5 py-3 w-12">#</th>
-              <th className="px-5 py-3">Manager</th>
-              <th className="px-5 py-3 text-center">Calls</th>
-              <th className="px-5 py-3 text-center">Duration</th>
-              <th className="px-5 py-3 min-w-[140px]">Quality</th>
-              <th className="px-5 py-3 min-w-[140px]">Script Match</th>
-              <th className="px-5 py-3 min-w-[140px]">Errors Free</th>
-              <th className="px-5 py-3 text-right">KPI Score</th>
+              <th className="px-5 py-3">{t("leaderboard.columns.manager")}</th>
+              <th className="px-5 py-3 text-center">
+                {t("leaderboard.columns.calls")}
+              </th>
+              <th className="px-5 py-3 text-center">
+                {t("leaderboard.columns.excellent")}
+              </th>
+              <th className="px-5 py-3 text-center">
+                {t("leaderboard.columns.avg_duration")}
+              </th>
+              <th className="px-5 py-3 text-center">
+                {t("leaderboard.columns.total_duration")}
+              </th>
+              <th className="px-5 py-3 text-center">
+                {t("leaderboard.columns.quality")}
+              </th>
+              <th className="px-5 py-3 text-center">
+                {t("leaderboard.columns.errors_free")}
+              </th>
+              <th className="px-5 py-3 text-right">
+                {t("leaderboard.columns.kpi_score")}
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -67,11 +77,14 @@ export const RankingsTable: React.FC<RankingsTableProps> = ({ data }) => {
                       {m.manager_name?.[0]?.toUpperCase()}
                     </div>
                     <div>
-                      <p className="font-medium text-slate-900 dark:text-white text-sm">
+                      <Link
+                        to={`/calls?manager_id=${m.external_id}`}
+                        className="font-medium text-slate-900 dark:text-white text-sm hover:text-primary transition-colors"
+                      >
                         {m.manager_name}
-                      </p>
-                      <p className="text-xs text-slate-400 font-mono">
-                        ID: {m.manager_id.slice(0, 8)}...
+                      </Link>
+                      <p className="text-[10px] text-slate-400 font-mono">
+                        EXT: {m.external_id}
                       </p>
                     </div>
                   </div>
@@ -81,31 +94,32 @@ export const RankingsTable: React.FC<RankingsTableProps> = ({ data }) => {
                     {m.total_calls}
                   </span>
                 </td>
+                <td className="px-5 py-4 text-center">
+                  <div className="flex flex-col items-center">
+                    <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                      {m.excellent_calls_count}
+                    </span>
+                    <span className="text-[10px] text-slate-400">
+                      {m.total_calls > 0 ? ((m.excellent_calls_count / m.total_calls) * 100).toFixed(0) : 0}%
+                    </span>
+                  </div>
+                </td>
+                <td className="px-5 py-4 text-center text-xs text-slate-500">
+                  {m.avg_duration_minutes.toFixed(1)}m
+                </td>
                 <td className="px-5 py-4 text-center text-xs text-slate-500">
                   {m.total_duration_minutes >= 60
                     ? `${(m.total_duration_minutes / 60).toFixed(1)}h`
                     : `${m.total_duration_minutes.toFixed(0)}m`}
                 </td>
-                <td className="px-5 py-4">
-                  <ScoreBar
-                    value={m.avg_quality}
-                    barClassName={BAR_COLOR.quality}
-                    textClassName={TEXT_COLOR.quality}
-                  />
+                <td className="px-5 py-4 text-center">
+                  <div className="flex gap-2 justify-center">
+                    <ScoreBadge score={m.avg_quality} label={t("leaderboard.columns.qual_short")} />
+                    <ScoreBadge score={m.avg_script_match} label={t("leaderboard.columns.script_short")} />
+                  </div>
                 </td>
-                <td className="px-5 py-4">
-                  <ScoreBar
-                    value={m.avg_script_match}
-                    barClassName={BAR_COLOR.script}
-                    textClassName={TEXT_COLOR.script}
-                  />
-                </td>
-                <td className="px-5 py-4">
-                  <ScoreBar
-                    value={m.avg_errors_free}
-                    barClassName={BAR_COLOR.errors}
-                    textClassName={TEXT_COLOR.errors}
-                  />
+                <td className="px-5 py-4 text-center">
+                  <ScoreBadge score={m.avg_errors_free} label={t("leaderboard.columns.errors_short")} />
                 </td>
                 <td className="px-5 py-4 text-right">
                   <span className="font-black text-primary text-base">
