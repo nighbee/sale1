@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { PageLayout } from '../../../widgets/PageLayout';
-import { callApi } from '../../../entities/call/api';
+import { userApi } from '../../../entities/user/api';
 import { useUserStore } from '../../../entities/user/model/store';
 import Skeleton from '../../../shared/ui/Skeleton';
 
@@ -28,8 +28,10 @@ export const UserDashboardPage: React.FC = () => {
 
   useEffect(() => {
     const fetchData = async () => {
+      if (!user?.id) return;
+
       try {
-        const callsRes = await callApi.listCalls({ limit: 5 });
+        const callsRes = await userApi.getUserCalls(user.id, { limit: 5 });
         const data = callsRes.data as { calls: CallRecord[] };
         setRecentCalls(data.calls || []);
       } catch {
@@ -39,7 +41,7 @@ export const UserDashboardPage: React.FC = () => {
       }
     };
     fetchData();
-  }, []);
+  }, [user?.id]);
 
   return (
     <PageLayout title={t('dashboard.title')}>
