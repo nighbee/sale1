@@ -165,6 +165,7 @@ class Pipeline:
 
                 # Push job to queue with timing and payload logging
                 payload = {"call_id": call_id, "company_id": self.company_id, "call_link": row.call_link, "chat_link": row.chat_link or ""}
+                logger.info("Processing job from sheet", extra={"call_id": call_id, "company_id": self.company_id, "row": row.sheet_row_number})
                 logger.debug("Pushing job to queue", extra={"payload_sample": payload})
                 push_start = _time.perf_counter()
                 try:
@@ -175,9 +176,9 @@ class Pipeline:
                         chat_link=row.chat_link or "",
                     )
                     push_duration = _time.perf_counter() - push_start
-                    logger.info("Job pushed to queue", extra={"call_id": call_id, "duration_s": push_duration})
+                    logger.info("Job pushed to queue", extra={"call_id": call_id, "company_id": self.company_id, "duration_s": push_duration})
                 except Exception:
-                    logger.exception("Failed to push job to queue", extra={"call_id": call_id, "row": row.sheet_row_number, "payload": payload})
+                    logger.exception("Failed to push job to queue", extra={"call_id": call_id, "company_id": self.company_id, "row": row.sheet_row_number, "payload": payload})
                     # Do not mark row as processing if queue push failed
                     skipped += 1
                     continue

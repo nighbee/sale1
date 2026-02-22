@@ -56,6 +56,61 @@ def resolve_company_id(database_url: str, forced_company_id: str) -> str:
         conn.close()
 
 
+def _ensure_manager_user_exists(cur, company_id: str, manager_id: str, manager_name: str):
+    """Check if a user with given manager_id exists in auth_schema.users.
+    If not, create one and link to company.
+    """
+    cur.execute(
+        "SELECT id FROM auth_schema.users WHERE manager_id = %s AND company_id = %s",
+        (manager_id, company_id),
+    )
+    row = cur.fetchone()
+    if row:
+        return str(row[0])
+
+    # Not found, create a placeholder user
+    user_uuid = str(uuid.uuid4())
+    # Generate a safe email from manager_id/name
+    safe_id = "".join(c for c in str(manager_id) if c.isalnum())
+    email = f"manager_{safe_id}@salesai.local"
+
+    # Split name into first/last if possible
+    parts = manager_name.split(maxsplit=1)
+    first_name = parts[0] if len(parts) > 0 else manager_name
+    last_name = parts[1] if len(parts) > 1 else ""
+
+    logger.info(
+        "Creating missing manager user",
+        extra={
+            "manager_id": manager_id,
+            "manager_name": manager_name,
+            "user_uuid": user_uuid,
+            "company_id": company_id,
+        },
+    )
+
+    cur.execute(
+        """
+        INSERT INTO auth_schema.users
+          (id, company_id, email, password_hash, role, manager_id, manager_name, first_name, last_name, is_active)
+        VALUES
+          (%s, %s, %s, 'placeholder', 'sales_rep', %s, %s, %s, %s, TRUE)
+        """,
+        (user_uuid, company_id, email, manager_id, manager_name, first_name, last_name),
+    )
+
+    # Many-to-many link
+    cur.execute(
+        """
+        INSERT INTO auth_schema.user_companies (user_id, company_id, role)
+        VALUES (%s, %s, 'sales_rep')
+        ON CONFLICT DO NOTHING
+        """,
+        (user_uuid, company_id),
+    )
+    return user_uuid
+
+
 def upsert_call(
     database_url: str,
     company_id: str,
@@ -79,7 +134,10 @@ def upsert_call(
     conn = get_connection(database_url)
     try:
         with conn.cursor() as cur:
-            # Check existing
+            # 0. Ensure manager user exists
+            _ensure_manager_user_exists(cur, company_id, manager_id, manager_name)
+
+            # 1. Check existing
             cur.execute(
                 """
                 SELECT id, status FROM calls_schema.calls

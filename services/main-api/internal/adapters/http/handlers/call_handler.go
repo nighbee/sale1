@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -149,7 +150,12 @@ func (h *CallHandler) GetTranscript(c *fiber.Ctx) error {
 		resp, err := h.grpcClient.GetTranscript(c.Context(), id)
 		if err == nil {
 			log.Debug("transcript fetched via gRPC", zap.String("call_id", id))
-			return c.JSON(resp)
+			// Map to domain-like structure for frontend compatibility
+			return c.JSON(fiber.Map{
+				"call_id":      resp.CallId,
+				"segments":     json.RawMessage(resp.TranscriptJson),
+				"stt_provider": resp.SttProvider,
+			})
 		}
 		log.Debug("gRPC transcript fetch failed, falling back to DB", zap.String("call_id", id), zap.Error(err))
 	}
@@ -184,7 +190,21 @@ func (h *CallHandler) GetAnalysis(c *fiber.Ctx) error {
 		resp, err := h.grpcClient.GetAnalysis(c.Context(), id)
 		if err == nil {
 			log.Debug("analysis fetched via gRPC", zap.String("call_id", id))
-			return c.JSON(resp)
+			// Map to domain-like structure for frontend compatibility
+			return c.JSON(fiber.Map{
+				"call_id":          resp.CallId,
+				"quality_score":    resp.QualityScore,
+				"script_match":     resp.ScriptMatch,
+				"errors_free":      resp.ErrorsFree,
+				"overall_rating":   resp.OverallRating,
+				"kpi":              resp.Kpi,
+				"recommendation":   resp.Recommendation,
+				"brief":            resp.Brief,
+				"next_best_action": resp.NextBestAction,
+				// Frontend compatibility mappings
+				"summary":    resp.Brief,
+				"next_steps": strings.Split(resp.NextBestAction, "\n"),
+			})
 		}
 		log.Debug("gRPC analysis fetch failed, falling back to DB", zap.String("call_id", id), zap.Error(err))
 	}
