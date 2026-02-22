@@ -13,6 +13,7 @@ from typing import Optional
 import bcrypt
 import psycopg2
 import psycopg2.extras
+from psycopg2 import errors as psy_errors
 
 logger = logging.getLogger(__name__)
 
@@ -67,9 +68,13 @@ def _ensure_manager_user_exists(cur, company_id: str, manager_id: str, manager_n
     )
     row = cur.fetchone()
     if row:
+        logger.debug("Manager user already exists", extra={"manager_id": manager_id, "company_id": company_id, "user_id": str(row[0])})
         return str(row[0])
 
-    # Not found, create a placeholder user
+    # Not found, create a placeholder user. We perform an insert and handle
+    # concurrent races where another process inserts the same manager at
+    # the same time by catching UniqueViolation and selecting the existing
+    # user afterwards.
     user_uuid = str(uuid.uuid4())
     # Generate a safe email from manager_id/name
     safe_id = "".join(c for c in str(manager_id) if c.isalnum())
@@ -94,26 +99,49 @@ def _ensure_manager_user_exists(cur, company_id: str, manager_id: str, manager_n
     default_password = "SaleAI!2016"
     password_hash = bcrypt.hashpw(default_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
-    cur.execute(
-        """
-        INSERT INTO auth_schema.users
-          (id, company_id, email, password_hash, role, manager_id, manager_name, first_name, last_name, is_active)
-        VALUES
-          (%s, %s, %s, %s, 'sales_rep', %s, %s, %s, %s, TRUE)
-        """,
-        (user_uuid, company_id, email, password_hash, manager_id, manager_name, first_name, last_name),
-    )
+    try:
+        cur.execute(
+            """
+            INSERT INTO auth_schema.users
+              (id, company_id, email, password_hash, role, manager_id, manager_name, first_name, last_name, is_active)
+            VALUES
+              (%s, %s, %s, %s, 'sales_rep', %s, %s, %s, %s, TRUE)
+            """,
+            (user_uuid, company_id, email, password_hash, manager_id, manager_name, first_name, last_name),
+        )
 
-    # Many-to-many link
-    cur.execute(
-        """
-        INSERT INTO auth_schema.user_companies (user_id, company_id, role)
-        VALUES (%s, %s, 'sales_rep')
-        ON CONFLICT DO NOTHING
-        """,
-        (user_uuid, company_id),
-    )
-    return user_uuid
+        # Many-to-many link (ok if it already exists)
+        cur.execute(
+            """
+            INSERT INTO auth_schema.user_companies (user_id, company_id, role)
+            VALUES (%s, %s, 'sales_rep')
+            ON CONFLICT DO NOTHING
+            """,
+            (user_uuid, company_id),
+        )
+
+        # Commit makes the creation durable for other connections
+        cur.connection.commit()
+        return user_uuid
+    except Exception as e:
+        # If insertion failed due to concurrent insert (unique violation),
+        # rollback and fetch the existing user id. For other errors, re-raise
+        # after logging.
+        if isinstance(e, psy_errors.UniqueViolation) or getattr(e, 'pgcode', '') == psy_errors.UniqueViolation.pgcode:
+            try:
+                cur.connection.rollback()
+            except Exception:
+                pass
+            cur.execute(
+                "SELECT id FROM auth_schema.users WHERE manager_id = %s AND company_id = %s",
+                (manager_id, company_id),
+            )
+            row = cur.fetchone()
+            if row:
+                return str(row[0])
+        # Log unexpected exception and re-raise so caller can handle it
+        logger.exception("Failed to create manager user", extra={"manager_id": manager_id, "company_id": company_id, "error": str(e)})
+        raise
 
 
 def upsert_call(

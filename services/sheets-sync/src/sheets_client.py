@@ -65,7 +65,13 @@ TOTAL_COLS = 21
 # empty, "error", or "pending" (re-queue on error to allow retries).
 # Include 'processing' so rows stuck in that state (e.g. after Redis wipe)
 # are re-queued on the next sync cycle instead of being silently skipped.
-PROCESSABLE_STATUSES = {"", "error", "pending", "processing"}
+# Note: do NOT include 'processing' here - once we mark a row as processing
+# we expect the job to run and write back a result. Including 'processing'
+# causes the same row to be re-queued on the next sync cycle and can lead
+# to repeated processing loops. Rows stuck in 'processing' should be
+# investigated separately (or cleared manually) rather than auto-requeued
+# every cycle.
+PROCESSABLE_STATUSES = {"", "error", "pending"}
 
 
 class SheetRow:

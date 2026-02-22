@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/salesai/main-api/internal/core/domain"
@@ -133,7 +134,11 @@ func (h *IntegrationHandler) TriggerSheetSync(c *fiber.Ctx) error {
 	}
 	url := sheetsSyncURL + "/sync"
 	log.Info("Forwarding sync trigger to sheets-sync", zap.String("url", url))
-	resp, err := http.Post(url, "application/json", nil) //nolint:noctx
+	// Use an http client with a conservative timeout so the main-api
+	// doesn't hang indefinitely if the sheets-sync service is slow or
+	// unreachable.
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Post(url, "application/json", nil) //nolint:noctx
 	if err != nil {
 		log.Error("sheets-sync unreachable", zap.Error(err))
 		return c.Status(502).JSON(fiber.Map{"error": "sheets-sync service unavailable"})
