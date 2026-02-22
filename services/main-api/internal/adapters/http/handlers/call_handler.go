@@ -4,8 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	neturl "net/url"
+	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/minio/minio-go/v7"
@@ -26,6 +29,8 @@ type CallHandler struct {
 	analysisRepo   ports.AnalysisRepository
 	minioClient    *minio.Client
 	grpcClient     *grpc.GRPCClient
+	presignEnabled bool
+	presignExpiry  time.Duration
 }
 
 func NewCallHandler(
@@ -35,6 +40,8 @@ func NewCallHandler(
 	analysisRepo ports.AnalysisRepository,
 	minioClient *minio.Client,
 	grpcClient *grpc.GRPCClient,
+	presignEnabled bool,
+	presignExpiry time.Duration,
 ) *CallHandler {
 	return &CallHandler{
 		listCallsUC:    listCallsUC,
@@ -43,6 +50,8 @@ func NewCallHandler(
 		analysisRepo:   analysisRepo,
 		minioClient:    minioClient,
 		grpcClient:     grpcClient,
+		presignEnabled: presignEnabled,
+		presignExpiry:  presignExpiry,
 	}
 }
 
@@ -218,9 +227,22 @@ func (h *CallHandler) GetAnalysis(c *fiber.Ctx) error {
 
 	analysis, err := h.analysisRepo.GetByCallID(c.Context(), id)
 	if err != nil {
-		log.Warn("analysis not found", zap.String("call_id", id), zap.Error(err))
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Analysis not found"})
+		// If analysis is not found, return a 200 with an explicit empty response so
+		// frontend can render a friendly 'not yet processed' state instead of an error.
+		if err.Error() == "analysis report not found" {
+			log.Warn("analysis not found", zap.String("call_id", id), zap.Error(err))
+			return c.JSON(fiber.Map{
+				"call_id": id,
+				"analysis": nil,
+				"message": "Analysis not found",
+			})
+		}
+
+		// Other errors are treated as internal errors
+		log.Error("failed to fetch analysis", zap.String("call_id", id), zap.Error(err))
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
+
 	log.Info("analysis fetched from DB", zap.String("call_id", id))
 	return c.JSON(analysis)
 }
@@ -264,8 +286,12 @@ func (h *CallHandler) GetAudio(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Call not found"})
 	}
-
 	var bucketName, objectName string
+	// Prefer redirecting to HTTP-based links early
+	if strings.HasPrefix(call.CallLink, "http") {
+		return c.Redirect(call.CallLink)
+	}
+
 	if strings.HasPrefix(call.CallLink, "minio://") {
 		parts := strings.Split(strings.TrimPrefix(call.CallLink, "minio://"), "/")
 		if len(parts) >= 2 {
@@ -275,26 +301,91 @@ func (h *CallHandler) GetAudio(c *fiber.Ctx) error {
 	}
 
 	if bucketName == "" {
-		// Fallback to old behavior or direct redirect
+		// Fallback to older convention: bucket 'audio' and id.mp3
 		bucketName = "audio"
 		objectName = fmt.Sprintf("%s.mp3", id)
 	}
 
-	reader, err := h.minioClient.GetObject(context.Background(), bucketName, objectName, minio.GetObjectOptions{})
-	if err != nil {
-		return c.Redirect(call.CallLink)
-	}
-	defer reader.Close()
+	// Use a short context timeout to avoid hanging requests
+	ctx, cancel := context.WithTimeout(c.Context(), 15*time.Second)
+	defer cancel()
 
-	_, err = reader.Stat()
+	// First, check object metadata to determine existence and content-type
+	objInfo, err := h.minioClient.StatObject(ctx, bucketName, objectName, minio.StatObjectOptions{})
 	if err != nil {
-		if strings.HasPrefix(call.CallLink, "http") {
-			return c.Redirect(call.CallLink)
+		// If it's an HTTP link we already handled above. For MinIO errors map Access Denied -> 403
+		log := applogger.FromFiberCtx(c).With(zap.String("operation", "get_audio"))
+		lowerErr := strings.ToLower(err.Error())
+		if strings.Contains(lowerErr, "access denied") || strings.Contains(lowerErr, "accessdenied") {
+			log.Warn("minio stat object access denied", zap.String("bucket", bucketName), zap.String("object", objectName), zap.Error(err))
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied to audio object (check MinIO credentials/policy)"})
 		}
+
+		log.Warn("minio stat object failed", zap.String("bucket", bucketName), zap.String("object", objectName), zap.Error(err))
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Audio file not found in storage"})
 	}
 
-	c.Set("Content-Type", "audio/mpeg")
+	// If presign mode is enabled, return a presigned URL instead of proxying
+	if h.presignEnabled {
+		// generate presigned URL
+		presignedURL, err := h.minioClient.PresignedGetObject(ctx, bucketName, objectName, h.presignExpiry, neturl.Values{})
+		if err != nil {
+			log := applogger.FromFiberCtx(c).With(zap.String("operation", "get_audio"))
+			log.Error("failed to generate presigned url", zap.String("bucket", bucketName), zap.String("object", objectName), zap.Error(err))
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to generate presigned URL"})
+		}
+		// If a public-facing MinIO endpoint is provided (for example, nginx proxy or host-accessible
+		// address), rewrite the host/scheme on the generated presigned URL so browsers can reach it.
+		// Set MINIO_PUBLIC_ENDPOINT to a full URL like "http://localhost:9000" or "https://assets.example.com".
+		if pub := os.Getenv("MINIO_PUBLIC_ENDPOINT"); pub != "" {
+			if u, err := neturl.Parse(pub); err == nil && u.Host != "" {
+				presignedURL.Scheme = u.Scheme
+				presignedURL.Host = u.Host
+				// If the public endpoint contains a path (e.g. http://localhost/minio),
+				// prepend that path to the presigned object's path so the returned URL
+				// will be reachable via a proxy like nginx at that prefix.
+				if u.Path != "" && u.Path != "/" {
+					presignedURL.Path = strings.TrimRight(u.Path, "/") + presignedURL.Path
+				}
+			} else {
+				// If only a host (without scheme) was provided, preserve the existing scheme and replace host.
+				presignedURL.Host = pub
+			}
+		}
+		return c.JSON(fiber.Map{"presigned_url": presignedURL.String(), "expires_in_seconds": int(h.presignExpiry.Seconds())})
+	}
+
+	// Open the object for streaming
+	reader, err := h.minioClient.GetObject(ctx, bucketName, objectName, minio.GetObjectOptions{})
+	if err != nil {
+		log := applogger.FromFiberCtx(c).With(zap.String("operation", "get_audio"))
+		log.Error("minio get object failed", zap.String("bucket", bucketName), zap.String("object", objectName), zap.Error(err))
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to open audio stream"})
+	}
+	// Do not defer Close until after we start streaming (fiber SendStream will read), but ensure close on exit
+	defer reader.Close()
+
+	// Use content-type from object metadata if available; if missing, infer from extension
+	contentType := objInfo.ContentType
+	if contentType == "" {
+		lowerName := strings.ToLower(objectName)
+		switch {
+		case strings.HasSuffix(lowerName, ".wav"):
+			contentType = "audio/wav"
+		case strings.HasSuffix(lowerName, ".mp3"):
+			contentType = "audio/mpeg"
+		case strings.HasSuffix(lowerName, ".ogg"):
+			contentType = "audio/ogg"
+		case strings.HasSuffix(lowerName, ".m4a"):
+			contentType = "audio/mp4"
+		default:
+			contentType = "application/octet-stream"
+		}
+	}
+	c.Set("Content-Type", contentType)
+	// set content length when available
+	c.Set("Content-Length", strconv.FormatInt(objInfo.Size, 10))
+
 	return c.SendStream(reader)
 }
 

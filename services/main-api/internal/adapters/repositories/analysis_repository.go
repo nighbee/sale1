@@ -138,24 +138,77 @@ func (r *analysisRepository) GetByCallID(ctx context.Context, callID string) (*d
 	`
 
 	a := &domain.AnalysisReport{}
+	var (
+		scriptID       sql.NullString
+		qualityScore   sql.NullInt64
+		scriptMatch    sql.NullInt64
+		errorsFree     sql.NullInt64
+		overallRating  sql.NullFloat64
+		kpiVal         sql.NullFloat64
+		recommendation  sql.NullString
+		brief          sql.NullString
+		nextBestAction sql.NullString
+		llmProvider    sql.NullString
+		processedAt    sql.NullTime
+	)
+
 	err := r.db.QueryRowContext(ctx, query, callID).Scan(
 		&a.ID,
 		&a.CallID,
-		&a.ScriptID,
-		&a.QualityScore,
-		&a.ScriptMatch,
-		&a.ErrorsFree,
-		&a.OverallRating,
-		&a.KPI,
-		&a.Recommendation,
-		&a.Brief,
-		&a.NextBestAction,
-		&a.LLMProvider,
-		&a.ProcessedAt,
+		&scriptID,
+		&qualityScore,
+		&scriptMatch,
+		&errorsFree,
+		&overallRating,
+		&kpiVal,
+		&recommendation,
+		&brief,
+		&nextBestAction,
+		&llmProvider,
+		&processedAt,
 	)
 
 	if err == sql.ErrNoRows {
 		return nil, errors.New("analysis report not found")
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	// Map nullable DB fields into domain struct with safe defaults
+	if scriptID.Valid {
+		s := scriptID.String
+		a.ScriptID = &s
+	}
+	if qualityScore.Valid {
+		a.QualityScore = int(qualityScore.Int64)
+	}
+	if scriptMatch.Valid {
+		a.ScriptMatch = int(scriptMatch.Int64)
+	}
+	if errorsFree.Valid {
+		a.ErrorsFree = int(errorsFree.Int64)
+	}
+	if overallRating.Valid {
+		a.OverallRating = overallRating.Float64
+	}
+	if kpiVal.Valid {
+		a.KPI = kpiVal.Float64
+	}
+	if recommendation.Valid {
+		a.Recommendation = recommendation.String
+	}
+	if brief.Valid {
+		a.Brief = brief.String
+	}
+	if nextBestAction.Valid {
+		a.NextBestAction = nextBestAction.String
+	}
+	if llmProvider.Valid {
+		a.LLMProvider = llmProvider.String
+	}
+	if processedAt.Valid {
+		a.ProcessedAt = processedAt.Time
 	}
 
 	// Populate frontend compatibility fields
@@ -166,5 +219,5 @@ func (r *analysisRepository) GetByCallID(ctx context.Context, callID string) (*d
 		a.NextSteps = strings.Split(a.NextBestAction, "\n")
 	}
 
-	return a, err
+	return a, nil
 }

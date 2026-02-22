@@ -32,11 +32,42 @@ services:
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin123
+      MINIO_PRESIGN_ENABLED: "true"
+      MINIO_PRESIGN_EXPIRY_SECONDS: "300"
     volumes:
       - minio_data:/data
     ports:
       - "9000:9000"
       - "9001:9001"
+    networks:
+      - sale1-network
+
+  # One-shot init task to create buckets and apply CORS policy so browsers can fetch
+  # presigned URLs from MinIO (port 9000). This runs the AWS CLI pointing to the
+  # MinIO S3 endpoint and uses the credentials defined above.
+  minio-init:
+    image: amazon/aws-cli:2.14.2
+    depends_on:
+      - minio
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      # wait for MinIO readiness
+      for i in $(seq 1 60); do
+        if curl -fs http://minio:9000/minio/health/ready >/dev/null 2>&1; then
+          break
+        fi
+        sleep 1
+      done
+      # create audio bucket (ignore error if exists)
+      aws --endpoint-url http://minio:9000 s3api create-bucket --bucket audio || true
+      # apply CORS from file
+      aws --endpoint-url http://minio:9000 s3api put-bucket-cors --bucket audio --cors-configuration file:///cors.json || true
+      echo "minio init done"
+    volumes:
+      - ./minio-cors.json:/cors.json:ro
+    environment:
+      AWS_ACCESS_KEY_ID: minioadmin
+      AWS_SECRET_ACCESS_KEY: minioadmin123
     networks:
       - sale1-network
 
@@ -51,6 +82,16 @@ services:
       REDIS_URL: "redis://redis:6379"
       DEFAULT_COMPANY_ID: ${COMPANY_ID:-}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      MINIO_ENDPOINT: "minio:9000"
+      MINIO_ACCESS_KEY: "minioadmin"
+      MINIO_SECRET_KEY: "minioadmin123"
+      # Enable returning presigned URLs and set a public-facing endpoint reachable from the browser.
+      # MINIO_ENDPOINT remains internal (minio:9000) so the service can communicate with MinIO inside the
+      # Docker network. MINIO_PUBLIC_ENDPOINT is used to rewrite presigned URLs returned to clients.
+      MINIO_PRESIGN_ENABLED: "true"
+      MINIO_PRESIGN_EXPIRY_SECONDS: "300"
+      MINIO_PUBLIC_ENDPOINT: "http://localhost/minio"
+      MINIO_SECURE: "false"
     depends_on:
       postgres:
         condition: service_healthy

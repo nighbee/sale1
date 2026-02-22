@@ -42,6 +42,10 @@ func SetupRoutes(
 	// WebSocket
 	protected.Get("/ws", handlers.WSUpgrade, websocket.New(wsHandler.Handle))
 
+	// Allow audio streaming for tenant admins and super admins (needed for frontend playback)
+	// This endpoint uses authenticated access and will stream or proxy audio stored via call_link.
+	protected.Get("/calls/:id/audio", middleware.RequireRole("super_admin", "tenant_admin"), callHandler.GetAudio)
+
 	// Notifications
 	notifications := protected.Group("/notifications")
 	notifications.Get("/", notificationHandler.ListNotifications)

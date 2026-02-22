@@ -34,18 +34,34 @@ func (r *transcriptRepository) GetByCallID(ctx context.Context, callID string) (
 	`
 
 	t := &domain.Transcript{}
+	var (
+		processingTime sql.NullInt64
+		processedAt    sql.NullTime
+	)
+
 	err := r.db.QueryRowContext(ctx, query, callID).Scan(
 		&t.ID,
 		&t.CallID,
 		&t.SpeakerDiarizedJSON,
 		&t.STTProvider,
-		&t.ProcessingTimeSeconds,
-		&t.ProcessedAt,
+		&processingTime,
+		&processedAt,
 	)
 
 	if err == sql.ErrNoRows {
 		return nil, errors.New("transcript not found")
 	}
+	if err != nil {
+		return nil, err
+	}
 
-	return t, err
+	// Map nullable DB values into domain struct with safe defaults
+	if processingTime.Valid {
+		t.ProcessingTimeSeconds = int(processingTime.Int64)
+	}
+	if processedAt.Valid {
+		t.ProcessedAt = processedAt.Time
+	}
+
+	return t, nil
 }

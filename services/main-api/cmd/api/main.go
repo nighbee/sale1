@@ -26,6 +26,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/ansrivas/fiberprometheus/v2"
 	"github.com/gofiber/fiber/v2"
@@ -142,7 +143,7 @@ func main() {
 
 	// Handlers
 	authHandler := handlers.NewAuthHandler(registerUC, loginUC, refreshUC)
-	callHandler := handlers.NewCallHandler(listCallsUC, callRepo, transcriptRepo, analysisRepo, minioClient, grpcClient)
+	callHandler := handlers.NewCallHandler(listCallsUC, callRepo, transcriptRepo, analysisRepo, minioClient, grpcClient, cfg.MinioPresign, time.Duration(cfg.MinioPresignExpirySeconds)*time.Second)
 	analyticsHandler := handlers.NewAnalyticsHandler(teamPerformanceUC)
 	companyHandler := handlers.NewCompanyHandler(companyRepo)
 	userHandler := handlers.NewUserHandler(userRepo)

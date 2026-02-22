@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -15,6 +16,8 @@ type Config struct {
 	MinioEndpoint     string
 	MinioAccessKey    string
 	MinioSecretKey    string
+	MinioPresign      bool
+	MinioPresignExpirySeconds int
 	STTServiceGRPC    string
 	AnalyticsGRPC     string
 	DefaultCompanyID  string
@@ -65,6 +68,20 @@ func Load() *Config {
 		analyticsGRPC = "ai-analytics:50052"
 	}
 
+	presignEnabled := false
+	if v := os.Getenv("MINIO_PRESIGN_ENABLED"); v != "" {
+		if b, err := strconv.ParseBool(v); err == nil {
+			presignEnabled = b
+		}
+	}
+
+	presignExpiry := 300
+	if v := os.Getenv("MINIO_PRESIGN_EXPIRY_SECONDS"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			presignExpiry = n
+		}
+	}
+
 	return &Config{
 		DatabaseURL:      dbURL,
 		RedisURL:         redisURL,
@@ -75,6 +92,8 @@ func Load() *Config {
 		MinioEndpoint:    minioEndpoint,
 		MinioAccessKey:   os.Getenv("MINIO_ACCESS_KEY"),
 		MinioSecretKey:   os.Getenv("MINIO_SECRET_KEY"),
+		MinioPresign:     presignEnabled,
+		MinioPresignExpirySeconds: presignExpiry,
 		STTServiceGRPC:   sttGRPC,
 		AnalyticsGRPC:    analyticsGRPC,
 		DefaultCompanyID: os.Getenv("DEFAULT_COMPANY_ID"),
