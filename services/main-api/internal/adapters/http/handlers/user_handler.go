@@ -306,22 +306,27 @@ func (h *UserHandler) GetUserCalls(c *fiber.Ctx) error {
 	targetUserID := c.Params("id")
 	companyID := c.Locals("company_id").(string)
 
-	// Auth check: only admin or the user themselves
-	requesterID := c.Locals("user_id").(string)
-	requesterRole := c.Locals("role").(string)
-
-	if requesterRole != string(domain.RoleSuperAdmin) && requesterRole != string(domain.RoleTenantAdmin) && requesterID != targetUserID {
-		log.Warn("forbidden access to user calls",
-			zap.String("requester_id", requesterID),
-			zap.String("target_user_id", targetUserID))
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Forbidden"})
-	}
-
 	// Get target user
 	user, err := h.userRepo.GetByID(c.Context(), companyID, targetUserID)
 	if err != nil {
 		log.Warn("user not found", zap.String("user_id", targetUserID), zap.Error(err))
 		return c.Status(404).JSON(fiber.Map{"error": "User not found"})
+	}
+
+	// Auth check: allow access if requester is super_admin or tenant_admin,
+	// or requester is the user themselves, or requester is the manager of the user.
+	requesterID, _ := c.Locals("user_id").(string)
+	requesterRole, _ := c.Locals("role").(string)
+
+	if requesterRole != string(domain.RoleSuperAdmin) && requesterRole != string(domain.RoleTenantAdmin) && requesterID != targetUserID {
+		// not admin and not the user themselves -> check manager relationship
+		if user.ManagerID == nil || *user.ManagerID == "" || *user.ManagerID != requesterID {
+			log.Warn("forbidden access to user calls",
+				zap.String("requester_id", requesterID),
+				zap.String("target_user_id", targetUserID),
+				zap.Stringp("target_manager_id", user.ManagerID))
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Forbidden"})
+		}
 	}
 
 	if user.ManagerID == nil || *user.ManagerID == "" {

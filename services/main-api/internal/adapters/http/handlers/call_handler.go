@@ -89,6 +89,16 @@ func (h *CallHandler) ListCalls(c *fiber.Ctx) error {
 		Limit:       limit,
 	}
 
+	// Enforce permission rules:
+	// - Super admins and tenant admins may list calls and provide manager_id to filter.
+	// - Other authenticated users may only view calls for which they are the manager (manager_id == requester_id).
+	requesterID, _ := c.Locals("user_id").(string)
+	requesterRole, _ := c.Locals("role").(string)
+	if requesterRole != string(domain.RoleSuperAdmin) && requesterRole != string(domain.RoleTenantAdmin) {
+		// Ignore any provided manager_id and restrict to requester
+		req.ManagerID = requesterID
+	}
+
 	log.Debug("listing calls",
 		zap.String("manager_id", req.ManagerID), zap.String("status", req.Status),
 		zap.Int("page", page), zap.Int("limit", limit))

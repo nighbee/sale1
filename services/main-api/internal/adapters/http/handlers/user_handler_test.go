@@ -131,3 +131,37 @@ func TestGetUserCalls_Success(t *testing.T) {
 		t.Errorf("expected call-1, got %s", result.Calls[0].ID)
 	}
 }
+
+func TestGetUserCalls_ManagerAccess(t *testing.T) {
+	app := fiber.New()
+
+	managerID := "manager-1"
+	mockUser := &domain.User{
+		ID:        "user-1",
+		ManagerID: &managerID,
+		Role:      domain.RoleSalesRep,
+	}
+
+	callRepo := &mockCallRepo{
+		calls: []*domain.Call{{ID: "call-1", ManagerID: managerID}},
+		total: 1,
+	}
+	listCallsUC := calls.NewListCallsUseCase(callRepo)
+
+	h := NewUserHandler(&mockUserRepo{user: mockUser}, listCallsUC)
+
+	app.Get("/users/:id/calls", func(c *fiber.Ctx) error {
+		// Mock locals for auth: requester is the manager
+		c.Locals("user_id", managerID)
+		c.Locals("role", string(domain.RoleSalesRep))
+		c.Locals("company_id", "comp-1")
+		return h.GetUserCalls(c)
+	})
+
+	req := httptest.NewRequest("GET", "/users/user-1/calls", nil)
+	resp, _ := app.Test(req)
+
+	if resp.StatusCode != 200 {
+		t.Fatalf("expected status 200 for manager access, got %d", resp.StatusCode)
+	}
+}

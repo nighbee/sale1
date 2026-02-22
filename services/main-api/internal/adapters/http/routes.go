@@ -8,6 +8,8 @@ import (
 	"github.com/salesai/main-api/internal/adapters/http/handlers"
 	"github.com/salesai/main-api/internal/adapters/http/middleware"
 	"github.com/salesai/main-api/internal/core/ports"
+	// Allow user-specific calls listing for authenticated users (handler enforces row-level permissions).
+	// Register this BEFORE the admin-only /users group so it is not wrapped by the group's RequireRole middleware.
 )
 
 func SetupRoutes(
@@ -46,6 +48,10 @@ func SetupRoutes(
 	// This endpoint uses authenticated access and will stream or proxy audio stored via call_link.
 	protected.Get("/calls/:id/audio", middleware.RequireRole("super_admin", "tenant_admin"), callHandler.GetAudio)
 
+	// Allow listing calls for a specific user (row-level permission enforced by handler).
+	// Register this BEFORE the admin-only /users group so it's not wrapped by the group's RequireRole middleware.
+	protected.Get("/users/:id/calls", userHandler.GetUserCalls)
+
 	// Notifications
 	notifications := protected.Group("/notifications")
 	notifications.Get("/", notificationHandler.ListNotifications)
@@ -61,15 +67,15 @@ func SetupRoutes(
 	users.Put("/:id", userHandler.UpdateUser)
 	users.Delete("/:id", userHandler.DeleteUser)
 
-	protected.Get("/users/:id/calls", userHandler.GetUserCalls)
-
-	// Calls
-	calls := protected.Group("/calls", middleware.RequireRole("super_admin"))
+	// Calls - allow authenticated users; handler will enforce row-level permissions
+	calls := protected.Group("/calls")
 	calls.Get("/", callHandler.ListCalls)
 	calls.Get("/:id", callHandler.GetCall)
 	calls.Get("/:id/transcript", callHandler.GetTranscript)
 	calls.Get("/:id/analysis", callHandler.GetAnalysis)
-	calls.Get("/:id/audio", callHandler.GetAudio)
+	// Audio access for streaming is protected separately above (only tenant_admin/super_admin)
+	// keep/GetCall transcript/analysis accessible via authenticated routes
+	protected.Get("/users/:id/calls", userHandler.GetUserCalls)
 	calls.Post("/:id/reprocess", callHandler.ReprocessCall)
 
 	// Scripts

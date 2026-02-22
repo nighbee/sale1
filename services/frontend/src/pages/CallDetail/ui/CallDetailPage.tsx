@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { callApi } from "../../../entities/call/api";
 import api from "../../../shared/api/base";
@@ -275,7 +275,45 @@ const CallDetailPage: React.FC = () => {
   }, []);
 
   if (loading) return <div className="p-8">{t("calls.loading")}</div>;
-  if (!call) return <div className="p-8">{t("calls.not_found")}</div>;
+
+  if (!call) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background-light dark:bg-background-dark text-neutral-800 dark:text-neutral-100">
+        <div className="max-w-xl w-full p-8 rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 shadow-lg text-center">
+          <div className="flex items-center justify-center mb-4">
+            <div className="h-20 w-20 rounded-full bg-primary/10 text-primary flex items-center justify-center text-4xl">
+              <span className="material-icons">call</span>
+            </div>
+          </div>
+          <h2 className="text-2xl font-bold mb-2">
+            {t("calls.processing", {
+              defaultValue: "Call is processing — please return later",
+            })}
+          </h2>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6">
+            {t("calls.processing_description", {
+              defaultValue:
+                "The call data is not available yet. Our background workers are processing the audio and analysis. Please check back in a few minutes.",
+            })}
+          </p>
+          <div className="flex items-center justify-center gap-3">
+            <button
+              onClick={() => window.history.back()}
+              className="px-4 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 text-sm font-medium hover:bg-neutral-50 dark:hover:bg-neutral-800"
+            >
+              {t("common.back", { defaultValue: "Go back" })}
+            </button>
+            <Link
+              to="/calls"
+              className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-95"
+            >
+              {t("calls.view_calls", { defaultValue: "View calls" })}
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-background-light dark:bg-background-dark text-neutral-800 dark:text-neutral-100 font-display min-h-screen flex flex-col overflow-hidden">
