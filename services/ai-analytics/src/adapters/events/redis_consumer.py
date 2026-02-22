@@ -41,27 +41,27 @@ async def start_consumer():
                         event_type = payload.get(b'event_type', b'').decode('utf-8')
 
                         logger.info(
-                            "transcript_ready event received",
+                            "Event received from Redis stream",
                             extra={
                                 "call_id": call_id,
                                 "company_id": company_id,
-                                "event_type": event_type,
                                 "stream": stream_name,
+                                "event_type": event_type,
                                 "msg_id": msg_id.decode() if isinstance(msg_id, bytes) else str(msg_id),
-                                "payload_keys": [k.decode() if isinstance(k, bytes) else k for k in payload.keys()],
                             },
                         )
                         log_processing_event(call_id, "ai-analytics", "processing")
 
                         try:
+                            logger.info("AI analysis started", extra={"call_id": call_id, "company_id": company_id})
                             await use_case.execute(call_id, company_id)
                             log_processing_event(call_id, "ai-analytics", "completed")
                             EVENTS_PROCESSED.labels(status='completed').inc()
                             await r.xack(stream_name, group_name, msg_id)
-                            logger.info("call analysis completed",
+                            logger.info("AI analysis completed successfully",
                                         extra={"call_id": call_id, "company_id": company_id})
                         except Exception as e:
-                            logger.error("call analysis failed",
+                            logger.error("AI analysis failed",
                                          extra={"call_id": call_id, "company_id": company_id,
                                                 "error": str(e)})
                             log_processing_event(call_id, "ai-analytics", "error", error_message=str(e))

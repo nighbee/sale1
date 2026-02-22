@@ -18,4 +18,8 @@ type AnalysisReport struct {
 	NextBestAction        string    `json:"next_best_action"`
 	LLMProvider           string    `json:"llm_provider"`
 	ProcessedAt           time.Time `json:"processed_at"`
+
+	// Frontend compatibility fields (calculated)
+	Summary   string   `json:"summary"`
+	NextSteps []string `json:"next_steps"`
 }

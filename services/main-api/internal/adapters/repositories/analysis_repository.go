@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/salesai/main-api/internal/core/domain"
 	"github.com/salesai/main-api/internal/core/ports"
@@ -76,8 +77,8 @@ func (r *analysisRepository) GetTeamPerformance(ctx context.Context, companyID s
 
 	query := fmt.Sprintf(`
 		SELECT
-			c.manager_id,
-			c.manager_name,
+			COALESCE(u.id::text, c.manager_id) as manager_id,
+			COALESCE(NULLIF(TRIM(u.first_name || ' ' || u.last_name), ''), c.manager_name) as manager_name,
 			COUNT(c.id)                AS total_calls,
 			COALESCE(AVG(ar.quality_score), 0)   AS avg_quality,
 			COALESCE(AVG(ar.script_match), 0)    AS avg_script_match,
@@ -86,9 +87,10 @@ func (r *analysisRepository) GetTeamPerformance(ctx context.Context, companyID s
 			COALESCE(AVG(ar.kpi), 0)             AS avg_kpi,
 			COALESCE(SUM(c.duration), 0)         AS total_duration_seconds
 		FROM calls_schema.calls c
+		LEFT JOIN auth_schema.users u ON c.manager_id = u.manager_id AND c.company_id = u.company_id
 		LEFT JOIN calls_schema.analysis_reports ar ON c.id = ar.call_id
 		WHERE %s
-		GROUP BY c.manager_id, c.manager_name
+		GROUP BY COALESCE(u.id::text, c.manager_id), u.first_name, u.last_name, c.manager_name
 		ORDER BY %s DESC NULLS LAST
 	`, where, sortBy)
 
@@ -148,6 +150,12 @@ func (r *analysisRepository) GetByCallID(ctx context.Context, callID string) (*d
 
 	if err == sql.ErrNoRows {
 		return nil, errors.New("analysis report not found")
+	}
+
+	// Populate frontend compatibility fields
+	a.Summary = a.Brief
+	if a.NextBestAction != "" {
+		a.NextSteps = strings.Split(a.NextBestAction, "\n")
 	}
 
 	return a, err
