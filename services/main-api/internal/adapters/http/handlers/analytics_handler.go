@@ -26,9 +26,15 @@ func NewAnalyticsHandler(teamPerformanceUC *analytics.TeamPerformanceUseCase) *A
 func (h *AnalyticsHandler) GetTeamPerformance(c *fiber.Ctx) error {
 	log := applogger.FromFiberCtx(c).With(zap.String("operation", "team_performance"))
 	companyID := c.Locals("company_id").(string)
+	// Super admins should be able to view data across all companies by default.
+	// If a super_admin provides an explicit company_id query param we will filter
+	// by it; otherwise we pass an empty companyID to the usecase so it returns
+	// results for all companies.
 	if c.Locals("role").(string) == "super_admin" {
 		if qCID := c.Query("company_id"); qCID != "" {
 			companyID = qCID
+		} else {
+			companyID = ""
 		}
 	}
 
@@ -57,6 +63,8 @@ func (h *AnalyticsHandler) GetLeaderboard(c *fiber.Ctx) error {
 	if c.Locals("role").(string) == "super_admin" {
 		if qCID := c.Query("company_id"); qCID != "" {
 			companyID = qCID
+		} else {
+			companyID = ""
 		}
 	}
 
@@ -98,6 +106,8 @@ func (h *AnalyticsHandler) ExportLeaderboard(c *fiber.Ctx) error {
 	if c.Locals("role").(string) == "super_admin" {
 		if qCID := c.Query("company_id"); qCID != "" {
 			companyID = qCID
+		} else {
+			companyID = ""
 		}
 	}
 	format := c.Params("format")

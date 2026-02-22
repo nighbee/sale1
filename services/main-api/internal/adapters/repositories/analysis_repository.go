@@ -38,7 +38,9 @@ func (r *analysisRepository) GetTeamPerformance(ctx context.Context, filters map
 	args := []interface{}{}
 
 	if companyID, ok := filters["company_id"].(string); ok && companyID != "" {
-		where += fmt.Sprintf(" AND u.company_id = $%d", argIdx)
+		// Filter by the call's company_id (calls table contains company_id). Using
+		// u.company_id would drop rows when the LEFT JOIN to users yields NULL.
+		where += fmt.Sprintf(" AND c.company_id = $%d", argIdx)
 		args = append(args, companyID)
 		argIdx++
 	}
