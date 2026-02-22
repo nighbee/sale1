@@ -117,6 +117,9 @@ func (h *CallHandler) GetCall(c *fiber.Ctx) error {
 	}
 
 	transcript, _ := h.transcriptRepo.GetByCallID(c.Context(), id)
+	if transcript != nil {
+		transcript.Transcript = h.formatTranscript(transcript.SpeakerDiarizedJSON)
+	}
 	analysis, _ := h.analysisRepo.GetByCallID(c.Context(), id)
 
 	log.Info("call fetched", zap.String("call_id", id), zap.String("status", string(call.Status)))
@@ -151,6 +154,7 @@ func (h *CallHandler) GetTranscript(c *fiber.Ctx) error {
 			// Map to domain-like structure for frontend compatibility
 			return c.JSON(fiber.Map{
 				"call_id":      resp.CallId,
+				"transcript":   h.formatTranscript(json.RawMessage(resp.TranscriptJson)),
 				"segments":     json.RawMessage(resp.TranscriptJson),
 				"stt_provider": resp.SttProvider,
 			})
@@ -163,6 +167,9 @@ func (h *CallHandler) GetTranscript(c *fiber.Ctx) error {
 		log.Warn("transcript not found", zap.String("call_id", id), zap.Error(err))
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Transcript not found"})
 	}
+
+	transcript.Transcript = h.formatTranscript(transcript.SpeakerDiarizedJSON)
+
 	log.Info("transcript fetched from DB", zap.String("call_id", id))
 	return c.JSON(transcript)
 }
@@ -201,6 +208,8 @@ func (h *CallHandler) GetAnalysis(c *fiber.Ctx) error {
 				"next_best_action": resp.NextBestAction,
 				// Frontend compatibility mappings
 				"summary":    resp.Brief,
+				"sentiment":  "Neutral",
+				"objections": []string{},
 				"next_steps": strings.Split(resp.NextBestAction, "\n"),
 			})
 		}
@@ -287,4 +296,20 @@ func (h *CallHandler) GetAudio(c *fiber.Ctx) error {
 
 	c.Set("Content-Type", "audio/mpeg")
 	return c.SendStream(reader)
+}
+
+func (h *CallHandler) formatTranscript(raw json.RawMessage) string {
+	var segments []struct {
+		Speaker string `json:"speaker"`
+		Text    string `json:"text"`
+	}
+	if err := json.Unmarshal(raw, &segments); err != nil {
+		return ""
+	}
+
+	var lines []string
+	for _, seg := range segments {
+		lines = append(lines, fmt.Sprintf("[%s]: %s", seg.Speaker, seg.Text))
+	}
+	return strings.Join(lines, "\n")
 }

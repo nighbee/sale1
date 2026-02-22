@@ -3,6 +3,8 @@ import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { callApi } from '../../../entities/call/api';
 import type { Call, CallTranscript, CallAnalysis } from '../../../entities/call/types';
+import { CallTranscript as CallTranscriptWidget } from '../../../widgets/CallTranscript';
+import { CallAnalysis as CallAnalysisWidget } from '../../../widgets/CallAnalysis';
 
 const CallDetailPage: React.FC = () => {
   const { t } = useTranslation();
@@ -13,36 +15,13 @@ const CallDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   const audioRef = useRef<HTMLAudioElement>(null);
-  const activeSegmentRef = useRef<HTMLDivElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [activeSegmentIndex, setActiveSegmentIndex] = useState(-1);
   const [showAnalysis, setShowAnalysis] = useState(false);
 
   // Waveform data should be stable
   const waveformData = useRef(Array.from({ length: 60 }).map(() => 20 + Math.random() * 60));
-
-  useEffect(() => {
-    if (transcript && transcript.segments) {
-      const segments = transcript.segments;
-      const index = segments.findIndex(
-        (seg) => currentTime >= seg.start && currentTime <= seg.end
-      );
-      if (index !== activeSegmentIndex && index !== -1) {
-        setActiveSegmentIndex(index);
-      }
-    }
-  }, [currentTime, transcript, activeSegmentIndex]);
-
-  useEffect(() => {
-    if (activeSegmentRef.current && isPlaying) {
-      activeSegmentRef.current.scrollIntoView({
-        behavior: 'smooth',
-        block: 'center',
-      });
-    }
-  }, [activeSegmentIndex, isPlaying]);
 
   const togglePlay = () => {
     if (audioRef.current) {
@@ -65,6 +44,16 @@ const CallDetailPage: React.FC = () => {
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  const handleSegmentClick = (start: number) => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = start;
+      if (!isPlaying) {
+        audioRef.current.play();
+        setIsPlaying(true);
+      }
+    }
   };
 
   useEffect(() => {
@@ -200,46 +189,12 @@ const CallDetailPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-6 space-y-4 scroll-smooth">
-            {transcript?.segments?.map((seg, i) => {
-              const isActive = i === activeSegmentIndex;
-              return (
-                <div
-                  key={i}
-                  ref={isActive ? activeSegmentRef : null}
-                  className={`group flex gap-4 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800/30 p-3 rounded-xl transition-all duration-300 ${
-                    isActive ? 'opacity-100 bg-primary/5 ring-1 ring-primary/20 shadow-sm' : 'opacity-60'
-                  }`}
-                  onClick={() => {
-                    if (audioRef.current) {
-                      audioRef.current.currentTime = seg.start;
-                      if (!isPlaying) {
-                        audioRef.current.play();
-                        setIsPlaying(true);
-                      }
-                    }
-                  }}
-                >
-                  <div className="w-16 shrink-0 text-right">
-                    <span className={`text-xs font-mono mt-1 block ${isActive ? 'text-primary font-bold' : 'text-neutral-400'}`}>
-                      {Math.floor(seg.start / 60)}:{(seg.start % 60).toFixed(0).padStart(2, '0')}
-                    </span>
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-baseline gap-2 mb-1">
-                      <span className={`font-semibold text-sm ${seg.speaker === 'SPEAKER_0' ? 'text-primary' : 'text-neutral-700'}`}>
-                        {seg.speaker === 'SPEAKER_0' ? t('calls.agent') : t('calls.client')}
-                      </span>
-                    </div>
-                    <p className={`text-neutral-800 dark:text-neutral-200 leading-relaxed ${isActive ? 'font-medium' : ''}`}>
-                      {seg.text}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-            {!transcript && <p className="text-center text-slate-500">{t('calls.transcript_processing')}</p>}
-          </div>
+          <CallTranscriptWidget
+            segments={transcript?.segments}
+            currentTime={currentTime}
+            isPlaying={isPlaying}
+            onSegmentClick={handleSegmentClick}
+          />
         </section>
 
         {showAnalysis && (
@@ -249,62 +204,10 @@ const CallDetailPage: React.FC = () => {
           />
         )}
         <aside className={`fixed inset-y-0 right-0 z-30 w-80 bg-surface-light dark:bg-surface-dark border-l border-neutral-200 dark:border-neutral-700 flex flex-col shrink-0 overflow-y-auto transition-transform duration-300 transform lg:translate-x-0 lg:static ${showAnalysis ? 'translate-x-0' : 'translate-x-full'}`}>
-          <div className="p-6 space-y-8">
-            <div>
-              <h2 className="text-sm font-bold text-neutral-900 dark:text-white flex items-center gap-2 mb-4">
-                <span className="material-icons text-primary text-lg">analytics</span> {t('calls.analysis')}
-              </h2>
-              {analysis ? (
-                <div className="space-y-4">
-                  <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-xl p-4 border border-neutral-100 dark:border-neutral-700 flex items-center justify-between">
-                    <div>
-                      <p className="text-xs text-neutral-500">{t('calls.quality_score')}</p>
-                      <p className="text-2xl font-bold text-neutral-900 dark:text-white mt-1">{analysis.quality_score}<span className="text-sm text-neutral-400 font-normal">/100</span></p>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-xl p-3 border border-neutral-100">
-                      <p className="text-xs text-neutral-500 mb-1">{t('calls.script_match')}</p>
-                      <span className="text-xl font-bold">{analysis.script_match}%</span>
-                    </div>
-                    <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-xl p-3 border border-neutral-100">
-                      <p className="text-xs text-neutral-500 mb-1">{t('calls.errors_free')}</p>
-                      <span className="text-xl font-bold">{analysis.errors_free}%</span>
-                    </div>
-                  </div>
-                  {analysis.brief && (
-                    <div className="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
-                      <div className="flex items-center gap-1.5 mb-2">
-                        <span className="material-icons text-sm text-slate-500">summarize</span>
-                        <h3 className="text-xs font-bold uppercase text-slate-600 dark:text-slate-300">{t('calls.brief')}</h3>
-                      </div>
-                      <p className="text-sm leading-relaxed">{analysis.brief}</p>
-                    </div>
-                  )}
-                  {analysis.recommendation && (
-                    <div className="bg-blue-50 dark:bg-primary/10 rounded-xl p-4 border border-blue-100">
-                      <div className="flex items-center gap-1.5 mb-2">
-                        <span className="material-icons text-sm text-blue-500">tips_and_updates</span>
-                        <h3 className="text-xs font-bold uppercase text-blue-700 dark:text-blue-400">{t('calls.recommendation')}</h3>
-                      </div>
-                      <p className="text-sm leading-relaxed">{analysis.recommendation}</p>
-                    </div>
-                  )}
-                  {analysis.next_best_action && (
-                    <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-4 border border-emerald-100 dark:border-emerald-900/40">
-                      <div className="flex items-center gap-1.5 mb-2">
-                        <span className="material-icons text-sm text-emerald-500">rocket_launch</span>
-                        <h3 className="text-xs font-bold uppercase text-emerald-700 dark:text-emerald-400">{t('calls.next_best_action')}</h3>
-                      </div>
-                      <p className="text-sm leading-relaxed whitespace-pre-line">{analysis.next_best_action}</p>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <p className="text-sm text-slate-500">{t('calls.analysis_pending')}</p>
-              )}
-            </div>
-          </div>
+          <CallAnalysisWidget
+            analysis={analysis}
+            className="p-6"
+          />
         </aside>
       </main>
     </div>
