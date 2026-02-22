@@ -1,0 +1,616 @@
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+import {
+  LineChart, Line, BarChart, Bar,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+} from 'recharts';
+import * as XLSX from 'xlsx';
+import { callApi } from '../../../entities/call/api';
+import type { Call, CallAnalysis } from '../../../entities/call/types';
+import { integrationApi } from '../../../entities/integration/api';
+import Skeleton from '../../../shared/ui/Skeleton';
+
+const STATUS_PILL: Record<string, string> = {
+  completed:  'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+  error:      'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+  processing: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+  pending:    'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400',
+};
+
+const ScoreBar: React.FC<{ value?: number }> = ({ value }) => {
+  if (value == null) return <span className="text-slate-400 dark:text-slate-500 text-xs">—</span>;
+  const color = value >= 90 ? 'bg-emerald-500' : value >= 70 ? 'bg-amber-500' : 'bg-red-500';
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 w-7">{value}</span>
+      <div className="flex-1 h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden w-16">
+        <div className={`h-full rounded-full ${color}`} style={{ width: `${value}%` }} />
+      </div>
+    </div>
+  );
+};
+
+const PAGE_SIZE = 10;
+const CHART_COLORS = { quality: '#6366f1', script: '#10b981', errors: '#f59e0b' };
+
+export const SheetCalls: React.FC = () => {
+  const navigate = useNavigate();
+
+  // Sheet calls — load full filtered set (up to 500) for charts + client-side pagination
+  const [allSheetCalls, setAllSheetCalls] = useState<Call[]>([]);
+  const [sheetLoading, setSheetLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+
+  // Filters
+  const [statusFilter, setStatusFilter]   = useState('');
+  const [managerFilter, setManagerFilter] = useState('');
+  const [clientFilter, setClientFilter]   = useState('');
+  const [dateFrom, setDateFrom]           = useState('');
+  const [dateTo, setDateTo]               = useState('');
+
+  // Table page
+  const [tablePage, setTablePage] = useState(1);
+
+  // Call detail modal
+  const [selectedCall, setSelectedCall] = useState<Call | null>(null);
+  const [modalAnalysis, setModalAnalysis] = useState<CallAnalysis | null>(null);
+  const [modalLoading, setModalLoading] = useState(false);
+
+  const fetchSheetCalls = useCallback(async () => {
+    setSheetLoading(true);
+    try {
+      const params: Record<string, unknown> = { source: 'google_sheets', limit: 500, page: 1 };
+      if (statusFilter)  params.status       = statusFilter;
+      if (managerFilter) params.manager_name = managerFilter;
+      if (clientFilter)  params.client_phone = clientFilter;
+      if (dateFrom)      params.date_from    = dateFrom;
+      if (dateTo)        params.date_to      = dateTo;
+
+      const res = await callApi.listCalls(params);
+      setAllSheetCalls((res.data.calls || []) as Call[]);
+    } catch {
+      console.error('Failed to fetch sheet calls');
+    } finally {
+      setSheetLoading(false);
+    }
+  }, [statusFilter, managerFilter, clientFilter, dateFrom, dateTo]);
+
+  useEffect(() => {
+    setTablePage(1);
+    fetchSheetCalls();
+  }, [fetchSheetCalls]);
+
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      await integrationApi.triggerSheetSync();
+      toast.success('Sync triggered — results will appear shortly');
+      setTimeout(fetchSheetCalls, 3000);
+    } catch {
+      toast.error('Failed to trigger sync');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const openModal = async (call: Call) => {
+    setSelectedCall(call);
+    setModalAnalysis(null);
+    if (call.status === 'completed') {
+      setModalLoading(true);
+      try {
+        const res = await callApi.getAnalysis(call.id);
+        setModalAnalysis(res.data as CallAnalysis);
+      } catch {
+        // analysis may not exist yet
+      } finally {
+        setModalLoading(false);
+      }
+    }
+  };
+
+  const closeModal = () => { setSelectedCall(null); setModalAnalysis(null); };
+
+  const uniqueManagers = useMemo(() =>
+    [...new Set(allSheetCalls.map(c => c.manager_name).filter(Boolean))].sort(),
+    [allSheetCalls]
+  );
+
+  const totalPages = Math.ceil(allSheetCalls.length / PAGE_SIZE);
+  const tableRows  = useMemo(() => {
+    const start = (tablePage - 1) * PAGE_SIZE;
+    return allSheetCalls.slice(start, start + PAGE_SIZE);
+  }, [allSheetCalls, tablePage]);
+
+  // Line chart: score trends over time (completed calls)
+  const qualityOverTime = useMemo(() =>
+    allSheetCalls
+      .filter(c => c.status === 'completed' && c.quality_score != null && c.call_date)
+      .sort((a, b) => a.call_date.localeCompare(b.call_date))
+      .map(c => ({
+        date: new Date(c.call_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
+        quality: c.quality_score,
+        script:  c.script_match,
+        errors:  c.errors_free,
+      })),
+    [allSheetCalls]
+  );
+
+  // Bar chart: avg per manager
+  const perManagerAvg = useMemo(() => {
+    const map: Record<string, { quality: number[]; script: number[]; errors: number[] }> = {};
+    for (const c of allSheetCalls) {
+      if (c.status !== 'completed') continue;
+      const name = c.manager_name || 'Unknown';
+      if (!map[name]) map[name] = { quality: [], script: [], errors: [] };
+      if (c.quality_score != null) map[name].quality.push(c.quality_score);
+      if (c.script_match  != null) map[name].script.push(c.script_match);
+      if (c.errors_free   != null) map[name].errors.push(c.errors_free);
+    }
+    const avg = (arr: number[]) => arr.length ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : 0;
+    return Object.entries(map).map(([manager, v]) => ({
+      manager: manager.length > 12 ? manager.slice(0, 12) + '…' : manager,
+      quality: avg(v.quality),
+      script:  avg(v.script),
+      errors:  avg(v.errors),
+    }));
+  }, [allSheetCalls]);
+
+  const showCharts = qualityOverTime.length > 0 || perManagerAvg.length > 0;
+  const hasActiveFilters = !!(statusFilter || managerFilter || clientFilter || dateFrom || dateTo);
+
+  // Export functions
+  const buildExportRows = (calls: Call[]) => {
+    return calls.map(c => ({
+      Date: c.call_date ? new Date(c.call_date).toLocaleDateString() : '',
+      Manager: c.manager_name || '',
+      Client: c.client_phone || '',
+      Duration: c.duration ? `${Math.floor(c.duration / 60)}m ${c.duration % 60}s` : '',
+      Status: c.status,
+      Quality: c.quality_score ?? '',
+      'Script Match': c.script_match ?? '',
+      'Errors Free': c.errors_free ?? '',
+    }));
+  };
+
+  const exportCSV = (calls: Call[]) => {
+    const rows = buildExportRows(calls);
+    if (!rows.length) return;
+    const headers = Object.keys(rows[0]);
+    const csv = [
+      headers.join(','),
+      ...rows.map(r =>
+        headers.map(h => JSON.stringify((r as Record<string, unknown>)[h] ?? '')).join(',')
+      ),
+    ].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `sheet_calls_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportXlsx = (calls: Call[]) => {
+    const rows = buildExportRows(calls);
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Sheet Calls');
+    XLSX.writeFile(wb, `sheet_calls_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
+
+  return (
+    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+        {/* Header */}
+        <div className="px-6 py-5 border-b border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="material-icons text-emerald-500 text-2xl">table_chart</span>
+            <div>
+              <h2 className="text-lg font-bold text-slate-800 dark:text-white">Google Sheets Calls</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{allSheetCalls.length} calls · AI pipeline</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => exportCSV(allSheetCalls)}
+              disabled={!allSheetCalls.length}
+              className="flex items-center gap-1 px-3 py-1.5 border border-slate-200 dark:border-slate-600 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 transition-colors"
+            >
+              <span className="material-icons text-sm">download</span> CSV
+            </button>
+            <button
+              onClick={() => exportXlsx(allSheetCalls)}
+              disabled={!allSheetCalls.length}
+              className="flex items-center gap-1 px-3 py-1.5 border border-slate-200 dark:border-slate-600 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 transition-colors"
+            >
+              <span className="material-icons text-sm">download</span> Excel
+            </button>
+            <button
+              onClick={handleSync}
+              disabled={syncing}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
+            >
+              <span className={`material-icons text-base ${syncing ? 'animate-spin' : ''}`}>
+                {syncing ? 'sync' : 'cloud_sync'}
+              </span>
+              {syncing ? 'Syncing…' : 'Sync Now'}
+            </button>
+          </div>
+        </div>
+
+        {/* Filter bar */}
+        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex flex-wrap gap-3 items-end">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-slate-500 dark:text-slate-400 font-medium">Status</label>
+            <div className="flex gap-1 flex-wrap">
+              {['', 'completed', 'error', 'processing', 'pending'].map(s => (
+                <button
+                  key={s || 'all'}
+                  onClick={() => { setStatusFilter(s); setTablePage(1); }}
+                  className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                    statusFilter === s
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:border-blue-400'
+                  }`}
+                >
+                  {s || 'All'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-slate-500 dark:text-slate-400 font-medium">Manager</label>
+            <select
+              value={managerFilter}
+              title="Filter by manager"
+              onChange={e => { setManagerFilter(e.target.value); setTablePage(1); }}
+              className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">All managers</option>
+              {uniqueManagers.map(name => (
+                <option key={name} value={name}>{name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-slate-500 dark:text-slate-400 font-medium">Client phone</label>
+            <input
+              type="text"
+              value={clientFilter}
+              onChange={e => { setClientFilter(e.target.value); setTablePage(1); }}
+              placeholder="Search phone…"
+              className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 w-40"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-slate-500 dark:text-slate-400 font-medium">Date from</label>
+            <input
+              type="date"
+              value={dateFrom}
+              title="Start date"
+              onChange={e => { setDateFrom(e.target.value); setTablePage(1); }}
+              className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-slate-500 dark:text-slate-400 font-medium">Date to</label>
+            <input
+              type="date"
+              value={dateTo}
+              title="End date"
+              onChange={e => { setDateTo(e.target.value); setTablePage(1); }}
+              className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          {hasActiveFilters && (
+            <button
+              onClick={() => {
+                setStatusFilter(''); setManagerFilter(''); setClientFilter('');
+                setDateFrom(''); setDateTo(''); setTablePage(1);
+              }}
+              className="self-end flex items-center gap-1 px-3 py-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-red-500 transition-colors"
+            >
+              <span className="material-icons text-sm">close</span>Clear filters
+            </button>
+          )}
+        </div>
+
+        {/* Charts */}
+        {!sheetLoading && showCharts && (
+          <div className="px-6 py-6 border-b border-slate-100 dark:border-slate-700 grid grid-cols-1 xl:grid-cols-2 gap-6">
+            {qualityOverTime.length > 0 && (
+              <div>
+                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-4">Score trends over time</h3>
+                <ResponsiveContainer width="100%" height={220}>
+                  <LineChart data={qualityOverTime} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                    <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                    <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />
+                    <Tooltip />
+                    <Legend iconType="circle" iconSize={8} />
+                    <Line type="monotone" dataKey="quality" name="Quality"     stroke={CHART_COLORS.quality} strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="script"  name="Script"      stroke={CHART_COLORS.script}  strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="errors"  name="Errors Free" stroke={CHART_COLORS.errors}  strokeWidth={2} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+
+            {perManagerAvg.length > 0 && (
+              <div>
+                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-4">Average scores per manager</h3>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={perManagerAvg} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                    <XAxis dataKey="manager" tick={{ fontSize: 11 }} />
+                    <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />
+                    <Tooltip />
+                    <Legend iconType="circle" iconSize={8} />
+                    <Bar dataKey="quality" name="Quality"     fill={CHART_COLORS.quality} radius={[3,3,0,0]} />
+                    <Bar dataKey="script"  name="Script"      fill={CHART_COLORS.script}  radius={[3,3,0,0]} />
+                    <Bar dataKey="errors"  name="Errors Free" fill={CHART_COLORS.errors}  radius={[3,3,0,0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Table */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-50 dark:bg-slate-800/50 text-xs uppercase text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
+                <th className="px-6 py-3 font-semibold">Date</th>
+                <th className="px-6 py-3 font-semibold">Manager</th>
+                <th className="px-6 py-3 font-semibold">Client</th>
+                <th className="px-6 py-3 font-semibold">Duration</th>
+                <th className="px-6 py-3 font-semibold">Status</th>
+                <th className="px-6 py-3 font-semibold">Quality</th>
+                <th className="px-6 py-3 font-semibold">Script</th>
+                <th className="px-6 py-3 font-semibold">Errors Free</th>
+                <th className="px-6 py-3" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+              {sheetLoading
+                ? Array.from({ length: 5 }).map((_, i) => (
+                    <tr key={i}>
+                      {Array.from({ length: 9 }).map((__, j) => (
+                        <td key={j} className="px-6 py-3"><Skeleton className="h-4 w-full" /></td>
+                      ))}
+                    </tr>
+                  ))
+                : tableRows.length === 0
+                  ? (
+                    <tr>
+                      <td colSpan={9} className="px-6 py-10 text-center text-slate-500 dark:text-slate-400">
+                        <span className="material-icons text-3xl block mb-2 opacity-30">cloud_off</span>
+                        No calls found. {hasActiveFilters ? 'Try adjusting filters.' : 'Click Sync Now to import from Google Sheets.'}
+                      </td>
+                    </tr>
+                  )
+                  : tableRows.map(call => (
+                    <tr
+                      key={call.id}
+                      onClick={() => openModal(call)}
+                      className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors cursor-pointer"
+                    >
+                      <td className="px-6 py-3 text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                        {call.call_date ? new Date(call.call_date).toLocaleDateString() : '—'}
+                      </td>
+                      <td className="px-6 py-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">
+                            {call.manager_name?.[0] || '?'}
+                          </div>
+                          <span className="font-medium text-slate-700 dark:text-slate-200">{call.manager_name || '—'}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-3 text-slate-500 dark:text-slate-400">{call.client_phone || '—'}</td>
+                      <td className="px-6 py-3 text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                        {call.duration ? `${Math.floor(call.duration / 60)}m ${call.duration % 60}s` : '—'}
+                      </td>
+                      <td className="px-6 py-3">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_PILL[call.status] || STATUS_PILL.pending}`}>
+                          {call.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-3"><ScoreBar value={call.quality_score} /></td>
+                      <td className="px-6 py-3"><ScoreBar value={call.script_match} /></td>
+                      <td className="px-6 py-3"><ScoreBar value={call.errors_free} /></td>
+                      <td className="px-6 py-3 text-right">
+                        <span className="material-icons text-slate-400 text-base">chevron_right</span>
+                      </td>
+                    </tr>
+                  ))
+              }
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between text-sm text-slate-600 dark:text-slate-400">
+            <span>
+              {((tablePage - 1) * PAGE_SIZE) + 1}–{Math.min(tablePage * PAGE_SIZE, allSheetCalls.length)} of {allSheetCalls.length}
+            </span>
+            <div className="flex gap-1.5 flex-wrap">
+              <button
+                disabled={tablePage === 1}
+                onClick={() => setTablePage(p => p - 1)}
+                className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+              >
+                ← Prev
+              </button>
+              {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                const pg = totalPages <= 7 ? i + 1
+                  : tablePage <= 4 ? i + 1
+                  : tablePage >= totalPages - 3 ? totalPages - 6 + i
+                  : tablePage - 3 + i;
+                return (
+                  <button
+                    key={pg}
+                    onClick={() => setTablePage(pg)}
+                    className={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${
+                      tablePage === pg
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700'
+                    }`}
+                  >
+                    {pg}
+                  </button>
+                );
+              })}
+              <button
+                disabled={tablePage === totalPages}
+                onClick={() => setTablePage(p => p + 1)}
+                className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+              >
+                Next →
+              </button>
+            </div>
+          </div>
+        )}
+
+      {/* ── Call detail modal ─────────────────────────────────────────── */}
+      {selectedCall && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          onClick={closeModal}
+        >
+          <div
+            className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">
+                  {selectedCall.manager_name?.[0] || '?'}
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-slate-900 dark:text-white">{selectedCall.manager_name || '—'}</h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {selectedCall.client_phone || '—'} &nbsp;·&nbsp;
+                    {selectedCall.call_date ? new Date(selectedCall.call_date).toLocaleDateString() : '—'} &nbsp;·&nbsp;
+                    {selectedCall.duration ? `${Math.floor(selectedCall.duration / 60)}m ${selectedCall.duration % 60}s` : '—'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_PILL[selectedCall.status] || STATUS_PILL.pending}`}>
+                  {selectedCall.status}
+                </span>
+                <button
+                  onClick={closeModal}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                >
+                  <span className="material-icons text-xl">close</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Modal body */}
+            <div className="overflow-y-auto flex-1 px-6 py-5 space-y-5">
+              {/* Score cards */}
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { label: 'Quality', value: selectedCall.quality_score, color: 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600' },
+                  { label: 'Script Match', value: selectedCall.script_match, color: 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600' },
+                  { label: 'Errors Free', value: selectedCall.errors_free, color: 'bg-amber-50 dark:bg-amber-900/20 text-amber-600' },
+                ].map(s => (
+                  <div key={s.label} className={`rounded-xl p-4 ${s.color} text-center`}>
+                    <p className="text-xs font-medium opacity-70 mb-1">{s.label}</p>
+                    <p className="text-2xl font-bold">{s.value != null ? s.value : '—'}</p>
+                    {s.value != null && <p className="text-xs opacity-60">/100</p>}
+                  </div>
+                ))}
+              </div>
+
+              {selectedCall.status !== 'completed' && (
+                <div className="text-center py-6 text-slate-400 dark:text-slate-500">
+                  <span className="material-icons text-3xl block mb-2">hourglass_empty</span>
+                  <p className="text-sm">Analysis not yet available — call is <strong>{selectedCall.status}</strong></p>
+                </div>
+              )}
+
+              {selectedCall.status === 'completed' && modalLoading && (
+                <div className="space-y-3">
+                  <div className="h-20 bg-slate-100 dark:bg-slate-700 rounded-xl animate-pulse" />
+                  <div className="h-28 bg-slate-100 dark:bg-slate-700 rounded-xl animate-pulse" />
+                  <div className="h-20 bg-slate-100 dark:bg-slate-700 rounded-xl animate-pulse" />
+                </div>
+              )}
+
+              {!modalLoading && modalAnalysis && (
+                <>
+                  {/* Brief */}
+                  {modalAnalysis.brief && (
+                    <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                      <div className="flex items-center gap-2 px-4 py-2.5 bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700">
+                        <span className="material-icons text-base text-slate-500">summarize</span>
+                        <h3 className="text-xs font-bold uppercase tracking-wide text-slate-600 dark:text-slate-300">Call Brief</h3>
+                      </div>
+                      <p className="px-4 py-3 text-sm text-slate-700 dark:text-slate-200 leading-relaxed">{modalAnalysis.brief}</p>
+                    </div>
+                  )}
+
+                  {/* Recommendation */}
+                  {modalAnalysis.recommendation && (
+                    <div className="rounded-xl border border-blue-100 dark:border-blue-900/40 overflow-hidden">
+                      <div className="flex items-center gap-2 px-4 py-2.5 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-900/40">
+                        <span className="material-icons text-base text-blue-500">tips_and_updates</span>
+                        <h3 className="text-xs font-bold uppercase tracking-wide text-blue-700 dark:text-blue-400">Coaching Recommendation</h3>
+                      </div>
+                      <p className="px-4 py-3 text-sm text-slate-700 dark:text-slate-200 leading-relaxed">{modalAnalysis.recommendation}</p>
+                    </div>
+                  )}
+
+                  {/* Next Best Action */}
+                  {modalAnalysis.next_best_action && (
+                    <div className="rounded-xl border border-emerald-100 dark:border-emerald-900/40 overflow-hidden">
+                      <div className="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 dark:bg-emerald-900/20 border-b border-emerald-100 dark:border-emerald-900/40">
+                        <span className="material-icons text-base text-emerald-500">rocket_launch</span>
+                        <h3 className="text-xs font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">Next Best Action</h3>
+                      </div>
+                      <p className="px-4 py-3 text-sm text-slate-700 dark:text-slate-200 leading-relaxed whitespace-pre-line">{modalAnalysis.next_best_action}</p>
+                    </div>
+                  )}
+
+                  {!modalAnalysis.brief && !modalAnalysis.recommendation && !modalAnalysis.next_best_action && (
+                    <p className="text-center text-sm text-slate-400 py-4">No textual analysis fields available for this call.</p>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Modal footer */}
+            <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center shrink-0">
+              <button
+                onClick={closeModal}
+                className="px-4 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => navigate(`/calls/${selectedCall.id}`)}
+                className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-lg text-sm font-medium transition-colors"
+              >
+                <span className="material-icons text-base">open_in_full</span>
+                View Full Call
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};

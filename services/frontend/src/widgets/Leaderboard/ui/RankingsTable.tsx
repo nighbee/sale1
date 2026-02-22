@@ -1,17 +1,6 @@
 import React from "react";
 import { ScoreBar } from "../../../shared/ui/ScoreBar";
-
-interface LeaderboardEntry {
-  manager_id: string;
-  manager_name: string;
-  total_calls: number;
-  avg_quality: number;
-  avg_script_match: number;
-  avg_errors_free: number;
-  avg_overall_rating: number;
-  avg_kpi: number;
-  total_duration_minutes: number;
-}
+import type { LeaderboardEntry } from "../../../entities/analytics/types";
 
 interface RankingsTableProps {
   data: LeaderboardEntry[];
