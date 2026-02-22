@@ -61,6 +61,8 @@ func SetupRoutes(
 	users.Put("/:id", userHandler.UpdateUser)
 	users.Delete("/:id", userHandler.DeleteUser)
 
+	protected.Get("/users/:id/calls", userHandler.GetUserCalls)
+
 	// Calls
 	calls := protected.Group("/calls", middleware.RequireRole("super_admin"))
 	calls.Get("/", callHandler.ListCalls)

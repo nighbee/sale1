@@ -2,23 +2,27 @@ package handlers
 
 import (
 	"encoding/json"
+	"strconv"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/salesai/main-api/internal/core/domain"
 	"github.com/salesai/main-api/internal/core/ports"
+	"github.com/salesai/main-api/internal/core/usecases/calls"
 	applogger "github.com/salesai/main-api/internal/infrastructure/logger"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type UserHandler struct {
-	userRepo ports.UserRepository
+	userRepo    ports.UserRepository
+	listCallsUC *calls.ListCallsUseCase
 }
 
-func NewUserHandler(userRepo ports.UserRepository) *UserHandler {
+func NewUserHandler(userRepo ports.UserRepository, listCallsUC *calls.ListCallsUseCase) *UserHandler {
 	return &UserHandler{
-		userRepo: userRepo,
+		userRepo:    userRepo,
+		listCallsUC: listCallsUC,
 	}
 }
 
@@ -280,4 +284,76 @@ func (h *UserHandler) DeleteUser(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.SendStatus(fiber.StatusNoContent)
+}
+
+// GetUserCalls godoc
+// @Summary Get user's calls
+// @Description Get a paginated list of calls for a specific user
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param id path string true "User ID"
+// @Param page query int false "Page number" default(1)
+// @Param limit query int false "Page limit" default(20)
+// @Success 200 {object} calls.ListCallsResponse
+// @Failure 403 {object} fiber.Map
+// @Failure 404 {object} fiber.Map
+// @Failure 500 {object} fiber.Map
+// @Security BearerAuth
+// @Router /users/{id}/calls [get]
+func (h *UserHandler) GetUserCalls(c *fiber.Ctx) error {
+	log := applogger.FromFiberCtx(c).With(zap.String("operation", "get_user_calls"))
+	targetUserID := c.Params("id")
+	companyID := c.Locals("company_id").(string)
+
+	// Auth check: only admin or the user themselves
+	requesterID := c.Locals("user_id").(string)
+	requesterRole := c.Locals("role").(string)
+
+	if requesterRole != string(domain.RoleSuperAdmin) && requesterRole != string(domain.RoleTenantAdmin) && requesterID != targetUserID {
+		log.Warn("forbidden access to user calls",
+			zap.String("requester_id", requesterID),
+			zap.String("target_user_id", targetUserID))
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Forbidden"})
+	}
+
+	// Get target user
+	user, err := h.userRepo.GetByID(c.Context(), companyID, targetUserID)
+	if err != nil {
+		log.Warn("user not found", zap.String("user_id", targetUserID), zap.Error(err))
+		return c.Status(404).JSON(fiber.Map{"error": "User not found"})
+	}
+
+	if user.ManagerID == nil || *user.ManagerID == "" {
+		log.Debug("user has no manager_id, returning empty calls list", zap.String("user_id", targetUserID))
+		return c.JSON(calls.ListCallsResponse{
+			Calls: []*domain.Call{},
+			Total: 0,
+			Page:  1,
+			Limit: 20,
+		})
+	}
+
+	page, _ := strconv.Atoi(c.Query("page", "1"))
+	limit, _ := strconv.Atoi(c.Query("limit", "20"))
+
+	log.Debug("fetching calls for user",
+		zap.String("user_id", targetUserID),
+		zap.String("manager_id", *user.ManagerID),
+		zap.Int("page", page),
+		zap.Int("limit", limit))
+
+	resp, err := h.listCallsUC.Execute(c.Context(), calls.ListCallsRequest{
+		CompanyID: companyID,
+		ManagerID: *user.ManagerID,
+		Page:      page,
+		Limit:     limit,
+	})
+
+	if err != nil {
+		log.Error("failed to fetch user calls", zap.Error(err))
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	return c.JSON(resp)
 }
