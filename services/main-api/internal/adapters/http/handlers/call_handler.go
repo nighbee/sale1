@@ -62,13 +62,12 @@ func NewCallHandler(
 // @Router /calls [get]
 func (h *CallHandler) ListCalls(c *fiber.Ctx) error {
 	log := applogger.FromFiberCtx(c).With(zap.String("operation", "list_calls"))
-	companyID := c.Locals("company_id").(string)
 
 	page, _ := strconv.Atoi(c.Query("page", "1"))
 	limit, _ := strconv.Atoi(c.Query("limit", "20"))
 
 	req := calls.ListCallsRequest{
-		CompanyID:   companyID,
+		CompanyID:   c.Query("company_id"),
 		ManagerID:   c.Query("manager_id"),
 		ManagerName: c.Query("manager_name"),
 		ClientPhone: c.Query("client_phone"),
@@ -81,13 +80,13 @@ func (h *CallHandler) ListCalls(c *fiber.Ctx) error {
 		Limit:       limit,
 	}
 
-	log.Debug("listing calls", zap.String("company_id", companyID),
+	log.Debug("listing calls",
 		zap.String("manager_id", req.ManagerID), zap.String("status", req.Status),
 		zap.Int("page", page), zap.Int("limit", limit))
 
 	resp, err := h.listCallsUC.Execute(c.Context(), req)
 	if err != nil {
-		log.Error("list calls failed", zap.String("company_id", companyID), zap.Error(err))
+		log.Error("list calls failed", zap.Error(err))
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": err.Error(),
 		})
@@ -110,9 +109,8 @@ func (h *CallHandler) ListCalls(c *fiber.Ctx) error {
 func (h *CallHandler) GetCall(c *fiber.Ctx) error {
 	log := applogger.FromFiberCtx(c).With(zap.String("operation", "get_call"))
 	id := c.Params("id")
-	companyID := c.Locals("company_id").(string)
-	log.Debug("fetching call", zap.String("call_id", id), zap.String("company_id", companyID))
-	call, err := h.callRepo.GetByID(c.Context(), companyID, id)
+	log.Debug("fetching call", zap.String("call_id", id))
+	call, err := h.callRepo.GetByID(c.Context(), id)
 	if err != nil {
 		log.Warn("call not found", zap.String("call_id", id), zap.Error(err))
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Call not found"})
@@ -253,8 +251,7 @@ func (h *CallHandler) ReprocessCall(c *fiber.Ctx) error {
 // @Router /calls/{id}/audio [get]
 func (h *CallHandler) GetAudio(c *fiber.Ctx) error {
 	id := c.Params("id")
-	companyID := c.Locals("company_id").(string)
-	call, err := h.callRepo.GetByID(c.Context(), companyID, id)
+	call, err := h.callRepo.GetByID(c.Context(), id)
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Call not found"})
 	}

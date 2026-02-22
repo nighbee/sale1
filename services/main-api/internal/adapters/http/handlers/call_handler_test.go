@@ -39,7 +39,7 @@ func (m *mockAnalysisRepo) GetByCallID(ctx context.Context, callID string) (*dom
 	}
 	return m.analysis, m.err
 }
-func (m *mockAnalysisRepo) GetTeamPerformance(ctx context.Context, companyID string, filters map[string]interface{}) ([]map[string]interface{}, error) {
+func (m *mockAnalysisRepo) GetTeamPerformance(ctx context.Context, filters map[string]interface{}) ([]map[string]interface{}, error) {
 	return nil, nil
 }
 

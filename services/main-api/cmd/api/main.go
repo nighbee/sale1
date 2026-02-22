@@ -137,7 +137,7 @@ func main() {
 	go hub.Run()
 
 	// Redis Consumer for Notifications
-	redisConsumer := events.NewRedisConsumer(rdb, hub, callRepo, integrationRepo)
+	redisConsumer := events.NewRedisConsumer(rdb, hub, callRepo, userRepo, integrationRepo)
 	go redisConsumer.Start(context.Background())
 
 	// Handlers

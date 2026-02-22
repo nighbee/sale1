@@ -37,14 +37,12 @@ async def start_consumer():
                 for stream, msg_list in messages:
                     for msg_id, payload in msg_list:
                         call_id = payload.get(b'call_id').decode('utf-8')
-                        company_id = payload.get(b'company_id').decode('utf-8')
                         event_type = payload.get(b'event_type', b'').decode('utf-8')
 
                         logger.info(
                             "Event received from Redis stream",
                             extra={
                                 "call_id": call_id,
-                                "company_id": company_id,
                                 "stream": stream_name,
                                 "event_type": event_type,
                                 "msg_id": msg_id.decode() if isinstance(msg_id, bytes) else str(msg_id),
@@ -53,16 +51,16 @@ async def start_consumer():
                         log_processing_event(call_id, "ai-analytics", "processing")
 
                         try:
-                            logger.info("AI analysis started", extra={"call_id": call_id, "company_id": company_id})
-                            await use_case.execute(call_id, company_id)
+                            logger.info("AI analysis started", extra={"call_id": call_id})
+                            await use_case.execute(call_id)
                             log_processing_event(call_id, "ai-analytics", "completed")
                             EVENTS_PROCESSED.labels(status='completed').inc()
                             await r.xack(stream_name, group_name, msg_id)
                             logger.info("AI analysis completed successfully",
-                                        extra={"call_id": call_id, "company_id": company_id})
+                                        extra={"call_id": call_id})
                         except Exception as e:
                             logger.error("AI analysis failed",
-                                         extra={"call_id": call_id, "company_id": company_id,
+                                         extra={"call_id": call_id,
                                                 "error": str(e)})
                             log_processing_event(call_id, "ai-analytics", "error", error_message=str(e))
                             EVENTS_PROCESSED.labels(status='error').inc()

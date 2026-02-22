@@ -25,7 +25,7 @@ func NewAnalyticsHandler(teamPerformanceUC *analytics.TeamPerformanceUseCase) *A
 
 func (h *AnalyticsHandler) GetTeamPerformance(c *fiber.Ctx) error {
 	log := applogger.FromFiberCtx(c).With(zap.String("operation", "team_performance"))
-	companyID := c.Locals("company_id").(string)
+	companyID := c.Query("company_id", c.Locals("company_id").(string))
 
 	filters := map[string]interface{}{
 		"period":  c.Query("period"),
@@ -48,7 +48,7 @@ func (h *AnalyticsHandler) GetTeamPerformance(c *fiber.Ctx) error {
 
 func (h *AnalyticsHandler) GetLeaderboard(c *fiber.Ctx) error {
 	log := applogger.FromFiberCtx(c).With(zap.String("operation", "get_leaderboard"))
-	companyID := c.Locals("company_id").(string)
+	companyID := c.Query("company_id", c.Locals("company_id").(string))
 
 	filters := map[string]interface{}{
 		"team_id": c.Query("team_id"),
@@ -83,7 +83,7 @@ func (h *AnalyticsHandler) GetLeaderboard(c *fiber.Ctx) error {
 // @Security BearerAuth
 // @Router /analytics/leaderboard/export/{format} [get]
 func (h *AnalyticsHandler) ExportLeaderboard(c *fiber.Ctx) error {
-	companyID := c.Locals("company_id").(string)
+	companyID := c.Query("company_id", c.Locals("company_id").(string))
 	format := c.Params("format")
 	filters := map[string]interface{}{
 		"team_id": c.Query("team_id"),

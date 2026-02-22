@@ -22,7 +22,6 @@ func NewBullMQPublisher(redisURL string) (*BullMQPublisher, error) {
 type AudioProcessingJob struct {
 	JobType    string `json:"job_type"`
 	CallID     string `json:"call_id"`
-	CompanyID  string `json:"company_id"`
 	AudioURL   string `json:"audio_url"`
 	ManagerID  string `json:"manager_id"`
 	RetryCount int    `json:"retry_count"`

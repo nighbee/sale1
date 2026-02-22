@@ -14,5 +14,8 @@ func NewTeamPerformanceUseCase(analysisRepo ports.AnalysisRepository) *TeamPerfo
 }
 
 func (uc *TeamPerformanceUseCase) Execute(ctx context.Context, companyID string, filters map[string]interface{}) ([]map[string]interface{}, error) {
-	return uc.analysisRepo.GetTeamPerformance(ctx, companyID, filters)
+	if companyID != "" {
+		filters["company_id"] = companyID
+	}
+	return uc.analysisRepo.GetTeamPerformance(ctx, filters)
 }

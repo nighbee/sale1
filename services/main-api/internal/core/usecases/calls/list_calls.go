@@ -38,6 +38,7 @@ func NewListCallsUseCase(callRepo ports.CallRepository) *ListCallsUseCase {
 
 func (uc *ListCallsUseCase) Execute(ctx context.Context, req ListCallsRequest) (*ListCallsResponse, error) {
 	filters := map[string]interface{}{
+		"company_id":   req.CompanyID,
 		"manager_id":   req.ManagerID,
 		"manager_name": req.ManagerName,
 		"client_phone": req.ClientPhone,
@@ -50,7 +51,7 @@ func (uc *ListCallsUseCase) Execute(ctx context.Context, req ListCallsRequest) (
 		"limit":        req.Limit,
 	}
 
-	calls, total, err := uc.callRepo.ListByCompany(ctx, req.CompanyID, filters)
+	calls, total, err := uc.callRepo.List(ctx, filters)
 	if err != nil {
 		return nil, err
 	}
