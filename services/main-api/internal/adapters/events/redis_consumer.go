@@ -93,6 +93,9 @@ func (c *RedisConsumer) Start(ctx context.Context) {
 					zap.String("message_id", message.ID))
 
 				if streamName == "analysis_completed" {
+					if err := c.callRepo.UpdateStatus(ctx, callID, "completed"); err != nil {
+						log.Error("failed to update call status to completed", zap.String("call_id", callID), zap.Error(err))
+					}
 					call, err := c.callRepo.GetByIDInternal(ctx, callID)
 					if err == nil {
 						user, err := c.userRepo.GetByManagerID(ctx, call.ManagerID)

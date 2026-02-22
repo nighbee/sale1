@@ -55,6 +55,12 @@ func (r *analysisRepository) GetTeamPerformance(ctx context.Context, filters map
 		argIdx++
 	}
 
+	if managerID, ok := filters["manager_id"].(string); ok && managerID != "" {
+		where += fmt.Sprintf(" AND c.manager_id = $%d", argIdx)
+		args = append(args, managerID)
+		argIdx++
+	}
+
 	if period, ok := filters["period"].(string); ok && period != "" {
 		var interval string
 		switch period {
@@ -96,7 +102,7 @@ func (r *analysisRepository) GetTeamPerformance(ctx context.Context, filters map
 			COUNT(CASE WHEN ar.overall_rating >= 4.0 THEN 1 END) AS excellent_calls_count,
 			MAX(c.manager_id) as external_id
 		FROM calls_schema.calls c
-		INNER JOIN auth_schema.users u ON c.manager_id = u.manager_id
+		LEFT JOIN auth_schema.users u ON c.manager_id = u.manager_id
 		LEFT JOIN calls_schema.analysis_reports ar ON c.id = ar.call_id
 		WHERE %s
 		GROUP BY COALESCE(u.id::text, c.manager_id), u.first_name, u.last_name, c.manager_name

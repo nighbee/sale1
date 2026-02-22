@@ -26,6 +26,17 @@ def get_transcript(call_id):
     finally:
         get_pool().putconn(conn)
 
+def update_call_status(call_id, status):
+    conn = get_pool().getconn()
+    try:
+        cur = conn.cursor()
+        query = "UPDATE calls_schema.calls SET status = %s, updated_at = NOW() WHERE id = %s"
+        cur.execute(query, (status, call_id))
+        conn.commit()
+        cur.close()
+    finally:
+        get_pool().putconn(conn)
+
 def get_team_script(company_id, manager_id):
     conn = get_pool().getconn()
     try:

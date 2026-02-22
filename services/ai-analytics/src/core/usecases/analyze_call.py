@@ -2,7 +2,8 @@ import logging
 import os
 from src.adapters.storage.postgres_repo import (
     get_transcript, get_call, get_active_script, get_team_script, save_analysis,
-    create_notification, get_company_admin, get_company_settings, get_company_id_by_call
+    create_notification, get_company_admin, get_company_settings, get_company_id_by_call,
+    update_call_status
 )
 from src.infrastructure.llm.openai_client import OpenAIClient
 from src.infrastructure.llm.gemini_client import GeminiClient
@@ -144,6 +145,7 @@ class AnalyzeCallUseCase:
         }
 
         save_analysis(report)
+        update_call_status(call_id, 'completed')
         logger.info(
             "[4/4] analysis saved to DB",
             extra={

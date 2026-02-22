@@ -118,7 +118,7 @@ func (r *callRepository) List(ctx context.Context, filters map[string]interface{
 	joins := ""
 
 	if companyID, ok := filters["company_id"].(string); ok && companyID != "" {
-		joins = "INNER JOIN auth_schema.users u ON c.manager_id = u.manager_id"
+		joins = "LEFT JOIN auth_schema.users u ON c.manager_id = u.manager_id"
 		where = append(where, fmt.Sprintf("u.company_id = $%d", argIdx))
 		args = append(args, companyID)
 		argIdx++

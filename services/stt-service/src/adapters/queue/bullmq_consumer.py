@@ -5,7 +5,7 @@ import logging
 import os
 import time
 from src.core.usecases.process_audio import ProcessAudioUseCase
-from src.adapters.storage.postgres_repo import log_processing_event
+from src.adapters.storage.postgres_repo import log_processing_event, update_call_status
 from src.infrastructure.monitoring.metrics import JOBS_PROCESSED
 
 logger = logging.getLogger(__name__)
@@ -42,6 +42,7 @@ async def start_consumer():
                     },
                 )
                 log_processing_event(call_id, "stt-service", "processing", retry_count=retry_count)
+                update_call_status(call_id, "processing")
 
                 t_start = time.monotonic()
                 try:
@@ -58,6 +59,7 @@ async def start_consumer():
                 except Exception as e:
                     JOBS_PROCESSED.labels(status='error').inc()
                     log_processing_event(call_id, "stt-service", "error", error_message=str(e), retry_count=retry_count)
+                    update_call_status(call_id, "error")
 
                     if retry_count < max_retries:
                         next_attempt = retry_count + 1
