@@ -3,7 +3,7 @@ import os
 import logging
 import redis.asyncio as redis
 from src.core.usecases.analyze_call import AnalyzeCallUseCase
-from src.adapters.storage.postgres_repo import log_processing_event
+from src.adapters.storage.postgres_repo import log_processing_event, update_call_status
 from src.infrastructure.monitoring.metrics import EVENTS_PROCESSED
 
 logger = logging.getLogger(__name__)
@@ -63,6 +63,7 @@ async def start_consumer():
                                          extra={"call_id": call_id,
                                                 "error": str(e)})
                             log_processing_event(call_id, "ai-analytics", "error", error_message=str(e))
+                            update_call_status(call_id, "error")
                             EVENTS_PROCESSED.labels(status='error').inc()
 
         except Exception as e:

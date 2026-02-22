@@ -29,6 +29,17 @@ def save_transcript(call_id, transcript_json, stt_provider):
     finally:
         get_pool().putconn(conn)
 
+def update_call_status(call_id, status):
+    conn = get_pool().getconn()
+    try:
+        cur = conn.cursor()
+        query = "UPDATE calls_schema.calls SET status = %s, updated_at = NOW() WHERE id = %s"
+        cur.execute(query, (status, call_id))
+        conn.commit()
+        cur.close()
+    finally:
+        get_pool().putconn(conn)
+
 def log_processing_event(call_id, service_name, status, error_message=None, retry_count=0):
     conn = get_pool().getconn()
     try:
