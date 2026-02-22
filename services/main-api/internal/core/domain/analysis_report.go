@@ -20,6 +20,8 @@ type AnalysisReport struct {
 	ProcessedAt           time.Time `json:"processed_at"`
 
 	// Frontend compatibility fields (calculated)
-	Summary   string   `json:"summary"`
-	NextSteps []string `json:"next_steps"`
+	Summary    string   `json:"summary"`
+	Sentiment  string   `json:"sentiment"`
+	Objections []string `json:"objections"`
+	NextSteps  []string `json:"next_steps"`
 }

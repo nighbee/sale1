@@ -35,6 +35,8 @@ func (m *mockAnalysisRepo) Create(ctx context.Context, a *domain.AnalysisReport)
 func (m *mockAnalysisRepo) GetByCallID(ctx context.Context, callID string) (*domain.AnalysisReport, error) {
 	if m.analysis != nil {
 		m.analysis.Summary = m.analysis.Brief
+		m.analysis.Sentiment = "Neutral"
+		m.analysis.Objections = []string{}
 		m.analysis.NextSteps = []string{m.analysis.NextBestAction}
 	}
 	return m.analysis, m.err

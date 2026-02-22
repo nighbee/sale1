@@ -160,6 +160,8 @@ func (r *analysisRepository) GetByCallID(ctx context.Context, callID string) (*d
 
 	// Populate frontend compatibility fields
 	a.Summary = a.Brief
+	a.Sentiment = "Neutral"
+	a.Objections = []string{}
 	if a.NextBestAction != "" {
 		a.NextSteps = strings.Split(a.NextBestAction, "\n")
 	}
