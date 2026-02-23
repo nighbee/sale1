@@ -90,7 +90,11 @@ func (r *analysisRepository) GetTeamPerformance(ctx context.Context, filters map
 			interval = "90 days"
 		}
 		if interval != "" {
-			where += fmt.Sprintf(" AND c.call_date >= NOW() - INTERVAL '%s'", interval)
+			// Use the call_date when present, otherwise fall back to the analysis
+			// processed_at timestamp. This ensures recent analysis rows are
+			// included in period-based queries even if the original call_date
+			// is missing or not set.
+			where += fmt.Sprintf(" AND COALESCE(c.call_date, ar.processed_at) >= NOW() - INTERVAL '%s'", interval)
 		}
 	}
 
