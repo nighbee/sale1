@@ -34,12 +34,15 @@ func (r *analysisRepository) Create(ctx context.Context, a *domain.AnalysisRepor
 
 func (r *analysisRepository) GetTeamPerformance(ctx context.Context, filters map[string]interface{}) ([]map[string]interface{}, error) {
 	argIdx := 1
-	where := "c.status = 'completed'"
+	// By default include calls that are marked completed OR that already have
+	// an analysis report. This ensures leaderboard shows managers that have
+	// analysis rows even if call.status wasn't updated to 'completed' yet.
+	where := "(c.status = 'completed' OR ar.call_id IS NOT NULL)"
 	args := []interface{}{}
 
 	// If include_pending is true, show all statuses except 'error'
 	if includePending, ok := filters["include_pending"].(bool); ok && includePending {
-		where = "c.status IN ('completed', 'pending', 'processing')"
+		where = "(c.status IN ('completed', 'pending', 'processing') OR ar.call_id IS NOT NULL)"
 	}
 
 	if companyID, ok := filters["company_id"].(string); ok && companyID != "" {
