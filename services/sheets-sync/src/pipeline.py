@@ -216,7 +216,7 @@ class Pipeline:
         if manager_user_ids:
             try:
                 ensure_team_and_add_members(
-                    main_api_url=Config.MAIN_API_URL,
+                    database_url=Config.DATABASE_URL,
                     team_name=Config.TEAM_NAME,
                     user_ids=list(manager_user_ids),
                 )

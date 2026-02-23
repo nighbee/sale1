@@ -14,7 +14,6 @@ import bcrypt
 import psycopg2
 import psycopg2.extras
 from psycopg2 import errors as psy_errors
-import requests
 
 logger = logging.getLogger(__name__)
 
@@ -334,56 +333,94 @@ def create_manager_user(
 
 
 def ensure_team_and_add_members(
-    main_api_url: str,
+    database_url: str,
     team_name: str,
     user_ids: list[str],
 ) -> dict:
+    """Ensure a team exists and assign the given users to it using direct DB access.
+
+    This avoids the need to call the main-api HTTP endpoint (which requires
+    JWT authentication that the sheets-sync service doesn't hold).
+    """
     if not user_ids:
         logger.debug("No users to add to team", extra={"team_name": team_name})
         return {"team_id": None, "members_added": 0, "already_in_team": 0}
 
-    url = f"{main_api_url}/api/v1/teams/ensure"
-    payload = {
-        "team_name": team_name,
-        "user_ids": user_ids,
-    }
-
-    retry_count = 0
-    max_retries = 3
-
-    while retry_count < max_retries:
-        try:
-            response = requests.post(url, json=payload, timeout=30)
-            response.raise_for_status()
-            result = response.json()
-            logger.info(
-                "Team ensured successfully",
-                extra={
-                    "team_id": result.get("team_id"),
-                    "team_name": team_name,
-                    "members_added": result.get("members_added"),
-                    "already_in_team": result.get("already_in_team"),
-                    "total_user_ids": len(user_ids),
-                },
+    conn = get_connection(database_url)
+    try:
+        with conn.cursor() as cur:
+            # 1. Look up team by name (search across all companies)
+            cur.execute(
+                "SELECT id FROM auth_schema.teams WHERE name = %s LIMIT 1",
+                (team_name,),
             )
-            return result
-        except requests.exceptions.RequestException as e:
-            retry_count += 1
-            if retry_count < max_retries:
-                wait_time = 2 ** retry_count
-                logger.warning(
-                    "Failed to ensure team, retrying",
-                    extra={
-                        "team_name": team_name,
-                        "retry_count": retry_count,
-                        "wait_seconds": wait_time,
-                        "error": str(e),
-                    },
-                )
-                _time.sleep(wait_time)
+            row = cur.fetchone()
+            if row:
+                team_id = str(row[0])
+                logger.debug("Team found", extra={"team_id": team_id, "team_name": team_name})
             else:
-                logger.exception(
-                    "Failed to ensure team after retries",
-                    extra={"team_name": team_name, "user_ids_count": len(user_ids)},
+                # 2. No team found — create one, attaching it to the first available company
+                cur.execute("SELECT id FROM auth_schema.companies LIMIT 1")
+                company_row = cur.fetchone()
+                if not company_row:
+                    logger.warning(
+                        "Cannot create team: no companies in DB",
+                        extra={"team_name": team_name},
+                    )
+                    return {"team_id": None, "members_added": 0, "already_in_team": 0}
+                company_id = str(company_row[0])
+                team_id = str(uuid.uuid4())
+                cur.execute(
+                    """
+                    INSERT INTO auth_schema.teams (id, company_id, name, description, auto_assign)
+                    VALUES (%s, %s, %s, '', FALSE)
+                    ON CONFLICT DO NOTHING
+                    """,
+                    (team_id, company_id, team_name),
                 )
-                raise
+                conn.commit()
+                logger.info(
+                    "Team created",
+                    extra={"team_id": team_id, "team_name": team_name, "company_id": company_id},
+                )
+
+            # 3. Assign users to the team (only those not already in it)
+            members_added = 0
+            already_in_team = 0
+            for user_id in user_ids:
+                cur.execute(
+                    "SELECT team_id FROM auth_schema.users WHERE id = %s LIMIT 1",
+                    (user_id,),
+                )
+                user_row = cur.fetchone()
+                if user_row is None:
+                    continue
+                current_team_id = str(user_row[0]) if user_row[0] else None
+                if current_team_id == team_id:
+                    already_in_team += 1
+                else:
+                    cur.execute(
+                        "UPDATE auth_schema.users SET team_id = %s WHERE id = %s",
+                        (team_id, user_id),
+                    )
+                    members_added += 1
+            conn.commit()
+
+        logger.info(
+            "Team ensured successfully",
+            extra={
+                "team_id": team_id,
+                "team_name": team_name,
+                "members_added": members_added,
+                "already_in_team": already_in_team,
+                "total_user_ids": len(user_ids),
+            },
+        )
+        return {
+            "team_id": team_id,
+            "members_added": members_added,
+            "already_in_team": already_in_team,
+            "total_user_ids_sent": len(user_ids),
+        }
+    finally:
+        conn.close()
