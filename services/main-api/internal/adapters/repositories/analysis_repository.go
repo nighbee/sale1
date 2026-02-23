@@ -112,7 +112,7 @@ func (r *analysisRepository) GetTeamPerformance(ctx context.Context, filters map
 		LEFT JOIN auth_schema.users u ON c.manager_id = u.manager_id
 		LEFT JOIN calls_schema.analysis_reports ar ON c.id = ar.call_id
 		WHERE %s
-		GROUP BY COALESCE(u.id::text, c.manager_name), COALESCE(NULLIF(TRIM(u.first_name || ' ' || u.last_name), ''), c.manager_name)
+	GROUP BY COALESCE(NULLIF(TRIM(u.first_name || ' ' || u.last_name), ''), c.manager_name), COALESCE(u.id::text, c.manager_id)
 		ORDER BY %s DESC NULLS LAST
 	`, where, sortBy)
 
