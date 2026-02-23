@@ -45,8 +45,11 @@ func (r *analysisRepository) GetTeamPerformance(ctx context.Context, filters map
 	if companyID, ok := filters["company_id"].(string); ok && companyID != "" {
 		// calls table no longer stores company_id (removed by migration). Filter
 		// by the manager's company via the auth_schema.users table instead.
-		// Use an IN subquery so rows without a matching user won't be included.
-		where += fmt.Sprintf(" AND c.manager_id IN (SELECT manager_id FROM auth_schema.users WHERE company_id = $%d)", argIdx)
+		// Use the LEFT JOINed users alias `u` and accept rows where the user
+		// record is missing (u.id IS NULL) so calls with external manager_ids
+		// are not silently excluded from leaderboard in dev/partial-migration data.
+		// This keeps queries working while preserving company scoping for matched users.
+		where += fmt.Sprintf(" AND (u.company_id = $%d OR u.id IS NULL)", argIdx)
 		args = append(args, companyID)
 		argIdx++
 	}
