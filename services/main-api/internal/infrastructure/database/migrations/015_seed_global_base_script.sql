@@ -8,7 +8,7 @@ VALUES (
     'Global Base Script', 
     'system/global_base_script.txt', 
     'You are a sales representative. Start with a warm greeting. Introduce yourself and your company. Ask about the client needs. Present your solution. Handle objections professionally. Close with a clear call-to-action. Thank the client for their time.', 
-    'txt', 
+    'docx', 
     512, 
     '{
         "sections": [

@@ -108,7 +108,7 @@ func main() {
 	}
 
 	// Use Cases
-	registerUC := auth.NewRegisterUseCase(userRepo, companyRepo, jwtService, cfg.DefaultCompanyID)
+	registerUC := auth.NewRegisterUseCase(userRepo, companyRepo, jwtService)
 	loginUC := auth.NewLoginUseCase(userRepo, jwtService)
 	refreshUC := auth.NewRefreshUseCase(userRepo, jwtService)
 	listCallsUC := calls.NewListCallsUseCase(callRepo)

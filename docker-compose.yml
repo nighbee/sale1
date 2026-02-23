@@ -99,7 +99,6 @@ services:
       DATABASE_URL: "host=postgres port=5432 user=salesai_user password=strong_password dbname=salesai sslmode=disable"
       JWT_SECRET: "mysecret"
       REDIS_URL: "redis://redis:6379"
-      DEFAULT_COMPANY_ID: ${COMPANY_ID:-}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       MINIO_ENDPOINT: "minio:9000"
       MINIO_ACCESS_KEY: "minioadmin"

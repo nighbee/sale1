@@ -12,6 +12,7 @@ import asyncio
 import logging
 import os
 import time
+import traceback
 
 from dotenv import load_dotenv
 
@@ -75,7 +76,7 @@ def run_api():
         while True:
             time.sleep(interval)
             logger.info("Polling cycle triggered", extra={"interval_s": interval})
-            _run_pipeline(pipeline)
+            _run_pipeline_with_retry(pipeline)
 
     # Run one cycle on startup
     try:
@@ -102,6 +103,60 @@ def _run_pipeline(pipeline: Pipeline):
     except Exception:
         duration = time.perf_counter() - start_t
         logger.exception("pipeline._run_pipeline failed", extra={"duration_s": duration, "trace": traceback.format_exc()})
+
+
+def _run_pipeline_with_retry(pipeline: Pipeline, max_retries: int = 3, base_delay: float = 1.0):
+    """Run pipeline with exponential backoff retry for transient errors."""
+    for attempt in range(max_retries):
+        try:
+            _run_pipeline(pipeline)
+            return  # Success, exit retry loop
+        except Exception as e:
+            error_type = type(e).__name__
+            is_retryable = _is_retryable_error(e)
+            
+            if attempt < max_retries - 1 and is_retryable:
+                delay = base_delay * (2 ** attempt)  # Exponential backoff
+                logger.warning(
+                    "Pipeline failed, retrying",
+                    extra={
+                        "attempt": attempt + 1,
+                        "max_retries": max_retries,
+                        "error_type": error_type,
+                        "error": str(e),
+                        "delay_s": delay,
+                    },
+                )
+                time.sleep(delay)
+            else:
+                logger.error(
+                    "Pipeline failed after all retries",
+                    extra={
+                        "attempt": attempt + 1,
+                        "error_type": error_type,
+                        "error": str(e),
+                    },
+                )
+                return  # Exit after all retries failed
+
+
+def _is_retryable_error(exception: Exception) -> bool:
+    """Determine if an error is transient and worth retrying."""
+    error_str = str(exception).lower()
+    retryable_patterns = [
+        "ssl",
+        "timeout",
+        "connection",
+        "reset",
+        "temporary",
+        "unavailable",
+        "429",  # Rate limiting
+        "500",  # Internal server error
+        "502",  # Bad gateway
+        "503",  # Service unavailable
+        "504",  # Gateway timeout
+    ]
+    return any(pattern in error_str for pattern in retryable_patterns)
 
 
 # ── Entry ─────────────────────────────────────────────────────────────────────

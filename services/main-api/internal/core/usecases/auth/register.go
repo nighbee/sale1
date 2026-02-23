@@ -27,23 +27,20 @@ type RegisterResponse struct {
 }
 
 type RegisterUseCase struct {
-	userRepo         ports.UserRepository
-	companyRepo      ports.CompanyRepository
-	jwtService       ports.JWTService
-	defaultCompanyID string
+	userRepo    ports.UserRepository
+	companyRepo ports.CompanyRepository
+	jwtService  ports.JWTService
 }
 
 func NewRegisterUseCase(
 	userRepo ports.UserRepository,
 	companyRepo ports.CompanyRepository,
 	jwtService ports.JWTService,
-	defaultCompanyID string,
 ) *RegisterUseCase {
 	return &RegisterUseCase{
-		userRepo:         userRepo,
-		companyRepo:      companyRepo,
-		jwtService:       jwtService,
-		defaultCompanyID: defaultCompanyID,
+		userRepo:    userRepo,
+		companyRepo: companyRepo,
+		jwtService:  jwtService,
 	}
 }
 
@@ -54,27 +51,18 @@ func (uc *RegisterUseCase) Execute(ctx context.Context, req *RegisterRequest) (*
 		return nil, errors.New("email already registered")
 	}
 
-	// Use default company if configured, otherwise create a new one
-	var company *domain.Company
-	var err error
-	if uc.defaultCompanyID != "" {
-		company, err = uc.companyRepo.GetByID(ctx, uc.defaultCompanyID)
-		if err != nil {
-			return nil, errors.New("default company not found: " + err.Error())
-		}
-	} else {
-		company = &domain.Company{
-			ID:                 uuid.New().String(),
-			Name:               req.CompanyName,
-			STTModelPreference: domain.STTWhisperXLocal,
-			LLMProvider:        domain.LLMOpenAI,
-			SubscriptionTier:   "basic",
-			IsActive:           true,
-		}
-		err = uc.companyRepo.Create(ctx, company)
-		if err != nil {
-			return nil, err
-		}
+	// Create a new company for the user
+	company := &domain.Company{
+		ID:                 uuid.New().String(),
+		Name:               req.CompanyName,
+		STTModelPreference: domain.STTWhisperXLocal,
+		LLMProvider:        domain.LLMOpenAI,
+		SubscriptionTier:   "basic",
+		IsActive:           true,
+	}
+	err := uc.companyRepo.Create(ctx, company)
+	if err != nil {
+		return nil, err
 	}
 
 	// Hash password

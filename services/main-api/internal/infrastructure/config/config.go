@@ -7,20 +7,19 @@ import (
 )
 
 type Config struct {
-	DatabaseURL       string
-	RedisURL          string
-	MigrationsPath    string
-	JWTSecret         string
-	JWTExpiry         time.Duration
-	ScriptServiceURL  string
-	MinioEndpoint     string
-	MinioAccessKey    string
-	MinioSecretKey    string
-	MinioPresign      bool
+	DatabaseURL               string
+	RedisURL                  string
+	MigrationsPath            string
+	JWTSecret                 string
+	JWTExpiry                 time.Duration
+	ScriptServiceURL          string
+	MinioEndpoint             string
+	MinioAccessKey            string
+	MinioSecretKey            string
+	MinioPresign              bool
 	MinioPresignExpirySeconds int
-	STTServiceGRPC    string
-	AnalyticsGRPC     string
-	DefaultCompanyID  string
+	STTServiceGRPC            string
+	AnalyticsGRPC             string
 }
 
 func Load() *Config {
@@ -83,19 +82,18 @@ func Load() *Config {
 	}
 
 	return &Config{
-		DatabaseURL:      dbURL,
-		RedisURL:         redisURL,
-		MigrationsPath:   migrationsPath,
-		JWTSecret:        secret,
-		JWTExpiry:        time.Hour * 24,
-		ScriptServiceURL: scriptURL,
-		MinioEndpoint:    minioEndpoint,
-		MinioAccessKey:   os.Getenv("MINIO_ACCESS_KEY"),
-		MinioSecretKey:   os.Getenv("MINIO_SECRET_KEY"),
-		MinioPresign:     presignEnabled,
+		DatabaseURL:               dbURL,
+		RedisURL:                  redisURL,
+		MigrationsPath:            migrationsPath,
+		JWTSecret:                 secret,
+		JWTExpiry:                 time.Hour * 24,
+		ScriptServiceURL:          scriptURL,
+		MinioEndpoint:             minioEndpoint,
+		MinioAccessKey:            os.Getenv("MINIO_ACCESS_KEY"),
+		MinioSecretKey:            os.Getenv("MINIO_SECRET_KEY"),
+		MinioPresign:              presignEnabled,
 		MinioPresignExpirySeconds: presignExpiry,
-		STTServiceGRPC:   sttGRPC,
-		AnalyticsGRPC:    analyticsGRPC,
-		DefaultCompanyID: os.Getenv("DEFAULT_COMPANY_ID"),
+		STTServiceGRPC:            sttGRPC,
+		AnalyticsGRPC:             analyticsGRPC,
 	}
 }
