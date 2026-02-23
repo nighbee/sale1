@@ -58,7 +58,11 @@ func (r *analysisRepository) GetTeamPerformance(ctx context.Context, filters map
 	}
 
 	if source, ok := filters["source"].(string); ok && source != "" {
-		where += fmt.Sprintf(" AND c.source = $%d", argIdx)
+		// Normalize common variants (dash vs underscore, case) and match either
+		// the call's source or the analysis report's llm_provider. This makes
+		// client-provided values like "google_sheets", "google-sheets" or
+		// "sheets" more robustly matched.
+		where += fmt.Sprintf(" AND (replace(lower(coalesce(c.source, '')), '-', '_') = replace(lower($%d), '-', '_') OR replace(lower(coalesce(ar.llm_provider, '')), '-', '_') = replace(lower($%d), '-', '_'))", argIdx, argIdx)
 		args = append(args, source)
 		argIdx++
 	}
