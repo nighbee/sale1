@@ -1,4 +1,5 @@
 import os
+import time
 from minio import Minio
 import logging
 
@@ -20,9 +21,24 @@ class MinioClient:
         self.bucket_name = "audio"
         self._ensure_bucket_exists()
 
-    def _ensure_bucket_exists(self):
-        if not self.client.bucket_exists(self.bucket_name):
-            self.client.make_bucket(self.bucket_name)
+    def _ensure_bucket_exists(self, retries: int = 10, delay: float = 3.0):
+        """Wait for MinIO to be ready, then ensure the bucket exists."""
+        for attempt in range(1, retries + 1):
+            try:
+                if not self.client.bucket_exists(self.bucket_name):
+                    self.client.make_bucket(self.bucket_name)
+                    logger.info(f"Created MinIO bucket '{self.bucket_name}'")
+                else:
+                    logger.info(f"MinIO bucket '{self.bucket_name}' already exists")
+                return
+            except Exception as e:
+                if attempt == retries:
+                    logger.error(f"MinIO not reachable after {retries} attempts: {e}")
+                    raise
+                logger.warning(
+                    f"MinIO not ready (attempt {attempt}/{retries}), retrying in {delay}s: {e}"
+                )
+                time.sleep(delay)
 
     def upload_file(self, object_name, file_path):
         try:

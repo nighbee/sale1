@@ -196,6 +196,7 @@ services:
     depends_on:
       - postgres
       - redis
+      - minio
     networks:
       - sale1-network
     logging:
