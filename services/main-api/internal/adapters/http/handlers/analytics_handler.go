@@ -25,18 +25,6 @@ func NewAnalyticsHandler(teamPerformanceUC *analytics.TeamPerformanceUseCase) *A
 
 func (h *AnalyticsHandler) GetTeamPerformance(c *fiber.Ctx) error {
 	log := applogger.FromFiberCtx(c).With(zap.String("operation", "team_performance"))
-	companyID := c.Locals("company_id").(string)
-	// Super admins should be able to view data across all companies by default.
-	// If a super_admin provides an explicit company_id query param we will filter
-	// by it; otherwise we pass an empty companyID to the usecase so it returns
-	// results for all companies.
-	if c.Locals("role").(string) == "super_admin" {
-		if qCID := c.Query("company_id"); qCID != "" {
-			companyID = qCID
-		} else {
-			companyID = ""
-		}
-	}
 
 	filters := map[string]interface{}{
 		"period":          c.Query("period"),
@@ -44,14 +32,14 @@ func (h *AnalyticsHandler) GetTeamPerformance(c *fiber.Ctx) error {
 		"include_pending": c.Query("include_pending") == "true",
 	}
 
-	log.Debug("fetching team performance", zap.String("company_id", companyID), zap.Any("filters", filters))
-	result, err := h.teamPerformanceUC.Execute(c.Context(), companyID, filters)
+	log.Debug("fetching team performance", zap.Any("filters", filters))
+	result, err := h.teamPerformanceUC.Execute(c.Context(), "", filters)
 	if err != nil {
-		log.Error("team performance query failed", zap.String("company_id", companyID), zap.Error(err))
+		log.Error("team performance query failed", zap.Error(err))
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	log.Info("team performance fetched", zap.String("company_id", companyID), zap.Int("manager_count", len(result)))
+	log.Info("team performance fetched", zap.Int("manager_count", len(result)))
 	return c.JSON(fiber.Map{
 		"period":   filters["period"],
 		"managers": result,

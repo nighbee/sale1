@@ -32,6 +32,10 @@ class Config:
     # Queue name consumed by stt-service
     QUEUE_NAME: str = "bullmq:audio_processing"
 
+    # Team creation
+    TEAM_NAME: str = os.getenv("TEAM_NAME", "callteam1")
+    MAIN_API_URL: str = os.getenv("MAIN_API_URL", "http://main-api:8000")
+
     @classmethod
     def service_account_info(cls) -> dict:
         """Return parsed service account credentials dict."""

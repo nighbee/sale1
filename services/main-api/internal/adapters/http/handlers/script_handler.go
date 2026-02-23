@@ -10,6 +10,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/salesai/main-api/internal/core/domain"
 	"github.com/salesai/main-api/internal/core/ports"
+	"github.com/salesai/main-api/internal/core/usecases/scripts"
 	applogger "github.com/salesai/main-api/internal/infrastructure/logger"
 	"go.uber.org/zap"
 )
@@ -17,14 +18,16 @@ import (
 var _ = domain.Script{}
 
 type ScriptHandler struct {
-	scriptRepo       ports.ScriptRepository
-	scriptServiceURL string
+	scriptRepo        ports.ScriptRepository
+	scriptServiceURL  string
+	baseScriptUseCase *scripts.BaseScriptUseCase
 }
 
 func NewScriptHandler(scriptRepo ports.ScriptRepository, scriptServiceURL string) *ScriptHandler {
 	return &ScriptHandler{
-		scriptRepo:       scriptRepo,
-		scriptServiceURL: scriptServiceURL,
+		scriptRepo:        scriptRepo,
+		scriptServiceURL:  scriptServiceURL,
+		baseScriptUseCase: scripts.NewBaseScriptUseCase(scriptRepo),
 	}
 }
 
@@ -270,4 +273,67 @@ func (h *ScriptHandler) DownloadScript(c *fiber.Ctx) error {
 
 	_, err = io.Copy(c.Response().BodyWriter(), resp.Body)
 	return err
+}
+
+func (h *ScriptHandler) GetBaseScript(c *fiber.Ctx) error {
+	log := applogger.FromFiberCtx(c).With(zap.String("operation", "get_base_script"))
+
+	script, err := h.baseScriptUseCase.GetActiveBase(c.Context())
+	if err != nil {
+		log.Warn("active base script not found", zap.Error(err))
+		return c.Status(404).JSON(fiber.Map{"error": "Active base script not found"})
+	}
+
+	return c.JSON(script)
+}
+
+func (h *ScriptHandler) ListBaseScripts(c *fiber.Ctx) error {
+	log := applogger.FromFiberCtx(c).With(zap.String("operation", "list_base_scripts"))
+
+	scripts, err := h.baseScriptUseCase.GetAllBases(c.Context())
+	if err != nil {
+		log.Error("list base scripts failed", zap.Error(err))
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	return c.JSON(fiber.Map{"base_scripts": scripts})
+}
+
+func (h *ScriptHandler) ActivateAsBase(c *fiber.Ctx) error {
+	log := applogger.FromFiberCtx(c).With(zap.String("operation", "activate_as_base"))
+	scriptID := c.Params("id")
+
+	script, err := h.baseScriptUseCase.ActivateAsBase(c.Context(), scriptID)
+	if err != nil {
+		log.Warn("activate as base failed", zap.String("script_id", scriptID), zap.Error(err))
+		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	log.Info("script activated as base", zap.String("script_id", scriptID))
+	return c.JSON(fiber.Map{
+		"success":   true,
+		"script_id": script.ID,
+		"message":   "Script activated as base",
+	})
+}
+
+func (h *ScriptHandler) GetBaseMetrics(c *fiber.Ctx) error {
+	log := applogger.FromFiberCtx(c).With(zap.String("operation", "get_base_metrics"))
+
+	script, err := h.baseScriptUseCase.GetActiveBase(c.Context())
+	if err != nil {
+		log.Warn("get base metrics failed", zap.Error(err))
+		return c.Status(404).JSON(fiber.Map{"error": "Active base script not found"})
+	}
+
+	if script.BaseScriptMetrics == nil {
+		script.BaseScriptMetrics = map[string]interface{}{
+			"avg_quality_score": 0,
+			"avg_script_match":  0,
+			"avg_errors_free":   0,
+			"sample_count":      0,
+		}
+	}
+
+	return c.JSON(script.BaseScriptMetrics)
 }

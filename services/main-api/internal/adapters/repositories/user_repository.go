@@ -77,6 +77,39 @@ func (r *userRepository) GetByID(ctx context.Context, companyID, id string) (*do
 	return user, err
 }
 
+func (r *userRepository) GetByIDGlobal(ctx context.Context, id string) (*domain.User, error) {
+	query := `
+		SELECT id, company_id, email, password_hash, role, manager_id, manager_name,
+		       is_active, last_login, created_at, updated_at, team_id, first_name, last_name
+		FROM auth_schema.users
+		WHERE id = $1
+	`
+
+	user := &domain.User{}
+	err := r.db.QueryRowContext(ctx, query, id).Scan(
+		&user.ID,
+		&user.CompanyID,
+		&user.Email,
+		&user.PasswordHash,
+		&user.Role,
+		&user.ManagerID,
+		&user.ManagerName,
+		&user.IsActive,
+		&user.LastLogin,
+		&user.CreatedAt,
+		&user.UpdatedAt,
+		&user.TeamID,
+		&user.FirstName,
+		&user.LastName,
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, errors.New("user not found")
+	}
+
+	return user, err
+}
+
 func (r *userRepository) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
 	query := `
 		SELECT id, company_id, email, password_hash, role, manager_id, manager_name,

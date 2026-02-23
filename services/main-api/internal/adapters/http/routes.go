@@ -88,6 +88,13 @@ func SetupRoutes(
 	scripts.Put("/:id", middleware.RequireRole("super_admin", "tenant_admin"), scriptHandler.UpdateScript)
 	scripts.Delete("/:id", middleware.RequireRole("super_admin", "tenant_admin"), scriptHandler.DeleteScript)
 
+	// Base Scripts - global baseline scripts (no company scope)
+	baseScripts := protected.Group("/base-scripts")
+	baseScripts.Get("/current", scriptHandler.GetBaseScript)
+	baseScripts.Get("/", scriptHandler.ListBaseScripts)
+	baseScripts.Post("/:id/activate", middleware.RequireRole("super_admin"), scriptHandler.ActivateAsBase)
+	baseScripts.Get("/:id/metrics", scriptHandler.GetBaseMetrics)
+
 	// Analytics
 	analytics := protected.Group("/analytics")
 	analytics.Get("/team-performance", analyticsHandler.GetTeamPerformance)
@@ -102,6 +109,8 @@ func SetupRoutes(
 	companies.Put("/:id/billing", companyHandler.UpdateBilling)
 
 	// Teams
+	protected.Post("/teams/ensure", teamHandler.Ensure)
+
 	teams := protected.Group("/teams", middleware.RequireRole("super_admin", "tenant_admin"))
 	teams.Post("/", teamHandler.Create)
 	teams.Get("/", teamHandler.List)

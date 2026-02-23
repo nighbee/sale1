@@ -186,3 +186,47 @@ func (h *TeamHandler) Delete(c *fiber.Ctx) error {
 	}
 	return c.SendStatus(204)
 }
+
+func (h *TeamHandler) Ensure(c *fiber.Ctx) error {
+	log := applogger.FromFiberCtx(c).With(zap.String("operation", "ensure_team"))
+
+	var req struct {
+		TeamName string   `json:"team_name"`
+		UserIDs  []string `json:"user_ids"`
+	}
+
+	if err := c.BodyParser(&req); err != nil {
+		log.Warn("body parse error", zap.Error(err))
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid body"})
+	}
+
+	if req.TeamName == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "team_name is required"})
+	}
+
+	team, err := h.teamUC.EnsureTeamExists(c.Context(), req.TeamName, "")
+	if err != nil {
+		log.Error("ensure team failed", zap.String("team_name", req.TeamName), zap.Error(err))
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	var membersAdded, alreadyInTeam int
+
+	if len(req.UserIDs) > 0 {
+		var err error
+		membersAdded, alreadyInTeam, err = h.teamUC.AddMultipleMembers(c.Context(), team.ID, req.UserIDs)
+		if err != nil {
+			log.Error("add members failed", zap.String("team_id", team.ID), zap.Error(err))
+		}
+	}
+
+	log.Info("team ensured", zap.String("team_id", team.ID), zap.String("team_name", team.Name), zap.Int("members_added", membersAdded), zap.Int("already_in_team", alreadyInTeam))
+
+	return c.Status(200).JSON(fiber.Map{
+		"team_id":             team.ID,
+		"team_name":           team.Name,
+		"members_added":       membersAdded,
+		"already_in_team":     alreadyInTeam,
+		"total_user_ids_sent": len(req.UserIDs),
+	})
+}

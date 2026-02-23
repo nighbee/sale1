@@ -1,9 +1,9 @@
 import logging
 import os
 from src.adapters.storage.postgres_repo import (
-    get_transcript, get_call, get_active_script, get_team_script, save_analysis,
-    create_notification, get_company_admin, get_company_settings, get_company_id_by_call,
-    update_call_status
+    get_transcript, get_call, get_active_script_by_manager, get_team_script, save_analysis,
+    create_notification, get_company_admin_by_manager, get_company_settings_by_manager,
+    get_company_id_by_call, update_call_status
 )
 from src.infrastructure.llm.openai_client import OpenAIClient
 from src.infrastructure.llm.gemini_client import GeminiClient
@@ -30,17 +30,22 @@ class AnalyzeCallUseCase:
             logger.error("call record not found", extra={"call_id": call_id})
             return
 
+        manager_id = call['manager_id']
+        
+        # Get company_id for backward compatibility (optional - doesn't block analysis)
         company_id = get_company_id_by_call(call_id)
         if not company_id:
-            logger.error("could not resolve company_id for call", extra={"call_id": call_id})
-            return
+            logger.warning("could not resolve company_id for call, using defaults", extra={"call_id": call_id})
 
-        manager_id = call['manager_id']
-        script = get_team_script(company_id, manager_id)
+        # 2. Get script - try team script first, then company script
+        script = get_team_script(manager_id)
+        if not script:
+            script = get_active_script_by_manager(manager_id)
+        
         script_text = script['parsed_text'] if script else "No active script found."
         script_id = script['id'] if script else None
 
-        # 2. Prepare prompt
+        # 3. Prepare prompt
         transcript_text = self._format_transcript(transcript['speaker_diarized_json'])
         transcript_segments = transcript['speaker_diarized_json'] or []
         user_prompt = f"TRANSCRIPT:\n{transcript_text}\n\nSCRIPT:\n{script_text}"
@@ -75,8 +80,8 @@ class AnalyzeCallUseCase:
         }
         """
 
-        # 3. Call LLM
-        settings = get_company_settings(company_id)
+        # 4. Get LLM settings (use default if not found)
+        settings = get_company_settings_by_manager(manager_id)
         llm_provider = settings['llm_provider'] if settings else "openai"
 
         logger.info(
@@ -163,8 +168,8 @@ class AnalyzeCallUseCase:
         # Publish event for real-time notifications
         await publish_analysis_completed(call_id, overall_rating)
 
-        # 6. Check for Critical Errors
-        await self._check_critical_errors(call_id, company_id, transcript_text)
+        # 6. Check for Critical Errors (only if company_id available)
+        await self._check_critical_errors(call_id, manager_id, transcript_text)
 
     def _validate_llm_response(self, analysis: dict, call_id: str):
         required_fields = ['qualityOfCall', 'scriptMatch', 'errorsFree', 'recommendation', 'brief', 'nextBestAction']
@@ -193,15 +198,17 @@ class AnalyzeCallUseCase:
 
         logger.debug("LLM response validated", extra={"call_id": call_id})
 
-    async def _check_critical_errors(self, call_id, company_id, transcript_text):
+    async def _check_critical_errors(self, call_id, manager_id, transcript_text):
         critical_keywords = ["sue", "litigation", "lawyer", "court", "legal action"]
         found = [kw for kw in critical_keywords if kw in transcript_text.lower()]
 
         if found:
             logger.warning("critical keywords detected",
-                           extra={"call_id": call_id, "company_id": company_id, "keywords": found})
+                           extra={"call_id": call_id, "manager_id": manager_id, "keywords": found})
             message = f"A critical error (mentions of {', '.join(found)}) was detected in call {call_id}."
-            admin = get_company_admin(company_id)
+            
+            # Try to get admin, but don't fail if not found
+            admin = get_company_admin_by_manager(manager_id)
             if admin:
                 create_notification(
                     user_id=admin['id'],

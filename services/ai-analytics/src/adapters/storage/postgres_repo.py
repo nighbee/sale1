@@ -37,29 +37,29 @@ def update_call_status(call_id, status):
     finally:
         get_pool().putconn(conn)
 
-def get_team_script(company_id, manager_id):
+def get_team_script(manager_id):
+    """Get team-specific script for a manager."""
     conn = get_pool().getconn()
     try:
         cur = conn.cursor(cursor_factory=RealDictCursor)
-        # manager_id from external sources (e.g. Google Sheets) may be a short
-        # integer string, not a UUID — guard against the DB type error.
+        
+        # Try to get team_id by manager_id
         try:
             cur.execute(
-                "SELECT team_id FROM auth_schema.users WHERE id = %s AND company_id = %s",
-                (manager_id, company_id),
+                "SELECT team_id FROM auth_schema.users WHERE manager_id = %s",
+                (manager_id,),
             )
             res = cur.fetchone()
         except psycopg2.errors.InvalidTextRepresentation:
-            conn.rollback()
             logger.debug(
-                "manager_id is not a valid UUID, falling back to company script",
-                extra={"manager_id": manager_id, "company_id": company_id},
+                "manager_id is not valid for team lookup",
+                extra={"manager_id": manager_id},
             )
-            return get_active_script(company_id)
+            return None
 
-        if not res or not res['team_id']:
-            # Fallback to company active script
-            return get_active_script(company_id)
+        if not res or not res.get('team_id'):
+            # No team, return None
+            return None
 
         team_id = res['team_id']
         cur.execute("""
@@ -68,17 +68,22 @@ def get_team_script(company_id, manager_id):
             ORDER BY version DESC LIMIT 1
         """, (team_id,))
         script = cur.fetchone()
-        if not script:
-            return get_active_script(company_id)
         return script
     finally:
         get_pool().putconn(conn)
 
-def get_company_settings(company_id):
+def get_company_settings_by_manager(manager_id):
+    """Get company settings using manager_id. Returns default settings if not found."""
     conn = get_pool().getconn()
     try:
         cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("SELECT llm_provider FROM auth_schema.companies WHERE id = %s", (company_id,))
+        cur.execute("""
+            SELECT c.llm_provider 
+            FROM auth_schema.companies c
+            JOIN auth_schema.users u ON u.company_id = c.id
+            WHERE u.manager_id = %s
+            LIMIT 1
+        """, (manager_id,))
         return cur.fetchone()
     finally:
         get_pool().putconn(conn)
@@ -93,6 +98,7 @@ def get_call(call_id):
         get_pool().putconn(conn)
 
 def get_company_id_by_call(call_id):
+    """Get company_id by call_id. Returns None if not found (for backward compatibility)."""
     conn = get_pool().getconn()
     try:
         cur = conn.cursor()
@@ -103,18 +109,23 @@ def get_company_id_by_call(call_id):
         """, (call_id,))
         row = cur.fetchone()
         return row[0] if row else None
+    except Exception as e:
+        logger.warning("Could not resolve company_id", extra={"call_id": call_id, "error": str(e)})
+        return None
     finally:
         get_pool().putconn(conn)
 
-def get_active_script(company_id):
+def get_active_script_by_manager(manager_id):
+    """Get active script for a manager's company. Returns None if not found."""
     conn = get_pool().getconn()
     try:
         cur = conn.cursor(cursor_factory=RealDictCursor)
         cur.execute("""
-            SELECT * FROM scripts_schema.scripts
-            WHERE company_id = %s AND is_active = true
-            ORDER BY version DESC LIMIT 1
-        """, (company_id,))
+            SELECT s.* FROM scripts_schema.scripts s
+            JOIN auth_schema.users u ON s.company_id = u.company_id
+            WHERE u.manager_id = %s AND s.is_active = true
+            ORDER BY s.version DESC LIMIT 1
+        """, (manager_id,))
         return cur.fetchone()
     finally:
         get_pool().putconn(conn)
@@ -174,15 +185,17 @@ def log_processing_event(call_id, service_name, status, error_message=None, retr
     finally:
         get_pool().putconn(conn)
 
-def get_company_admin(company_id):
+def get_company_admin_by_manager(manager_id):
+    """Get company admin user by manager_id. Returns None if not found."""
     conn = get_pool().getconn()
     try:
         cur = conn.cursor(cursor_factory=RealDictCursor)
         cur.execute("""
-            SELECT id FROM auth_schema.users
-            WHERE company_id = %s AND role = 'tenant_admin'
+            SELECT u.id FROM auth_schema.users u
+            JOIN auth_schema.users u2 ON u2.company_id = u.company_id
+            WHERE u2.manager_id = %s AND u.role = 'tenant_admin'
             LIMIT 1
-        """, (company_id,))
+        """, (manager_id,))
         return cur.fetchone()
     finally:
         get_pool().putconn(conn)

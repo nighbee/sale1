@@ -76,7 +76,6 @@ func (h *CallHandler) ListCalls(c *fiber.Ctx) error {
 	limit, _ := strconv.Atoi(c.Query("limit", "20"))
 
 	req := calls.ListCallsRequest{
-		CompanyID:   c.Query("company_id"),
 		ManagerID:   c.Query("manager_id"),
 		ManagerName: c.Query("manager_name"),
 		ClientPhone: c.Query("client_phone"),
@@ -242,9 +241,9 @@ func (h *CallHandler) GetAnalysis(c *fiber.Ctx) error {
 		if err.Error() == "analysis report not found" {
 			log.Warn("analysis not found", zap.String("call_id", id), zap.Error(err))
 			return c.JSON(fiber.Map{
-				"call_id": id,
+				"call_id":  id,
 				"analysis": nil,
-				"message": "Analysis not found",
+				"message":  "Analysis not found",
 			})
 		}
 

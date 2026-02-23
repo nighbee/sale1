@@ -22,17 +22,17 @@ const CallsListPage: React.FC = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
+        // Only include team_id if it's not null/undefined
+        const params: Record<string, unknown> = { source };
+        if (currentTeamId) {
+          params.team_id = currentTeamId;
+        }
+        
         let res;
         if (user && user.id) {
-          res = await userApi.getUserCalls(user.id, { 
-            team_id: currentTeamId,
-            source: source,
-          });
+          res = await userApi.getUserCalls(user.id, params);
         } else {
-          res = await callApi.listCalls({ 
-            team_id: currentTeamId,
-            source: source,
-          });
+          res = await callApi.listCalls(params);
         }
         const data = res.data as { calls?: Call[]; total?: number };
         setCalls(data.calls || []);

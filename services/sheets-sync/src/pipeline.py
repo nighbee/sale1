@@ -26,6 +26,7 @@ from src.db import (
     upsert_call,
     get_pending_sheet_calls,
     create_manager_user,
+    ensure_team_and_add_members,
 )
 from src.queue_client import QueueClient
 
@@ -86,6 +87,7 @@ class Pipeline:
         rows = self.sheets.read_data_rows()
         queued = 0
         skipped = 0
+        manager_user_ids = set()
         for row in rows:
             if not row.needs_processing:
                 logger.debug(
@@ -128,12 +130,12 @@ class Pipeline:
                 continue
 
             try:
-                # Auto-create manager account
                 manager_user_id = create_manager_user(
                     database_url=Config.DATABASE_URL,
                     manager_id=row.man_id,
                     manager_name=row.man_name,
                 )
+                manager_user_ids.add(manager_user_id)
                 logger.debug(
                     "Manager user ensured",
                     extra={
@@ -210,6 +212,22 @@ class Pipeline:
             "Ingest phase done",
             extra={"queued": queued, "skipped": skipped},
         )
+
+        if manager_user_ids:
+            try:
+                ensure_team_and_add_members(
+                    main_api_url=Config.MAIN_API_URL,
+                    team_name=Config.TEAM_NAME,
+                    user_ids=list(manager_user_ids),
+                )
+            except Exception:
+                logger.exception(
+                    "Failed to ensure team or add members",
+                    extra={
+                        "team_name": Config.TEAM_NAME,
+                        "manager_count": len(manager_user_ids),
+                    },
+                )
 
     # ── Phase 2: DB results → sheet ───────────────────────────────────────
 

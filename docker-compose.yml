@@ -71,6 +71,25 @@ services:
     networks:
       - sale1-network
 
+
+  # Migration init container - runs migrations before main-api starts
+  main-api-migrate:
+    build: ./services/main-api
+    command: /app/migrate
+    environment:
+      DATABASE_URL: "host=postgres port=5432 user=salesai_user password=strong_password dbname=salesai sslmode=disable"
+      MIGRATIONS_PATH: /app/internal/infrastructure/database/migrations
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - sale1-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
   main-api:
     build: ./services/main-api
     restart: unless-stopped
@@ -97,6 +116,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+      main-api-migrate:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/metrics"]
       interval: 10s
@@ -112,6 +133,7 @@ services:
       options:
         max-size: "50m"
         max-file: "5"
+
 
   sipuni-listener:
     build: ./services/sipuni-listener
@@ -190,7 +212,7 @@ services:
       REDIS_URL: "redis://redis:6379"
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       BLACKBOX_API_KEY: ${BLACKBOX_API_KEY}
-      LLM_BASE_URL: ${LLM_BASE_URL:-https://api.groq.com/openai/v1}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://api.blackbox.ai/v1}
       LLM_API_KEY: ${LLM_API_KEY}
       LLM_MODEL: ${LLM_MODEL:-llama-3.3-70b-versatile}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY}
@@ -228,6 +250,8 @@ services:
       RUN_MODE: "api"
       PORT: "8085"
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      TEAM_NAME: ${TEAM_NAME:-callteam1}
+      MAIN_API_URL: "http://main-api:8000"
     volumes:
       - ./services/sheets-sync/gcp-sa.json:/app/gcp-sa.json:ro
     ports:

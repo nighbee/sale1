@@ -45,6 +45,23 @@ func (r *teamRepository) GetByID(ctx context.Context, companyID, id string) (*do
 	return team, err
 }
 
+func (r *teamRepository) GetByName(ctx context.Context, name string) (*domain.Team, error) {
+	query := `
+		SELECT id, company_id, name, description, auto_assign, created_at, updated_at
+		FROM auth_schema.teams
+		WHERE name = $1
+		LIMIT 1
+	`
+	team := &domain.Team{}
+	err := r.db.QueryRowContext(ctx, query, name).Scan(
+		&team.ID, &team.CompanyID, &team.Name, &team.Description, &team.AutoAssign, &team.CreatedAt, &team.UpdatedAt,
+	)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	return team, err
+}
+
 func (r *teamRepository) ListByCompany(ctx context.Context, companyID string) ([]*domain.Team, error) {
 	query := `
 		SELECT id, company_id, name, description, auto_assign, created_at, updated_at

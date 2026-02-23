@@ -2,6 +2,7 @@ package teams
 
 import (
 	"context"
+
 	"github.com/google/uuid"
 	"github.com/salesai/main-api/internal/core/domain"
 	"github.com/salesai/main-api/internal/core/ports"
@@ -95,4 +96,47 @@ func (uc *TeamUseCase) RemoveMember(ctx context.Context, companyID, teamID, user
 
 func (uc *TeamUseCase) Delete(ctx context.Context, companyID, id string) error {
 	return uc.teamRepo.Delete(ctx, companyID, id)
+}
+
+func (uc *TeamUseCase) EnsureTeamExists(ctx context.Context, teamName, description string) (*domain.Team, error) {
+	existing, err := uc.teamRepo.GetByName(ctx, teamName)
+	if err != nil {
+		return nil, err
+	}
+	if existing != nil {
+		return existing, nil
+	}
+
+	team := &domain.Team{
+		ID:          uuid.New().String(),
+		CompanyID:   "",
+		Name:        teamName,
+		Description: description,
+		AutoAssign:  false,
+	}
+	err = uc.teamRepo.Create(ctx, team)
+	return team, err
+}
+
+func (uc *TeamUseCase) AddMultipleMembers(ctx context.Context, teamID string, userIDs []string) (int, int, error) {
+	var membersAdded int
+	var alreadyInTeam int
+
+	for _, userID := range userIDs {
+		user, err := uc.userRepo.GetByIDGlobal(ctx, userID)
+		if err != nil {
+			continue
+		}
+
+		if user.TeamID != nil && *user.TeamID == teamID {
+			alreadyInTeam++
+		} else {
+			user.TeamID = &teamID
+			if err := uc.userRepo.Update(ctx, user); err == nil {
+				membersAdded++
+			}
+		}
+	}
+
+	return membersAdded, alreadyInTeam, nil
 }

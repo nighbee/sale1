@@ -2,12 +2,14 @@ package ports
 
 import (
 	"context"
+
 	"github.com/salesai/main-api/internal/core/domain"
 )
 
 type UserRepository interface {
 	Create(ctx context.Context, user *domain.User) error
 	GetByID(ctx context.Context, companyID, id string) (*domain.User, error)
+	GetByIDGlobal(ctx context.Context, id string) (*domain.User, error)
 	GetByEmail(ctx context.Context, email string) (*domain.User, error)
 	Update(ctx context.Context, user *domain.User) error
 	Delete(ctx context.Context, companyID, id string) error
@@ -51,6 +53,10 @@ type ScriptRepository interface {
 	Update(ctx context.Context, script *domain.Script) error
 	Delete(ctx context.Context, companyID, id string) error
 	GetActiveByCompany(ctx context.Context, companyID string) (*domain.Script, error)
+	GetActiveBaseScript(ctx context.Context) (*domain.Script, error)
+	GetAllBaseScripts(ctx context.Context) ([]*domain.Script, error)
+	SetActiveBaseScript(ctx context.Context, scriptID string) error
+	UpdateBaseScriptMetrics(ctx context.Context, scriptID string, metrics map[string]interface{}) error
 }
 
 type NotificationRepository interface {
@@ -62,6 +68,7 @@ type NotificationRepository interface {
 type TeamRepository interface {
 	Create(ctx context.Context, team *domain.Team) error
 	GetByID(ctx context.Context, companyID, id string) (*domain.Team, error)
+	GetByName(ctx context.Context, name string) (*domain.Team, error)
 	ListByCompany(ctx context.Context, companyID string) ([]*domain.Team, error)
 	Update(ctx context.Context, team *domain.Team) error
 	Delete(ctx context.Context, companyID, id string) error

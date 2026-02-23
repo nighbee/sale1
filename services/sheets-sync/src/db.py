@@ -8,11 +8,13 @@ import logging
 import uuid
 from datetime import date, time, datetime
 from typing import Optional
+import time as _time
 
 import bcrypt
 import psycopg2
 import psycopg2.extras
 from psycopg2 import errors as psy_errors
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -329,3 +331,59 @@ def create_manager_user(
             return user_id
     finally:
         conn.close()
+
+
+def ensure_team_and_add_members(
+    main_api_url: str,
+    team_name: str,
+    user_ids: list[str],
+) -> dict:
+    if not user_ids:
+        logger.debug("No users to add to team", extra={"team_name": team_name})
+        return {"team_id": None, "members_added": 0, "already_in_team": 0}
+
+    url = f"{main_api_url}/api/v1/teams/ensure"
+    payload = {
+        "team_name": team_name,
+        "user_ids": user_ids,
+    }
+
+    retry_count = 0
+    max_retries = 3
+
+    while retry_count < max_retries:
+        try:
+            response = requests.post(url, json=payload, timeout=30)
+            response.raise_for_status()
+            result = response.json()
+            logger.info(
+                "Team ensured successfully",
+                extra={
+                    "team_id": result.get("team_id"),
+                    "team_name": team_name,
+                    "members_added": result.get("members_added"),
+                    "already_in_team": result.get("already_in_team"),
+                    "total_user_ids": len(user_ids),
+                },
+            )
+            return result
+        except requests.exceptions.RequestException as e:
+            retry_count += 1
+            if retry_count < max_retries:
+                wait_time = 2 ** retry_count
+                logger.warning(
+                    "Failed to ensure team, retrying",
+                    extra={
+                        "team_name": team_name,
+                        "retry_count": retry_count,
+                        "wait_seconds": wait_time,
+                        "error": str(e),
+                    },
+                )
+                _time.sleep(wait_time)
+            else:
+                logger.exception(
+                    "Failed to ensure team after retries",
+                    extra={"team_name": team_name, "user_ids_count": len(user_ids)},
+                )
+                raise

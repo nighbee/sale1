@@ -21,11 +21,16 @@ const DirectorDashboardPage: React.FC = () => {
     const run = async () => {
       setPerfLoading(true);
       try {
-        const res = await analyticsApi.getTeamPerformance({ 
+        // Only include team_id if it's not null/undefined
+        const params: Record<string, unknown> = { 
           period: 'last_30_days', 
-          team_id: currentTeamId,
           include_pending: true
-        });
+        };
+        if (currentTeamId) {
+          params.team_id = currentTeamId;
+        }
+        
+        const res = await analyticsApi.getTeamPerformance(params);
         const data = res.data as { managers?: ManagerPerformance[] };
         setManagers(data.managers || []);
       } catch {
