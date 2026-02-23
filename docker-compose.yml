@@ -213,7 +213,7 @@ services:
       BLACKBOX_API_KEY: ${BLACKBOX_API_KEY}
       LLM_BASE_URL: ${LLM_BASE_URL:-https://api.blackbox.ai/v1}
       LLM_API_KEY: ${LLM_API_KEY}
-      LLM_MODEL: ${LLM_MODEL:-llama-3.3-70b-versatile}
+      LLM_MODEL: ${LLM_MODEL:-deepseek/deepseek-v3-base:free}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY}
       GOOGLE_AI_MODEL: ${GOOGLE_AI_MODEL}
       LOG_LEVEL: ${LOG_LEVEL:-info}
@@ -250,7 +250,7 @@ services:
       PORT: "8085"
       LOG_LEVEL: ${LOG_LEVEL:-info}
       TEAM_NAME: ${TEAM_NAME:-callteam1}
-      MAIN_API_URL: "http://main-api:8000"
+      MAIN_API_URL: "http://main-api:8080"
     volumes:
       - ./services/sheets-sync/gcp-sa.json:/app/gcp-sa.json:ro
     ports:
