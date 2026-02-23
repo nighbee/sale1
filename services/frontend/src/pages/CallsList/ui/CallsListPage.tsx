@@ -13,7 +13,7 @@ type CallSource = "sipuni" | "google_sheets";
 const CallsListPage: React.FC = () => {
   const { t } = useTranslation();
   const { currentTeamId, user } = useUserStore();
-  const [source, setSource] = useState<CallSource>("sipuni");
+  const [source, setSource] = useState<CallSource>("google_sheets");
   const [calls, setCalls] = useState<Call[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ total: 0, avgScore: 0, failed: 0 });
@@ -27,9 +27,11 @@ const CallsListPage: React.FC = () => {
         if (currentTeamId) {
           params.team_id = currentTeamId;
         }
-        
+
+        // Admins use listCalls (backend enforces company-wide scope).
+        // sales_rep also uses listCalls — the backend restricts it to their own calls via role check.
         let res;
-        if (user && user.id) {
+        if (user?.role === 'sales_rep' && user.id) {
           res = await userApi.getUserCalls(user.id, params);
         } else {
           res = await callApi.listCalls(params);
