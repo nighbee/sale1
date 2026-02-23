@@ -43,9 +43,10 @@ func (r *analysisRepository) GetTeamPerformance(ctx context.Context, filters map
 	}
 
 	if companyID, ok := filters["company_id"].(string); ok && companyID != "" {
-		// Filter by the call's company_id (calls table contains company_id). Using
-		// u.company_id would drop rows when the LEFT JOIN to users yields NULL.
-		where += fmt.Sprintf(" AND c.company_id = $%d", argIdx)
+		// calls table no longer stores company_id (removed by migration). Filter
+		// by the manager's company via the auth_schema.users table instead.
+		// Use an IN subquery so rows without a matching user won't be included.
+		where += fmt.Sprintf(" AND c.manager_id IN (SELECT manager_id FROM auth_schema.users WHERE company_id = $%d)", argIdx)
 		args = append(args, companyID)
 		argIdx++
 	}
