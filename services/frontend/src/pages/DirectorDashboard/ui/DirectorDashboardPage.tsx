@@ -23,7 +23,7 @@ const DirectorDashboardPage: React.FC = () => {
       try {
         // Only include team_id if it's not null/undefined
         const params: Record<string, unknown> = { 
-          period: 'last_30_days', 
+          period: '30d', 
           include_pending: true
         };
         if (currentTeamId) {
