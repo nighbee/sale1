@@ -48,51 +48,99 @@ const DirectorDashboardPage: React.FC = () => {
     ? (managers.reduce((a, m) => a + (m.avg_quality || 0), 0) / managers.length).toFixed(1)
     : '0.0';
 
+  const kpis = [
+    {
+      label: t('dashboard.total_calls'),
+      value: totalCalls,
+      icon: 'phone_in_talk',
+      bg: 'bg-blue-50 dark:bg-blue-900/20',
+      text: 'text-blue-600 dark:text-blue-400',
+      accent: 'bg-blue-500'
+    },
+    {
+      label: t('dashboard.avg_quality'),
+      value: avgQuality,
+      icon: 'analytics',
+      bg: 'bg-emerald-50 dark:bg-emerald-900/20',
+      text: 'text-emerald-600 dark:text-emerald-400',
+      accent: 'bg-emerald-500'
+    },
+    {
+      label: t('dashboard.active_teams'),
+      value: managers.length,
+      sub: t('dashboard.managers'),
+      icon: 'groups',
+      bg: 'bg-indigo-50 dark:bg-indigo-900/20',
+      text: 'text-indigo-600 dark:text-indigo-400',
+      accent: 'bg-indigo-500'
+    },
+    {
+      label: t('nav.integrations'),
+      value: 'Live',
+      sub: 'Google Sheets',
+      icon: 'table_chart',
+      bg: 'bg-amber-50 dark:bg-amber-900/20',
+      text: 'text-amber-600 dark:text-amber-400',
+      accent: 'bg-amber-500'
+    },
+  ];
+
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <PageLayout title={t('dashboard.title')}>
-      <div className="p-4 md:p-8">
-        <div className="max-w-7xl mx-auto space-y-8">
+      <div className="p-6 md:p-10 bg-slate-50/50 dark:bg-slate-900/50 min-h-screen">
+        <div className="max-w-7xl mx-auto space-y-10">
 
           {/* ── KPI cards ────────────────────────────────────────────────── */}
-          {perfLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {[1, 2, 3, 4].map(i => (
-                <div key={i} className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                  <Skeleton className="h-10 w-10 mb-4" />
-                  <Skeleton className="h-4 w-24 mb-2" />
-                  <Skeleton className="h-8 w-32" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {perfLoading ? (
+              [1, 2, 3, 4].map(i => (
+                <div key={i} className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm">
+                  <Skeleton className="h-12 w-12 rounded-2xl mb-6" />
+                  <Skeleton className="h-4 w-24 mb-3" />
+                  <Skeleton className="h-10 w-32 rounded-lg" />
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {[
-                { label: t('dashboard.total_calls'), value: totalCalls, icon: 'phone_in_talk' },
-                { label: t('dashboard.avg_quality'),  value: avgQuality,  icon: 'analytics' },
-                { label: t('dashboard.active_teams'), value: managers.length, sub: t('dashboard.managers'), icon: 'groups' },
-                { label: 'Sheet Calls', value: 'Active', sub: 'Google Sheets', icon: 'table_chart' },
-              ].map(m => (
-                <div key={m.label} className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow">
-                  <div className="mb-4">
-                    <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-primary inline-block">
-                      <span className="material-icons text-xl">{m.icon}</span>
+              ))
+            ) : (
+              kpis.map(m => (
+                <div key={m.label} className="group bg-white dark:bg-slate-800 p-8 rounded-[32px] border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-none transition-all duration-300 relative overflow-hidden">
+                  <div className={`absolute -right-4 -top-4 w-24 h-24 ${m.accent} opacity-[0.03] rounded-full group-hover:scale-150 transition-transform duration-500`} />
+
+                  <div className="mb-6">
+                    <div className={`p-3 ${m.bg} rounded-2xl ${m.text} inline-block group-hover:scale-110 transition-transform duration-300`}>
+                      <span className="material-icons text-2xl">{m.icon}</span>
                     </div>
                   </div>
-                  <h3 className="text-slate-500 dark:text-slate-400 text-sm font-medium">{m.label}</h3>
-                  <p className="text-3xl font-bold text-slate-800 dark:text-white mt-1">
-                    {m.value}{' '}
-                    {m.sub && <span className="text-base font-normal text-slate-500">{m.sub}</span>}
-                  </p>
+
+                  <h3 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">{m.label}</h3>
+                  <div className="flex items-baseline gap-2">
+                    <p className="text-4xl font-black text-slate-900 dark:text-white mt-1 tracking-tight">
+                      {m.value}
+                    </p>
+                    {m.sub && <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{m.sub}</span>}
+                  </div>
                 </div>
-              ))}
-            </div>
-          )}
+              ))
+            )}
+          </div>
 
           {/* ── Manager performance expandable list ────────────────────────── */}
-          <ManagerPerformanceList managers={managers} loading={perfLoading} />
+          <div className="space-y-4">
+             <div className="flex items-center gap-3 px-2">
+                <div className="w-1 h-6 bg-primary rounded-full" />
+                <h2 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-widest">{t('dashboard.manager_performance')}</h2>
+             </div>
+             <ManagerPerformanceList managers={managers} loading={perfLoading} />
+          </div>
 
-          <SheetCalls />
+          {/* ── Sheet Calls section ────────────────────────── */}
+          <div className="space-y-4 pt-4">
+             <div className="flex items-center gap-3 px-2">
+                <div className="w-1 h-6 bg-emerald-500 rounded-full" />
+                <h2 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-widest">Recent Calls & Analytics</h2>
+             </div>
+             <SheetCalls />
+          </div>
 
         </div>
       </div>
