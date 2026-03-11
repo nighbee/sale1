@@ -20,6 +20,9 @@ func (m *mockUserRepo) Create(ctx context.Context, u *domain.User) error { retur
 func (m *mockUserRepo) GetByID(ctx context.Context, companyID, id string) (*domain.User, error) {
 	return m.user, m.err
 }
+func (m *mockUserRepo) GetByIDGlobal(ctx context.Context, id string) (*domain.User, error) {
+	return m.user, m.err
+}
 func (m *mockUserRepo) GetByEmail(ctx context.Context, email string) (*domain.User, error) { return nil, nil }
 func (m *mockUserRepo) Update(ctx context.Context, u *domain.User) error                { return nil }
 func (m *mockUserRepo) Delete(ctx context.Context, companyID, id string) error         { return nil }
