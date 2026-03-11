@@ -1,73 +1,51 @@
-# React + TypeScript + Vite
+# SalesAI Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A modern React-based web application for SalesAI, providing dashboards, call analytics, and team management interfaces.
 
-Currently, two official plugins are available:
+## Technology Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Framework**: [React 18](https://reactjs.org/)
+- **Build Tool**: [Vite](https://vitejs.dev/)
+- **Language**: [TypeScript](https://www.typescriptlang.org/)
+- **Styling**: [Tailwind CSS](https://tailwindcss.com/)
+- **UI Components**: [Radix UI](https://www.radix-ui.com/) / [Lucide Icons](https://lucide.dev/)
+- **State Management**: [Zustand](https://docs.pmnd.rs/zustand/)
+- **Data Fetching**: Axios with custom hooks
 
-## React Compiler
+## Architecture: Feature-Sliced Design (FSD)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+The project follows the [Feature-Sliced Design](https://feature-sliced.design/) methodology to ensure scalability and explicit dependencies.
 
-## Expanding the ESLint configuration
+### Layers
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- **`app/`**: Application-wide initialization (providers, global styles, routing setup).
+- **`pages/`**: Full-page components composed of widgets and features.
+- **`widgets/`**: Complex UI blocks (e.g., `Leaderboard`, `CallAnalysis`, `SheetCalls`) that combine features and entities.
+- **`features/`**: User-facing actions with business value (e.g., `Auth`, `Integrations`, `TeamManagement`).
+- **`entities/`**: Business entities (e.g., `Call`, `User`, `Analytics`) and their internal logic (Zustand stores, API calls).
+- **`shared/`**: Reusable infrastructure (UI kit, API clients, utility functions, hooks).
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Key Widgets
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+1. **CallTranscript**: Synchronized transcript viewer with speaker highlights.
+2. **CallAnalysis**: Visualization of AI metrics, summaries, and next steps.
+3. **Leaderboard**: Team performance rankings with interactive filters.
+4. **SheetCalls**: Comprehensive list of calls with Google Sheets integration specific logic.
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Development
+
+```bash
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+
+# Build for production
+npm run build
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Environment Variables
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+- `VITE_API_URL`: The base URL for the Main API Service.
+- `VITE_WS_URL`: The WebSocket endpoint for real-time updates.

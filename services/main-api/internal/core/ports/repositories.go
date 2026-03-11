@@ -6,6 +6,7 @@ import (
 	"github.com/salesai/main-api/internal/core/domain"
 )
 
+// UserRepository defines the contract for user-related data operations.
 type UserRepository interface {
 	Create(ctx context.Context, user *domain.User) error
 	GetByID(ctx context.Context, companyID, id string) (*domain.User, error)
@@ -19,6 +20,7 @@ type UserRepository interface {
 	GetByManagerID(ctx context.Context, managerID string) (*domain.User, error)
 }
 
+// CompanyRepository defines the contract for company-related data operations.
 type CompanyRepository interface {
 	Create(ctx context.Context, company *domain.Company) error
 	GetByID(ctx context.Context, id string) (*domain.Company, error)
@@ -27,6 +29,7 @@ type CompanyRepository interface {
 	UpdateBillingInfo(ctx context.Context, billing *domain.BillingInfo) error
 }
 
+// CallRepository defines the contract for call recording metadata operations.
 type CallRepository interface {
 	Create(ctx context.Context, call *domain.Call) error
 	GetByID(ctx context.Context, id string) (*domain.Call, error)
@@ -35,17 +38,20 @@ type CallRepository interface {
 	UpdateStatus(ctx context.Context, id string, status domain.CallStatus) error
 }
 
+// TranscriptRepository defines the contract for call transcript storage.
 type TranscriptRepository interface {
 	GetByCallID(ctx context.Context, callID string) (*domain.Transcript, error)
 	Create(ctx context.Context, transcript *domain.Transcript) error
 }
 
+// AnalysisRepository defines the contract for AI analysis report operations.
 type AnalysisRepository interface {
 	GetByCallID(ctx context.Context, callID string) (*domain.AnalysisReport, error)
 	Create(ctx context.Context, report *domain.AnalysisReport) error
 	GetTeamPerformance(ctx context.Context, filters map[string]interface{}) ([]map[string]interface{}, error)
 }
 
+// ScriptRepository defines the contract for sales script operations.
 type ScriptRepository interface {
 	Create(ctx context.Context, script *domain.Script) error
 	GetByID(ctx context.Context, companyID, id string) (*domain.Script, error)
@@ -59,12 +65,14 @@ type ScriptRepository interface {
 	UpdateBaseScriptMetrics(ctx context.Context, scriptID string, metrics map[string]interface{}) error
 }
 
+// NotificationRepository defines the contract for user notification operations.
 type NotificationRepository interface {
 	ListByUser(ctx context.Context, userID string) ([]*domain.Notification, error)
 	MarkAsRead(ctx context.Context, userID, id string) error
 	Create(ctx context.Context, n *domain.Notification) error
 }
 
+// TeamRepository defines the contract for sales team/group operations.
 type TeamRepository interface {
 	Create(ctx context.Context, team *domain.Team) error
 	GetByID(ctx context.Context, companyID, id string) (*domain.Team, error)
@@ -74,6 +82,7 @@ type TeamRepository interface {
 	Delete(ctx context.Context, companyID, id string) error
 }
 
+// IntegrationRepository defines the contract for third-party integration settings.
 type IntegrationRepository interface {
 	Create(ctx context.Context, integration *domain.Integration) error
 	GetByType(ctx context.Context, companyID string, integrationType domain.IntegrationType) (*domain.Integration, error)
