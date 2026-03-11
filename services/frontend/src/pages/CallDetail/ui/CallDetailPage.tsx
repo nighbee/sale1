@@ -1,23 +1,16 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { callApi } from "../../../entities/call/api";
 import api from "../../../shared/api/base";
-import type {
-  Call,
-  CallTranscript,
-  CallAnalysis,
-} from "../../../entities/call/types";
 import { CallTranscript as CallTranscriptWidget } from "../../../widgets/CallTranscript";
 import { CallAnalysis as CallAnalysisWidget } from "../../../widgets/CallAnalysis";
+import { ReprocessButton } from "../../../features/reprocess-call/ui/ReprocessButton";
+import { useCall } from "../../../entities/call/model/hooks";
 
 const CallDetailPage: React.FC = () => {
   const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
-  const [call, setCall] = useState<Call | null>(null);
-  const [transcript, setTranscript] = useState<CallTranscript | null>(null);
-  const [analysis, setAnalysis] = useState<CallAnalysis | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { call, transcript, analysis, loading } = useCall(id);
 
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -142,123 +135,101 @@ const CallDetailPage: React.FC = () => {
   };
 
   useEffect(() => {
-    const fetchData = async () => {
-      if (!id) return;
+    if (!call) return;
+    const callData = call;
+    // Determine audio source: prefer audio_url, otherwise fetch via API (/calls/:id/audio)
+    (async () => {
       try {
-        const [callRes, transRes, analRes] = await Promise.all([
-          callApi.getCall(id),
-          callApi.getTranscript(id),
-          callApi.getAnalysis(id),
-        ]);
-        // backend GetCall returns { call: {...}, transcript: {...}, analysis: {...} }
-        // but some endpoints may return the call object directly. Normalize here.
-        const rawCall = callRes.data as any;
-        const callData: Call = rawCall.call
-          ? rawCall.call
-          : (callRes.data as Call);
-        setCall(callData);
-        // Determine audio source: prefer audio_url, otherwise fetch via API (/calls/:id/audio)
-        (async () => {
+        if (callData.audio_url) {
+          setAudioSrc(callData.audio_url);
+          const wf = await generateWaveformFromUrl(callData.audio_url);
+          waveformData.current = wf;
+        } else {
+          // The backend may return either a JSON { presigned_url } (when presign is enabled)
+          // or stream binary audio. Try to detect presigned URL first; if that fails,
+          // fallback to fetching the audio blob.
           try {
-            if (callData.audio_url) {
-              setAudioSrc(callData.audio_url);
-              const wf = await generateWaveformFromUrl(callData.audio_url);
+            const presignResp = await api.get(
+              `/calls/${callData.id}/audio`,
+            );
+            const presignData = presignResp?.data as
+              | Record<string, unknown>
+              | undefined;
+            if (
+              presignData &&
+              typeof presignData.presigned_url === "string"
+            ) {
+              const presigned = presignData.presigned_url as string;
+              setAudioSrc(presigned);
+              const wf = await generateWaveformFromUrl(presigned);
               waveformData.current = wf;
             } else {
-              // The backend may return either a JSON { presigned_url } (when presign is enabled)
-              // or stream binary audio. Try to detect presigned URL first; if that fails,
-              // fallback to fetching the audio blob.
-              try {
-                const presignResp = await api.get(
-                  `/calls/${callData.id}/audio`,
-                );
-                const presignData = presignResp?.data as
-                  | Record<string, unknown>
-                  | undefined;
-                if (
-                  presignData &&
-                  typeof presignData.presigned_url === "string"
-                ) {
-                  const presigned = presignData.presigned_url as string;
-                  setAudioSrc(presigned);
-                  const wf = await generateWaveformFromUrl(presigned);
-                  waveformData.current = wf;
-                } else {
-                  // Not JSON with presigned_url; request blob explicitly
-                  const resp = await api.get<Blob>(
-                    `/calls/${callData.id}/audio`,
-                    {
-                      responseType: "blob" as const,
-                    },
-                  );
-                  const blob = resp.data as unknown as Blob;
-                  const url = URL.createObjectURL(blob);
-                  // revoke previous blob URL if any
-                  if (blobUrlRef.current) {
-                    try {
-                      URL.revokeObjectURL(blobUrlRef.current);
-                    } catch (e) {
-                      console.warn("failed to revoke previous blob url", e);
-                    }
-                  }
-                  blobUrlRef.current = url;
-                  setAudioSrc(url);
-                  const wf = await generateWaveformFromUrl(url);
-                  waveformData.current = wf;
-                }
-              } catch (e) {
-                // If the first request failed (e.g. because response wasn't JSON), try blob
-                console.debug("presign check failed", e);
+              // Not JSON with presigned_url; request blob explicitly
+              const resp = await api.get<Blob>(
+                `/calls/${callData.id}/audio`,
+                {
+                  responseType: "blob" as const,
+                },
+              );
+              const blob = resp.data as unknown as Blob;
+              const url = URL.createObjectURL(blob);
+              // revoke previous blob URL if any
+              if (blobUrlRef.current) {
                 try {
-                  const resp = await api.get<Blob>(
-                    `/calls/${callData.id}/audio`,
-                    {
-                      responseType: "blob" as const,
-                    },
-                  );
-                  const blob = resp.data as unknown as Blob;
-                  const url = URL.createObjectURL(blob);
-                  if (blobUrlRef.current) {
-                    try {
-                      URL.revokeObjectURL(blobUrlRef.current);
-                    } catch (e) {
-                      console.warn("failed to revoke previous blob url", e);
-                    }
-                  }
-                  blobUrlRef.current = url;
-                  setAudioSrc(url);
-                  const wf = await generateWaveformFromUrl(url);
-                  waveformData.current = wf;
-                } catch (err2) {
-                  console.warn(
-                    "failed to fetch audio for waveform, falling back",
-                    err2,
-                  );
-                  waveformData.current = generateWaveform(callData.id);
-                  setAudioSrc(null);
+                  URL.revokeObjectURL(blobUrlRef.current);
+                } catch (e) {
+                  console.warn("failed to revoke previous blob url", e);
                 }
               }
+              blobUrlRef.current = url;
+              setAudioSrc(url);
+              const wf = await generateWaveformFromUrl(url);
+              waveformData.current = wf;
             }
-          } catch (err) {
-            console.warn(
-              "failed to fetch audio for waveform, falling back",
-              err,
-            );
-            waveformData.current = generateWaveform(callData.id);
-            setAudioSrc(null);
+          } catch (e) {
+            // If the first request failed (e.g. because response wasn't JSON), try blob
+            console.debug("presign check failed", e);
+            try {
+              const resp = await api.get<Blob>(
+                `/calls/${callData.id}/audio`,
+                {
+                  responseType: "blob" as const,
+                },
+              );
+              const blob = resp.data as unknown as Blob;
+              const url = URL.createObjectURL(blob);
+              if (blobUrlRef.current) {
+                try {
+                  URL.revokeObjectURL(blobUrlRef.current);
+                } catch (e) {
+                  console.warn("failed to revoke previous blob url", e);
+                }
+              }
+              blobUrlRef.current = url;
+              setAudioSrc(url);
+              const wf = await generateWaveformFromUrl(url);
+              waveformData.current = wf;
+            } catch (err2) {
+              console.warn(
+                "failed to fetch audio for waveform, falling back",
+                err2,
+              );
+              waveformData.current = generateWaveform(callData.id);
+              setAudioSrc(null);
+            }
           }
-        })();
-        setTranscript(transRes.data as CallTranscript);
-        setAnalysis(analRes.data as CallAnalysis);
-      } catch {
-        console.error("Failed to fetch call data");
-      } finally {
-        setLoading(false);
+        }
+      } catch (err) {
+        console.warn(
+          "failed to fetch audio for waveform, falling back",
+          err,
+        );
+        waveformData.current = generateWaveform(callData.id);
+        setAudioSrc(null);
       }
-    };
-    fetchData();
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  }, [call]);
 
   // Cleanup blob URL on unmount
   useEffect(() => {
@@ -333,12 +304,15 @@ const CallDetailPage: React.FC = () => {
           <span className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border border-green-200 dark:border-green-800 uppercase shrink-0">
             {call.status}
           </span>
-          <button
-            onClick={() => setShowAnalysis(!showAnalysis)}
-            className="lg:hidden ml-auto p-2 text-primary hover:bg-primary/10 rounded-lg"
-          >
-            <span className="material-icons">analytics</span>
-          </button>
+          <div className="ml-auto flex items-center gap-2">
+            <ReprocessButton callId={id!} />
+            <button
+              onClick={() => setShowAnalysis(!showAnalysis)}
+              className="lg:hidden p-2 text-primary hover:bg-primary/10 rounded-lg"
+            >
+              <span className="material-icons">analytics</span>
+            </button>
+          </div>
         </div>
       </header>
 

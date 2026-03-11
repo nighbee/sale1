@@ -2,65 +2,58 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { PageLayout } from '../../../widgets/PageLayout';
-import { companyApi } from '../../../entities/company/api';
 import { integrationApi } from '../../../entities/integration/api';
-import type { Company, Billing } from '../../../entities/company/types';
 import type { Integration } from '../../../entities/integration/types';
+import { useCompany, useBilling } from '../../../entities/company/model/hooks';
 import Button from '../../../shared/ui/Button';
 import Input from '../../../shared/ui/Input';
+import { BillingInfo } from '../../../widgets/BillingInfo/ui/BillingInfo';
 
 const CompanySettingsPage: React.FC = () => {
   const { t } = useTranslation();
   type TabId = 'general' | 'ai' | 'integrations' | 'billing';
   const [activeTab, setActiveTab] = useState<TabId>('general');
-  const [company, setCompany] = useState<Company | null>(null);
-  const [billing, setBilling] = useState<Billing | null>(null);
+
+  const companyId = localStorage.getItem('company_id') || '';
+  const { company, loading: companyLoading, updateSettings, setCompany } = useCompany(companyId) as any;
+  const { billing, loading: billingLoading, updateBilling, setBilling } = useBilling(companyId) as any;
+
   const [integrations, setIntegrations] = useState<Integration[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [integrationsLoading, setIntegrationsLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetchData();
+    const fetchIntegrations = async () => {
+      try {
+        const res = await integrationApi.list();
+        setIntegrations(res.data.integrations || []);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setIntegrationsLoading(false);
+      }
+    };
+    fetchIntegrations();
   }, []);
-
-  const fetchData = async () => {
-    const companyId = localStorage.getItem('company_id');
-    if (!companyId) return;
-    setLoading(true);
-    try {
-      const [compRes, billRes, intRes] = await Promise.all([
-        companyApi.getCompany(companyId),
-        companyApi.getBilling(companyId),
-        integrationApi.list(),
-      ]);
-      setCompany(compRes.data);
-      setBilling(billRes.data);
-      setIntegrations(intRes.data.integrations || []);
-    } catch (err) {
-      console.error('Failed to fetch company data', err);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleSaveAll = async () => {
     if (!company) return;
     setSaving(true);
-    const companyId = localStorage.getItem('company_id');
     try {
-        if (company && billing) {
-          await Promise.all([
-              companyApi.updateSettings(companyId!, company),
-              companyApi.updateBilling(companyId!, billing),
-          ]);
-          toast.success(t('settings.update_success'));
+        const promises = [updateSettings(company)];
+        if (billing) {
+            promises.push(updateBilling(billing));
         }
+        await Promise.all(promises);
+        toast.success(t('settings.update_success'));
     } catch {
         toast.error(t('settings.update_failed'));
     } finally {
         setSaving(false);
     }
   };
+
+  const loading = companyLoading || billingLoading || integrationsLoading;
 
   if (loading) return (
     <PageLayout title={t('settings.title')}>
@@ -242,6 +235,7 @@ const CompanySettingsPage: React.FC = () => {
 
             {activeTab === 'billing' && billing && (
                 <section className="space-y-8">
+                    <BillingInfo companyId={companyId} />
                     <div className="bg-gradient-to-br from-primary to-blue-700 p-8 rounded-2xl text-white shadow-xl shadow-primary/20">
                         <div className="flex justify-between items-start mb-12">
                             <span className="text-lg font-bold italic tracking-widest uppercase">{billing.card_type || 'VISA'}</span>

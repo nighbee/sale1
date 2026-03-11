@@ -2,6 +2,7 @@ import { api } from '../../shared/api/base';
 import type { Team } from './types';
 
 export const teamApi = {
+  ensure: (data: unknown) => api.post<Team>('/teams/ensure', data),
   create: (data: unknown) => api.post<Team>('/teams', data),
   list: () => api.get<{ teams: Team[] }>('/teams'),
   get: (id: string) => api.get<Team>(`/teams/${id}`),
