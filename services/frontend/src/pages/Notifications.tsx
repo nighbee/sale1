@@ -1,53 +1,34 @@
-import React, { useEffect, useState } from "react";
-import { notificationApi } from "../entities/notification/api";
-import type { Notification } from "../entities/notification/types";
+import React from "react";
+import { useNotifications } from "../entities/notification/model/hooks";
 import { PageLayout } from "../widgets/PageLayout";
+import { useTranslation } from "react-i18next";
 
 const Notifications: React.FC = () => {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const fetchNotifications = async () => {
-    setLoading(true);
-    try {
-      const res = await notificationApi.list();
-      setNotifications(res.data.notifications || []);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchNotifications();
-  }, []);
-
-  const handleMarkRead = async (id: string) => {
-    await notificationApi.markRead(id);
-    fetchNotifications();
-  };
+  const { t } = useTranslation();
+  const { notifications, loading, markAsRead } = useNotifications();
 
   return (
-    <PageLayout title="Notifications">
+    <PageLayout title={t("notifications.title")}>
       <div className="p-4 md:p-8 max-w-4xl mx-auto">
         {loading ? (
-          <div>Loading...</div>
+          <div>{t("common.loading")}</div>
         ) : notifications.length === 0 ? (
-          <div>No notifications.</div>
+          <div>{t("notifications.no_notifications")}</div>
         ) : (
           <ul className="space-y-4">
             {notifications.map((n) => (
               <li
                 key={n.id}
-                className={`p-4 rounded border ${n.read ? "bg-gray-100" : "bg-white"}`}
+                className={`p-4 rounded border ${n.read ? "bg-slate-50" : "bg-white"}`}
               >
                 <div className="flex justify-between items-center">
                   <span>{n.message}</span>
                   {!n.read && (
                     <button
-                      className="text-primary"
-                      onClick={() => handleMarkRead(n.id)}
+                      className="text-primary font-medium text-sm"
+                      onClick={() => markAsRead(n.id)}
                     >
-                      Mark as read
+                      {t("notifications.mark_as_read")}
                     </button>
                   )}
                 </div>

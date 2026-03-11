@@ -1,38 +1,29 @@
-import React, { useEffect, useState } from "react";
-import { scriptApi } from "../entities/script/api";
-import type { Script } from "../entities/script/types";
+import React from "react";
+import { useScripts } from "../entities/script/model/hooks";
 import { Link } from "react-router-dom";
+import { BaseScripts } from "../widgets/BaseScripts/ui/BaseScripts";
+import { useTranslation } from "react-i18next";
 
 const ScriptsList: React.FC = () => {
-  const [scripts, setScripts] = useState<Script[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { t } = useTranslation();
+  const { scripts, loading, deleteScript } = useScripts();
 
-  const fetchScripts = async () => {
-    setLoading(true);
-    try {
-      const res = await scriptApi.list();
-      setScripts(res.data.scripts || []);
-    } finally {
-      setLoading(false);
+  const handleDelete = async (id: string) => {
+    if (window.confirm(t("common.delete_confirm"))) {
+      await deleteScript(id);
     }
   };
 
-  useEffect(() => {
-    fetchScripts();
-  }, []);
-
-  const handleDelete = async (id: string) => {
-    await scriptApi.delete(id);
-    fetchScripts();
-  };
-
   return (
-    <div className="p-8">
-      <h2 className="text-2xl font-bold mb-4">Scripts</h2>
+    <div className="p-8 space-y-8">
+      <h2 className="text-2xl font-bold mb-4">{t("scripts.title")}</h2>
+
+      <BaseScripts />
+
       {loading ? (
-        <div>Loading...</div>
+        <div>{t("common.loading")}</div>
       ) : scripts.length === 0 ? (
-        <div>No scripts found.</div>
+        <div>{t("common.not_found")}</div>
       ) : (
         <table className="min-w-full">
           <thead>

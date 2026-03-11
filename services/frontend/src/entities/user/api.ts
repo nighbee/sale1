@@ -4,6 +4,7 @@ import type { Call } from '../call/types';
 
 export const userApi = {
   login: (data: Record<string, unknown>) => api.post<AuthResponse>('/auth/login', data),
+  refresh: () => api.post<AuthResponse>('/auth/refresh'),
   register: (data: Record<string, unknown>) => api.post<AuthResponse>('/auth/register', data),
   invite: (data: Record<string, unknown>) => api.post('/users/invite', data),
   listUsers: () => api.get<{ users: User[] }>('/users'),

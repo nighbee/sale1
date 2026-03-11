@@ -18,7 +18,8 @@
     "not_found": "Not found.",
     "name": "Name",
     "email": "Email",
-    "role": "Role"
+    "role": "Role",
+    "delete_confirm": "Are you sure you want to delete this item?"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -138,6 +139,27 @@
     "team_setup": "Team Setup",
     "customization": "Customization",
     "upload_and_continue": "Upload & Continue"
+  },
+  "scripts": {
+    "title": "Sales Scripts",
+    "base_scripts": "Base Scripts",
+    "activate": "Activate as Base",
+    "metrics": "View Metrics",
+    "download": "Download Script",
+    "reprocess": "Reprocess Call",
+    "reprocess_success": "Call reprocessing started",
+    "reprocess_failed": "Failed to start reprocessing"
+  },
+  "billing": {
+    "title": "Subscription & Billing",
+    "current_plan": "Current Plan",
+    "usage": "Token Usage",
+    "update": "Update Billing"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "mark_as_read": "Mark as read",
+    "no_notifications": "No notifications yet"
   },
   "dashboard": {
     "title": "Overall Dashboard",

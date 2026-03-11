@@ -3,5 +3,5 @@ import type { Notification } from './types';
 
 export const notificationApi = {
   list: () => api.get<{ notifications: Notification[] }>('/notifications'),
-  markRead: (id: string) => api.post(`/notifications/${id}/read`),
+  markRead: (id: string) => api.put(`/notifications/${id}/read`),
 };
