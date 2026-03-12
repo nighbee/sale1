@@ -19,7 +19,8 @@
     "name": "Name",
     "email": "Email",
     "role": "Role",
-    "delete_confirm": "Are you sure you want to delete this item?"
+    "delete_confirm": "Are you sure you want to delete this item?",
+    "not_available": "N/A"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -180,6 +181,9 @@
     "pending_analysis": "Pending Analysis",
     "pending": "Pending",
     "processing": "Processing",
+    "completed": "Completed",
+    "error": "Error",
+    "avg_errors_free": "Avg Errors Free",
     "manager_performance": "Manager Performance",
     "view_full_report": "View Full Report",
     "manager": "Manager",
@@ -213,6 +217,10 @@
     "representative": "Sales Representative",
     "id": "Call ID",
     "datetime": "Date/Time",
+    "sources": {
+      "sipuni": "Sipuni Calls",
+      "sheets": "Google Sheets"
+    },
     "score": "Score",
     "status": "Status",
     "view": "View",
@@ -237,6 +245,9 @@
     "search_placeholder": "Search manager...",
     "managers_count": "managers",
     "sort_by": "Sort by",
+    "charts": {
+      "avg_scores_top": "Average scores — top {{count}}"
+    },
     "no_data": "No data yet. Calls need to be fully analyzed to appear here.",
     "no_results": "No managers match your search criteria.",
     "periods": {
@@ -355,6 +366,47 @@
     "auto_assign_off": "Auto-assign OFF",
     "delete_failed": "Failed to delete team",
     "fetch_details_failed": "Failed to fetch team details"
+  },
+  "sheet_calls": {
+    "title": "Google Sheets Calls",
+    "subtitle": "{{count}} calls · AI pipeline",
+    "sync_now": "Sync Now",
+    "syncing": "Syncing...",
+    "sync_success": "Sync triggered — results will appear shortly",
+    "sync_failed": "Failed to trigger sync",
+    "fetch_failed": "Failed to fetch sheet calls",
+    "no_calls": "No calls found.",
+    "no_calls_hint": "Click Sync Now to import from Google Sheets.",
+    "no_calls_filter_hint": "Try adjusting filters.",
+    "clear_filters": "Clear filters",
+    "filters": {
+      "status": "Status",
+      "manager": "Manager",
+      "client_phone": "Client phone",
+      "date_from": "Date from",
+      "date_to": "Date to",
+      "all_managers": "All managers",
+      "search_phone": "Search phone..."
+    },
+    "charts": {
+      "trends": "Score trends over time",
+      "manager_avg": "Average scores per manager"
+    },
+    "table": {
+      "date": "Date",
+      "manager": "Manager",
+      "client": "Client",
+      "duration": "Duration",
+      "status": "Status",
+      "quality": "Quality",
+      "script": "Script",
+      "errors_free": "Errors Free"
+    },
+    "modal": {
+      "view_full": "View Full Call",
+      "no_analysis": "Analysis not yet available — call is {{status}}",
+      "no_text_analysis": "No textual analysis fields available for this call."
+    }
   },
   "landing": {
     "nav": {

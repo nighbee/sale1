@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import {
   BarChart,
   Bar,
@@ -22,6 +23,7 @@ const CHART_COLORS = {
 };
 
 export const ComparisonChart: React.FC<ComparisonChartProps> = ({ data }) => {
+  const { t } = useTranslation();
   const chartData = React.useMemo(
     () =>
       data.slice(0, 10).map((m) => ({
@@ -41,7 +43,7 @@ export const ComparisonChart: React.FC<ComparisonChartProps> = ({ data }) => {
   return (
     <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
       <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-4">
-        Average scores — top {chartData.length}
+        {t('leaderboard.charts.avg_scores_top', { count: chartData.length })}
       </h3>
       <ResponsiveContainer width="100%" height={220}>
         <BarChart

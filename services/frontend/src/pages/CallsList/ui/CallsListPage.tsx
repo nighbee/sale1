@@ -98,7 +98,7 @@ const CallsListPage: React.FC = () => {
                 : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
             }`}
           >
-            📞 Sipuni Calls
+            📞 {t('calls.sources.sipuni')}
           </button>
           <button
             onClick={() => setSource("google_sheets")}
@@ -108,7 +108,7 @@ const CallsListPage: React.FC = () => {
                 : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
             }`}
           >
-            📊 Google Sheets
+            📊 {t('calls.sources.sheets')}
           </button>
         </div>
 
@@ -129,9 +129,6 @@ const CallsListPage: React.FC = () => {
             <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
               <thead className="bg-slate-50 dark:bg-slate-800/50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">
-                    {t("calls.id")}
-                  </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">
                     {t("calls.datetime")}
                   </th>
@@ -176,19 +173,15 @@ const CallsListPage: React.FC = () => {
                         key={call.id}
                         className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group"
                       >
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <Link
-                            to={`/calls/${call.id}`}
-                            className="text-sm font-mono text-primary hover:underline"
-                          >
-                            #{call.id.slice(0, 8)}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                          <Link to={`/calls/${call.id}`} className="hover:text-primary transition-colors">
+                            {new Date(call.call_date).toLocaleDateString()}
                           </Link>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                          {new Date(call.call_date).toLocaleDateString()}
-                        </td>
                         <td className="px-6 py-4 whitespace-nowrap font-medium text-sm">
-                          {call.manager_name}
+                          <Link to={`/calls/${call.id}`} className="hover:text-primary transition-colors">
+                            {call.manager_name}
+                          </Link>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">

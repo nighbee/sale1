@@ -128,7 +128,7 @@ export const ExpandableManagerRow: React.FC<ExpandableManagerRowProps> = ({
 
               <div className="bg-slate-50 dark:bg-slate-700/30 p-3 rounded-lg">
                 <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">
-                  Avg Errors Free
+                  {t('dashboard.avg_errors_free')}
                 </p>
                 <p className="text-lg font-bold text-slate-700 dark:text-slate-200">
                   {(manager.avg_errors_free || 0).toFixed(2)}%
@@ -149,15 +149,15 @@ export const ExpandableManagerRow: React.FC<ExpandableManagerRowProps> = ({
             <div className="mt-4 grid grid-cols-3 gap-2">
               <div className="flex items-center gap-2 text-xs">
                 <span className="w-3 h-3 rounded-full bg-green-500" />
-                <span className="text-slate-600 dark:text-slate-400">Completed</span>
+                <span className="text-slate-600 dark:text-slate-400">{t('dashboard.completed')}</span>
               </div>
               <div className="flex items-center gap-2 text-xs">
                 <span className="w-3 h-3 rounded-full bg-yellow-500" />
-                <span className="text-slate-600 dark:text-slate-400">Processing</span>
+                <span className="text-slate-600 dark:text-slate-400">{t('dashboard.processing')}</span>
               </div>
               <div className="flex items-center gap-2 text-xs">
                 <span className="w-3 h-3 rounded-full bg-blue-500" />
-                <span className="text-slate-600 dark:text-slate-400">Pending</span>
+                <span className="text-slate-600 dark:text-slate-400">{t('dashboard.pending')}</span>
               </div>
             </div>
           </div>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
@@ -35,6 +36,7 @@ const PAGE_SIZE = 10;
 const CHART_COLORS = { quality: '#6366f1', script: '#10b981', errors: '#f59e0b' };
 
 export const SheetCalls: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   // Sheet calls — load full filtered set (up to 500) for charts + client-side pagination
@@ -70,7 +72,7 @@ export const SheetCalls: React.FC = () => {
       const res = await callApi.listCalls(params);
       setAllSheetCalls((res.data.calls || []) as Call[]);
     } catch {
-      console.error('Failed to fetch sheet calls');
+      console.error(t('sheet_calls.fetch_failed'));
     } finally {
       setSheetLoading(false);
     }
@@ -85,10 +87,10 @@ export const SheetCalls: React.FC = () => {
     setSyncing(true);
     try {
       await integrationApi.triggerSheetSync();
-      toast.success('Sync triggered — results will appear shortly');
+      toast.success(t('sheet_calls.sync_success'));
       setTimeout(fetchSheetCalls, 3000);
     } catch {
-      toast.error('Failed to trigger sync');
+      toast.error(t('sheet_calls.sync_failed'));
     } finally {
       setSyncing(false);
     }
@@ -163,14 +165,14 @@ export const SheetCalls: React.FC = () => {
   // Export functions
   const buildExportRows = (calls: Call[]) => {
     return calls.map(c => ({
-      Date: c.call_date ? new Date(c.call_date).toLocaleDateString() : '',
-      Manager: c.manager_name || '',
-      Client: c.client_phone || '',
-      Duration: c.duration ? `${Math.floor(c.duration / 60)}m ${c.duration % 60}s` : '',
-      Status: c.status,
-      Quality: c.quality_score ?? '',
-      'Script Match': c.script_match ?? '',
-      'Errors Free': c.errors_free ?? '',
+      [t('sheet_calls.table.date')]: c.call_date ? new Date(c.call_date).toLocaleDateString() : '',
+      [t('sheet_calls.table.manager')]: c.manager_name || '',
+      [t('sheet_calls.table.client')]: c.client_phone || '',
+      [t('sheet_calls.table.duration')]: c.duration ? `${Math.floor(c.duration / 60)}m ${c.duration % 60}s` : '',
+      [t('sheet_calls.table.status')]: c.status,
+      [t('sheet_calls.table.quality')]: c.quality_score ?? '',
+      [t('sheet_calls.table.script')]: c.script_match ?? '',
+      [t('sheet_calls.table.errors_free')]: c.errors_free ?? '',
     }));
   };
 
@@ -208,8 +210,8 @@ export const SheetCalls: React.FC = () => {
           <div className="flex items-center gap-3">
             <span className="material-icons text-emerald-500 text-2xl">table_chart</span>
             <div>
-              <h2 className="text-lg font-bold text-slate-800 dark:text-white">Google Sheets Calls</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">{allSheetCalls.length} calls · AI pipeline</p>
+              <h2 className="text-lg font-bold text-slate-800 dark:text-white">{t('sheet_calls.title')}</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{t('sheet_calls.subtitle', { count: allSheetCalls.length })}</p>
             </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
@@ -235,7 +237,7 @@ export const SheetCalls: React.FC = () => {
               <span className={`material-icons text-base ${syncing ? 'animate-spin' : ''}`}>
                 {syncing ? 'sync' : 'cloud_sync'}
               </span>
-              {syncing ? 'Syncing…' : 'Sync Now'}
+              {syncing ? t('sheet_calls.syncing') : t('sheet_calls.sync_now')}
             </button>
           </div>
         </div>
@@ -243,7 +245,7 @@ export const SheetCalls: React.FC = () => {
         {/* Filter bar */}
         <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex flex-wrap gap-3 items-end">
           <div className="flex flex-col gap-1">
-            <label className="text-xs text-slate-500 dark:text-slate-400 font-medium">Status</label>
+            <label className="text-xs text-slate-500 dark:text-slate-400 font-medium">{t('sheet_calls.filters.status')}</label>
             <div className="flex gap-1 flex-wrap">
               {['', 'completed', 'error', 'processing', 'pending'].map(s => (
                 <button
@@ -255,21 +257,21 @@ export const SheetCalls: React.FC = () => {
                       : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:border-blue-400'
                   }`}
                 >
-                  {s || 'All'}
+                  {s ? t(`dashboard.${s}`) : t('leaderboard.sources.all')}
                 </button>
               ))}
             </div>
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs text-slate-500 dark:text-slate-400 font-medium">Manager</label>
+            <label className="text-xs text-slate-500 dark:text-slate-400 font-medium">{t('sheet_calls.filters.manager')}</label>
             <select
               value={managerFilter}
-              title="Filter by manager"
+              title={t('sheet_calls.filters.manager')}
               onChange={e => { setManagerFilter(e.target.value); setTablePage(1); }}
               className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="">All managers</option>
+              <option value="">{t('sheet_calls.filters.all_managers')}</option>
               {uniqueManagers.map(name => (
                 <option key={name} value={name}>{name}</option>
               ))}
@@ -277,33 +279,33 @@ export const SheetCalls: React.FC = () => {
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs text-slate-500 dark:text-slate-400 font-medium">Client phone</label>
+            <label className="text-xs text-slate-500 dark:text-slate-400 font-medium">{t('sheet_calls.filters.client_phone')}</label>
             <input
               type="text"
               value={clientFilter}
               onChange={e => { setClientFilter(e.target.value); setTablePage(1); }}
-              placeholder="Search phone…"
+              placeholder={t('sheet_calls.filters.search_phone')}
               className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 w-40"
             />
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs text-slate-500 dark:text-slate-400 font-medium">Date from</label>
+            <label className="text-xs text-slate-500 dark:text-slate-400 font-medium">{t('sheet_calls.filters.date_from')}</label>
             <input
               type="date"
               value={dateFrom}
-              title="Start date"
+              title={t('sheet_calls.filters.date_from')}
               onChange={e => { setDateFrom(e.target.value); setTablePage(1); }}
               className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs text-slate-500 dark:text-slate-400 font-medium">Date to</label>
+            <label className="text-xs text-slate-500 dark:text-slate-400 font-medium">{t('sheet_calls.filters.date_to')}</label>
             <input
               type="date"
               value={dateTo}
-              title="End date"
+              title={t('sheet_calls.filters.date_to')}
               onChange={e => { setDateTo(e.target.value); setTablePage(1); }}
               className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
@@ -317,7 +319,7 @@ export const SheetCalls: React.FC = () => {
               }}
               className="self-end flex items-center gap-1 px-3 py-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-red-500 transition-colors"
             >
-              <span className="material-icons text-sm">close</span>Clear filters
+              <span className="material-icons text-sm">close</span>{t('sheet_calls.clear_filters')}
             </button>
           )}
         </div>
@@ -327,7 +329,7 @@ export const SheetCalls: React.FC = () => {
           <div className="px-6 py-6 border-b border-slate-100 dark:border-slate-700 grid grid-cols-1 xl:grid-cols-2 gap-6">
             {qualityOverTime.length > 0 && (
               <div>
-                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-4">Score trends over time</h3>
+                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-4">{t('sheet_calls.charts.trends')}</h3>
                 <ResponsiveContainer width="100%" height={220}>
                   <LineChart data={qualityOverTime} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -345,7 +347,7 @@ export const SheetCalls: React.FC = () => {
 
             {perManagerAvg.length > 0 && (
               <div>
-                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-4">Average scores per manager</h3>
+                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-4">{t('sheet_calls.charts.manager_avg')}</h3>
                 <ResponsiveContainer width="100%" height={220}>
                   <BarChart data={perManagerAvg} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -368,14 +370,14 @@ export const SheetCalls: React.FC = () => {
           <table className="w-full text-sm text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-800/50 text-xs uppercase text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
-                <th className="px-6 py-3 font-semibold">Date</th>
-                <th className="px-6 py-3 font-semibold">Manager</th>
-                <th className="px-6 py-3 font-semibold">Client</th>
-                <th className="px-6 py-3 font-semibold">Duration</th>
-                <th className="px-6 py-3 font-semibold">Status</th>
-                <th className="px-6 py-3 font-semibold">Quality</th>
-                <th className="px-6 py-3 font-semibold">Script</th>
-                <th className="px-6 py-3 font-semibold">Errors Free</th>
+                <th className="px-6 py-3 font-semibold">{t('sheet_calls.table.date')}</th>
+                <th className="px-6 py-3 font-semibold">{t('sheet_calls.table.manager')}</th>
+                <th className="px-6 py-3 font-semibold">{t('sheet_calls.table.client')}</th>
+                <th className="px-6 py-3 font-semibold">{t('sheet_calls.table.duration')}</th>
+                <th className="px-6 py-3 font-semibold">{t('sheet_calls.table.status')}</th>
+                <th className="px-6 py-3 font-semibold">{t('sheet_calls.table.quality')}</th>
+                <th className="px-6 py-3 font-semibold">{t('sheet_calls.table.script')}</th>
+                <th className="px-6 py-3 font-semibold">{t('sheet_calls.table.errors_free')}</th>
                 <th className="px-6 py-3" />
               </tr>
             </thead>
@@ -393,7 +395,7 @@ export const SheetCalls: React.FC = () => {
                     <tr>
                       <td colSpan={9} className="px-6 py-10 text-center text-slate-500 dark:text-slate-400">
                         <span className="material-icons text-3xl block mb-2 opacity-30">cloud_off</span>
-                        No calls found. {hasActiveFilters ? 'Try adjusting filters.' : 'Click Sync Now to import from Google Sheets.'}
+                        {t('sheet_calls.no_calls')} {hasActiveFilters ? t('sheet_calls.no_calls_filter_hint') : t('sheet_calls.no_calls_hint')}
                       </td>
                     </tr>
                   )
@@ -523,9 +525,9 @@ export const SheetCalls: React.FC = () => {
               {/* Score cards */}
               <div className="grid grid-cols-3 gap-3">
                 {[
-                  { label: 'Quality', value: selectedCall.quality_score, color: 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600' },
-                  { label: 'Script Match', value: selectedCall.script_match, color: 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600' },
-                  { label: 'Errors Free', value: selectedCall.errors_free, color: 'bg-amber-50 dark:bg-amber-900/20 text-amber-600' },
+                  { label: t('sheet_calls.table.quality'), value: selectedCall.quality_score, color: 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600' },
+                  { label: t('sheet_calls.table.script'), value: selectedCall.script_match, color: 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600' },
+                  { label: t('sheet_calls.table.errors_free'), value: selectedCall.errors_free, color: 'bg-amber-50 dark:bg-amber-900/20 text-amber-600' },
                 ].map(s => (
                   <div key={s.label} className={`rounded-xl p-4 ${s.color} text-center`}>
                     <p className="text-xs font-medium opacity-70 mb-1">{s.label}</p>
@@ -538,7 +540,7 @@ export const SheetCalls: React.FC = () => {
               {selectedCall.status !== 'completed' && (
                 <div className="text-center py-6 text-slate-400 dark:text-slate-500">
                   <span className="material-icons text-3xl block mb-2">hourglass_empty</span>
-                  <p className="text-sm">Analysis not yet available — call is <strong>{selectedCall.status}</strong></p>
+                  <p className="text-sm">{t('sheet_calls.modal.no_analysis', { status: selectedCall.status })}</p>
                 </div>
               )}
 
@@ -557,7 +559,7 @@ export const SheetCalls: React.FC = () => {
                     <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
                       <div className="flex items-center gap-2 px-4 py-2.5 bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700">
                         <span className="material-icons text-base text-slate-500">summarize</span>
-                        <h3 className="text-xs font-bold uppercase tracking-wide text-slate-600 dark:text-slate-300">Call Brief</h3>
+                        <h3 className="text-xs font-bold uppercase tracking-wide text-slate-600 dark:text-slate-300">{t('calls.brief')}</h3>
                       </div>
                       <p className="px-4 py-3 text-sm text-slate-700 dark:text-slate-200 leading-relaxed">{modalAnalysis.brief}</p>
                     </div>
@@ -568,7 +570,7 @@ export const SheetCalls: React.FC = () => {
                     <div className="rounded-xl border border-blue-100 dark:border-blue-900/40 overflow-hidden">
                       <div className="flex items-center gap-2 px-4 py-2.5 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-900/40">
                         <span className="material-icons text-base text-blue-500">tips_and_updates</span>
-                        <h3 className="text-xs font-bold uppercase tracking-wide text-blue-700 dark:text-blue-400">Coaching Recommendation</h3>
+                        <h3 className="text-xs font-bold uppercase tracking-wide text-blue-700 dark:text-blue-400">{t('calls.recommendation')}</h3>
                       </div>
                       <p className="px-4 py-3 text-sm text-slate-700 dark:text-slate-200 leading-relaxed">{modalAnalysis.recommendation}</p>
                     </div>
@@ -579,14 +581,14 @@ export const SheetCalls: React.FC = () => {
                     <div className="rounded-xl border border-emerald-100 dark:border-emerald-900/40 overflow-hidden">
                       <div className="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 dark:bg-emerald-900/20 border-b border-emerald-100 dark:border-emerald-900/40">
                         <span className="material-icons text-base text-emerald-500">rocket_launch</span>
-                        <h3 className="text-xs font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">Next Best Action</h3>
+                        <h3 className="text-xs font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">{t('calls.next_best_action')}</h3>
                       </div>
                       <p className="px-4 py-3 text-sm text-slate-700 dark:text-slate-200 leading-relaxed whitespace-pre-line">{modalAnalysis.next_best_action}</p>
                     </div>
                   )}
 
                   {!modalAnalysis.brief && !modalAnalysis.recommendation && !modalAnalysis.next_best_action && (
-                    <p className="text-center text-sm text-slate-400 py-4">No textual analysis fields available for this call.</p>
+                    <p className="text-center text-sm text-slate-400 py-4">{t('sheet_calls.modal.no_text_analysis')}</p>
                   )}
                 </>
               )}
@@ -598,14 +600,14 @@ export const SheetCalls: React.FC = () => {
                 onClick={closeModal}
                 className="px-4 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
               >
-                Close
+                {t('common.cancel')}
               </button>
               <button
                 onClick={() => navigate(`/calls/${selectedCall.id}`)}
                 className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-lg text-sm font-medium transition-colors"
               >
                 <span className="material-icons text-base">open_in_full</span>
-                View Full Call
+                {t('sheet_calls.modal.view_full')}
               </button>
             </div>
           </div>
