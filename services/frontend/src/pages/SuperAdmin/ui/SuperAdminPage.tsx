@@ -133,16 +133,14 @@ export const SuperAdminPage: React.FC = () => {
                                     <th className="px-6 py-4">{t('common.name')}</th>
                                     <th className="px-6 py-4">{t('common.email')}</th>
                                     <th className="px-6 py-4">{t('common.role')}</th>
-                                    <th className="px-6 py-4">{t('superadmin.company_id')}</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-border-light dark:divide-slate-800">
                                 {users.map((user) => (
                                     <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                                        <td className="px-6 py-4 font-semibold">{user.full_name || 'N/A'}</td>
+                                        <td className="px-6 py-4 font-semibold">{user.full_name || t('common.not_available')}</td>
                                         <td className="px-6 py-4 text-sm text-slate-500">{user.email}</td>
                                         <td className="px-6 py-4 text-sm font-bold uppercase">{user.role}</td>
-                                        <td className="px-6 py-4 text-sm text-slate-500">{user.company_id}</td>
                                     </tr>
                                 ))}
                                 {users.length === 0 && (

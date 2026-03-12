@@ -83,9 +83,6 @@ export const RankingsTable: React.FC<RankingsTableProps> = ({ data }) => {
                       >
                         {m.manager_name}
                       </Link>
-                      <p className="text-[10px] text-slate-400 font-mono">
-                        EXT: {m.external_id}
-                      </p>
                     </div>
                   </div>
                 </td>
