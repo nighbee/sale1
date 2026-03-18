@@ -2,6 +2,8 @@
 
 The **STT Service** (Speech-to-Text) is a Python-based microservice that processes audio recordings to generate speaker-labeled transcripts.
 
+For a detailed architectural overview and modification guide, see the [Ingestion & STT Pipeline Guide](../../docs/services/ingestion-stt-guide.md).
+
 ## Overview
 
 - **Language**: Python 3.11
