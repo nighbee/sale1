@@ -2,6 +2,8 @@
 
 The **Sipuni Listener Service** is responsible for real-time ingestion of call events from the Sipuni telephony platform. It maintains a persistent connection to Sipuni and initiates the call processing pipeline.
 
+For a detailed architectural overview and modification guide, see the [Ingestion & STT Pipeline Guide](../../docs/services/ingestion-stt-guide.md).
+
 ## Overview
 
 - **Language**: Go 1.22+
