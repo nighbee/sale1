@@ -6,6 +6,10 @@ import (
 	"github.com/go-redis/redis/v8"
 )
 
+type Publisher interface {
+	EnqueueAudioProcessing(ctx context.Context, job AudioProcessingJob) error
+}
+
 type BullMQPublisher struct {
 	client *redis.Client
 }

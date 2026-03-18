@@ -10,6 +10,7 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/lib/pq v1.11.2
 	go.uber.org/zap v1.27.1
+	golang.org/x/crypto v0.46.0
 )
 
 require (
