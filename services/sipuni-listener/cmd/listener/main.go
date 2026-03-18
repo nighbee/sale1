@@ -54,8 +54,9 @@ type SipuniNotifyRequest struct {
 }
 
 var (
-	publisher *queue.BullMQPublisher
+	publisher queue.Publisher
 	callRepo  repositories.CallRepository
+	userRepo  repositories.UserRepository
 )
 
 func main() {
@@ -84,6 +85,7 @@ func main() {
 	log.Info("PostgreSQL connected")
 
 	callRepo = repositories.NewCallRepository(db)
+	userRepo = repositories.NewUserRepository(db)
 
 	publisher, err = queue.NewBullMQPublisher(redisURL)
 	if err != nil {
@@ -252,6 +254,10 @@ func handleNotify(request json.RawMessage) {
 	if managerID == "" {
 		managerID = notify.User
 	}
+	managerName := notify.User
+	if managerName == "" {
+		managerName = "Sipuni Manager"
+	}
 
 	log.Info("processing Sipuni notify",
 		zap.String("sipuni_call_id", notify.CallID),
@@ -261,6 +267,15 @@ func handleNotify(request json.RawMessage) {
 		zap.Int("src_type", notify.SrcType),
 		zap.String("dst_num", notify.DstNum),
 		zap.Bool("has_recording", notify.CallRecordLink != ""))
+
+	// Ensure manager user exists
+	if userRepo != nil {
+		_, err := userRepo.EnsureManagerUser(context.Background(), managerID, managerName)
+		if err != nil {
+			log.Error("failed to ensure manager user", zap.String("manager_id", managerID), zap.Error(err))
+			// Continue anyway, as the call record might still be useful
+		}
+	}
 
 	// Only process answered calls — NOANSWER/BUSY/FAILED/CANCEL have no actual audio
 	if notify.Status != "ANSWER" {
@@ -320,8 +335,8 @@ func handleNotify(request json.RawMessage) {
 
 	call := &domain.Call{
 		ID:          callID,
-		ManagerID:   notify.UserID,
-		ManagerName: "Sipuni Manager",
+		ManagerID:   managerID,
+		ManagerName: managerName,
 		ClientPhone: clientPhone,
 		Duration:    talkDuration,
 		CallLink:    recordLink,
