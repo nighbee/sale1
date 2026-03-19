@@ -3,7 +3,9 @@ package usecases
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -11,6 +13,7 @@ import (
 	"github.com/salesai/sipuni-listener/internal/core/ports"
 	applogger "github.com/salesai/sipuni-listener/internal/infrastructure/logger"
 	"go.uber.org/zap"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type SipuniNotifyRequest struct {
@@ -32,12 +35,14 @@ type SipuniNotifyRequest struct {
 
 type HandleEventUseCase struct {
 	callRepo  ports.CallRepository
+	userRepo  ports.UserRepository
 	publisher ports.QueuePublisher
 }
 
-func NewHandleEventUseCase(callRepo ports.CallRepository, publisher ports.QueuePublisher) *HandleEventUseCase {
+func NewHandleEventUseCase(callRepo ports.CallRepository, userRepo ports.UserRepository, publisher ports.QueuePublisher) *HandleEventUseCase {
 	return &HandleEventUseCase{
 		callRepo:  callRepo,
+		userRepo:  userRepo,
 		publisher: publisher,
 	}
 }
@@ -78,6 +83,60 @@ func (uc *HandleEventUseCase) Execute(ctx context.Context, request json.RawMessa
 		log.Info("skipping notify — no recording link despite ANSWER status",
 			zap.String("sipuni_call_id", notify.CallID))
 		return
+	}
+
+	// Ensure manager exists in auth_schema.users
+	user, err := uc.userRepo.FindByManagerID(ctx, managerID)
+	if err != nil {
+		log.Error("error checking for manager existence", zap.String("manager_id", managerID), zap.Error(err))
+		return
+	}
+
+	managerName := notify.User
+	if managerName == "" {
+		managerName = "Sipuni Manager"
+	}
+
+	if user == nil {
+		log.Info("manager not found, creating new user", zap.String("manager_id", managerID))
+
+		companyID, err := uc.userRepo.GetDefaultCompanyID(ctx)
+		if err != nil {
+			log.Error("error getting default company ID", zap.Error(err))
+			return
+		}
+
+		// Use a safe email format
+		safeID := strings.ReplaceAll(managerID, " ", "")
+		email := fmt.Sprintf("manager_%s@salesai.local", safeID)
+
+		// Hash default password
+		defaultPassword := "SaleAI!2016"
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(defaultPassword), bcrypt.DefaultCost)
+		if err != nil {
+			log.Error("error hashing default password", zap.Error(err))
+			return
+		}
+
+		newUser := &domain.User{
+			ID:           uuid.New().String(),
+			CompanyID:    companyID,
+			Email:        email,
+			PasswordHash: string(hashedPassword),
+			Role:         domain.RoleSalesRep,
+			ManagerID:    &managerID,
+			ManagerName:  managerName,
+			FirstName:    managerName,
+			IsActive:     true,
+		}
+
+		if err := uc.userRepo.Create(ctx, newUser); err != nil {
+			log.Error("error creating new manager user", zap.String("manager_id", managerID), zap.Error(err))
+			return
+		}
+		log.Info("new manager user created", zap.String("user_id", newUser.ID), zap.String("manager_id", managerID))
+	} else {
+		managerName = user.ManagerName
 	}
 
 	callID := uuid.New().String()
@@ -124,7 +183,7 @@ func (uc *HandleEventUseCase) Execute(ctx context.Context, request json.RawMessa
 	call := &domain.Call{
 		ID:          callID,
 		ManagerID:   managerID,
-		ManagerName: "Sipuni Manager",
+		ManagerName: managerName,
 		ClientPhone: clientPhone,
 		Duration:    talkDuration,
 		CallLink:    recordLink,

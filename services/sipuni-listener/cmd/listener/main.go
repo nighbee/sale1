@@ -65,6 +65,7 @@ func main() {
 	log.Info("PostgreSQL connected")
 
 	callRepo := repositories.NewCallRepository(db)
+	userRepo := repositories.NewUserRepository(db)
 
 	publisher, err := queue.NewBullMQPublisher(redisURL)
 	if err != nil {
@@ -72,7 +73,7 @@ func main() {
 	}
 	log.Info("BullMQ publisher ready", zap.String("redis_url", redisURL))
 
-	handleEventUC = usecases.NewHandleEventUseCase(callRepo, publisher)
+	handleEventUC = usecases.NewHandleEventUseCase(callRepo, userRepo, publisher)
 
 	// Start a simple HTTP server for metrics
 	go func() {
