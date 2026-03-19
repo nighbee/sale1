@@ -4,17 +4,14 @@ import (
 	"context"
 	"database/sql"
 	"github.com/salesai/sipuni-listener/internal/core/domain"
+	"github.com/salesai/sipuni-listener/internal/core/ports"
 )
-
-type CallRepository interface {
-	Create(ctx context.Context, call *domain.Call) error
-}
 
 type callRepository struct {
 	db *sql.DB
 }
 
-func NewCallRepository(db *sql.DB) CallRepository {
+func NewCallRepository(db *sql.DB) ports.CallRepository {
 	return &callRepository{db: db}
 }
 

@@ -20,13 +20,21 @@ class OpenAISTTProvider(STTProvider):
             
             # Map OpenAI response to our internal format
             segments = []
-            if hasattr(transcript, 'segments'):
+            if hasattr(transcript, "segments") and transcript.segments:
                 for seg in transcript.segments:
-                    segments.append({
-                        "start": seg['start'],
-                        "end": seg['end'],
-                        "text": seg['text']
-                    })
+                    # Handle both object and dict (some providers/SDK versions vary)
+                    if isinstance(seg, dict):
+                        segments.append({
+                            "start": seg.get("start"),
+                            "end": seg.get("end"),
+                            "text": seg.get("text")
+                        })
+                    else:
+                        segments.append({
+                            "start": getattr(seg, "start", 0),
+                            "end": getattr(seg, "end", 0),
+                            "text": getattr(seg, "text", "")
+                        })
             
             return {
                 "text": transcript.text,

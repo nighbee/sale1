@@ -7,6 +7,7 @@ from src.adapters.storage.postgres_repo import (
 )
 from src.infrastructure.llm.openai_client import OpenAIClient
 from src.infrastructure.llm.gemini_client import GeminiClient
+from src.infrastructure.prompts.system_prompts import SYSTEM_PROMPT, get_user_prompt
 from src.adapters.events.redis_publisher import publish_analysis_completed, publish_critical_error
 
 logger = logging.getLogger(__name__)
@@ -48,7 +49,7 @@ class AnalyzeCallUseCase:
         # 3. Prepare prompt
         transcript_text = self._format_transcript(transcript['speaker_diarized_json'])
         transcript_segments = transcript['speaker_diarized_json'] or []
-        user_prompt = f"TRANSCRIPT:\n{transcript_text}\n\nSCRIPT:\n{script_text}"
+        user_prompt = get_user_prompt(transcript_text, script_text)
 
         logger.info(
             "[1/4] data fetched",
@@ -63,23 +64,6 @@ class AnalyzeCallUseCase:
             },
         )
 
-        system_prompt = """
-        You are a sales quality analyst. Analyze the call transcript against the provided sales script.
-
-        IMPORTANT: All string fields in your response MUST be written in Russian (ru-RU).
-        Numbers remain numeric (not text). JSON field names remain in English exactly as specified.
-
-        You must output a JSON object with exactly the following fields (no additional fields allowed):
-        {
-          "qualityOfCall": (number 0-100, overall call quality based on tone, clarity, professionalism),
-          "scriptMatch": (number 0-100, adherence to required steps and script guidelines),
-          "errorsFree": (number 0-100, 100 means no incorrect promises, policy violations or data errors),
-          "recommendation": (string IN RUSSIAN, 3-6 sentences of concrete improvement recommendations for the agent),
-          "brief": (string IN RUSSIAN, 2-5 sentence summary of the conversation essence),
-          "nextBestAction": (string IN RUSSIAN, 1-3 bulleted next steps for the representative)
-        }
-        """
-
         # 4. Get LLM settings (use default if not found)
         settings = get_company_settings_by_manager(manager_id)
         llm_provider = settings['llm_provider'] if settings else "openai"
@@ -89,14 +73,14 @@ class AnalyzeCallUseCase:
             extra={
                 "call_id": call_id,
                 "llm_provider": llm_provider,
-                "prompt_chars": len(system_prompt) + len(user_prompt),
+                "prompt_chars": len(SYSTEM_PROMPT) + len(user_prompt),
             },
         )
 
         if llm_provider == "gemini":
-            analysis = await self.gemini_client.analyze(system_prompt, user_prompt)
+            analysis = await self.gemini_client.analyze(SYSTEM_PROMPT, user_prompt)
         else:
-            analysis = await self.openai_client.analyze(system_prompt, user_prompt)
+            analysis = await self.openai_client.analyze(SYSTEM_PROMPT, user_prompt)
 
         logger.info(
             "[2/4] LLM response received",

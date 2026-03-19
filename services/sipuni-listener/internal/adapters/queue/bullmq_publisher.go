@@ -4,13 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/go-redis/redis/v8"
+	"github.com/salesai/sipuni-listener/internal/core/ports"
 )
 
 type BullMQPublisher struct {
 	client *redis.Client
 }
 
-func NewBullMQPublisher(redisURL string) (*BullMQPublisher, error) {
+func NewBullMQPublisher(redisURL string) (ports.QueuePublisher, error) {
 	opts, err := redis.ParseURL(redisURL)
 	if err != nil {
 		return nil, err
@@ -28,9 +29,14 @@ type AudioProcessingJob struct {
 	MaxRetries int    `json:"max_retries"`
 }
 
-func (p *BullMQPublisher) EnqueueAudioProcessing(ctx context.Context, job AudioProcessingJob) error {
-	job.JobType = "audio_processing"
-	job.MaxRetries = 3
+func (p *BullMQPublisher) EnqueueAudioProcessing(ctx context.Context, callID string, audioURL string, managerID string) error {
+	job := AudioProcessingJob{
+		JobType:    "audio_processing",
+		CallID:     callID,
+		AudioURL:   audioURL,
+		ManagerID:  managerID,
+		MaxRetries: 3,
+	}
 
 	data, err := json.Marshal(job)
 	if err != nil {

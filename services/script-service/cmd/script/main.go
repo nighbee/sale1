@@ -12,6 +12,8 @@ import (
 
 	"github.com/salesai/script-service/internal/adapters/http/handlers"
 	"github.com/salesai/script-service/internal/adapters/repositories"
+	"github.com/salesai/script-service/internal/adapters/storage"
+	"github.com/salesai/script-service/internal/core/usecases"
 	applogger "github.com/salesai/script-service/internal/infrastructure/logger"
 )
 
@@ -48,7 +50,12 @@ func main() {
 	applogger.L.Info("MinIO client created", zap.String("endpoint", endpoint))
 
 	repo := repositories.NewScriptRepository(db)
-	scriptHandler := handlers.NewScriptHandler(minioClient, repo)
+	minioStorage := storage.NewMinioStorage(minioClient)
+
+	uploadUC := usecases.NewUploadScriptUseCase(repo, minioStorage)
+	opsUC := usecases.NewScriptOperationsUseCase(repo, minioStorage)
+
+	scriptHandler := handlers.NewScriptHandler(uploadUC, opsUC)
 
 	app := fiber.New()
 
