@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"os"
 
+	"github.com/ansrivas/fiberprometheus/v2"
 	"github.com/gofiber/fiber/v2"
 	_ "github.com/lib/pq"
 	"github.com/minio/minio-go/v7"
@@ -58,6 +59,10 @@ func main() {
 	scriptHandler := handlers.NewScriptHandler(uploadUC, opsUC)
 
 	app := fiber.New()
+
+	prometheus := fiberprometheus.New("script-service")
+	prometheus.RegisterAt(app, "/metrics")
+	app.Use(prometheus.Middleware)
 
 	api := app.Group("/api/v1")
 	scripts := api.Group("/scripts")

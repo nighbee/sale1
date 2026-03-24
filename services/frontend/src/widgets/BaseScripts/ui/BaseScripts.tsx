@@ -17,7 +17,7 @@ export const BaseScripts: React.FC = () => {
         <div className="flex items-center p-4 bg-primary/5 rounded-lg border border-primary/20">
           <Medal rank={1} className="w-8 h-8 text-primary mr-3" />
           <div>
-            <p className="text-sm text-primary font-semibold">Active Base Script</p>
+            <p className="text-sm text-primary font-semibold">{t('scripts.active_base')}</p>
             <p className="text-lg font-medium">{currentBase.name}</p>
           </div>
         </div>
@@ -32,7 +32,7 @@ export const BaseScripts: React.FC = () => {
               onClick={() => activateAsBase(script.id)}
               disabled={currentBase?.id === script.id}
             >
-              {currentBase?.id === script.id ? 'Active' : t('scripts.activate')}
+              {currentBase?.id === script.id ? t('scripts.active') : t('scripts.activate')}
             </Button>
           </div>
         ))}

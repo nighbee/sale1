@@ -23,6 +23,19 @@ func NewAnalyticsHandler(teamPerformanceUC *analytics.TeamPerformanceUseCase) *A
 	}
 }
 
+// GetTeamPerformance godoc
+// @Summary Get team performance metrics
+// @Description Get aggregated performance metrics for all managers in a team or company
+// @Tags analytics
+// @Accept json
+// @Produce json
+// @Param period query string false "Time period (7d, 30d, 90d, all)"
+// @Param team_id query string false "Filter by team ID"
+// @Param include_pending query bool false "Include pending calls in metrics"
+// @Success 200 {object} fiber.Map
+// @Failure 500 {object} fiber.Map
+// @Security BearerAuth
+// @Router /analytics/team-performance [get]
 func (h *AnalyticsHandler) GetTeamPerformance(c *fiber.Ctx) error {
 	log := applogger.FromFiberCtx(c).With(zap.String("operation", "team_performance"))
 
@@ -46,6 +59,22 @@ func (h *AnalyticsHandler) GetTeamPerformance(c *fiber.Ctx) error {
 	})
 }
 
+// GetLeaderboard godoc
+// @Summary Get sales leaderboard
+// @Description Get a ranked list of managers based on performance metrics
+// @Tags analytics
+// @Accept json
+// @Produce json
+// @Param company_id query string false "Filter by company ID (super_admin only)"
+// @Param team_id query string false "Filter by team ID"
+// @Param period query string false "Time period (7d, 30d, 90d, all)"
+// @Param source query string false "Filter by call source (sipuni, google_sheets)"
+// @Param sort_by query string false "Sort by field (avg_kpi, avg_quality, etc.)"
+// @Param manager_id query string false "Filter by specific manager ID"
+// @Success 200 {object} fiber.Map
+// @Failure 500 {object} fiber.Map
+// @Security BearerAuth
+// @Router /analytics/leaderboard [get]
 func (h *AnalyticsHandler) GetLeaderboard(c *fiber.Ctx) error {
 	log := applogger.FromFiberCtx(c).With(zap.String("operation", "get_leaderboard"))
 	companyID := c.Locals("company_id").(string)

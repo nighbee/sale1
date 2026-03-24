@@ -187,6 +187,18 @@ func (h *TeamHandler) Delete(c *fiber.Ctx) error {
 	return c.SendStatus(204)
 }
 
+// Ensure godoc
+// @Summary Ensure a team exists
+// @Description Find or create a team by name and optionally add multiple members
+// @Tags teams
+// @Accept json
+// @Produce json
+// @Param request body map[string]interface{} true "Ensure Team Request"
+// @Success 200 {object} fiber.Map
+// @Failure 400 {object} fiber.Map
+// @Failure 500 {object} fiber.Map
+// @Security BearerAuth
+// @Router /teams/ensure [post]
 func (h *TeamHandler) Ensure(c *fiber.Ctx) error {
 	log := applogger.FromFiberCtx(c).With(zap.String("operation", "ensure_team"))
 
