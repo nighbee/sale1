@@ -31,9 +31,9 @@ export const ComparisonChart: React.FC<ComparisonChartProps> = ({ data }) => {
           m.manager_name?.length > 10
             ? m.manager_name.slice(0, 10) + "…"
             : m.manager_name,
-        Quality: +m.avg_quality.toFixed(1),
-        Script: +m.avg_script_match.toFixed(1),
-        Errors: +m.avg_errors_free.toFixed(1),
+        [t("leaderboard.comparison.quality")]: +m.avg_quality.toFixed(1),
+        [t("leaderboard.comparison.script_match")]: +m.avg_script_match.toFixed(1),
+        [t("leaderboard.comparison.errors_free")]: +m.avg_errors_free.toFixed(1),
       })),
     [data],
   );
@@ -56,17 +56,17 @@ export const ComparisonChart: React.FC<ComparisonChartProps> = ({ data }) => {
           <Tooltip />
           <Legend iconType="circle" iconSize={8} />
           <Bar
-            dataKey="Quality"
+            dataKey={t("leaderboard.comparison.quality")}
             fill={CHART_COLORS.quality}
             radius={[3, 3, 0, 0]}
           />
           <Bar
-            dataKey="Script"
+            dataKey={t("leaderboard.comparison.script_match")}
             fill={CHART_COLORS.script}
             radius={[3, 3, 0, 0]}
           />
           <Bar
-            dataKey="Errors"
+            dataKey={t("leaderboard.comparison.errors_free")}
             fill={CHART_COLORS.errors}
             radius={[3, 3, 0, 0]}
           />

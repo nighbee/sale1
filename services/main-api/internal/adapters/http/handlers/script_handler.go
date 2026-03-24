@@ -275,6 +275,16 @@ func (h *ScriptHandler) DownloadScript(c *fiber.Ctx) error {
 	return err
 }
 
+// GetBaseScript godoc
+// @Summary Get current active base script
+// @Description Retrieve the global base script currently marked as active
+// @Tags base-scripts
+// @Accept json
+// @Produce json
+// @Success 200 {object} domain.Script
+// @Failure 404 {object} fiber.Map
+// @Security BearerAuth
+// @Router /base-scripts/current [get]
 func (h *ScriptHandler) GetBaseScript(c *fiber.Ctx) error {
 	log := applogger.FromFiberCtx(c).With(zap.String("operation", "get_base_script"))
 
@@ -287,6 +297,16 @@ func (h *ScriptHandler) GetBaseScript(c *fiber.Ctx) error {
 	return c.JSON(script)
 }
 
+// ListBaseScripts godoc
+// @Summary List all base scripts
+// @Description Get a list of all global base scripts
+// @Tags base-scripts
+// @Accept json
+// @Produce json
+// @Success 200 {object} fiber.Map
+// @Failure 500 {object} fiber.Map
+// @Security BearerAuth
+// @Router /base-scripts [get]
 func (h *ScriptHandler) ListBaseScripts(c *fiber.Ctx) error {
 	log := applogger.FromFiberCtx(c).With(zap.String("operation", "list_base_scripts"))
 
@@ -299,6 +319,17 @@ func (h *ScriptHandler) ListBaseScripts(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"base_scripts": scripts})
 }
 
+// ActivateAsBase godoc
+// @Summary Activate a script as base
+// @Description Set a specific script as the global active base script
+// @Tags base-scripts
+// @Accept json
+// @Produce json
+// @Param id path string true "Script ID"
+// @Success 200 {object} fiber.Map
+// @Failure 400 {object} fiber.Map
+// @Security BearerAuth
+// @Router /base-scripts/{id}/activate [post]
 func (h *ScriptHandler) ActivateAsBase(c *fiber.Ctx) error {
 	log := applogger.FromFiberCtx(c).With(zap.String("operation", "activate_as_base"))
 	scriptID := c.Params("id")
@@ -317,6 +348,17 @@ func (h *ScriptHandler) ActivateAsBase(c *fiber.Ctx) error {
 	})
 }
 
+// GetBaseMetrics godoc
+// @Summary Get metrics for active base script
+// @Description Get performance averages and sample counts for the active base script
+// @Tags base-scripts
+// @Accept json
+// @Produce json
+// @Param id path string true "Script ID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 404 {object} fiber.Map
+// @Security BearerAuth
+// @Router /base-scripts/{id}/metrics [get]
 func (h *ScriptHandler) GetBaseMetrics(c *fiber.Ctx) error {
 	log := applogger.FromFiberCtx(c).With(zap.String("operation", "get_base_metrics"))
 

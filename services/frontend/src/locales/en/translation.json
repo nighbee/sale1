@@ -29,7 +29,9 @@
     "leaderboard": "Leaderboard",
     "integrations": "Integrations",
     "settings": "Settings",
-    "super_admin": "Super Admin"
+    "super_admin": "Super Admin",
+    "active_team": "Active Team",
+    "all_teams": "All Teams"
   },
   "auth": {
     "login_title": "Sign in to access your sales dashboard",
@@ -71,6 +73,7 @@
     "title": "Super Admin Dashboard",
     "subtitle": "Global management of companies, users, and subscriptions.",
     "companies": "Companies",
+    "company": "Company",
     "users": "Users",
     "subscriptions": "Subscriptions",
     "call_list": "Call List",
@@ -145,6 +148,8 @@
     "title": "Sales Scripts",
     "base_scripts": "Base Scripts",
     "activate": "Activate as Base",
+    "active": "Active",
+    "active_base": "Active Base Script",
     "metrics": "View Metrics",
     "download": "Download Script",
     "reprocess": "Reprocess Call",
@@ -154,6 +159,7 @@
   "billing": {
     "title": "Subscription & Billing",
     "current_plan": "Current Plan",
+    "active": "Active",
     "usage": "Token Usage",
     "update": "Update Billing"
   },
@@ -197,7 +203,8 @@
     "focus_areas": "Focus Areas",
     "client_name": "Client Name",
     "ai_insight": "AI Insight",
-    "action": "Action"
+    "action": "Action",
+    "no_managers": "No managers found."
   },
   "calls": {
     "back": "Back",
@@ -280,6 +287,11 @@
       "qual_short": "Qual",
       "script_short": "Script",
       "errors_short": "ErrFree"
+    },
+    "comparison": {
+      "quality": "Quality",
+      "script_match": "Script Match",
+      "errors_free": "Errors Free"
     }
   },
   "settings": {
@@ -406,6 +418,11 @@
       "view_full": "View Full Call",
       "no_analysis": "Analysis not yet available — call is {{status}}",
       "no_text_analysis": "No textual analysis fields available for this call."
+    },
+    "pagination": {
+      "prev": "Prev",
+      "next": "Next",
+      "of": "of"
     }
   },
   "landing": {

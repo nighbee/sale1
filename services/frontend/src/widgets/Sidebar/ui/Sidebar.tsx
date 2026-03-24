@@ -155,7 +155,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           <div className="space-y-4">
           <div>
             <label className="block text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-2">
-              Company
+              {t("superadmin.company")}
             </label>
             <select
               className="w-full bg-slate-800 border-none rounded-lg text-sm p-2 focus:ring-1 focus:ring-primary transition-all"
@@ -173,14 +173,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           {user?.role !== "super_admin" && (
             <div>
               <label className="block text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-2">
-                Active Team
+                {t("nav.active_team")}
               </label>
               <select
                 className="w-full bg-slate-800 border-none rounded-lg text-sm p-2 focus:ring-1 focus:ring-primary transition-all"
                 value={currentTeamId || ""}
                 onChange={(e) => setCurrentTeam(e.target.value || null)}
               >
-                <option value="">All Teams</option>
+                <option value="">{t("nav.all_teams")}</option>
                 {teams.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.name}

@@ -49,8 +49,11 @@ def run_api():
     import threading
     import uvicorn
     from fastapi import FastAPI, BackgroundTasks
+    from prometheus_client import make_asgi_app
 
     app = FastAPI(title="Sheets Sync Service", version="1.0.0")
+    metrics_app = make_asgi_app()
+    app.mount("/metrics", metrics_app)
     pipeline = Pipeline()
     interval = Config.sync_interval_seconds()
 

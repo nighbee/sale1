@@ -337,9 +337,9 @@ export const SheetCalls: React.FC = () => {
                     <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />
                     <Tooltip />
                     <Legend iconType="circle" iconSize={8} />
-                    <Line type="monotone" dataKey="quality" name="Quality"     stroke={CHART_COLORS.quality} strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="script"  name="Script"      stroke={CHART_COLORS.script}  strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="errors"  name="Errors Free" stroke={CHART_COLORS.errors}  strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="quality" name={t('leaderboard.comparison.quality')}     stroke={CHART_COLORS.quality} strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="script"  name={t('leaderboard.comparison.script_match')}      stroke={CHART_COLORS.script}  strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="errors"  name={t('leaderboard.comparison.errors_free')} stroke={CHART_COLORS.errors}  strokeWidth={2} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -355,9 +355,9 @@ export const SheetCalls: React.FC = () => {
                     <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />
                     <Tooltip />
                     <Legend iconType="circle" iconSize={8} />
-                    <Bar dataKey="quality" name="Quality"     fill={CHART_COLORS.quality} radius={[3,3,0,0]} />
-                    <Bar dataKey="script"  name="Script"      fill={CHART_COLORS.script}  radius={[3,3,0,0]} />
-                    <Bar dataKey="errors"  name="Errors Free" fill={CHART_COLORS.errors}  radius={[3,3,0,0]} />
+                    <Bar dataKey="quality" name={t('leaderboard.comparison.quality')}     fill={CHART_COLORS.quality} radius={[3,3,0,0]} />
+                    <Bar dataKey="script"  name={t('leaderboard.comparison.script_match')}      fill={CHART_COLORS.script}  radius={[3,3,0,0]} />
+                    <Bar dataKey="errors"  name={t('leaderboard.comparison.errors_free')} fill={CHART_COLORS.errors}  radius={[3,3,0,0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -442,7 +442,7 @@ export const SheetCalls: React.FC = () => {
         {totalPages > 1 && (
           <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between text-sm text-slate-600 dark:text-slate-400">
             <span>
-              {((tablePage - 1) * PAGE_SIZE) + 1}–{Math.min(tablePage * PAGE_SIZE, allSheetCalls.length)} of {allSheetCalls.length}
+              {((tablePage - 1) * PAGE_SIZE) + 1}–{Math.min(tablePage * PAGE_SIZE, allSheetCalls.length)} {t('sheet_calls.pagination.of')} {allSheetCalls.length}
             </span>
             <div className="flex gap-1.5 flex-wrap">
               <button
@@ -450,7 +450,7 @@ export const SheetCalls: React.FC = () => {
                 onClick={() => setTablePage(p => p - 1)}
                 className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
               >
-                ← Prev
+                ← {t('sheet_calls.pagination.prev')}
               </button>
               {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
                 const pg = totalPages <= 7 ? i + 1
@@ -476,7 +476,7 @@ export const SheetCalls: React.FC = () => {
                 onClick={() => setTablePage(p => p + 1)}
                 className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
               >
-                Next →
+                {t('sheet_calls.pagination.next')} →
               </button>
             </div>
           </div>
