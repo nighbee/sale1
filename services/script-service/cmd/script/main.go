@@ -64,6 +64,10 @@ func main() {
 	prometheus.RegisterAt(app, "/metrics")
 	app.Use(prometheus.Middleware)
 
+	app.Get("/health", func(c *fiber.Ctx) error {
+		return c.Status(200).SendString("OK")
+	})
+
 	api := app.Group("/api/v1")
 	scripts := api.Group("/scripts")
 	scripts.Post("/", scriptHandler.Upload)
