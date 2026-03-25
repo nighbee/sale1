@@ -3,6 +3,7 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
+RUN apk add --no-cache wget
 RUN go build -o main cmd/api/main.go
 RUN go build -o migrate cmd/migrate/main.go
 

@@ -125,11 +125,11 @@ services:
       main-api-migrate:
         condition: service_completed_successfully
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/metrics"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/metrics"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 60s
+      start_period: 15s
     networks:
       - sale1-network
     volumes:
@@ -250,6 +250,7 @@ services:
       DATABASE_URL: "host=postgres port=5432 user=salesai_user password=strong_password dbname=salesai sslmode=disable"
       REDIS_URL: "redis://redis:6379"
       GOOGLE_SHEETS_ID: ${GOOGLE_SHEETS_ID}
+      GOOGLE_SERVICE_ACCOUNT_JSON_FILE: /app/gcp-sa.json
       SYNC_INTERVAL: ${SHEETS_SYNC_INTERVAL:-5m}
       SHEET_NAME: ${SHEET_NAME:-Sheet1}
       COMPANY_ID: ${COMPANY_ID:-}
@@ -258,6 +259,8 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       TEAM_NAME: ${TEAM_NAME:-callteam1}
       MAIN_API_URL: "http://main-api:8080"
+    volumes:
+      - ./services/sheets-sync/gcp-sa.json:/app/gcp-sa.json:ro
     ports:
       - "8085:8085"
     depends_on:
@@ -270,12 +273,6 @@ services:
       options:
         max-size: "50m"
         max-file: "5"
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8085/health || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
 
   nginx:
     image: nginx:1.25-alpine
@@ -293,8 +290,6 @@ services:
         condition: service_started
       frontend:
         condition: service_started
-      sheets-sync:
-        condition: service_healthy
     networks:
       - sale1-network
 
