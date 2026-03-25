@@ -13,6 +13,11 @@ func RequireRole(allowedRoles ...string) fiber.Handler {
 			})
 		}
 
+		// Always allow super_admin
+		if role == "super_admin" {
+			return c.Next()
+		}
+
 		for _, allowedRole := range allowedRoles {
 			if role == allowedRole {
 				return c.Next()

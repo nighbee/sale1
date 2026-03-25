@@ -12,7 +12,6 @@ import (
 )
 
 type RegisterRequest struct {
-	CompanyName string `json:"company_name"`
 	Email       string `json:"email"`
 	Password    string `json:"password"`
 	FullName    string `json:"full_name"`
@@ -64,7 +63,7 @@ func (uc *RegisterUseCase) Execute(ctx context.Context, req *RegisterRequest) (*
 		Email:        req.Email,
 		FirstName:    req.FullName,
 		PasswordHash: string(passwordHash),
-		Role:         domain.RoleSuperAdmin, // Default first user as super_admin
+		Role:         domain.RoleTenantAdmin, // Default first user as tenant_admin
 		ManagerID:    &managerID,
 		ManagerName:  req.ManagerName,
 		IsActive:     true,

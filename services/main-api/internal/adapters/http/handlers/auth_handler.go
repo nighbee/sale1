@@ -30,7 +30,7 @@ func NewAuthHandler(
 
 // Register godoc
 // @Summary Register a new admin user
-// @Description Register a new user with super_admin role
+// @Description Register a new user with tenant_admin role
 // @Tags auth
 // @Accept json
 // @Produce json

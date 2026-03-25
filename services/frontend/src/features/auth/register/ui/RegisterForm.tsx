@@ -43,7 +43,7 @@ export const RegisterForm: React.FC = () => {
       localStorage.setItem("user_id", user.id);
       setUser(user);
       toast.success(t("auth.account_created"));
-      navigate("/company-setup");
+      navigate("/dashboard");
     } catch (_err: unknown) {
       const apiError = _err as { response?: { data?: { error?: string } } }; const msg = apiError.response?.data?.error || t("auth.registration_failed");
       setError(msg);
