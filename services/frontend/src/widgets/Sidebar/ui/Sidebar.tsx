@@ -64,6 +64,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         },
         { id: "teams", icon: "groups", label: t("nav.teams"), path: "/teams" },
         { id: "scripts", icon: "description", label: t("scripts.title"), path: "/scripts" },
+        { id: "users", icon: "person", label: t("nav.users"), path: "/users" },
         { id: "calls", icon: "call", label: t("nav.calls"), path: "/calls" },
         {
           id: "leaderboard",

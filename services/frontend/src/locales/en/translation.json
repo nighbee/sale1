@@ -19,6 +19,15 @@
     "name": "Name",
     "email": "Email",
     "role": "Role",
+    "username": "Username",
+    "phone": "Phone",
+    "team": "Team",
+    "no_team": "No Team",
+    "unknown_team": "Unknown Team",
+    "first_name": "First Name",
+    "last_name": "Last Name",
+    "password": "Password",
+    "save_changes": "Save Changes",
     "delete_confirm": "Are you sure you want to delete this item?",
     "not_available": "N/A"
   },
@@ -28,6 +37,7 @@
     "calls": "Calls",
     "leaderboard": "Leaderboard",
     "integrations": "Integrations",
+    "users": "Users",
     "settings": "Settings",
     "super_admin": "Super Admin",
     "active_team": "Active Team",
@@ -371,6 +381,21 @@
     "connect_failed": "Failed to connect {{type}}",
     "disconnect_success": "{{type}} disconnected successfully",
     "disconnect_failed": "Failed to disconnect {{type}}"
+  },
+  "roles": {
+    "super_admin": "Super Admin",
+    "tenant_admin": "Tenant Admin",
+    "sales_rep": "Sales Rep"
+  },
+  "users": {
+    "management_title": "Users Management",
+    "management_subtitle": "Manage user accounts, roles, and team assignments.",
+    "no_users": "No users found.",
+    "edit_user": "Edit User",
+    "fetch_failed": "Failed to fetch users",
+    "update_success": "User updated successfully",
+    "update_failed": "Failed to update user",
+    "leave_blank_no_change": "leave blank for no change"
   },
   "teams": {
     "management_title": "Teams Management",

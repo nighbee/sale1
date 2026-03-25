@@ -115,6 +115,7 @@ func (uc *HandleEventUseCase) Execute(ctx context.Context, request json.RawMessa
 		newUser := &domain.User{
 			ID:           uuid.New().String(),
 			Email:        email,
+			Username:     managerName, // Use manager name as initial username
 			PasswordHash: string(hashedPassword),
 			Role:         domain.RoleSalesRep,
 			ManagerID:    &managerID,
