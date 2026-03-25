@@ -115,14 +115,6 @@ func (r *callRepository) List(ctx context.Context, filters map[string]interface{
 	where := []string{"1=1"}
 	args := []interface{}{}
 	argIdx := 1
-	joins := ""
-
-	if companyID, ok := filters["company_id"].(string); ok && companyID != "" {
-		joins = "LEFT JOIN auth_schema.users u ON c.manager_id = u.manager_id"
-		where = append(where, fmt.Sprintf("u.company_id = $%d", argIdx))
-		args = append(args, companyID)
-		argIdx++
-	}
 
 	if managerID, ok := filters["manager_id"].(string); ok && managerID != "" {
 		where = append(where, fmt.Sprintf("c.manager_id = $%d", argIdx))
@@ -189,12 +181,11 @@ func (r *callRepository) List(ctx context.Context, filters map[string]interface{
 		       c.status, c.source, c.created_at, c.updated_at,
 		       ar.quality_score, ar.script_match, ar.errors_free
 		FROM calls_schema.calls c
-		%s
 		LEFT JOIN calls_schema.analysis_reports ar ON ar.call_id = c.id
 		WHERE %s
 		ORDER BY c.created_at DESC
 		LIMIT $%d OFFSET $%d
-	`, joins, strings.Join(where, " AND "), argIdx, argIdx+1)
+	`, strings.Join(where, " AND "), argIdx, argIdx+1)
 
 	rows, err := r.db.QueryContext(ctx, query, append(args, limit, offset)...)
 	if err != nil {
@@ -231,7 +222,7 @@ func (r *callRepository) List(ctx context.Context, filters map[string]interface{
 	}
 
 	// Count total
-	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM calls_schema.calls c %s WHERE %s", joins, strings.Join(where, " AND "))
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM calls_schema.calls c WHERE %s", strings.Join(where, " AND "))
 	var total int
 	err = r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total)
 	if err != nil {

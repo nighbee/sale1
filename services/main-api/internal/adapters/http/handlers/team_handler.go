@@ -18,7 +18,7 @@ func NewTeamHandler(teamUC *teams.TeamUseCase) *TeamHandler {
 
 // Create godoc
 // @Summary Create a new sales team
-// @Description Create a new sales team within the company
+// @Description Create a new sales team
 // @Tags teams
 // @Accept json
 // @Produce json
@@ -30,7 +30,6 @@ func NewTeamHandler(teamUC *teams.TeamUseCase) *TeamHandler {
 // @Router /teams [post]
 func (h *TeamHandler) Create(c *fiber.Ctx) error {
 	log := applogger.FromFiberCtx(c).With(zap.String("operation", "create_team"))
-	companyID := c.Locals("company_id").(string)
 	var req struct {
 		Name        string `json:"name"`
 		Description string `json:"description"`
@@ -40,18 +39,18 @@ func (h *TeamHandler) Create(c *fiber.Ctx) error {
 		log.Warn("body parse error", zap.Error(err))
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid body"})
 	}
-	team, err := h.teamUC.Create(c.Context(), companyID, req.Name, req.Description, req.AutoAssign)
+	team, err := h.teamUC.Create(c.Context(), req.Name, req.Description, req.AutoAssign)
 	if err != nil {
-		log.Error("team creation failed", zap.String("company_id", companyID), zap.String("name", req.Name), zap.Error(err))
+		log.Error("team creation failed", zap.String("name", req.Name), zap.Error(err))
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
-	log.Info("team created", zap.String("company_id", companyID), zap.String("team_id", team.ID), zap.String("name", team.Name))
+	log.Info("team created", zap.String("team_id", team.ID), zap.String("name", team.Name))
 	return c.Status(201).JSON(team)
 }
 
 // List godoc
-// @Summary List company teams
-// @Description Get a list of all sales teams within the company
+// @Summary List teams
+// @Description Get a list of all sales teams
 // @Tags teams
 // @Accept json
 // @Produce json
@@ -60,8 +59,7 @@ func (h *TeamHandler) Create(c *fiber.Ctx) error {
 // @Security BearerAuth
 // @Router /teams [get]
 func (h *TeamHandler) List(c *fiber.Ctx) error {
-	companyID := c.Locals("company_id").(string)
-	teams, err := h.teamUC.ListByCompany(c.Context(), companyID)
+	teams, err := h.teamUC.List(c.Context())
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -80,9 +78,8 @@ func (h *TeamHandler) List(c *fiber.Ctx) error {
 // @Security BearerAuth
 // @Router /teams/{id} [get]
 func (h *TeamHandler) Get(c *fiber.Ctx) error {
-	companyID := c.Locals("company_id").(string)
 	id := c.Params("id")
-	team, err := h.teamUC.GetByID(c.Context(), companyID, id)
+	team, err := h.teamUC.GetByID(c.Context(), id)
 	if err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Team not found"})
 	}
@@ -103,7 +100,6 @@ func (h *TeamHandler) Get(c *fiber.Ctx) error {
 // @Security BearerAuth
 // @Router /teams/{id}/members [post]
 func (h *TeamHandler) AddMember(c *fiber.Ctx) error {
-	companyID := c.Locals("company_id").(string)
 	id := c.Params("id")
 	var req struct {
 		UserID string `json:"user_id"`
@@ -111,7 +107,7 @@ func (h *TeamHandler) AddMember(c *fiber.Ctx) error {
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid body"})
 	}
-	if err := h.teamUC.AddMember(c.Context(), companyID, id, req.UserID); err != nil {
+	if err := h.teamUC.AddMember(c.Context(), id, req.UserID); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.SendStatus(200)
@@ -130,10 +126,9 @@ func (h *TeamHandler) AddMember(c *fiber.Ctx) error {
 // @Security BearerAuth
 // @Router /teams/{id}/members/{userID} [delete]
 func (h *TeamHandler) RemoveMember(c *fiber.Ctx) error {
-	companyID := c.Locals("company_id").(string)
 	id := c.Params("id")
 	userID := c.Params("userID")
-	if err := h.teamUC.RemoveMember(c.Context(), companyID, id, userID); err != nil {
+	if err := h.teamUC.RemoveMember(c.Context(), id, userID); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.SendStatus(200)
@@ -153,14 +148,12 @@ func (h *TeamHandler) RemoveMember(c *fiber.Ctx) error {
 // @Security BearerAuth
 // @Router /teams/{id} [put]
 func (h *TeamHandler) Update(c *fiber.Ctx) error {
-	companyID := c.Locals("company_id").(string)
 	id := c.Params("id")
 	var team domain.Team
 	if err := c.BodyParser(&team); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid body"})
 	}
 	team.ID = id
-	team.CompanyID = companyID
 	if err := h.teamUC.Update(c.Context(), &team); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -169,7 +162,7 @@ func (h *TeamHandler) Update(c *fiber.Ctx) error {
 
 // Delete godoc
 // @Summary Delete a team
-// @Description Remove a sales team from the company
+// @Description Remove a sales team
 // @Tags teams
 // @Accept json
 // @Produce json
@@ -179,9 +172,8 @@ func (h *TeamHandler) Update(c *fiber.Ctx) error {
 // @Security BearerAuth
 // @Router /teams/{id} [delete]
 func (h *TeamHandler) Delete(c *fiber.Ctx) error {
-	companyID := c.Locals("company_id").(string)
 	id := c.Params("id")
-	if err := h.teamUC.Delete(c.Context(), companyID, id); err != nil {
+	if err := h.teamUC.Delete(c.Context(), id); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.SendStatus(204)

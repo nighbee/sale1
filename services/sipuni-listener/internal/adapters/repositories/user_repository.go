@@ -18,7 +18,7 @@ func NewUserRepository(db *sql.DB) ports.UserRepository {
 
 func (r *userRepository) FindByManagerID(ctx context.Context, managerID string) (*domain.User, error) {
 	query := `
-		SELECT id, company_id, email, password_hash, role, manager_id, manager_name, first_name, last_name, is_active, last_login, created_at, updated_at
+		SELECT id, email, password_hash, role, manager_id, manager_name, first_name, last_name, is_active, last_login, created_at, updated_at
 		FROM auth_schema.users
 		WHERE manager_id = $1
 		LIMIT 1
@@ -26,7 +26,6 @@ func (r *userRepository) FindByManagerID(ctx context.Context, managerID string) 
 	user := &domain.User{}
 	err := r.db.QueryRowContext(ctx, query, managerID).Scan(
 		&user.ID,
-		&user.CompanyID,
 		&user.Email,
 		&user.PasswordHash,
 		&user.Role,
@@ -51,14 +50,13 @@ func (r *userRepository) FindByManagerID(ctx context.Context, managerID string) 
 func (r *userRepository) Create(ctx context.Context, user *domain.User) error {
 	query := `
 		INSERT INTO auth_schema.users
-		(id, company_id, email, password_hash, role, manager_id, manager_name, first_name, last_name, is_active, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
+		(id, email, password_hash, role, manager_id, manager_name, first_name, last_name, is_active, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
 	`
 	_, err := r.db.ExecContext(
 		ctx,
 		query,
 		user.ID,
-		user.CompanyID,
 		user.Email,
 		user.PasswordHash,
 		user.Role,
@@ -69,14 +67,4 @@ func (r *userRepository) Create(ctx context.Context, user *domain.User) error {
 		user.IsActive,
 	)
 	return err
-}
-
-func (r *userRepository) GetDefaultCompanyID(ctx context.Context) (string, error) {
-	query := `SELECT id FROM auth_schema.companies LIMIT 1`
-	var companyID string
-	err := r.db.QueryRowContext(ctx, query).Scan(&companyID)
-	if err != nil {
-		return "", err
-	}
-	return companyID, nil
 }

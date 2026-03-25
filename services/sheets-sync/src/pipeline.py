@@ -19,6 +19,7 @@ from datetime import date, time, datetime
 from typing import Optional
 import time as _time
 import traceback
+import json
 
 from src.config import Config
 from src.sheets_client import SheetsClient, SheetRow
@@ -29,6 +30,7 @@ from src.db import (
     ensure_team_and_add_members,
 )
 from src.queue_client import QueueClient
+from src.api_client import MainAPIClient
 
 logger = logging.getLogger(__name__)
 
@@ -55,13 +57,7 @@ def _parse_time(raw: str) -> Optional[time]:
 
 class Pipeline:
     def __init__(self):
-        sa_info = Config.service_account_info()
-        self.sheets = SheetsClient(
-            service_account_info=sa_info,
-            spreadsheet_id=Config.GOOGLE_SHEETS_ID,
-            sheet_name=Config.SHEET_NAME,
-        )
-
+        self.api_client = MainAPIClient()
         # Initialise queue client with logging and fail-fast on error
         try:
             self.queue = QueueClient(
@@ -77,14 +73,61 @@ class Pipeline:
 
     def run(self):
         logger.info("Starting sync cycle")
-        self._ingest_new_rows()
-        self._write_back_results()
+
+        integrations = self.api_client.get_active_integrations()
+        sheets_integrations = [i for i in integrations if i.get("integration_type") == "google_sheets"]
+
+        if not sheets_integrations:
+            logger.info("No active Google Sheets integrations found")
+            return
+
+        for integration in sheets_integrations:
+            credentials = integration.get("credentials")
+            config = integration.get("config")
+
+            if not credentials or not config:
+                logger.warning("Skipping integration with missing credentials or config")
+                continue
+
+            try:
+                # credentials may be a dict or a JSON string
+                if isinstance(credentials, str):
+                    sa_info = json.loads(credentials)
+                else:
+                    sa_info = credentials
+
+                # config may be a dict or a JSON string
+                if isinstance(config, str):
+                    cfg_data = json.loads(config)
+                else:
+                    cfg_data = config
+
+                spreadsheet_id = cfg_data.get("spreadsheet_id")
+                sheet_name = cfg_data.get("sheet_name", "Sheet1")
+
+                if not spreadsheet_id:
+                    logger.warning("Skipping integration with missing spreadsheet_id")
+                    continue
+
+                sheets_client = SheetsClient(
+                    service_account_info=sa_info,
+                    spreadsheet_id=spreadsheet_id,
+                    sheet_name=sheet_name,
+                )
+
+                logger.info("Running sync for spreadsheet", extra={"spreadsheet_id": spreadsheet_id})
+                self._ingest_new_rows(sheets_client)
+                self._write_back_results(sheets_client)
+
+            except Exception:
+                logger.exception("Failed to process integration")
+
         logger.info("Sync cycle complete")
 
     # ── Phase 1: sheet → queue ────────────────────────────────────────────
 
-    def _ingest_new_rows(self):
-        rows = self.sheets.read_data_rows()
+    def _ingest_new_rows(self, sheets: SheetsClient):
+        rows = sheets.read_data_rows()
         queued = 0
         skipped = 0
         manager_user_ids = set()
@@ -197,7 +240,7 @@ class Pipeline:
 
                 # Mark sheet row as processing only after queue push succeeded
                 try:
-                    self.sheets.mark_row_processing(row.sheet_row_number)
+                    sheets.mark_row_processing(row.sheet_row_number)
                 except Exception:
                     logger.exception("Failed to mark sheet row as processing", extra={"row": row.sheet_row_number, "call_id": call_id})
                     # still count as queued (job is in queue), but surface the sheet write failure
@@ -231,7 +274,7 @@ class Pipeline:
 
     # ── Phase 2: DB results → sheet ───────────────────────────────────────
 
-    def _write_back_results(self):
+    def _write_back_results(self, sheets: SheetsClient):
         # Fetch pending/completed calls from DB with timing/logging
         db_start = _time.perf_counter()
         try:
@@ -239,7 +282,7 @@ class Pipeline:
             db_duration = _time.perf_counter() - db_start
             logger.info("Fetched pending/completed calls from DB", extra={"count": len(completed_calls) if completed_calls else 0, "duration_s": db_duration})
         except Exception:
-            logger.exception("Failed to fetch pending/completed calls from DB", extra={})
+            logger.exception("Failed to fetch pending/completed calls from DB")
             return
 
         if not completed_calls:
@@ -249,7 +292,7 @@ class Pipeline:
         logger.info("Load phase starting", extra={"completed_calls_count": len(completed_calls)})
 
         # Build a lookup: call_link → (sheet row number, current stt_status)
-        rows = self.sheets.read_data_rows()
+        rows = sheets.read_data_rows()
         link_to_row: dict[str, tuple[int, str]] = {
             r.call_link: (r.sheet_row_number, r.stt_status)
             for r in rows
@@ -295,7 +338,7 @@ class Pipeline:
             )
             try:
                 write_start = _time.perf_counter()
-                self.sheets.write_analysis_result(
+                sheets.write_analysis_result(
                     row_number=row_number,
                     stt_status=stt_status,
                     quality=call.get("quality_score"),

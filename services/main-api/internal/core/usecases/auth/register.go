@@ -21,26 +21,22 @@ type RegisterRequest struct {
 }
 
 type RegisterResponse struct {
-	User    *domain.User     `json:"user"`
-	Company *domain.Company  `json:"company"`
-	Tokens  *ports.TokenPair `json:"tokens"`
+	User   *domain.User     `json:"user"`
+	Tokens *ports.TokenPair `json:"tokens"`
 }
 
 type RegisterUseCase struct {
-	userRepo    ports.UserRepository
-	companyRepo ports.CompanyRepository
-	jwtService  ports.JWTService
+	userRepo   ports.UserRepository
+	jwtService ports.JWTService
 }
 
 func NewRegisterUseCase(
 	userRepo ports.UserRepository,
-	companyRepo ports.CompanyRepository,
 	jwtService ports.JWTService,
 ) *RegisterUseCase {
 	return &RegisterUseCase{
-		userRepo:    userRepo,
-		companyRepo: companyRepo,
-		jwtService:  jwtService,
+		userRepo:   userRepo,
+		jwtService: jwtService,
 	}
 }
 
@@ -49,20 +45,6 @@ func (uc *RegisterUseCase) Execute(ctx context.Context, req *RegisterRequest) (*
 	existing, _ := uc.userRepo.GetByEmail(ctx, req.Email)
 	if existing != nil {
 		return nil, errors.New("email already registered")
-	}
-
-	// Create a new company for the user
-	company := &domain.Company{
-		ID:                 uuid.New().String(),
-		Name:               req.CompanyName,
-		STTModelPreference: domain.STTWhisperXLocal,
-		LLMProvider:        domain.LLMOpenAI,
-		SubscriptionTier:   "basic",
-		IsActive:           true,
-	}
-	err := uc.companyRepo.Create(ctx, company)
-	if err != nil {
-		return nil, err
 	}
 
 	// Hash password
@@ -79,23 +61,16 @@ func (uc *RegisterUseCase) Execute(ctx context.Context, req *RegisterRequest) (*
 
 	user := &domain.User{
 		ID:           uuid.New().String(),
-		CompanyID:    company.ID,
 		Email:        req.Email,
-		FirstName:    req.FullName, // Simplified for now, or split if needed
+		FirstName:    req.FullName,
 		PasswordHash: string(passwordHash),
-		Role:         domain.RoleTenantAdmin,
+		Role:         domain.RoleSuperAdmin, // Default first user as super_admin
 		ManagerID:    &managerID,
 		ManagerName:  req.ManagerName,
 		IsActive:     true,
 	}
 
 	err = uc.userRepo.Create(ctx, user)
-	if err != nil {
-		return nil, err
-	}
-
-	// Link user to company in user_companies table
-	err = uc.userRepo.AddUserToCompany(ctx, user.ID, company.ID, domain.RoleTenantAdmin)
 	if err != nil {
 		return nil, err
 	}
@@ -107,8 +82,7 @@ func (uc *RegisterUseCase) Execute(ctx context.Context, req *RegisterRequest) (*
 	}
 
 	return &RegisterResponse{
-		User:    user,
-		Company: company,
-		Tokens:  tokens,
+		User:   user,
+		Tokens: tokens,
 	}, nil
 }

@@ -9,23 +9,17 @@ import (
 // UserRepository defines the contract for user-related data operations.
 type UserRepository interface {
 	Create(ctx context.Context, user *domain.User) error
-	GetByID(ctx context.Context, companyID, id string) (*domain.User, error)
-	GetByIDGlobal(ctx context.Context, id string) (*domain.User, error)
+	GetByID(ctx context.Context, id string) (*domain.User, error)
 	GetByEmail(ctx context.Context, email string) (*domain.User, error)
 	Update(ctx context.Context, user *domain.User) error
-	Delete(ctx context.Context, companyID, id string) error
-	ListByCompany(ctx context.Context, companyID string) ([]*domain.User, error)
-	AddUserToCompany(ctx context.Context, userID, companyID string, role domain.UserRole) error
-	GetUserCompanies(ctx context.Context, userID string) ([]domain.UserCompany, error)
+	Delete(ctx context.Context, id string) error
+	List(ctx context.Context) ([]*domain.User, error)
 	GetByManagerID(ctx context.Context, managerID string) (*domain.User, error)
 }
 
 // CompanyRepository defines the contract for company-related data operations.
 type CompanyRepository interface {
-	Create(ctx context.Context, company *domain.Company) error
-	GetByID(ctx context.Context, id string) (*domain.Company, error)
-	Update(ctx context.Context, company *domain.Company) error
-	GetBillingInfo(ctx context.Context, companyID string) (*domain.BillingInfo, error)
+	GetBillingInfo(ctx context.Context) (*domain.BillingInfo, error)
 	UpdateBillingInfo(ctx context.Context, billing *domain.BillingInfo) error
 }
 
@@ -54,11 +48,11 @@ type AnalysisRepository interface {
 // ScriptRepository defines the contract for sales script operations.
 type ScriptRepository interface {
 	Create(ctx context.Context, script *domain.Script) error
-	GetByID(ctx context.Context, companyID, id string) (*domain.Script, error)
-	ListByCompany(ctx context.Context, companyID string) ([]*domain.Script, error)
+	GetByID(ctx context.Context, id string) (*domain.Script, error)
+	List(ctx context.Context) ([]*domain.Script, error)
 	Update(ctx context.Context, script *domain.Script) error
-	Delete(ctx context.Context, companyID, id string) error
-	GetActiveByCompany(ctx context.Context, companyID string) (*domain.Script, error)
+	Delete(ctx context.Context, id string) error
+	GetActive(ctx context.Context) (*domain.Script, error)
 	GetActiveBaseScript(ctx context.Context) (*domain.Script, error)
 	GetAllBaseScripts(ctx context.Context) ([]*domain.Script, error)
 	SetActiveBaseScript(ctx context.Context, scriptID string) error
@@ -75,18 +69,19 @@ type NotificationRepository interface {
 // TeamRepository defines the contract for sales team/group operations.
 type TeamRepository interface {
 	Create(ctx context.Context, team *domain.Team) error
-	GetByID(ctx context.Context, companyID, id string) (*domain.Team, error)
+	GetByID(ctx context.Context, id string) (*domain.Team, error)
 	GetByName(ctx context.Context, name string) (*domain.Team, error)
-	ListByCompany(ctx context.Context, companyID string) ([]*domain.Team, error)
+	List(ctx context.Context) ([]*domain.Team, error)
 	Update(ctx context.Context, team *domain.Team) error
-	Delete(ctx context.Context, companyID, id string) error
+	Delete(ctx context.Context, id string) error
 }
 
 // IntegrationRepository defines the contract for third-party integration settings.
 type IntegrationRepository interface {
 	Create(ctx context.Context, integration *domain.Integration) error
-	GetByType(ctx context.Context, companyID string, integrationType domain.IntegrationType) (*domain.Integration, error)
-	ListByCompany(ctx context.Context, companyID string) ([]*domain.Integration, error)
+	GetByType(ctx context.Context, integrationType domain.IntegrationType) (*domain.Integration, error)
+	List(ctx context.Context) ([]*domain.Integration, error)
+	ListAllActive(ctx context.Context) ([]*domain.Integration, error)
 	Update(ctx context.Context, integration *domain.Integration) error
-	Delete(ctx context.Context, companyID string, integrationType domain.IntegrationType) error
+	Delete(ctx context.Context, integrationType domain.IntegrationType) error
 }

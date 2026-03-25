@@ -29,8 +29,8 @@ func NewAuthHandler(
 }
 
 // Register godoc
-// @Summary Register a new company and admin user
-// @Description Register a new company along with a super_admin user
+// @Summary Register a new admin user
+// @Description Register a new user with super_admin role
 // @Tags auth
 // @Accept json
 // @Produce json
@@ -50,7 +50,7 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 		})
 	}
 
-	log.Info("registration requested", zap.String("email", req.Email), zap.String("company", req.CompanyName))
+	log.Info("registration requested", zap.String("email", req.Email))
 
 	resp, err := h.registerUC.Execute(c.Context(), &req)
 	if err != nil {
@@ -60,7 +60,7 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 		})
 	}
 
-	log.Info("registration successful", zap.String("email", req.Email), zap.String("company_id", resp.Company.ID))
+	log.Info("registration successful", zap.String("email", req.Email))
 	return c.Status(fiber.StatusCreated).JSON(resp)
 }
 

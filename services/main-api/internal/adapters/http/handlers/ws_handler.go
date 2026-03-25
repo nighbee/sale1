@@ -16,12 +16,10 @@ func NewWSHandler(hub *ws.Hub) *WSHandler {
 
 func (h *WSHandler) Handle(c *websocket.Conn) {
 	userID := c.Locals("user_id").(string)
-	companyID := c.Locals("company_id").(string)
 
 	client := &ws.Client{
-		UserID:    userID,
-		CompanyID: companyID,
-		Conn:      c,
+		UserID: userID,
+		Conn:   c,
 	}
 
 	h.hub.Register(client)

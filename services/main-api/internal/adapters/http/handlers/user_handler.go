@@ -38,38 +38,18 @@ func NewUserHandler(userRepo ports.UserRepository, listCallsUC *calls.ListCallsU
 // @Router /users [get]
 func (h *UserHandler) ListUsers(c *fiber.Ctx) error {
 	log := applogger.FromFiberCtx(c).With(zap.String("operation", "list_users"))
-	companyID := c.Locals("company_id").(string)
-	users, err := h.userRepo.ListByCompany(c.Context(), companyID)
+	users, err := h.userRepo.List(c.Context())
 	if err != nil {
-		log.Error("list users failed", zap.String("company_id", companyID), zap.Error(err))
+		log.Error("list users failed", zap.Error(err))
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
-	log.Debug("users listed", zap.String("company_id", companyID), zap.Int("count", len(users)))
+	log.Debug("users listed", zap.Int("count", len(users)))
 	return c.JSON(fiber.Map{"users": users})
-}
-
-// ListUserCompanies godoc
-// @Summary List user's companies
-// @Description Get all companies associated with the current user
-// @Tags users
-// @Accept json
-// @Produce json
-// @Success 200 {object} fiber.Map
-// @Failure 500 {object} fiber.Map
-// @Security BearerAuth
-// @Router /user/companies [get]
-func (h *UserHandler) ListUserCompanies(c *fiber.Ctx) error {
-	userID := c.Locals("user_id").(string)
-	companies, err := h.userRepo.GetUserCompanies(c.Context(), userID)
-	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
-	}
-	return c.JSON(fiber.Map{"companies": companies})
 }
 
 // InviteUser godoc
 // @Summary Invite a new user
-// @Description Invite a new user to the company and assign a role
+// @Description Invite a new user and assign a role
 // @Tags users
 // @Accept json
 // @Produce json
@@ -81,7 +61,6 @@ func (h *UserHandler) ListUserCompanies(c *fiber.Ctx) error {
 // @Router /users/invite [post]
 func (h *UserHandler) InviteUser(c *fiber.Ctx) error {
 	log := applogger.FromFiberCtx(c).With(zap.String("operation", "invite_user"))
-	companyID := c.Locals("company_id").(string)
 
 	var req struct {
 		Email             string   `json:"email"`
@@ -124,10 +103,6 @@ func (h *UserHandler) InviteUser(c *fiber.Ctx) error {
 	for _, email := range emails {
 		existingUser, err := h.userRepo.GetByEmail(c.Context(), email)
 		if err == nil && existingUser != nil {
-			// User exists, add to company
-			if err := h.userRepo.AddUserToCompany(c.Context(), existingUser.ID, companyID, domain.UserRole(role)); err != nil {
-				continue
-			}
 			invitedUsers = append(invitedUsers, existingUser)
 			continue
 		}
@@ -139,7 +114,6 @@ func (h *UserHandler) InviteUser(c *fiber.Ctx) error {
 
 		user := &domain.User{
 			ID:           uuid.New().String(),
-			CompanyID:    companyID,
 			Email:        email,
 			Role:         domain.UserRole(role),
 			ManagerName:  req.ManagerName,
@@ -151,13 +125,10 @@ func (h *UserHandler) InviteUser(c *fiber.Ctx) error {
 		if err := h.userRepo.Create(c.Context(), user); err != nil {
 			continue
 		}
-		if err := h.userRepo.AddUserToCompany(c.Context(), user.ID, companyID, domain.UserRole(role)); err != nil {
-			continue
-		}
 		invitedUsers = append(invitedUsers, user)
 	}
 
-	log.Info("users invited", zap.String("company_id", companyID), zap.Int("count", len(invitedUsers)))
+	log.Info("users invited", zap.Int("count", len(invitedUsers)))
 	return c.Status(201).JSON(fiber.Map{
 		"users":   invitedUsers,
 		"message": "Invitations sent successfully",
@@ -177,8 +148,7 @@ func (h *UserHandler) InviteUser(c *fiber.Ctx) error {
 // @Router /users/{id} [get]
 func (h *UserHandler) GetUser(c *fiber.Ctx) error {
 	id := c.Params("id")
-	companyID := c.Locals("company_id").(string)
-	user, err := h.userRepo.GetByID(c.Context(), companyID, id)
+	user, err := h.userRepo.GetByID(c.Context(), id)
 	if err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "User not found"})
 	}
@@ -200,8 +170,7 @@ func (h *UserHandler) GetUser(c *fiber.Ctx) error {
 // @Router /users/{id} [put]
 func (h *UserHandler) UpdateUser(c *fiber.Ctx) error {
 	id := c.Params("id")
-	companyID := c.Locals("company_id").(string)
-	user, err := h.userRepo.GetByID(c.Context(), companyID, id)
+	user, err := h.userRepo.GetByID(c.Context(), id)
 	if err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "User not found"})
 	}
@@ -258,8 +227,7 @@ func (h *UserHandler) UpdateUser(c *fiber.Ctx) error {
 // @Router /user/me [get]
 func (h *UserHandler) GetMe(c *fiber.Ctx) error {
 	id := c.Locals("user_id").(string)
-	companyID := c.Locals("company_id").(string)
-	user, err := h.userRepo.GetByID(c.Context(), companyID, id)
+	user, err := h.userRepo.GetByID(c.Context(), id)
 	if err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "User not found"})
 	}
@@ -268,7 +236,7 @@ func (h *UserHandler) GetMe(c *fiber.Ctx) error {
 
 // DeleteUser godoc
 // @Summary Delete a user
-// @Description Remove a user from the company
+// @Description Remove a user
 // @Tags users
 // @Accept json
 // @Produce json
@@ -279,8 +247,7 @@ func (h *UserHandler) GetMe(c *fiber.Ctx) error {
 // @Router /users/{id} [delete]
 func (h *UserHandler) DeleteUser(c *fiber.Ctx) error {
 	id := c.Params("id")
-	companyID := c.Locals("company_id").(string)
-	if err := h.userRepo.Delete(c.Context(), companyID, id); err != nil {
+	if err := h.userRepo.Delete(c.Context(), id); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.SendStatus(fiber.StatusNoContent)
@@ -304,10 +271,9 @@ func (h *UserHandler) DeleteUser(c *fiber.Ctx) error {
 func (h *UserHandler) GetUserCalls(c *fiber.Ctx) error {
 	log := applogger.FromFiberCtx(c).With(zap.String("operation", "get_user_calls"))
 	targetUserID := c.Params("id")
-	companyID := c.Locals("company_id").(string)
 
 	// Get target user
-	user, err := h.userRepo.GetByID(c.Context(), companyID, targetUserID)
+	user, err := h.userRepo.GetByID(c.Context(), targetUserID)
 	if err != nil {
 		log.Warn("user not found", zap.String("user_id", targetUserID), zap.Error(err))
 		return c.Status(404).JSON(fiber.Map{"error": "User not found"})
@@ -349,7 +315,6 @@ func (h *UserHandler) GetUserCalls(c *fiber.Ctx) error {
 		zap.Int("limit", limit))
 
 	resp, err := h.listCallsUC.Execute(c.Context(), calls.ListCallsRequest{
-		CompanyID: companyID,
 		ManagerID: *user.ManagerID,
 		Page:      page,
 		Limit:     limit,

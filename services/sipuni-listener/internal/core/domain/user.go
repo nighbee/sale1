@@ -12,7 +12,6 @@ const (
 
 type User struct {
 	ID           string     `json:"id"`
-	CompanyID    string     `json:"company_id"`
 	Email        string     `json:"email"`
 	PasswordHash string     `json:"-"`
 	Role         UserRole   `json:"role"`

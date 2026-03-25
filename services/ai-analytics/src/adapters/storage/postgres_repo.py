@@ -72,22 +72,6 @@ def get_team_script(manager_id):
     finally:
         get_pool().putconn(conn)
 
-def get_company_settings_by_manager(manager_id):
-    """Get company settings using manager_id. Returns default settings if not found."""
-    conn = get_pool().getconn()
-    try:
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("""
-            SELECT c.llm_provider 
-            FROM auth_schema.companies c
-            JOIN auth_schema.users u ON u.company_id = c.id
-            WHERE u.manager_id = %s
-            LIMIT 1
-        """, (manager_id,))
-        return cur.fetchone()
-    finally:
-        get_pool().putconn(conn)
-
 def get_call(call_id):
     conn = get_pool().getconn()
     try:
@@ -97,35 +81,16 @@ def get_call(call_id):
     finally:
         get_pool().putconn(conn)
 
-def get_company_id_by_call(call_id):
-    """Get company_id by call_id. Returns None if not found (for backward compatibility)."""
-    conn = get_pool().getconn()
-    try:
-        cur = conn.cursor()
-        cur.execute("""
-            SELECT u.company_id FROM auth_schema.users u
-            JOIN calls_schema.calls c ON c.manager_id = u.manager_id
-            WHERE c.id = %s LIMIT 1
-        """, (call_id,))
-        row = cur.fetchone()
-        return row[0] if row else None
-    except Exception as e:
-        logger.warning("Could not resolve company_id", extra={"call_id": call_id, "error": str(e)})
-        return None
-    finally:
-        get_pool().putconn(conn)
-
 def get_active_script_by_manager(manager_id):
-    """Get active script for a manager's company. Returns None if not found."""
+    """Get active script. Returns None if not found."""
     conn = get_pool().getconn()
     try:
         cur = conn.cursor(cursor_factory=RealDictCursor)
         cur.execute("""
             SELECT s.* FROM scripts_schema.scripts s
-            JOIN auth_schema.users u ON s.company_id = u.company_id
-            WHERE u.manager_id = %s AND s.is_active = true
+            WHERE s.is_active = true
             ORDER BY s.version DESC LIMIT 1
-        """, (manager_id,))
+        """)
         return cur.fetchone()
     finally:
         get_pool().putconn(conn)
@@ -185,17 +150,16 @@ def log_processing_event(call_id, service_name, status, error_message=None, retr
     finally:
         get_pool().putconn(conn)
 
-def get_company_admin_by_manager(manager_id):
-    """Get company admin user by manager_id. Returns None if not found."""
+def get_admin_user():
+    """Get first super_admin user. Returns None if not found."""
     conn = get_pool().getconn()
     try:
         cur = conn.cursor(cursor_factory=RealDictCursor)
         cur.execute("""
-            SELECT u.id FROM auth_schema.users u
-            JOIN auth_schema.users u2 ON u2.company_id = u.company_id
-            WHERE u2.manager_id = %s AND u.role = 'tenant_admin'
+            SELECT id FROM auth_schema.users
+            WHERE role = 'super_admin'
             LIMIT 1
-        """, (manager_id,))
+        """)
         return cur.fetchone()
     finally:
         get_pool().putconn(conn)

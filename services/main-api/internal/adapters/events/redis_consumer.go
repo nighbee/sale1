@@ -98,31 +98,29 @@ func (c *RedisConsumer) Start(ctx context.Context) {
 					}
 					call, err := c.callRepo.GetByIDInternal(ctx, callID)
 					if err == nil {
-						user, err := c.userRepo.GetByManagerID(ctx, call.ManagerID)
+						_, err := c.userRepo.GetByManagerID(ctx, call.ManagerID)
 						if err == nil {
 							c.hub.Broadcast(ws.Message{
-								UserID:    call.ManagerID,
-								CompanyID: user.CompanyID,
-								Type:      "analysis_completed",
-								Payload:   payload,
+								UserID:  call.ManagerID,
+								Type:    "analysis_completed",
+								Payload: payload,
 							})
 							// External Notifications
-							go c.notifyExternal(ctx, user.CompanyID, "Call Analysis Completed", fmt.Sprintf("Call with %s completed. Rating: %v", call.ClientPhone, payload["overall_rating"]))
+							go c.notifyExternal(ctx, "Call Analysis Completed", fmt.Sprintf("Call with %s completed. Rating: %v", call.ClientPhone, payload["overall_rating"]))
 						}
 					}
 				} else if streamName == "critical_error" {
 					call, err := c.callRepo.GetByIDInternal(ctx, callID)
 					if err == nil {
-						user, err := c.userRepo.GetByManagerID(ctx, call.ManagerID)
+						_, err := c.userRepo.GetByManagerID(ctx, call.ManagerID)
 						if err == nil {
-							// Broadcast to everyone in the company (admins)
+							// Broadcast to everyone
 							c.hub.Broadcast(ws.Message{
-								CompanyID: user.CompanyID,
-								Type:      "critical_error",
-								Payload:   payload,
+								Type:    "critical_error",
+								Payload: payload,
 							})
 							// External Notifications
-							go c.notifyExternal(ctx, user.CompanyID, "CRITICAL ERROR", fmt.Sprintf("%v", payload["message"]))
+							go c.notifyExternal(ctx, "CRITICAL ERROR", fmt.Sprintf("%v", payload["message"]))
 						}
 					}
 				}
@@ -133,8 +131,8 @@ func (c *RedisConsumer) Start(ctx context.Context) {
 	}
 }
 
-func (c *RedisConsumer) notifyExternal(ctx context.Context, companyID, subject, message string) {
-	integrations, err := c.integrationRepo.ListByCompany(ctx, companyID)
+func (c *RedisConsumer) notifyExternal(ctx context.Context, subject, message string) {
+	integrations, err := c.integrationRepo.List(ctx)
 	if err != nil {
 		return
 	}

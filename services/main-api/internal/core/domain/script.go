@@ -6,7 +6,6 @@ import (
 
 type Script struct {
 	ID                string                 `json:"id"`
-	CompanyID         *string                `json:"company_id,omitempty"`
 	TeamID            *string                `json:"team_id,omitempty"`
 	Name              string                 `json:"name"`
 	FilePathMinio     string                 `json:"file_path_minio"`

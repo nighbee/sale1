@@ -1,5 +1,5 @@
 import { api } from '../../shared/api/base';
-import type { User, AuthResponse, UserCompany } from './types';
+import type { User, AuthResponse } from './types';
 import type { Call } from '../call/types';
 
 export const userApi = {
@@ -11,7 +11,6 @@ export const userApi = {
   get: (id: string) => api.get<{ user: User }>(`/users/${id}`),
   update: (id: string, data: Partial<User>) => api.put<{ user: User }>(`/users/${id}`, data),
   delete: (id: string) => api.delete(`/users/${id}`),
-  listCompanies: () => api.get<{ companies: UserCompany[] }>('/user/companies'),
   getMe: () => api.get<User>('/user/me'),
   logout: () => api.post('/auth/logout'),
   getUserCalls: (id: string, params?: unknown) => api.get<{ calls: Call[]; total?: number }>(`/users/${id}/calls`, { params }),

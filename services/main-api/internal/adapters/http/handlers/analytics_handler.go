@@ -25,7 +25,7 @@ func NewAnalyticsHandler(teamPerformanceUC *analytics.TeamPerformanceUseCase) *A
 
 // GetTeamPerformance godoc
 // @Summary Get team performance metrics
-// @Description Get aggregated performance metrics for all managers in a team or company
+// @Description Get aggregated performance metrics for all managers in a team
 // @Tags analytics
 // @Accept json
 // @Produce json
@@ -46,7 +46,7 @@ func (h *AnalyticsHandler) GetTeamPerformance(c *fiber.Ctx) error {
 	}
 
 	log.Debug("fetching team performance", zap.Any("filters", filters))
-	result, err := h.teamPerformanceUC.Execute(c.Context(), "", filters)
+	result, err := h.teamPerformanceUC.Execute(c.Context(), filters)
 	if err != nil {
 		log.Error("team performance query failed", zap.Error(err))
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
@@ -65,7 +65,6 @@ func (h *AnalyticsHandler) GetTeamPerformance(c *fiber.Ctx) error {
 // @Tags analytics
 // @Accept json
 // @Produce json
-// @Param company_id query string false "Filter by company ID (super_admin only)"
 // @Param team_id query string false "Filter by team ID"
 // @Param period query string false "Time period (7d, 30d, 90d, all)"
 // @Param source query string false "Filter by call source (sipuni, google_sheets)"
@@ -77,14 +76,6 @@ func (h *AnalyticsHandler) GetTeamPerformance(c *fiber.Ctx) error {
 // @Router /analytics/leaderboard [get]
 func (h *AnalyticsHandler) GetLeaderboard(c *fiber.Ctx) error {
 	log := applogger.FromFiberCtx(c).With(zap.String("operation", "get_leaderboard"))
-	companyID := c.Locals("company_id").(string)
-	if c.Locals("role").(string) == "super_admin" {
-		if qCID := c.Query("company_id"); qCID != "" {
-			companyID = qCID
-		} else {
-			companyID = ""
-		}
-	}
 
 	filters := map[string]interface{}{
 		"team_id":    c.Query("team_id"),
@@ -94,14 +85,14 @@ func (h *AnalyticsHandler) GetLeaderboard(c *fiber.Ctx) error {
 		"manager_id": c.Query("manager_id"),
 	}
 
-	log.Debug("fetching leaderboard", zap.String("company_id", companyID), zap.Any("filters", filters))
-	result, err := h.teamPerformanceUC.Execute(c.Context(), companyID, filters)
+	log.Debug("fetching leaderboard", zap.Any("filters", filters))
+	result, err := h.teamPerformanceUC.Execute(c.Context(), filters)
 	if err != nil {
-		log.Error("leaderboard query failed", zap.String("company_id", companyID), zap.Error(err))
+		log.Error("leaderboard query failed", zap.Error(err))
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	log.Info("leaderboard fetched", zap.String("company_id", companyID), zap.Int("entries", len(result)))
+	log.Info("leaderboard fetched", zap.Int("entries", len(result)))
 	return c.JSON(fiber.Map{
 		"leaderboard": result,
 	})
@@ -120,20 +111,12 @@ func (h *AnalyticsHandler) GetLeaderboard(c *fiber.Ctx) error {
 // @Security BearerAuth
 // @Router /analytics/leaderboard/export/{format} [get]
 func (h *AnalyticsHandler) ExportLeaderboard(c *fiber.Ctx) error {
-	companyID := c.Locals("company_id").(string)
-	if c.Locals("role").(string) == "super_admin" {
-		if qCID := c.Query("company_id"); qCID != "" {
-			companyID = qCID
-		} else {
-			companyID = ""
-		}
-	}
 	format := c.Params("format")
 	filters := map[string]interface{}{
 		"team_id": c.Query("team_id"),
 	}
 
-	result, err := h.teamPerformanceUC.Execute(c.Context(), companyID, filters)
+	result, err := h.teamPerformanceUC.Execute(c.Context(), filters)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}

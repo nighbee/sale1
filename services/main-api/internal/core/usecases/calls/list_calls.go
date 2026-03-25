@@ -8,7 +8,6 @@ import (
 )
 
 type ListCallsRequest struct {
-	CompanyID   string `json:"company_id"`
 	ManagerID   string `json:"manager_id"`
 	ManagerName string `json:"manager_name"`
 	ClientPhone string `json:"client_phone"`
@@ -38,7 +37,6 @@ func NewListCallsUseCase(callRepo ports.CallRepository) *ListCallsUseCase {
 
 func (uc *ListCallsUseCase) Execute(ctx context.Context, req ListCallsRequest) (*ListCallsResponse, error) {
 	filters := map[string]interface{}{
-		"company_id":   req.CompanyID,
 		"manager_id":   req.ManagerID,
 		"manager_name": req.ManagerName,
 		"client_phone": req.ClientPhone,

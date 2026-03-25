@@ -57,7 +57,7 @@ func NewCallHandler(
 
 // ListCalls godoc
 // @Summary List calls with filters
-// @Description Get a paginated list of calls for the company
+// @Description Get a paginated list of calls
 // @Tags calls
 // @Accept json
 // @Produce json
@@ -288,7 +288,7 @@ func (h *CallHandler) ReprocessCall(c *fiber.Ctx) error {
 // @Success 200 {file} binary
 // @Failure 404 {object} fiber.Map
 // @Security BearerAuth
-// @Router /calls/{id}/audio [get]
+// @Router /calls/:id/audio [get]
 func (h *CallHandler) GetAudio(c *fiber.Ctx) error {
 	id := c.Params("id")
 	call, err := h.callRepo.GetByID(c.Context(), id)

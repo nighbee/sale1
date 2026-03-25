@@ -36,7 +36,6 @@ func NewIntegrationHandler(integrationUC *integrations.IntegrationUseCase) *Inte
 // @Router /integrations [post]
 func (h *IntegrationHandler) Save(c *fiber.Ctx) error {
 	log := applogger.FromFiberCtx(c).With(zap.String("operation", "save_integration"))
-	companyID := c.Locals("company_id").(string)
 	var req struct {
 		IntegrationType string          `json:"integration_type"`
 		Credentials     json.RawMessage `json:"credentials"`
@@ -47,19 +46,19 @@ func (h *IntegrationHandler) Save(c *fiber.Ctx) error {
 		log.Warn("body parse error", zap.Error(err))
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid body"})
 	}
-	log.Info("saving integration", zap.String("company_id", companyID), zap.String("type", req.IntegrationType), zap.Bool("active", req.IsActive))
-	integration, err := h.integrationUC.Save(c.Context(), companyID, domain.IntegrationType(req.IntegrationType), req.Credentials, req.Config, req.IsActive)
+	log.Info("saving integration", zap.String("type", req.IntegrationType), zap.Bool("active", req.IsActive))
+	integration, err := h.integrationUC.Save(c.Context(), domain.IntegrationType(req.IntegrationType), req.Credentials, req.Config, req.IsActive)
 	if err != nil {
-		log.Error("save integration failed", zap.String("company_id", companyID), zap.String("type", req.IntegrationType), zap.Error(err))
+		log.Error("save integration failed", zap.String("type", req.IntegrationType), zap.Error(err))
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
-	log.Info("integration saved", zap.String("company_id", companyID), zap.String("integration_id", integration.ID))
+	log.Info("integration saved", zap.String("integration_id", integration.ID))
 	return c.JSON(integration)
 }
 
 // List godoc
-// @Summary List company integrations
-// @Description Get a list of all integrations for the company
+// @Summary List integrations
+// @Description Get a list of all integrations
 // @Tags integrations
 // @Accept json
 // @Produce json
@@ -68,8 +67,33 @@ func (h *IntegrationHandler) Save(c *fiber.Ctx) error {
 // @Security BearerAuth
 // @Router /integrations [get]
 func (h *IntegrationHandler) List(c *fiber.Ctx) error {
-	companyID := c.Locals("company_id").(string)
-	integrations, err := h.integrationUC.ListByCompany(c.Context(), companyID)
+	integrations, err := h.integrationUC.List(c.Context())
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"integrations": integrations})
+}
+
+// ListInternal godoc
+// @Summary List all active integrations (Internal)
+// @Description Internal endpoint to get all active integrations.
+// @Tags integrations
+// @Accept json
+// @Produce json
+// @Success 200 {object} fiber.Map
+// @Failure 500 {object} fiber.Map
+// @Router /internal/integrations [get]
+func (h *IntegrationHandler) ListInternal(c *fiber.Ctx) error {
+	secret := c.Get("X-Internal-Secret")
+	internalSecret := os.Getenv("INTERNAL_SECRET")
+	if internalSecret == "" {
+		internalSecret = "internal-secret-key"
+	}
+
+	if secret == "" || secret != internalSecret {
+		return c.Status(403).JSON(fiber.Map{"error": "Forbidden: internal access only"})
+	}
+	integrations, err := h.integrationUC.ListAllActive(c.Context())
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -88,9 +112,8 @@ func (h *IntegrationHandler) List(c *fiber.Ctx) error {
 // @Security BearerAuth
 // @Router /integrations/{type} [get]
 func (h *IntegrationHandler) Get(c *fiber.Ctx) error {
-	companyID := c.Locals("company_id").(string)
 	it := c.Params("type")
-	integration, err := h.integrationUC.GetByType(c.Context(), companyID, domain.IntegrationType(it))
+	integration, err := h.integrationUC.GetByType(c.Context(), domain.IntegrationType(it))
 	if err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Integration not found"})
 	}
@@ -99,7 +122,7 @@ func (h *IntegrationHandler) Get(c *fiber.Ctx) error {
 
 // Delete godoc
 // @Summary Delete an integration
-// @Description Remove a third-party integration from the company
+// @Description Remove a third-party integration
 // @Tags integrations
 // @Accept json
 // @Produce json
@@ -109,9 +132,8 @@ func (h *IntegrationHandler) Get(c *fiber.Ctx) error {
 // @Security BearerAuth
 // @Router /integrations/{type} [delete]
 func (h *IntegrationHandler) Delete(c *fiber.Ctx) error {
-	companyID := c.Locals("company_id").(string)
 	it := c.Params("type")
-	if err := h.integrationUC.Delete(c.Context(), companyID, domain.IntegrationType(it)); err != nil {
+	if err := h.integrationUC.Delete(c.Context(), domain.IntegrationType(it)); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.SendStatus(204)
