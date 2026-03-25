@@ -17,6 +17,8 @@ type User struct {
 	FirstName    string     `json:"first_name"`
 	LastName     string     `json:"last_name"`
 	Email        string     `json:"email"`
+	Username     string     `json:"username"`
+	Phone        string     `json:"phone"`
 	PasswordHash string     `json:"-"`
 	Role         UserRole   `json:"role"`
 	ManagerID    *string    `json:"manager_id,omitempty"`

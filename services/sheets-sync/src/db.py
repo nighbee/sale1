@@ -73,11 +73,11 @@ def _ensure_manager_user_exists(cur, manager_id: str, manager_name: str):
         cur.execute(
             """
             INSERT INTO auth_schema.users
-              (id, email, password_hash, role, manager_id, manager_name, first_name, last_name, is_active)
+              (id, email, password_hash, role, manager_id, manager_name, first_name, last_name, is_active, username)
             VALUES
-              (%s, %s, %s, 'sales_rep', %s, %s, %s, %s, TRUE)
+              (%s, %s, %s, 'sales_rep', %s, %s, %s, %s, TRUE, %s)
             """,
-            (user_uuid, email, password_hash, manager_id, manager_name, first_name, last_name),
+            (user_uuid, email, password_hash, manager_id, manager_name, first_name, last_name, manager_name),
         )
 
         # Commit makes the creation durable for other connections
@@ -310,12 +310,12 @@ def create_manager_user(
             cur.execute(
                 """
                 INSERT INTO auth_schema.users
-                  (id, email, password_hash, role, manager_id, manager_name, is_active)
+                  (id, email, password_hash, role, manager_id, manager_name, is_active, username)
                 VALUES
-                  (%s, %s, %s, 'sales_rep', %s, %s, TRUE)
+                  (%s, %s, %s, 'sales_rep', %s, %s, TRUE, %s)
                 ON CONFLICT (email) DO NOTHING
                 """,
-                (user_id, email, password_hash, manager_id, manager_name),
+                (user_id, email, password_hash, manager_id, manager_name, manager_name),
             )
             conn.commit()
             logger.info(
