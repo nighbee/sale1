@@ -23,11 +23,21 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - sale1-network
 
   minio:
     image: minio/minio:latest
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: minioadmin
@@ -121,11 +131,13 @@ services:
       postgres:
         condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
+      minio:
+        condition: service_healthy
       main-api-migrate:
         condition: service_completed_successfully
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/metrics"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/api/v1/health"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -152,8 +164,15 @@ services:
       COMPANY_ID: ${COMPANY_ID}
       LOG_LEVEL: ${LOG_LEVEL:-info}
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8081/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - sale1-network
     logging:
@@ -173,8 +192,15 @@ services:
       MINIO_SECRET_KEY: "minioadmin123"
       LOG_LEVEL: ${LOG_LEVEL:-info}
     depends_on:
-      - postgres
-      - minio
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8083/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - sale1-network
     logging:
@@ -201,9 +227,17 @@ services:
       MINIO_SECURE: "false"
       LOG_LEVEL: ${LOG_LEVEL:-info}
     depends_on:
-      - postgres
-      - redis
-      - minio
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - sale1-network
     logging:
@@ -226,8 +260,15 @@ services:
       GOOGLE_AI_MODEL: ${GOOGLE_AI_MODEL}
       LOG_LEVEL: ${LOG_LEVEL:-info}
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - sale1-network
     logging:
@@ -240,7 +281,13 @@ services:
     build: ./services/frontend
     restart: always
     depends_on:
-      - main-api
+      main-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - sale1-network
 
@@ -261,8 +308,12 @@ services:
     ports:
       - "8085:8085"
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      main-api:
+        condition: service_healthy
     networks:
       - sale1-network
     logging:
@@ -271,7 +322,7 @@ services:
         max-size: "50m"
         max-file: "5"
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8085/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8085/health')"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -288,13 +339,18 @@ services:
       main-api:
         condition: service_healthy
       sipuni-listener:
-        condition: service_started
+        condition: service_healthy
       script-service:
-        condition: service_started
+        condition: service_healthy
       frontend:
-        condition: service_started
+        condition: service_healthy
       sheets-sync:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - sale1-network
 

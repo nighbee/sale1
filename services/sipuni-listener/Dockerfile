@@ -6,6 +6,7 @@ COPY . .
 RUN go build -o main cmd/listener/main.go
 
 FROM alpine:latest
+RUN apk add --no-cache wget
 WORKDIR /app
 COPY --from=builder /app/main .
 CMD ["./main"]

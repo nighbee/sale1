@@ -26,6 +26,11 @@ func SetupRoutes(
 ) {
 	api := app.Group("/api/v1")
 
+	// Health check
+	api.Get("/health", func(c *fiber.Ctx) error {
+		return c.Status(200).SendString("OK")
+	})
+
 	// Swagger documentation
 	app.Get("/swagger/*", swagger.HandlerDefault)
 

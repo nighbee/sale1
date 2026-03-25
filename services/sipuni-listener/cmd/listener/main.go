@@ -82,6 +82,10 @@ func main() {
 		prometheus.RegisterAt(app, "/metrics")
 		app.Use(prometheus.Middleware)
 
+		app.Get("/health", func(c *fiber.Ctx) error {
+			return c.Status(200).SendString("OK")
+		})
+
 		port := os.Getenv("PORT")
 		if port == "" {
 			port = "8081"

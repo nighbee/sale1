@@ -6,6 +6,7 @@ COPY . .
 RUN go build -o main cmd/script/main.go
 
 FROM alpine:latest
+RUN apk add --no-cache wget
 WORKDIR /app
 RUN apk add --no-cache python3 py3-pip
 COPY --from=builder /app/main .

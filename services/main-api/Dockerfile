@@ -8,6 +8,7 @@ RUN go build -o main cmd/api/main.go
 RUN go build -o migrate cmd/migrate/main.go
 
 FROM alpine:latest
+RUN apk add --no-cache wget
 WORKDIR /app
 COPY --from=builder /app/main .
 COPY --from=builder /app/migrate .
