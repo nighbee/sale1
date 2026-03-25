@@ -18,13 +18,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (allowedRoles && user && !allowedRoles.includes(user.role)) {
+  if (allowedRoles && user && user.role !== "super_admin" && !allowedRoles.includes(user.role)) {
     const defaultPath =
-      user.role === "super_admin"
-        ? "/super-admin"
-        : user.role === "tenant_admin"
-          ? "/dashboard"
-          : "/user-dashboard";
+      user.role === "tenant_admin" ? "/dashboard" : "/user-dashboard";
     return <Navigate to={defaultPath} replace />;
   }
 
