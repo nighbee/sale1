@@ -67,7 +67,8 @@ func main() {
 	api := app.Group("/api/v1")
 	scripts := api.Group("/scripts")
 	scripts.Post("/", scriptHandler.Upload)
-	scripts.Get("/:company_id", scriptHandler.List)
+	scripts.Get("/", scriptHandler.List)
+	scripts.Get("/details/:id", scriptHandler.GetDetails)
 	scripts.Get("/:id/download", scriptHandler.Download)
 	scripts.Delete("/:id", scriptHandler.Delete)
 

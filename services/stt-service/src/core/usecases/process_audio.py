@@ -3,11 +3,11 @@ import httpx
 import logging
 import tempfile
 import time
-from pydub import AudioSegment
 from src.adapters.storage.postgres_repo import save_transcript, update_call_link
 from src.adapters.events.redis_publisher import publish_transcript_ready
 from src.adapters.storage.minio_client import MinioClient
 from src.infrastructure.audio.diarization import DiarizationService, merge_transcript_with_diarization
+from src.infrastructure.audio.converter import AudioConverter
 from src.adapters.stt.openai_provider import OpenAISTTProvider
 from src.adapters.stt.gemini_provider import GeminiSTTProvider
 from src.adapters.stt.groq_provider import GroqSTTProvider
@@ -65,11 +65,8 @@ class ProcessAudioUseCase:
 
             # 2. Convert to 16kHz WAV
             logger.info("[2/6] converting to 16kHz WAV", extra={"call_id": call_id})
-            wav_path = tmp_path.replace(".mp3", ".wav")
-            audio = AudioSegment.from_file(tmp_path)
-            duration_s = round(len(audio) / 1000, 1)
-            audio = audio.set_frame_rate(16000).set_channels(1)
-            audio.export(wav_path, format="wav")
+            duration_s = AudioConverter.get_duration_seconds(tmp_path)
+            wav_path = AudioConverter.to_stt_wav(tmp_path)
             wav_size_kb = round(os.path.getsize(wav_path) / 1024, 1)
             logger.info("[2/6] WAV conversion done",
                         extra={"call_id": call_id, "duration_s": duration_s,

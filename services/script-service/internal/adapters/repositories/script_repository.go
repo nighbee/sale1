@@ -18,15 +18,15 @@ func NewScriptRepository(db *sql.DB) ports.ScriptRepository {
 func (r *ScriptRepository) Create(ctx context.Context, script *domain.Script) error {
 	query := `
 		INSERT INTO scripts_schema.scripts
-		(id, company_id, name, file_path_minio, parsed_text, structure, version, is_active, team_id)
-		VALUES ($1, $2, $3, $4, $5, $6, 1, true, $7)
+		(id, name, file_path_minio, parsed_text, structure, version, is_active, team_id)
+		VALUES ($1, $2, $3, $4, $5, 1, true, $6)
 	`
 	// Initialize empty structure if empty
 	structure := script.Structure
 	if structure == "" {
 		structure = "{}"
 	}
-	_, err := r.db.ExecContext(ctx, query, script.ID, script.CompanyID, script.Name, script.FilePathMinio, script.ParsedText, structure, script.TeamID)
+	_, err := r.db.ExecContext(ctx, query, script.ID, script.Name, script.FilePathMinio, script.ParsedText, structure, script.TeamID)
 	return err
 }
 
@@ -40,9 +40,9 @@ func (r *ScriptRepository) GetByID(ctx context.Context, id string) (*domain.Scri
 	return script, nil
 }
 
-func (r *ScriptRepository) List(ctx context.Context, companyID string) ([]*domain.Script, error) {
-	query := `SELECT id, name, version, is_active, created_at FROM scripts_schema.scripts WHERE company_id = $1`
-	rows, err := r.db.QueryContext(ctx, query, companyID)
+func (r *ScriptRepository) List(ctx context.Context) ([]*domain.Script, error) {
+	query := `SELECT id, name, version, is_active, created_at FROM scripts_schema.scripts`
+	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err
 	}

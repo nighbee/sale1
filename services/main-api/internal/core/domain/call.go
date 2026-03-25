@@ -24,6 +24,7 @@ type Call struct {
 	CallTime    time.Time  `json:"call_time"`
 	Status      CallStatus `json:"status"`
 	Source      string     `json:"source"`
+	ExternalID  *string    `json:"external_id,omitempty"`
 	CreatedAt   time.Time  `json:"created_at"`
 	UpdatedAt   time.Time  `json:"updated_at"`
 	// Analysis scores – populated in list queries via LEFT JOIN

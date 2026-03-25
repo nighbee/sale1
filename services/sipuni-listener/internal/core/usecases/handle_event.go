@@ -184,6 +184,7 @@ func (uc *HandleEventUseCase) Execute(ctx context.Context, request json.RawMessa
 		CallTime:    callDate,
 		Status:      domain.StatusPending,
 		Source:      "sipuni",
+		ExternalID:  &notify.CallID,
 	}
 
 	if err := uc.callRepo.Create(ctx, call); err != nil {
