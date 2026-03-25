@@ -19,6 +19,8 @@ type User struct {
 	ManagerName  string     `json:"manager_name"`
 	FirstName    string     `json:"first_name"`
 	LastName     string     `json:"last_name"`
+	Username     string     `json:"username"`
+	Phone        string     `json:"phone"`
 	IsActive     bool       `json:"is_active"`
 	LastLogin    *time.Time `json:"last_login,omitempty"`
 	CreatedAt    time.Time  `json:"created_at"`

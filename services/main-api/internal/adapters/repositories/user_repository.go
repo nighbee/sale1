@@ -20,8 +20,8 @@ func NewUserRepository(db *sql.DB) ports.UserRepository {
 func (r *userRepository) Create(ctx context.Context, user *domain.User) error {
 	query := `
 		INSERT INTO auth_schema.users
-		(id, email, password_hash, role, manager_id, manager_name, is_active, team_id, first_name, last_name)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		(id, email, password_hash, role, manager_id, manager_name, is_active, team_id, first_name, last_name, username, phone)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 		RETURNING created_at, updated_at
 	`
 
@@ -38,6 +38,8 @@ func (r *userRepository) Create(ctx context.Context, user *domain.User) error {
 		user.TeamID,
 		user.FirstName,
 		user.LastName,
+		user.Username,
+		user.Phone,
 	).Scan(&user.CreatedAt, &user.UpdatedAt)
 
 	return err
@@ -46,7 +48,7 @@ func (r *userRepository) Create(ctx context.Context, user *domain.User) error {
 func (r *userRepository) GetByID(ctx context.Context, id string) (*domain.User, error) {
 	query := `
 		SELECT id, email, password_hash, role, manager_id, manager_name,
-		       is_active, last_login, created_at, updated_at, team_id, first_name, last_name
+		       is_active, last_login, created_at, updated_at, team_id, first_name, last_name, username, phone
 		FROM auth_schema.users
 		WHERE id = $1
 	`
@@ -66,6 +68,8 @@ func (r *userRepository) GetByID(ctx context.Context, id string) (*domain.User, 
 		&user.TeamID,
 		&user.FirstName,
 		&user.LastName,
+		&user.Username,
+		&user.Phone,
 	)
 
 	if err == sql.ErrNoRows {
@@ -78,7 +82,7 @@ func (r *userRepository) GetByID(ctx context.Context, id string) (*domain.User, 
 func (r *userRepository) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
 	query := `
 		SELECT id, email, password_hash, role, manager_id, manager_name,
-		       is_active, last_login, created_at, updated_at, team_id, first_name, last_name
+		       is_active, last_login, created_at, updated_at, team_id, first_name, last_name, username, phone
 		FROM auth_schema.users
 		WHERE LOWER(email) = LOWER($1)
 	`
@@ -98,6 +102,8 @@ func (r *userRepository) GetByEmail(ctx context.Context, email string) (*domain.
 		&user.TeamID,
 		&user.FirstName,
 		&user.LastName,
+		&user.Username,
+		&user.Phone,
 	)
 
 	if err == sql.ErrNoRows {
@@ -111,11 +117,11 @@ func (r *userRepository) Update(ctx context.Context, user *domain.User) error {
 	query := `
 		UPDATE auth_schema.users
 		SET email = $2, role = $3, manager_id = $4, manager_name = $5, is_active = $6, updated_at = NOW(),
-		    first_name = $7, last_name = $8, password_hash = $9
+		    first_name = $7, last_name = $8, password_hash = $9, username = $10, phone = $11, team_id = $12
 		WHERE id = $1
 	`
 
-	_, err := r.db.ExecContext(ctx, query, user.ID, user.Email, user.Role, user.ManagerID, user.ManagerName, user.IsActive, user.FirstName, user.LastName, user.PasswordHash)
+	_, err := r.db.ExecContext(ctx, query, user.ID, user.Email, user.Role, user.ManagerID, user.ManagerName, user.IsActive, user.FirstName, user.LastName, user.PasswordHash, user.Username, user.Phone, user.TeamID)
 	return err
 }
 
@@ -128,7 +134,7 @@ func (r *userRepository) Delete(ctx context.Context, id string) error {
 func (r *userRepository) List(ctx context.Context) ([]*domain.User, error) {
 	query := `
 		SELECT id, email, role, manager_id, manager_name,
-		       is_active, created_at, updated_at, team_id, first_name, last_name
+		       is_active, created_at, updated_at, team_id, first_name, last_name, username, phone
 		FROM auth_schema.users
 		ORDER BY created_at DESC
 	`
@@ -154,6 +160,8 @@ func (r *userRepository) List(ctx context.Context) ([]*domain.User, error) {
 			&user.TeamID,
 			&user.FirstName,
 			&user.LastName,
+			&user.Username,
+			&user.Phone,
 		)
 		if err != nil {
 			return nil, err
@@ -167,7 +175,7 @@ func (r *userRepository) List(ctx context.Context) ([]*domain.User, error) {
 func (r *userRepository) GetByManagerID(ctx context.Context, managerID string) (*domain.User, error) {
 	query := `
 		SELECT id, email, password_hash, role, manager_id, manager_name,
-		       is_active, last_login, created_at, updated_at, team_id, first_name, last_name
+		       is_active, last_login, created_at, updated_at, team_id, first_name, last_name, username, phone
 		FROM auth_schema.users
 		WHERE manager_id = $1
 		LIMIT 1
@@ -188,6 +196,8 @@ func (r *userRepository) GetByManagerID(ctx context.Context, managerID string) (
 		&user.TeamID,
 		&user.FirstName,
 		&user.LastName,
+		&user.Username,
+		&user.Phone,
 	)
 
 	if err == sql.ErrNoRows {

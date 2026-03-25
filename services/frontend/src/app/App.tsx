@@ -20,6 +20,7 @@ import { LeaderboardPage } from "../pages/Leaderboard";
 import { CallDetailPage } from "../pages/CallDetail";
 import { CallsListPage } from "../pages/CallsList";
 import { SuperAdminPage } from "../pages/SuperAdmin";
+import { UsersManagementPage } from "../pages/UsersManagement";
 import UserProfile from "../pages/UserProfile";
 import { LandingPage } from "../pages/LandingPage";
 import ProtectedRoute from "./providers/ProtectedRoute";
@@ -40,6 +41,14 @@ function App() {
           element={
             <ProtectedRoute>
               <CompanySetupPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/users"
+          element={
+            <ProtectedRoute allowedRoles={["tenant_admin", "super_admin"]}>
+              <UsersManagementPage />
             </ProtectedRoute>
           }
         />

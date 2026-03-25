@@ -70,6 +70,10 @@ func (h *UserHandler) InviteUser(c *fiber.Ctx) error {
 		ManagerID         string   `json:"manager_id"`
 		TemporaryPassword string   `json:"temporary_password"`
 		TeamID            string   `json:"team_id"`
+		FirstName         string   `json:"first_name"`
+		LastName          string   `json:"last_name"`
+		Username          string   `json:"username"`
+		Phone             string   `json:"phone"`
 	}
 
 	if err := c.BodyParser(&req); err != nil {
@@ -121,6 +125,10 @@ func (h *UserHandler) InviteUser(c *fiber.Ctx) error {
 			PasswordHash: string(hash),
 			TeamID:       teamIDPtr,
 			IsActive:     true,
+			FirstName:    req.FirstName,
+			LastName:     req.LastName,
+			Username:     req.Username,
+			Phone:        req.Phone,
 		}
 		if err := h.userRepo.Create(c.Context(), user); err != nil {
 			continue
@@ -182,6 +190,9 @@ func (h *UserHandler) UpdateUser(c *fiber.Ctx) error {
 		Password    string `json:"password"`
 		ManagerName string `json:"manager_name"`
 		Role        string `json:"role"`
+		Username    string `json:"username"`
+		Phone       string `json:"phone"`
+		TeamID      string `json:"team_id"`
 	}
 
 	if err := c.BodyParser(&update); err != nil {
@@ -206,6 +217,20 @@ func (h *UserHandler) UpdateUser(c *fiber.Ctx) error {
 	}
 	if update.Role != "" {
 		user.Role = domain.UserRole(update.Role)
+	}
+	if update.Username != "" {
+		user.Username = update.Username
+	}
+	if update.Phone != "" {
+		user.Phone = update.Phone
+	}
+	if update.TeamID != "" {
+		if update.TeamID == "none" || update.TeamID == "null" {
+			user.TeamID = nil
+		} else {
+			tID := update.TeamID
+			user.TeamID = &tID
+		}
 	}
 
 	if err := h.userRepo.Update(c.Context(), user); err != nil {
