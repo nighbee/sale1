@@ -17,22 +17,13 @@ type mockUserRepo struct {
 }
 
 func (m *mockUserRepo) Create(ctx context.Context, u *domain.User) error { return nil }
-func (m *mockUserRepo) GetByID(ctx context.Context, companyID, id string) (*domain.User, error) {
-	return m.user, m.err
-}
-func (m *mockUserRepo) GetByIDGlobal(ctx context.Context, id string) (*domain.User, error) {
+func (m *mockUserRepo) GetByID(ctx context.Context, id string) (*domain.User, error) {
 	return m.user, m.err
 }
 func (m *mockUserRepo) GetByEmail(ctx context.Context, email string) (*domain.User, error) { return nil, nil }
 func (m *mockUserRepo) Update(ctx context.Context, u *domain.User) error                { return nil }
-func (m *mockUserRepo) Delete(ctx context.Context, companyID, id string) error         { return nil }
-func (m *mockUserRepo) ListByCompany(ctx context.Context, companyID string) ([]*domain.User, error) {
-	return nil, nil
-}
-func (m *mockUserRepo) AddUserToCompany(ctx context.Context, userID, companyID string, role domain.UserRole) error {
-	return nil
-}
-func (m *mockUserRepo) GetUserCompanies(ctx context.Context, userID string) ([]domain.UserCompany, error) {
+func (m *mockUserRepo) Delete(ctx context.Context, id string) error                    { return nil }
+func (m *mockUserRepo) List(ctx context.Context) ([]*domain.User, error) {
 	return nil, nil
 }
 func (m *mockUserRepo) GetByManagerID(ctx context.Context, managerID string) (*domain.User, error) {
@@ -79,7 +70,6 @@ func TestGetUserCalls_Auth(t *testing.T) {
 		// Mock locals for auth
 		c.Locals("user_id", "user-2") // Different user
 		c.Locals("role", string(domain.RoleSalesRep))
-		c.Locals("company_id", "comp-1")
 		return h.GetUserCalls(c)
 	})
 
@@ -113,7 +103,6 @@ func TestGetUserCalls_Success(t *testing.T) {
 		// Mock locals for auth
 		c.Locals("user_id", "user-1") // Same user
 		c.Locals("role", string(domain.RoleSalesRep))
-		c.Locals("company_id", "comp-1")
 		return h.GetUserCalls(c)
 	})
 
@@ -157,7 +146,6 @@ func TestGetUserCalls_ManagerAccess(t *testing.T) {
 		// Mock locals for auth: requester is the manager
 		c.Locals("user_id", managerID)
 		c.Locals("role", string(domain.RoleSalesRep))
-		c.Locals("company_id", "comp-1")
 		return h.GetUserCalls(c)
 	})
 

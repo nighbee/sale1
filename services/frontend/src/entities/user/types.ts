@@ -5,7 +5,6 @@ export interface User {
   first_name?: string;
   last_name?: string;
   role: string;
-  company_id: string;
   created_at: string;
   updated_at: string;
   is_active: boolean;
@@ -13,11 +12,6 @@ export interface User {
   manager_id?: string;
   manager_name?: string;
   team_id?: string;
-}
-
-export interface UserCompany {
-  company_id: string;
-  role: string;
 }
 
 export interface AuthResponse {

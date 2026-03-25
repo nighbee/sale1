@@ -22,19 +22,17 @@ func NewJWTService(secret string, expiry time.Duration) ports.JWTService {
 }
 
 type CustomClaims struct {
-	UserID    string `json:"user_id"`
-	CompanyID string `json:"company_id"`
-	Role      string `json:"role"`
-	Email     string `json:"email"`
+	UserID string `json:"user_id"`
+	Role   string `json:"role"`
+	Email  string `json:"email"`
 	jwt.RegisteredClaims
 }
 
 func (s *jwtService) GenerateTokenPair(user *domain.User) (*ports.TokenPair, error) {
 	claims := CustomClaims{
-		UserID:    user.ID,
-		CompanyID: user.CompanyID,
-		Role:      string(user.Role),
-		Email:     user.Email,
+		UserID: user.ID,
+		Role:   string(user.Role),
+		Email:  user.Email,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(s.expiry)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -78,9 +76,8 @@ func (s *jwtService) ValidateToken(tokenString string) (map[string]interface{}, 
 	}
 
 	return map[string]interface{}{
-		"user_id":    claims.UserID,
-		"company_id": claims.CompanyID,
-		"role":       claims.Role,
-		"email":      claims.Email,
+		"user_id": claims.UserID,
+		"role":    claims.Role,
+		"email":   claims.Email,
 	}, nil
 }

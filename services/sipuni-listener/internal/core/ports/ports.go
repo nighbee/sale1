@@ -12,7 +12,6 @@ type CallRepository interface {
 type UserRepository interface {
 	FindByManagerID(ctx context.Context, managerID string) (*domain.User, error)
 	Create(ctx context.Context, user *domain.User) error
-	GetDefaultCompanyID(ctx context.Context) (string, error)
 }
 
 type QueuePublisher interface {

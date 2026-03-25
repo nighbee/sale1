@@ -22,11 +22,11 @@ func (r *scriptRepository) Create(ctx context.Context, s *domain.Script) error {
 	structureJSON, _ := json.Marshal(s.Structure)
 	metricsJSON, _ := json.Marshal(s.BaseScriptMetrics)
 	query := `
-		INSERT INTO scripts_schema.scripts (id, company_id, name, file_path_minio, parsed_text, structure, version, is_active, team_id, is_base_script, is_active_base, base_script_metrics)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+		INSERT INTO scripts_schema.scripts (id, name, file_path_minio, parsed_text, structure, version, is_active, team_id, is_base_script, is_active_base, base_script_metrics)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		RETURNING created_at, updated_at
 	`
-	return r.db.QueryRowContext(ctx, query, s.ID, s.CompanyID, s.Name, s.FilePathMinio, s.ParsedText, structureJSON, s.Version, s.IsActive, s.TeamID, s.IsBaseScript, s.IsActiveBase, metricsJSON).Scan(&s.CreatedAt, &s.UpdatedAt)
+	return r.db.QueryRowContext(ctx, query, s.ID, s.Name, s.FilePathMinio, s.ParsedText, structureJSON, s.Version, s.IsActive, s.TeamID, s.IsBaseScript, s.IsActiveBase, metricsJSON).Scan(&s.CreatedAt, &s.UpdatedAt)
 }
 
 func (r *scriptRepository) Update(ctx context.Context, s *domain.Script) error {
@@ -40,24 +40,24 @@ func (r *scriptRepository) Update(ctx context.Context, s *domain.Script) error {
 	return err
 }
 
-func (r *scriptRepository) Delete(ctx context.Context, companyID, id string) error {
-	query := `UPDATE scripts_schema.scripts SET is_active = false, updated_at = NOW() WHERE id = $1 AND company_id = $2`
-	_, err := r.db.ExecContext(ctx, query, id, companyID)
+func (r *scriptRepository) Delete(ctx context.Context, id string) error {
+	query := `UPDATE scripts_schema.scripts SET is_active = false, updated_at = NOW() WHERE id = $1`
+	_, err := r.db.ExecContext(ctx, query, id)
 	return err
 }
 
-func (r *scriptRepository) GetActiveByCompany(ctx context.Context, companyID string) (*domain.Script, error) {
+func (r *scriptRepository) GetActive(ctx context.Context) (*domain.Script, error) {
 	query := `
-		SELECT id, company_id, name, file_path_minio, parsed_text, structure, version, is_active, created_at, updated_at, team_id, is_base_script, is_active_base, base_script_metrics
+		SELECT id, name, file_path_minio, parsed_text, structure, version, is_active, created_at, updated_at, team_id, is_base_script, is_active_base, base_script_metrics
 		FROM scripts_schema.scripts
-		WHERE company_id = $1 AND is_active = true
+		WHERE is_active = true
 		ORDER BY version DESC LIMIT 1
 	`
 	s := &domain.Script{}
 	var structureJSON []byte
 	var metricsJSON []byte
-	err := r.db.QueryRowContext(ctx, query, companyID).Scan(
-		&s.ID, &s.CompanyID, &s.Name, &s.FilePathMinio, &s.ParsedText, &structureJSON, &s.Version, &s.IsActive, &s.CreatedAt, &s.UpdatedAt, &s.TeamID, &s.IsBaseScript, &s.IsActiveBase, &metricsJSON,
+	err := r.db.QueryRowContext(ctx, query).Scan(
+		&s.ID, &s.Name, &s.FilePathMinio, &s.ParsedText, &structureJSON, &s.Version, &s.IsActive, &s.CreatedAt, &s.UpdatedAt, &s.TeamID, &s.IsBaseScript, &s.IsActiveBase, &metricsJSON,
 	)
 	if err == sql.ErrNoRows {
 		return nil, errors.New("active script not found")
@@ -74,15 +74,14 @@ func (r *scriptRepository) GetActiveByCompany(ctx context.Context, companyID str
 	return s, nil
 }
 
-func (r *scriptRepository) ListByCompany(ctx context.Context, companyID string) ([]*domain.Script, error) {
+func (r *scriptRepository) List(ctx context.Context) ([]*domain.Script, error) {
 	query := `
-		SELECT id, company_id, name, file_path_minio, parsed_text, structure, version, is_active, created_at, updated_at, team_id, is_base_script, is_active_base, base_script_metrics
+		SELECT id, name, file_path_minio, parsed_text, structure, version, is_active, created_at, updated_at, team_id, is_base_script, is_active_base, base_script_metrics
 		FROM scripts_schema.scripts
-		WHERE company_id = $1
 		ORDER BY created_at DESC
 	`
 
-	rows, err := r.db.QueryContext(ctx, query, companyID)
+	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +94,6 @@ func (r *scriptRepository) ListByCompany(ctx context.Context, companyID string) 
 		var metricsJSON []byte
 		err := rows.Scan(
 			&s.ID,
-			&s.CompanyID,
 			&s.Name,
 			&s.FilePathMinio,
 			&s.ParsedText,
@@ -124,19 +122,18 @@ func (r *scriptRepository) ListByCompany(ctx context.Context, companyID string) 
 	return scripts, nil
 }
 
-func (r *scriptRepository) GetByID(ctx context.Context, companyID, id string) (*domain.Script, error) {
+func (r *scriptRepository) GetByID(ctx context.Context, id string) (*domain.Script, error) {
 	query := `
-		SELECT id, company_id, name, file_path_minio, parsed_text, structure, version, is_active, created_at, updated_at, team_id, is_base_script, is_active_base, base_script_metrics
+		SELECT id, name, file_path_minio, parsed_text, structure, version, is_active, created_at, updated_at, team_id, is_base_script, is_active_base, base_script_metrics
 		FROM scripts_schema.scripts
-		WHERE id = $1 AND company_id = $2
+		WHERE id = $1
 	`
 
 	s := &domain.Script{}
 	var structureJSON []byte
 	var metricsJSON []byte
-	err := r.db.QueryRowContext(ctx, query, id, companyID).Scan(
+	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&s.ID,
-		&s.CompanyID,
 		&s.Name,
 		&s.FilePathMinio,
 		&s.ParsedText,
@@ -169,7 +166,7 @@ func (r *scriptRepository) GetByID(ctx context.Context, companyID, id string) (*
 
 func (r *scriptRepository) GetActiveBaseScript(ctx context.Context) (*domain.Script, error) {
 	query := `
-		SELECT id, company_id, name, file_path_minio, parsed_text, structure, version, is_active, created_at, updated_at, team_id, is_base_script, is_active_base, base_script_metrics
+		SELECT id, name, file_path_minio, parsed_text, structure, version, is_active, created_at, updated_at, team_id, is_base_script, is_active_base, base_script_metrics
 		FROM scripts_schema.scripts
 		WHERE is_base_script = TRUE AND is_active_base = TRUE
 		LIMIT 1
@@ -180,7 +177,6 @@ func (r *scriptRepository) GetActiveBaseScript(ctx context.Context) (*domain.Scr
 	var metricsJSON []byte
 	err := r.db.QueryRowContext(ctx, query).Scan(
 		&s.ID,
-		&s.CompanyID,
 		&s.Name,
 		&s.FilePathMinio,
 		&s.ParsedText,
@@ -213,7 +209,7 @@ func (r *scriptRepository) GetActiveBaseScript(ctx context.Context) (*domain.Scr
 
 func (r *scriptRepository) GetAllBaseScripts(ctx context.Context) ([]*domain.Script, error) {
 	query := `
-		SELECT id, company_id, name, file_path_minio, parsed_text, structure, version, is_active, created_at, updated_at, team_id, is_base_script, is_active_base, base_script_metrics
+		SELECT id, name, file_path_minio, parsed_text, structure, version, is_active, created_at, updated_at, team_id, is_base_script, is_active_base, base_script_metrics
 		FROM scripts_schema.scripts
 		WHERE is_base_script = TRUE
 		ORDER BY is_active_base DESC, created_at DESC
@@ -232,7 +228,6 @@ func (r *scriptRepository) GetAllBaseScripts(ctx context.Context) ([]*domain.Scr
 		var metricsJSON []byte
 		err := rows.Scan(
 			&s.ID,
-			&s.CompanyID,
 			&s.Name,
 			&s.FilePathMinio,
 			&s.ParsedText,

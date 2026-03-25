@@ -34,27 +34,11 @@ func (r *analysisRepository) Create(ctx context.Context, a *domain.AnalysisRepor
 
 func (r *analysisRepository) GetTeamPerformance(ctx context.Context, filters map[string]interface{}) ([]map[string]interface{}, error) {
 	argIdx := 1
-	// By default include calls that are marked completed OR that already have
-	// an analysis report. This ensures leaderboard shows managers that have
-	// analysis rows even if call.status wasn't updated to 'completed' yet.
 	where := "(c.status = 'completed' OR ar.call_id IS NOT NULL)"
 	args := []interface{}{}
 
-	// If include_pending is true, show all statuses except 'error'
 	if includePending, ok := filters["include_pending"].(bool); ok && includePending {
 		where = "(c.status IN ('completed', 'pending', 'processing') OR ar.call_id IS NOT NULL)"
-	}
-
-	if companyID, ok := filters["company_id"].(string); ok && companyID != "" {
-		// calls table no longer stores company_id (removed by migration). Filter
-		// by the manager's company via the auth_schema.users table instead.
-		// Use the LEFT JOINed users alias `u` and accept rows where the user
-		// record is missing (u.id IS NULL) so calls with external manager_ids
-		// are not silently excluded from leaderboard in dev/partial-migration data.
-		// This keeps queries working while preserving company scoping for matched users.
-		where += fmt.Sprintf(" AND (u.company_id = $%d OR u.id IS NULL)", argIdx)
-		args = append(args, companyID)
-		argIdx++
 	}
 
 	if teamID, ok := filters["team_id"].(string); ok && teamID != "" {
@@ -64,10 +48,6 @@ func (r *analysisRepository) GetTeamPerformance(ctx context.Context, filters map
 	}
 
 	if source, ok := filters["source"].(string); ok && source != "" {
-		// Normalize common variants (dash vs underscore, case) and match either
-		// the call's source or the analysis report's llm_provider. This makes
-		// client-provided values like "google_sheets", "google-sheets" or
-		// "sheets" more robustly matched.
 		where += fmt.Sprintf(" AND (replace(lower(coalesce(c.source, '')), '-', '_') = replace(lower($%d), '-', '_') OR replace(lower(coalesce(ar.llm_provider, '')), '-', '_') = replace(lower($%d), '-', '_'))", argIdx, argIdx)
 		args = append(args, source)
 		argIdx++
@@ -90,10 +70,6 @@ func (r *analysisRepository) GetTeamPerformance(ctx context.Context, filters map
 			interval = "90 days"
 		}
 		if interval != "" {
-			// Use the call_date when present, otherwise fall back to the analysis
-			// processed_at timestamp. This ensures recent analysis rows are
-			// included in period-based queries even if the original call_date
-			// is missing or not set.
 			where += fmt.Sprintf(" AND COALESCE(c.call_date, ar.processed_at) >= NOW() - INTERVAL '%s'", interval)
 		}
 	}
@@ -143,7 +119,7 @@ func (r *analysisRepository) GetTeamPerformance(ctx context.Context, filters map
 		var totalCalls, excellentCalls int
 		var avgQuality, avgScriptMatch, avgErrorsFree, avgOverallRating, avgKPI, totalDuration, avgDuration float64
 		var externalID string
-		err := rows.Scan(&managerID, &managerName, &totalCalls, &avgQuality, &avgScriptMatch, &avgErrorsFree, &avgOverallRating, &avgKPI, &totalDuration, &avgDuration, &excellentCalls, &externalID)
+		err := rows.Scan(&managerName, &managerID, &totalCalls, &avgQuality, &avgScriptMatch, &avgErrorsFree, &avgOverallRating, &avgKPI, &totalDuration, &avgDuration, &excellentCalls, &externalID)
 		if err != nil {
 			return nil, err
 		}

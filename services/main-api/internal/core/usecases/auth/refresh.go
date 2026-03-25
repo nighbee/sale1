@@ -25,8 +25,7 @@ func (uc *RefreshUseCase) Execute(ctx context.Context, refreshToken string) (*po
 	}
 
 	userID := claims["user_id"].(string)
-	companyID := claims["company_id"].(string)
-	user, err := uc.userRepo.GetByID(ctx, companyID, userID)
+	user, err := uc.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return nil, errors.New("user not found")
 	}

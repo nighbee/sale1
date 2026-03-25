@@ -349,7 +349,7 @@ def ensure_team_and_add_members(
     conn = get_connection(database_url)
     try:
         with conn.cursor() as cur:
-            # 1. Look up team by name (search across all companies)
+            # 1. Look up team by name
             cur.execute(
                 "SELECT id FROM auth_schema.teams WHERE name = %s LIMIT 1",
                 (team_name,),
@@ -359,29 +359,20 @@ def ensure_team_and_add_members(
                 team_id = str(row[0])
                 logger.debug("Team found", extra={"team_id": team_id, "team_name": team_name})
             else:
-                # 2. No team found — create one, attaching it to the first available company
-                cur.execute("SELECT id FROM auth_schema.companies LIMIT 1")
-                company_row = cur.fetchone()
-                if not company_row:
-                    logger.warning(
-                        "Cannot create team: no companies in DB",
-                        extra={"team_name": team_name},
-                    )
-                    return {"team_id": None, "members_added": 0, "already_in_team": 0}
-                company_id = str(company_row[0])
+                # 2. No team found — create one
                 team_id = str(uuid.uuid4())
                 cur.execute(
                     """
-                    INSERT INTO auth_schema.teams (id, company_id, name, description, auto_assign)
-                    VALUES (%s, %s, %s, '', FALSE)
+                    INSERT INTO auth_schema.teams (id, name, description, auto_assign)
+                    VALUES (%s, %s, '', FALSE)
                     ON CONFLICT DO NOTHING
                     """,
-                    (team_id, company_id, team_name),
+                    (team_id, team_name),
                 )
                 conn.commit()
                 logger.info(
                     "Team created",
-                    extra={"team_id": team_id, "team_name": team_name, "company_id": company_id},
+                    extra={"team_id": team_id, "team_name": team_name},
                 )
 
             # 3. Assign users to the team (only those not already in it)

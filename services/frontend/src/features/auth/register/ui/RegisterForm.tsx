@@ -40,7 +40,6 @@ export const RegisterForm: React.FC = () => {
       });
       const { user, tokens } = response.data;
       localStorage.setItem("token", tokens.access_token);
-      localStorage.setItem("company_id", user.company_id);
       localStorage.setItem("user_id", user.id);
       setUser(user);
       toast.success(t("auth.account_created"));

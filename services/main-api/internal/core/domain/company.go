@@ -33,7 +33,7 @@ type Company struct {
 }
 
 type BillingInfo struct {
-	CompanyID         string    `json:"company_id"`
+	ID                string    `json:"id"`
 	CardHolderName    string    `json:"card_holder_name"`
 	CardNumberMasked  string    `json:"card_number_masked"`
 	ExpirationDate    string    `json:"expiration_date"`

@@ -4,9 +4,8 @@ import { useTranslation } from "react-i18next";
 import { useUserStore } from "../../../entities/user/model/store";
 import LanguageSwitcher from "../../../shared/ui/LanguageSwitcher";
 import ProfileCard from "./ProfileCard";
-import { userApi } from "../../../entities/user/api";
 import { teamApi } from "../../../entities/team/api";
-import type { Team } from "@/entities/team/types";
+import type { Team } from "../../../entities/team/types";
 import { cn } from "../../../shared/utils/cn";
 
 interface SidebarProps {
@@ -18,37 +17,24 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const { t } = useTranslation();
   const {
     user,
-    companies,
-    setCompanies,
-    currentCompanyId,
-    setCurrentCompany,
     currentTeamId,
     setCurrentTeam,
   } = useUserStore();
   const [teams, setTeams] = useState<Team[]>([]);
 
   useEffect(() => {
-    const fetchCompanies = async () => {
-      try {
-        const res = await userApi.listCompanies();
-        setCompanies(res.data.companies);
-      } catch (err) {
-        console.error("Failed to fetch companies", err);
-      }
-    };
     const fetchTeams = async () => {
       try {
         const res = await teamApi.list();
-        setTeams(res.data.teams);
+        setTeams(res.data.teams || []);
       } catch (err) {
         console.error("Failed to fetch teams", err);
       }
     };
     if (user) {
-      fetchCompanies();
       fetchTeams();
     }
-  }, [user, setCompanies]);
+  }, [user]);
 
   const getNavItems = () => {
     if (user?.role === "super_admin") {
@@ -153,23 +139,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           </div>
 
           <div className="space-y-4">
-          <div>
-            <label className="block text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-2">
-              {t("superadmin.company")}
-            </label>
-            <select
-              className="w-full bg-slate-800 border-none rounded-lg text-sm p-2 focus:ring-1 focus:ring-primary transition-all"
-              value={currentCompanyId || ""}
-              onChange={(e) => setCurrentCompany(e.target.value)}
-            >
-              {(companies || []).map((c) => (
-                <option key={c.company_id} value={c.company_id}>
-                  {c.company_id.slice(0, 8)} ({c.role})
-                </option>
-              ))}
-            </select>
-          </div>
-
           {user?.role !== "super_admin" && (
             <div>
               <label className="block text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-2">

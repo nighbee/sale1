@@ -20,24 +20,24 @@ func NewIntegrationRepository(db *sql.DB) ports.IntegrationRepository {
 func (r *integrationRepository) Create(ctx context.Context, i *domain.Integration) error {
 	query := `
 		INSERT INTO integrations_schema.integrations
-		(id, company_id, integration_type, credentials, config, is_active)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		(id, integration_type, credentials, config, is_active)
+		VALUES ($1, $2, $3, $4, $5)
 		RETURNING created_at, updated_at
 	`
 	return r.db.QueryRowContext(ctx, query,
-		i.ID, i.CompanyID, i.IntegrationType, i.Credentials, i.Config, i.IsActive,
+		i.ID, i.IntegrationType, i.Credentials, i.Config, i.IsActive,
 	).Scan(&i.CreatedAt, &i.UpdatedAt)
 }
 
-func (r *integrationRepository) GetByType(ctx context.Context, companyID string, it domain.IntegrationType) (*domain.Integration, error) {
+func (r *integrationRepository) GetByType(ctx context.Context, it domain.IntegrationType) (*domain.Integration, error) {
 	query := `
-		SELECT id, company_id, integration_type, credentials, config, is_active, last_sync, created_at, updated_at
+		SELECT id, integration_type, credentials, config, is_active, last_sync, created_at, updated_at
 		FROM integrations_schema.integrations
-		WHERE company_id = $1 AND integration_type = $2
+		WHERE integration_type = $1
 	`
 	i := &domain.Integration{}
-	err := r.db.QueryRowContext(ctx, query, companyID, it).Scan(
-		&i.ID, &i.CompanyID, &i.IntegrationType, &i.Credentials, &i.Config, &i.IsActive, &i.LastSync, &i.CreatedAt, &i.UpdatedAt,
+	err := r.db.QueryRowContext(ctx, query, it).Scan(
+		&i.ID, &i.IntegrationType, &i.Credentials, &i.Config, &i.IsActive, &i.LastSync, &i.CreatedAt, &i.UpdatedAt,
 	)
 	if err == sql.ErrNoRows {
 		return nil, errors.New("integration not found")
@@ -45,13 +45,12 @@ func (r *integrationRepository) GetByType(ctx context.Context, companyID string,
 	return i, err
 }
 
-func (r *integrationRepository) ListByCompany(ctx context.Context, companyID string) ([]*domain.Integration, error) {
+func (r *integrationRepository) List(ctx context.Context) ([]*domain.Integration, error) {
 	query := `
-		SELECT id, company_id, integration_type, credentials, config, is_active, last_sync, created_at, updated_at
+		SELECT id, integration_type, credentials, config, is_active, last_sync, created_at, updated_at
 		FROM integrations_schema.integrations
-		WHERE company_id = $1
 	`
-	rows, err := r.db.QueryContext(ctx, query, companyID)
+	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +59,30 @@ func (r *integrationRepository) ListByCompany(ctx context.Context, companyID str
 	integrations := []*domain.Integration{}
 	for rows.Next() {
 		i := &domain.Integration{}
-		if err := rows.Scan(&i.ID, &i.CompanyID, &i.IntegrationType, &i.Credentials, &i.Config, &i.IsActive, &i.LastSync, &i.CreatedAt, &i.UpdatedAt); err != nil {
+		if err := rows.Scan(&i.ID, &i.IntegrationType, &i.Credentials, &i.Config, &i.IsActive, &i.LastSync, &i.CreatedAt, &i.UpdatedAt); err != nil {
+			return nil, err
+		}
+		integrations = append(integrations, i)
+	}
+	return integrations, nil
+}
+
+func (r *integrationRepository) ListAllActive(ctx context.Context) ([]*domain.Integration, error) {
+	query := `
+		SELECT id, integration_type, credentials, config, is_active, last_sync, created_at, updated_at
+		FROM integrations_schema.integrations
+		WHERE is_active = TRUE
+	`
+	rows, err := r.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	integrations := []*domain.Integration{}
+	for rows.Next() {
+		i := &domain.Integration{}
+		if err := rows.Scan(&i.ID, &i.IntegrationType, &i.Credentials, &i.Config, &i.IsActive, &i.LastSync, &i.CreatedAt, &i.UpdatedAt); err != nil {
 			return nil, err
 		}
 		integrations = append(integrations, i)
@@ -71,15 +93,15 @@ func (r *integrationRepository) ListByCompany(ctx context.Context, companyID str
 func (r *integrationRepository) Update(ctx context.Context, i *domain.Integration) error {
 	query := `
 		UPDATE integrations_schema.integrations
-		SET credentials = $3, config = $4, is_active = $5, updated_at = NOW()
-		WHERE company_id = $1 AND integration_type = $2
+		SET credentials = $2, config = $3, is_active = $4, updated_at = NOW()
+		WHERE integration_type = $1
 	`
-	_, err := r.db.ExecContext(ctx, query, i.CompanyID, i.IntegrationType, i.Credentials, i.Config, i.IsActive)
+	_, err := r.db.ExecContext(ctx, query, i.IntegrationType, i.Credentials, i.Config, i.IsActive)
 	return err
 }
 
-func (r *integrationRepository) Delete(ctx context.Context, companyID string, it domain.IntegrationType) error {
-	query := `DELETE FROM integrations_schema.integrations WHERE company_id = $1 AND integration_type = $2`
-	_, err := r.db.ExecContext(ctx, query, companyID, it)
+func (r *integrationRepository) Delete(ctx context.Context, it domain.IntegrationType) error {
+	query := `DELETE FROM integrations_schema.integrations WHERE integration_type = $1`
+	_, err := r.db.ExecContext(ctx, query, it)
 	return err
 }

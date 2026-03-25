@@ -100,12 +100,6 @@ func (uc *HandleEventUseCase) Execute(ctx context.Context, request json.RawMessa
 	if user == nil {
 		log.Info("manager not found, creating new user", zap.String("manager_id", managerID))
 
-		companyID, err := uc.userRepo.GetDefaultCompanyID(ctx)
-		if err != nil {
-			log.Error("error getting default company ID", zap.Error(err))
-			return
-		}
-
 		// Use a safe email format
 		safeID := strings.ReplaceAll(managerID, " ", "")
 		email := fmt.Sprintf("manager_%s@salesai.local", safeID)
@@ -120,7 +114,6 @@ func (uc *HandleEventUseCase) Execute(ctx context.Context, request json.RawMessa
 
 		newUser := &domain.User{
 			ID:           uuid.New().String(),
-			CompanyID:    companyID,
 			Email:        email,
 			PasswordHash: string(hashedPassword),
 			Role:         domain.RoleSalesRep,

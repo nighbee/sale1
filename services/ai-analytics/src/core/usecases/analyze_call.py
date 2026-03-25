@@ -2,8 +2,7 @@ import logging
 import os
 from src.adapters.storage.postgres_repo import (
     get_transcript, get_call, get_active_script_by_manager, get_team_script, save_analysis,
-    create_notification, get_company_admin_by_manager, get_company_settings_by_manager,
-    get_company_id_by_call, update_call_status
+    create_notification, get_admin_user, update_call_status
 )
 from src.infrastructure.llm.openai_client import OpenAIClient
 from src.infrastructure.llm.gemini_client import GeminiClient
@@ -32,13 +31,8 @@ class AnalyzeCallUseCase:
             return
 
         manager_id = call['manager_id']
-        
-        # Get company_id for backward compatibility (optional - doesn't block analysis)
-        company_id = get_company_id_by_call(call_id)
-        if not company_id:
-            logger.warning("could not resolve company_id for call, using defaults", extra={"call_id": call_id})
 
-        # 2. Get script - try team script first, then company script
+        # 2. Get script - try team script first, then global active script
         script = get_team_script(manager_id)
         if not script:
             script = get_active_script_by_manager(manager_id)
@@ -64,9 +58,8 @@ class AnalyzeCallUseCase:
             },
         )
 
-        # 4. Get LLM settings (use default if not found)
-        settings = get_company_settings_by_manager(manager_id)
-        llm_provider = settings['llm_provider'] if settings else "openai"
+        # 4. Get LLM settings - default to openai for single-company
+        llm_provider = os.getenv("LLM_PROVIDER", "openai")
 
         logger.info(
             "[2/4] sending to LLM",
@@ -99,7 +92,6 @@ class AnalyzeCallUseCase:
         self._validate_llm_response(analysis, call_id)
 
         # 4. Calculate KPI
-        # KPI = (quality*0.4 + script_match*0.4 + errors_free*0.2) * (duration/60)
         quality = analysis['qualityOfCall']
         script_match = analysis['scriptMatch']
         errors_free = analysis['errorsFree']
@@ -152,7 +144,7 @@ class AnalyzeCallUseCase:
         # Publish event for real-time notifications
         await publish_analysis_completed(call_id, overall_rating)
 
-        # 6. Check for Critical Errors (only if company_id available)
+        # 6. Check for Critical Errors
         await self._check_critical_errors(call_id, manager_id, transcript_text)
 
     def _validate_llm_response(self, analysis: dict, call_id: str):
@@ -191,8 +183,8 @@ class AnalyzeCallUseCase:
                            extra={"call_id": call_id, "manager_id": manager_id, "keywords": found})
             message = f"A critical error (mentions of {', '.join(found)}) was detected in call {call_id}."
             
-            # Try to get admin, but don't fail if not found
-            admin = get_company_admin_by_manager(manager_id)
+            # Try to get admin
+            admin = get_admin_user()
             if admin:
                 create_notification(
                     user_id=admin['id'],

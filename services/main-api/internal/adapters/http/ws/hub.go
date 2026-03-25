@@ -7,9 +7,8 @@ import (
 )
 
 type Client struct {
-	UserID    string
-	CompanyID string
-	Conn      *websocket.Conn
+	UserID string
+	Conn   *websocket.Conn
 }
 
 type Hub struct {
@@ -21,10 +20,9 @@ type Hub struct {
 }
 
 type Message struct {
-	UserID    string      `json:"user_id,omitempty"`
-	CompanyID string      `json:"company_id,omitempty"`
-	Type      string      `json:"type"`
-	Payload   interface{} `json:"payload"`
+	UserID  string      `json:"user_id,omitempty"`
+	Type    string      `json:"type"`
+	Payload interface{} `json:"payload"`
 }
 
 func NewHub() *Hub {
@@ -55,10 +53,6 @@ func (h *Hub) Run() {
 			for conn, client := range h.clients {
 				// Send to specific user if UserID is set
 				if message.UserID != "" && client.UserID != message.UserID {
-					continue
-				}
-				// Send to everyone in company if UserID is empty but CompanyID is set
-				if message.UserID == "" && message.CompanyID != "" && client.CompanyID != message.CompanyID {
 					continue
 				}
 
