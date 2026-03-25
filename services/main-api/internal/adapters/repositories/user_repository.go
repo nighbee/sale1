@@ -54,6 +54,9 @@ func (r *userRepository) GetByID(ctx context.Context, id string) (*domain.User, 
 	`
 
 	user := &domain.User{}
+	// scan nullable columns into sql.NullString to avoid converting NULL -> string errors
+	var username sql.NullString
+	var phone sql.NullString
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&user.ID,
 		&user.Email,
@@ -68,15 +71,29 @@ func (r *userRepository) GetByID(ctx context.Context, id string) (*domain.User, 
 		&user.TeamID,
 		&user.FirstName,
 		&user.LastName,
-		&user.Username,
-		&user.Phone,
+		&username,
+		&phone,
 	)
 
-	if err == sql.ErrNoRows {
-		return nil, errors.New("user not found")
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, errors.New("user not found")
+		}
+		return nil, err
 	}
 
-	return user, err
+	if username.Valid {
+		user.Username = username.String
+	} else {
+		user.Username = ""
+	}
+	if phone.Valid {
+		user.Phone = phone.String
+	} else {
+		user.Phone = ""
+	}
+
+	return user, nil
 }
 
 func (r *userRepository) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
@@ -88,6 +105,8 @@ func (r *userRepository) GetByEmail(ctx context.Context, email string) (*domain.
 	`
 
 	user := &domain.User{}
+	var username sql.NullString
+	var phone sql.NullString
 	err := r.db.QueryRowContext(ctx, query, email).Scan(
 		&user.ID,
 		&user.Email,
@@ -102,15 +121,29 @@ func (r *userRepository) GetByEmail(ctx context.Context, email string) (*domain.
 		&user.TeamID,
 		&user.FirstName,
 		&user.LastName,
-		&user.Username,
-		&user.Phone,
+		&username,
+		&phone,
 	)
 
-	if err == sql.ErrNoRows {
-		return nil, errors.New("user not found")
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, errors.New("user not found")
+		}
+		return nil, err
 	}
 
-	return user, err
+	if username.Valid {
+		user.Username = username.String
+	} else {
+		user.Username = ""
+	}
+	if phone.Valid {
+		user.Phone = phone.String
+	} else {
+		user.Phone = ""
+	}
+
+	return user, nil
 }
 
 func (r *userRepository) Update(ctx context.Context, user *domain.User) error {
@@ -148,6 +181,8 @@ func (r *userRepository) List(ctx context.Context) ([]*domain.User, error) {
 	users := []*domain.User{}
 	for rows.Next() {
 		user := &domain.User{}
+		var username sql.NullString
+		var phone sql.NullString
 		err := rows.Scan(
 			&user.ID,
 			&user.Email,
@@ -160,11 +195,17 @@ func (r *userRepository) List(ctx context.Context) ([]*domain.User, error) {
 			&user.TeamID,
 			&user.FirstName,
 			&user.LastName,
-			&user.Username,
-			&user.Phone,
+			&username,
+			&phone,
 		)
 		if err != nil {
 			return nil, err
+		}
+		if username.Valid {
+			user.Username = username.String
+		}
+		if phone.Valid {
+			user.Phone = phone.String
 		}
 		users = append(users, user)
 	}
@@ -182,6 +223,8 @@ func (r *userRepository) GetByManagerID(ctx context.Context, managerID string) (
 	`
 
 	user := &domain.User{}
+	var username sql.NullString
+	var phone sql.NullString
 	err := r.db.QueryRowContext(ctx, query, managerID).Scan(
 		&user.ID,
 		&user.Email,
@@ -196,13 +239,71 @@ func (r *userRepository) GetByManagerID(ctx context.Context, managerID string) (
 		&user.TeamID,
 		&user.FirstName,
 		&user.LastName,
-		&user.Username,
-		&user.Phone,
+		&username,
+		&phone,
 	)
 
-	if err == sql.ErrNoRows {
-		return nil, errors.New("user not found")
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, errors.New("user not found")
+		}
+		return nil, err
 	}
 
-	return user, err
+	if username.Valid {
+		user.Username = username.String
+	}
+	if phone.Valid {
+		user.Phone = phone.String
+	}
+
+	return user, nil
+}
+
+// GetByPhone finds a user by phone number
+func (r *userRepository) GetByPhone(ctx context.Context, phone string) (*domain.User, error) {
+	query := `
+		SELECT id, email, password_hash, role, manager_id, manager_name,
+			   is_active, last_login, created_at, updated_at, team_id, first_name, last_name, username, phone
+		FROM auth_schema.users
+		WHERE phone = $1
+		LIMIT 1
+	`
+
+	user := &domain.User{}
+	var username sql.NullString
+	var phoneNS sql.NullString
+	err := r.db.QueryRowContext(ctx, query, phone).Scan(
+		&user.ID,
+		&user.Email,
+		&user.PasswordHash,
+		&user.Role,
+		&user.ManagerID,
+		&user.ManagerName,
+		&user.IsActive,
+		&user.LastLogin,
+		&user.CreatedAt,
+		&user.UpdatedAt,
+		&user.TeamID,
+		&user.FirstName,
+		&user.LastName,
+		&username,
+		&phoneNS,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, errors.New("user not found")
+		}
+		return nil, err
+	}
+
+	if username.Valid {
+		user.Username = username.String
+	}
+	if phoneNS.Valid {
+		user.Phone = phoneNS.String
+	}
+
+	return user, nil
 }

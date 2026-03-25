@@ -12,7 +12,9 @@ import (
 )
 
 type LoginRequest struct {
+	// Accept either email or phone for login. Both are optional but password is required.
 	Email    string `json:"email"`
+	Phone    string `json:"phone"`
 	Password string `json:"password"`
 }
 
@@ -34,11 +36,26 @@ func NewLoginUseCase(userRepo ports.UserRepository, jwtService ports.JWTService)
 }
 
 func (uc *LoginUseCase) Execute(ctx context.Context, req *LoginRequest) (*LoginResponse, error) {
-	user, err := uc.userRepo.GetByEmail(ctx, req.Email)
+	var user *domain.User
+	var err error
+
+	// prefer email when provided
+	if req.Email != "" {
+		user, err = uc.userRepo.GetByEmail(ctx, req.Email)
+		if err != nil {
+			// if not found and phone provided, try phone
+			if err.Error() == "user not found" && req.Phone != "" {
+				user, err = uc.userRepo.GetByPhone(ctx, req.Phone)
+			}
+		}
+	} else if req.Phone != "" {
+		user, err = uc.userRepo.GetByPhone(ctx, req.Phone)
+	}
+
 	if err != nil {
-    fmt.Printf("User not found for email: %s, err: %v\n", req.Email, err)
-    return nil, errors.New("invalid credentials")
-}
+		fmt.Printf("User lookup error for login: email=%s phone=%s err=%v\n", req.Email, req.Phone, err)
+		return nil, errors.New("invalid credentials")
+	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password))
 	if err != nil {

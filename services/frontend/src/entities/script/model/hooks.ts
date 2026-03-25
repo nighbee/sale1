@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
-import { scriptApi } from '../api';
-import type { Script } from '../types';
+import { useState, useEffect, useCallback } from "react";
+import { scriptApi } from "../api";
+import type { Script } from "../types";
 
 export const useScripts = () => {
   const [scripts, setScripts] = useState<Script[]>([]);
@@ -14,7 +14,12 @@ export const useScripts = () => {
       setScripts(response.data.scripts);
       setError(null);
     } catch (err) {
-      setError('Failed to fetch scripts');
+      // try to extract API error message
+      const apiErr = err as unknown as {
+        response?: { data?: { error?: string } };
+      };
+      const msg = apiErr?.response?.data?.error || "Failed to fetch scripts";
+      setError(msg);
       console.error(err);
     } finally {
       setLoading(false);
@@ -92,5 +97,11 @@ export const useBaseScripts = () => {
     await fetchBaseScripts();
   };
 
-  return { baseScripts, currentBase, loading, fetchBaseScripts, activateAsBase };
+  return {
+    baseScripts,
+    currentBase,
+    loading,
+    fetchBaseScripts,
+    activateAsBase,
+  };
 };

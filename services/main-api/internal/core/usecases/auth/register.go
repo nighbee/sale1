@@ -15,6 +15,7 @@ type RegisterRequest struct {
 	Email       string `json:"email"`
 	Password    string `json:"password"`
 	FullName    string `json:"full_name"`
+	Phone       string `json:"phone"`
 	ManagerName string `json:"manager_name"`
 	ManagerID   string `json:"manager_id,omitempty"`
 }
@@ -41,7 +42,13 @@ func NewRegisterUseCase(
 
 func (uc *RegisterUseCase) Execute(ctx context.Context, req *RegisterRequest) (*RegisterResponse, error) {
 	// Check if email already exists
-	existing, _ := uc.userRepo.GetByEmail(ctx, req.Email)
+	existing, err := uc.userRepo.GetByEmail(ctx, req.Email)
+	if err != nil {
+		// If the error is anything other than "user not found", return it up the stack
+		if err.Error() != "user not found" {
+			return nil, err
+		}
+	}
 	if existing != nil {
 		return nil, errors.New("email already registered")
 	}
@@ -66,6 +73,7 @@ func (uc *RegisterUseCase) Execute(ctx context.Context, req *RegisterRequest) (*
 		Role:         domain.RoleTenantAdmin, // Default first user as tenant_admin
 		ManagerID:    &managerID,
 		ManagerName:  req.ManagerName,
+		Phone:        req.Phone,
 		IsActive:     true,
 	}
 

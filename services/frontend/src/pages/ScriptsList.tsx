@@ -8,7 +8,15 @@ import { toast } from "sonner";
 
 const ScriptsList: React.FC = () => {
   const { t } = useTranslation();
-  const { scripts, loading, deleteScript, uploadScript, updateScript } = useScripts();
+  const {
+    scripts,
+    loading,
+    error,
+    fetchScripts,
+    deleteScript,
+    uploadScript,
+    updateScript,
+  } = useScripts();
   const [searchTerm, setSearchTerm] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -18,7 +26,7 @@ const ScriptsList: React.FC = () => {
       try {
         await deleteScript(id);
         toast.success(t("scripts.delete_success"));
-      } catch (err) {
+      } catch {
         toast.error(t("scripts.delete_failed"));
       }
     }
@@ -30,7 +38,7 @@ const ScriptsList: React.FC = () => {
       try {
         await updateScript(id, newName);
         toast.success(t("scripts.rename_success"));
-      } catch (err) {
+      } catch {
         toast.error(t("scripts.rename_failed"));
       }
     }
@@ -52,7 +60,7 @@ const ScriptsList: React.FC = () => {
     try {
       await uploadScript(formData);
       toast.success(t("setup.upload_success"));
-    } catch (err) {
+    } catch {
       toast.error(t("setup.upload_failed"));
     } finally {
       setIsUploading(false);
@@ -61,11 +69,27 @@ const ScriptsList: React.FC = () => {
   };
 
   const filteredScripts = scripts.filter((s) =>
-    s.name.toLowerCase().includes(searchTerm.toLowerCase())
+    s.name.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   return (
     <PageLayout title={t("scripts.title")}>
+      {/** show error from hook if exists */}
+      {loading === false && error && (
+        <div className="p-4 max-w-7xl mx-auto">
+          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm flex items-center justify-between">
+            <div>{error}</div>
+            <div>
+              <button
+                onClick={() => fetchScripts()}
+                className="text-sm font-medium text-primary underline"
+              >
+                {t("common.retry")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="p-4 md:p-8 space-y-8 max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
@@ -131,7 +155,9 @@ const ScriptsList: React.FC = () => {
                     <thead>
                       <tr className="border-b border-slate-200 dark:border-slate-800 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-50/50 dark:bg-slate-800/30">
                         <th className="px-6 py-4">{t("common.name")}</th>
-                        <th className="px-6 py-4">{t("superadmin.created_at")}</th>
+                        <th className="px-6 py-4">
+                          {t("superadmin.created_at")}
+                        </th>
                         <th className="px-6 py-4 text-right">
                           {t("common.actions")}
                         </th>
