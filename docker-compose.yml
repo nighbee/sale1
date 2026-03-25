@@ -271,7 +271,7 @@ services:
         max-size: "50m"
         max-file: "5"
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8085/health || exit 1"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:8085/health"]
       interval: 10s
       timeout: 5s
       retries: 5
