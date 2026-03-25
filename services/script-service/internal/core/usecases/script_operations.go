@@ -20,12 +20,27 @@ func NewScriptOperationsUseCase(repo ports.ScriptRepository, storage ports.Stora
 	}
 }
 
-func (uc *ScriptOperationsUseCase) ListScripts(ctx context.Context, companyID string) ([]*domain.Script, error) {
-	return uc.repo.List(ctx, companyID)
+func (uc *ScriptOperationsUseCase) ListScripts(ctx context.Context) ([]*domain.Script, error) {
+	return uc.repo.List(ctx)
 }
 
 func (uc *ScriptOperationsUseCase) DeleteScript(ctx context.Context, id string) error {
-	return uc.repo.Delete(ctx, id)
+	script, err := uc.repo.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	// Soft delete in DB
+	if err := uc.repo.Delete(ctx, id); err != nil {
+		return err
+	}
+
+	// Physical delete from storage (async is okay but for now simple)
+	return uc.storage.Delete(ctx, "scripts", script.FilePathMinio)
+}
+
+func (uc *ScriptOperationsUseCase) GetScriptDetails(ctx context.Context, id string) (*domain.Script, error) {
+	return uc.repo.GetByID(ctx, id)
 }
 
 func (uc *ScriptOperationsUseCase) DownloadScript(ctx context.Context, id string) (io.ReadCloser, string, error) {

@@ -76,7 +76,7 @@ def get_call(call_id):
     conn = get_pool().getconn()
     try:
         cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("SELECT * FROM calls_schema.calls WHERE id = %s", (call_id,))
+        cur.execute("SELECT id, manager_id, duration, external_id FROM calls_schema.calls WHERE id = %s", (call_id,))
         return cur.fetchone()
     finally:
         get_pool().putconn(conn)

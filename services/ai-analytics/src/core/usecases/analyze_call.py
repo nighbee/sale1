@@ -8,6 +8,7 @@ from src.infrastructure.llm.openai_client import OpenAIClient
 from src.infrastructure.llm.gemini_client import GeminiClient
 from src.infrastructure.prompts.system_prompts import SYSTEM_PROMPT, get_user_prompt
 from src.adapters.events.redis_publisher import publish_analysis_completed, publish_critical_error
+from src.adapters.crm.amocrm_client import AmoCRMClient
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +16,7 @@ class AnalyzeCallUseCase:
     def __init__(self):
         self.openai_client = OpenAIClient()
         self.gemini_client = GeminiClient()
+        self.crm_client = AmoCRMClient()
 
     async def execute(self, call_id: str):
         logger.info("analyzing call", extra={"call_id": call_id})
@@ -143,6 +145,15 @@ class AnalyzeCallUseCase:
 
         # Publish event for real-time notifications
         await publish_analysis_completed(call_id, overall_rating)
+
+        # 5.5 Write back to CRM
+        if call.get('external_id'):
+            logger.info("writing back analysis to CRM", extra={"call_id": call_id, "external_id": call['external_id']})
+            await self.crm_client.write_back_analysis(
+                call_id=call_id,
+                external_call_id=call['external_id'],
+                analysis=report
+            )
 
         # 6. Check for Critical Errors
         await self._check_critical_errors(call_id, manager_id, transcript_text)

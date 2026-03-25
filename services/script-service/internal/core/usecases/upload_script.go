@@ -12,7 +12,6 @@ import (
 
 type UploadScriptRequest struct {
 	Name      string
-	CompanyID string
 	TeamID    *string
 	FilePath  string
 	Extension string
@@ -32,7 +31,7 @@ func NewUploadScriptUseCase(repo ports.ScriptRepository, storage ports.Storage) 
 
 func (uc *UploadScriptUseCase) Execute(ctx context.Context, req UploadScriptRequest) (string, error) {
 	scriptID := uuid.New().String()
-	objectName := fmt.Sprintf("scripts/%s/%s%s", req.CompanyID, scriptID, req.Extension)
+	objectName := fmt.Sprintf("scripts/%s%s", scriptID, req.Extension)
 
 	// Parse with Python
 	var parser string
@@ -68,7 +67,6 @@ func (uc *UploadScriptUseCase) Execute(ctx context.Context, req UploadScriptRequ
 
 	script := &domain.Script{
 		ID:             scriptID,
-		CompanyID:      req.CompanyID,
 		Name:           req.Name,
 		FilePathMinio: objectName,
 		ParsedText:     parsedText,

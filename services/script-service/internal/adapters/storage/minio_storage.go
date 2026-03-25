@@ -27,6 +27,10 @@ func (s *minioStorage) GetStream(ctx context.Context, bucketName, objectName str
 	return s.client.GetObject(ctx, bucketName, objectName, minio.GetObjectOptions{})
 }
 
+func (s *minioStorage) Delete(ctx context.Context, bucketName, objectName string) error {
+	return s.client.RemoveObject(ctx, bucketName, objectName, minio.RemoveObjectOptions{})
+}
+
 func (s *minioStorage) BucketExists(ctx context.Context, bucketName string) (bool, error) {
 	return s.client.BucketExists(ctx, bucketName)
 }

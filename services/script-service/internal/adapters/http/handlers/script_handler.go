@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/salesai/script-service/internal/core/usecases"
@@ -32,16 +33,10 @@ func (h *ScriptHandler) Upload(c *fiber.Ctx) error {
 	}
 
 	name := c.FormValue("name")
-	companyID := c.FormValue("company_id")
 	teamID := c.FormValue("team_id")
 
-	if companyID == "" {
-		log.Warn("upload rejected: company_id is required")
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "company_id is required"})
-	}
-
 	ext := filepath.Ext(file.Filename)
-	tmpPath := filepath.Join("/tmp", fmt.Sprintf("upload-%s%s", companyID, ext))
+	tmpPath := filepath.Join("/tmp", fmt.Sprintf("upload-%d%s", time.Now().UnixNano(), ext))
 	if err := c.SaveFile(file, tmpPath); err != nil {
 		log.Error("failed to save temp file", zap.Error(err))
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to save temp file"})
@@ -55,7 +50,6 @@ func (h *ScriptHandler) Upload(c *fiber.Ctx) error {
 
 	req := usecases.UploadScriptRequest{
 		Name:      name,
-		CompanyID: companyID,
 		TeamID:    teamIDPtr,
 		FilePath:  tmpPath,
 		Extension: ext,
@@ -75,10 +69,9 @@ func (h *ScriptHandler) Upload(c *fiber.Ctx) error {
 
 func (h *ScriptHandler) List(c *fiber.Ctx) error {
 	log := applogger.L.With(zap.String("operation", "list_scripts"))
-	companyID := c.Params("company_id")
-	scripts, err := h.operationsUC.ListScripts(c.Context(), companyID)
+	scripts, err := h.operationsUC.ListScripts(c.Context())
 	if err != nil {
-		log.Error("list scripts failed", zap.String("company_id", companyID), zap.Error(err))
+		log.Error("list scripts failed", zap.Error(err))
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.JSON(scripts)
@@ -105,4 +98,15 @@ func (h *ScriptHandler) Download(c *fiber.Ctx) error {
 
 	c.Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", name))
 	return c.SendStream(stream)
+}
+
+func (h *ScriptHandler) GetDetails(c *fiber.Ctx) error {
+	log := applogger.L.With(zap.String("operation", "get_script_details"))
+	id := c.Params("id")
+	script, err := h.operationsUC.GetScriptDetails(c.Context(), id)
+	if err != nil {
+		log.Warn("get script details failed", zap.String("script_id", id), zap.Error(err))
+		return c.Status(404).JSON(fiber.Map{"error": "Script not found"})
+	}
+	return c.JSON(script)
 }
