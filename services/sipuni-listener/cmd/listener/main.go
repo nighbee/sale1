@@ -57,9 +57,23 @@ func main() {
 		dbURL = "host=postgres port=5432 user=salesai_user password=strong_password dbname=salesai sslmode=disable"
 	}
 
-	db, err := sql.Open("postgres", dbURL)
+	var db *sql.DB
+	var err error
+	maxRetries := 10
+	for i := 1; i <= maxRetries; i++ {
+		db, err = sql.Open("postgres", dbURL)
+		if err == nil {
+			err = db.Ping()
+			if err == nil {
+				break
+			}
+		}
+		log.Warn("Failed to connect to database, retrying...", zap.Int("attempt", i), zap.Error(err))
+		time.Sleep(2 * time.Second)
+	}
+
 	if err != nil {
-		log.Fatal("database connection failed", zap.Error(err))
+		log.Fatal("database connection failed after maximum retries", zap.Error(err))
 	}
 	defer db.Close()
 	log.Info("PostgreSQL connected")

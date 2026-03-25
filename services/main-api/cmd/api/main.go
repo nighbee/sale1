@@ -61,9 +61,23 @@ func main() {
 
 	cfg := config.Load()
 
-	db, err := sql.Open("postgres", cfg.DatabaseURL)
+	var db *sql.DB
+	var err error
+	maxRetries := 10
+	for i := 1; i <= maxRetries; i++ {
+		db, err = sql.Open("postgres", cfg.DatabaseURL)
+		if err == nil {
+			err = db.Ping()
+			if err == nil {
+				break
+			}
+		}
+		log.Warn("Failed to connect to database, retrying...", zap.Int("attempt", i), zap.Error(err))
+		time.Sleep(2 * time.Second)
+	}
+
 	if err != nil {
-		log.Fatal("Failed to connect to database", zap.Error(err))
+		log.Fatal("Failed to connect to database after maximum retries", zap.Error(err))
 	}
 	defer db.Close()
 
