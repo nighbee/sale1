@@ -22,6 +22,7 @@ import { CallsListPage } from "../pages/CallsList";
 import { SuperAdminPage } from "../pages/SuperAdmin";
 import { UsersManagementPage } from "../pages/UsersManagement";
 import UserProfile from "../pages/UserProfile";
+import ScriptsList from "../pages/ScriptsList";
 import { LandingPage } from "../pages/LandingPage";
 import ProtectedRoute from "./providers/ProtectedRoute";
 import "./styles/App.css";
@@ -43,6 +44,14 @@ function App() {
               <CompanySetupPage />
             </ProtectedRoute>
           }
+        />
+        <Route
+          path="/scripts"
+          element={
+            <ProtectedRoute allowedRoles={["tenant_admin", "super_admin"]}>
+              <ScriptsList />
+            </ProtectedRoute>
+           }
         />
         <Route
           path="/users"

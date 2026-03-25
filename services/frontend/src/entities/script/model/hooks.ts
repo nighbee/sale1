@@ -45,7 +45,25 @@ export const useScripts = () => {
     }
   };
 
-  return { scripts, loading, error, fetchScripts, uploadScript, deleteScript };
+  const updateScript = async (id: string, name: string) => {
+    try {
+      await scriptApi.update(id, { name });
+      await fetchScripts();
+    } catch (err) {
+      console.error(err);
+      throw err;
+    }
+  };
+
+  return {
+    scripts,
+    loading,
+    error,
+    fetchScripts,
+    uploadScript,
+    deleteScript,
+    updateScript,
+  };
 };
 
 export const useBaseScripts = () => {
