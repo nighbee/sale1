@@ -154,7 +154,17 @@
     "download": "Download Script",
     "reprocess": "Reprocess Call",
     "reprocess_success": "Call reprocessing started",
-    "reprocess_failed": "Failed to start reprocessing"
+    "reprocess_failed": "Failed to start reprocessing",
+    "upload": "Upload Script",
+    "rename": "Rename Script",
+    "search": "Search scripts...",
+    "new_name": "New name",
+    "no_scripts": "No scripts found",
+    "management_subtitle": "Manage and organize your sales scripts for AI analysis.",
+    "delete_success": "Script deleted successfully",
+    "delete_failed": "Failed to delete script",
+    "rename_success": "Script renamed successfully",
+    "rename_failed": "Failed to rename script"
   },
   "billing": {
     "title": "Subscription & Billing",
