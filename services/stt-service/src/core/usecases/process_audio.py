@@ -1,4 +1,5 @@
 import os
+import json
 import httpx
 import logging
 import tempfile
@@ -12,6 +13,7 @@ from src.adapters.stt.openai_provider import OpenAISTTProvider
 from src.adapters.stt.gemini_provider import GeminiSTTProvider
 from src.adapters.stt.groq_provider import GroqSTTProvider
 from src.adapters.stt.deepgram_provider import DeepgramSTTProvider
+from src.infrastructure.api.main_api_client import MainAPIClient
 
 logger = logging.getLogger(__name__)
 
@@ -20,16 +22,36 @@ class ProcessAudioUseCase:
         self.stt_local_url = os.getenv("LOCAL_STT_URL", "http://localhost:5001")
         self.minio = MinioClient()
         self.diarization_service = DiarizationService()
+        self.api_client = MainAPIClient()
         
+        # We will initialize provider on each execute to handle dynamic credentials
         self.stt_provider_name = os.getenv("STT_PROVIDER", "openai")
-        if self.stt_provider_name == "gemini":
-            self.stt_provider = GeminiSTTProvider()
-        elif self.stt_provider_name == "groq":
-            self.stt_provider = GroqSTTProvider()
-        elif self.stt_provider_name == "deepgram":
-            self.stt_provider = DeepgramSTTProvider()
+
+    def _get_stt_provider(self, integrations: list):
+        provider_name = self.stt_provider_name
+
+        # Look for integration that matches provider_name
+        integration = next((i for i in integrations if i.get("integration_type") == provider_name), None)
+
+        api_key = None
+        if integration:
+            creds = integration.get("credentials", {})
+            if isinstance(creds, str):
+                try:
+                    creds = json.loads(creds)
+                except:
+                    pass
+            if isinstance(creds, dict):
+                api_key = creds.get("api_key")
+
+        if provider_name == "gemini":
+            return GeminiSTTProvider(api_key=api_key)
+        elif provider_name == "groq":
+            return GroqSTTProvider(api_key=api_key)
+        elif provider_name == "deepgram":
+            return DeepgramSTTProvider(api_key=api_key)
         else:
-            self.stt_provider = OpenAISTTProvider()
+            return OpenAISTTProvider(api_key=api_key)
 
     async def execute(self, job: dict):
         call_id = job.get('call_id')
@@ -99,8 +121,12 @@ class ProcessAudioUseCase:
             logger.info("[4/6] sending to STT provider",
                         extra={"call_id": call_id, "stt_provider": self.stt_provider_name,
                                "file_size_kb": file_size_kb})
+
+            integrations = await self.api_client.get_active_integrations()
+            stt_provider = self._get_stt_provider(integrations)
+
             t_stt = time.monotonic()
-            transcript_data = await self.stt_provider.transcribe(tmp_path)
+            transcript_data = await stt_provider.transcribe(tmp_path)
             stt_elapsed = round(time.monotonic() - t_stt, 2)
             stt_text = transcript_data.get("text", "")
             stt_segments = transcript_data.get("segments", [])

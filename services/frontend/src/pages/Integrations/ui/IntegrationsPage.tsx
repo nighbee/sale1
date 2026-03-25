@@ -31,6 +31,12 @@ const IntegrationsPage: React.FC = () => {
 
   const available = [
     { id: 'google_sheets', name: t('integrations.google_sheets_name'), type: t('integrations.reporting'), icon: 'table_chart', color: 'green', desc: t('integrations.google_sheets_desc') },
+    { id: 'sipuni', name: 'Sipuni', type: 'Telephony', icon: 'phone_in_talk', color: 'blue', desc: 'Sync call recordings and metadata from Sipuni.' },
+    { id: 'amocrm', name: 'AmoCRM', type: 'CRM', icon: 'hub', color: 'orange', desc: 'Sync analysis results back to AmoCRM leads.' },
+    { id: 'openai', name: 'OpenAI', type: 'AI Provider', icon: 'psychology', color: 'emerald', desc: 'Use OpenAI Whisper and GPT models for analysis.' },
+    { id: 'groq', name: 'Groq', type: 'AI Provider', icon: 'bolt', color: 'yellow', desc: 'High-speed Whisper STT provider.' },
+    { id: 'gemini', name: 'Google Gemini', type: 'AI Provider', icon: 'cloud', color: 'blue', desc: 'Google Gemini STT and LLM provider.' },
+    { id: 'deepgram', name: 'Deepgram', type: 'AI Provider', icon: 'graphic_eq', color: 'purple', desc: 'Enterprise-grade STT provider.' },
     { id: 'telegram', name: t('integrations.telegram_name'), type: t('integrations.notifications'), icon: 'send', color: 'blue', desc: t('integrations.telegram_desc') },
     { id: 'slack', name: t('integrations.slack_name'), type: t('integrations.communication'), icon: 'chat_bubble', color: 'purple', desc: t('integrations.slack_desc') },
   ];

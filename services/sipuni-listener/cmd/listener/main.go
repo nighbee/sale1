@@ -16,6 +16,7 @@ import (
 	"github.com/salesai/sipuni-listener/internal/adapters/queue"
 	"github.com/salesai/sipuni-listener/internal/adapters/repositories"
 	"github.com/salesai/sipuni-listener/internal/core/usecases"
+	"github.com/salesai/sipuni-listener/internal/infrastructure/api"
 	applogger "github.com/salesai/sipuni-listener/internal/infrastructure/logger"
 	"go.uber.org/zap"
 )
@@ -111,13 +112,38 @@ func main() {
 	}()
 
 	u := url.URL{Scheme: "wss", Host: "wss.sipuni.com", Path: "/api"}
-	apiKey := os.Getenv("SIPUNI_API_KEY")
+	apiClient := api.NewMainAPIClient()
 
 	backoff := 2 * time.Second
 	maxBackoff := 60 * time.Second
 	retryCount := 0
 
 	for {
+		apiKey := os.Getenv("SIPUNI_API_KEY")
+		integrations, err := apiClient.GetActiveIntegrations()
+		if err == nil {
+			for _, i := range integrations {
+				if i.IntegrationType == "sipuni" {
+					var creds struct {
+						APIKey string `json:"api_key"`
+					}
+					if err := json.Unmarshal(i.Credentials, &creds); err == nil && creds.APIKey != "" {
+						apiKey = creds.APIKey
+						log.Info("Using Sipuni API key from main-api")
+					}
+					break
+				}
+			}
+		} else {
+			log.Warn("Failed to fetch integrations from main-api, using env fallback", zap.Error(err))
+		}
+
+		if apiKey == "" {
+			log.Warn("Sipuni API Key not found, retrying in backoff...")
+			time.Sleep(backoff)
+			continue
+		}
+
 		log.Info("Connecting to Sipuni WebSocket", zap.String("url", u.String()), zap.Int("retry_count", retryCount))
 		c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 		if err != nil {

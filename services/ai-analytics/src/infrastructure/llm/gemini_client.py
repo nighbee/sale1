@@ -6,8 +6,8 @@ import google.generativeai as genai
 logger = logging.getLogger(__name__)
 
 class GeminiClient:
-    def __init__(self):
-        self.api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+    def __init__(self, api_key: str = None):
+        self.api_key = api_key or os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
         if self.api_key:
             genai.configure(api_key=self.api_key)
         else:

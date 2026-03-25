@@ -1,5 +1,6 @@
 import logging
 import os
+import json
 from src.adapters.storage.postgres_repo import (
     get_transcript, get_call, get_active_script_by_manager, get_team_script, save_analysis,
     create_notification, get_admin_user, update_call_status
@@ -9,14 +10,14 @@ from src.infrastructure.llm.gemini_client import GeminiClient
 from src.infrastructure.prompts.system_prompts import SYSTEM_PROMPT, get_user_prompt
 from src.adapters.events.redis_publisher import publish_analysis_completed, publish_critical_error
 from src.adapters.crm.amocrm_client import AmoCRMClient
+from src.infrastructure.api.main_api_client import MainAPIClient
 
 logger = logging.getLogger(__name__)
 
 class AnalyzeCallUseCase:
     def __init__(self):
-        self.openai_client = OpenAIClient()
-        self.gemini_client = GeminiClient()
         self.crm_client = AmoCRMClient()
+        self.api_client = MainAPIClient()
 
     async def execute(self, call_id: str):
         logger.info("analyzing call", extra={"call_id": call_id})
@@ -63,6 +64,20 @@ class AnalyzeCallUseCase:
         # 4. Get LLM settings - default to openai for single-company
         llm_provider = os.getenv("LLM_PROVIDER", "openai")
 
+        integrations = await self.api_client.get_active_integrations()
+        integration = next((i for i in integrations if i.get("integration_type") == llm_provider), None)
+
+        api_key = None
+        if integration:
+            creds = integration.get("credentials", {})
+            if isinstance(creds, str):
+                try:
+                    creds = json.loads(creds)
+                except:
+                    pass
+            if isinstance(creds, dict):
+                api_key = creds.get("api_key")
+
         logger.info(
             "[2/4] sending to LLM",
             extra={
@@ -73,9 +88,11 @@ class AnalyzeCallUseCase:
         )
 
         if llm_provider == "gemini":
-            analysis = await self.gemini_client.analyze(SYSTEM_PROMPT, user_prompt)
+            gemini_client = GeminiClient(api_key=api_key)
+            analysis = await gemini_client.analyze(SYSTEM_PROMPT, user_prompt)
         else:
-            analysis = await self.openai_client.analyze(SYSTEM_PROMPT, user_prompt)
+            openai_client = OpenAIClient(api_key=api_key)
+            analysis = await openai_client.analyze(SYSTEM_PROMPT, user_prompt)
 
         logger.info(
             "[2/4] LLM response received",
@@ -148,12 +165,40 @@ class AnalyzeCallUseCase:
 
         # 5.5 Write back to CRM
         if call.get('external_id'):
-            logger.info("writing back analysis to CRM", extra={"call_id": call_id, "external_id": call['external_id']})
-            await self.crm_client.write_back_analysis(
-                call_id=call_id,
-                external_call_id=call['external_id'],
-                analysis=report
-            )
+            crm_integration = next((i for i in integrations if i.get("integration_type") == "amocrm"), None)
+            if crm_integration:
+                creds = crm_integration.get("credentials", {})
+                if isinstance(creds, str):
+                    try:
+                        creds = json.loads(creds)
+                    except:
+                        pass
+
+                cfg = crm_integration.get("config", {})
+                if isinstance(cfg, str):
+                    try:
+                        cfg = json.loads(cfg)
+                    except:
+                        pass
+
+                if isinstance(creds, dict) and isinstance(cfg, dict):
+                    client_id = creds.get("client_id")
+                    client_secret = creds.get("client_secret")
+                    subdomain = cfg.get("subdomain")
+
+                    logger.info("writing back analysis to CRM", extra={"call_id": call_id, "external_id": call['external_id'], "crm": "amocrm"})
+                    # Update client with dynamic credentials if provided
+                    # For simplicity, we pass them to the method if the client doesn't hold state,
+                    # but here we'll update the client instance for this call.
+                    self.crm_client.api_key = client_secret # AmoCRM logic varies, but we follow existing client structure
+                    if subdomain:
+                        self.crm_client.api_url = f"https://{subdomain}.amocrm.ru/api/v1"
+
+                    await self.crm_client.write_back_analysis(
+                        call_id=call_id,
+                        external_call_id=call['external_id'],
+                        analysis=report
+                    )
 
         # 6. Check for Critical Errors
         await self._check_critical_errors(call_id, manager_id, transcript_text)
