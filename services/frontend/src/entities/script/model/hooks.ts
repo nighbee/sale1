@@ -11,7 +11,10 @@ export const useScripts = () => {
     setLoading(true);
     try {
       const response = await scriptApi.list();
-      setScripts(response.data.scripts);
+      // Ensure we handle both { scripts: [...] } and direct array (legacy)
+      const data = response.data as any;
+      const scriptsList = Array.isArray(data) ? data : (data.scripts || []);
+      setScripts(scriptsList);
       setError(null);
     } catch (err) {
       // try to extract API error message
@@ -83,7 +86,9 @@ export const useBaseScripts = () => {
         scriptApi.listBaseScripts(),
         scriptApi.getBaseScript().catch(() => ({ data: null })),
       ]);
-      setBaseScripts(listRes.data.scripts);
+      const data = listRes.data as any;
+      const baseScriptsList = Array.isArray(data) ? data : (data.base_scripts || []);
+      setBaseScripts(baseScriptsList);
       setCurrentBase(currentRes.data as Script | null);
     } catch (err) {
       console.error(err);
