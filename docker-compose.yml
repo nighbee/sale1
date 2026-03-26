@@ -62,25 +62,25 @@ services:
       - minio
     entrypoint: ["/bin/sh", "-c"]
     command: |
-        sh -c '
-          # wait for MinIO readiness
-          #   for i in $$(seq 1 60); do
-          #       if curl -fs http://minio:9000/minio/health/ready >/dev/null 2>&1; then
-          #             break
-          #                 fi
-          #                     sleep 1
-          #                       done
-          #
-          #                         # create audio bucket (ignore error if exists)
-          #                           aws --endpoint-url http://minio:9000 s3api create-bucket --bucket audio || true
-          #
-          #                             # apply CORS from file
-          #                               aws --endpoint-url http://minio:9000 s3api put-bucket-cors \
-          #                                   --bucket audio \
-          #                                       --cors-configuration file:///cors.json || true
-          #
-          #                                         echo "minio init done"
-          #                                           '
+      sh -c '
+        # wait for MinIO readiness
+        #   for i in $$(seq 1 60); do
+        #       if curl -fs http://minio:9000/minio/health/ready >/dev/null 2>&1; then
+        #             break
+        #                 fi
+        #                     sleep 1
+        #                       done
+        #
+        #                         # create audio bucket (ignore error if exists)
+        #                           aws --endpoint-url http://minio:9000 s3api create-bucket --bucket audio || true
+        #
+        #                             # apply CORS from file
+        #                               aws --endpoint-url http://minio:9000 s3api put-bucket-cors \
+        #                                   --bucket audio \
+        #                                       --cors-configuration file:///cors.json || true
+        #
+        #                                         echo "minio init done"
+        #                                           '
     volumes:
       - ./minio-cors.json:/cors.json:ro
     environment:
@@ -88,7 +88,6 @@ services:
       AWS_SECRET_ACCESS_KEY: minioadmin123
     networks:
       - sale1-network
-
 
   # Migration init container - runs migrations before main-api starts
   main-api-migrate:
@@ -153,7 +152,6 @@ services:
       options:
         max-size: "50m"
         max-file: "5"
-
 
   sipuni-listener:
     build: ./services/sipuni-listener
@@ -241,7 +239,13 @@ services:
       minio:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -274,7 +278,13 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -294,7 +304,7 @@ services:
       main-api:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost/health"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/health"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -334,7 +344,13 @@ services:
         max-size: "50m"
         max-file: "5"
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8085/health')"]
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8085/health')",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
