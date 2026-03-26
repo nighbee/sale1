@@ -89,16 +89,25 @@ const IntegrationsPage: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {integrations.filter(i => i.is_active).map(i => (
               <div key={i.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm relative overflow-hidden group">
-                <div className="absolute top-0 right-0 p-3">
+                <div className="absolute top-0 right-0 p-3 flex flex-col items-end gap-1">
                   <span className="bg-green-100 text-green-700 text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider">{t('integrations.active')}</span>
+                  {i.last_checked_at && (
+                    <span className="text-[9px] text-slate-400 italic">
+                      {t('integrations.last_checked', { time: new Date(i.last_checked_at).toLocaleTimeString() })}
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-start gap-4 mb-6">
                   <div className="size-12 rounded-lg bg-primary/10 flex items-center justify-center">
                     <span className="material-symbols-outlined text-primary text-3xl">hub</span>
                   </div>
                   <div>
-                    <h3 className="text-slate-900 dark:text-white font-bold text-lg">{i.integration_type}</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-slate-900 dark:text-white font-bold text-lg">{i.integration_type}</h3>
+                      <span className={`size-2 rounded-full ${i.status_message ? 'bg-red-500' : 'bg-green-500'}`} title={i.status_message || 'OK'}></span>
+                    </div>
                     <p className="text-slate-400 text-sm">{t('integrations.crm_connector')}</p>
+                    {i.status_message && <p className="text-xs text-red-500 mt-1 truncate max-w-[150px]">{i.status_message}</p>}
                   </div>
                 </div>
                 <div className="flex gap-3">

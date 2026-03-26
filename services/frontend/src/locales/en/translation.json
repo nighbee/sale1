@@ -380,7 +380,11 @@
     "connect_success": "{{type}} connected successfully",
     "connect_failed": "Failed to connect {{type}}",
     "disconnect_success": "{{type}} disconnected successfully",
-    "disconnect_failed": "Failed to disconnect {{type}}"
+    "disconnect_failed": "Failed to disconnect {{type}}",
+    "test_connection": "Test Connection",
+    "last_checked": "Last checked: {{time}}",
+    "connection_error": "Connection Error",
+    "connection_ok": "Connection OK"
   },
   "roles": {
     "super_admin": "Super Admin",
