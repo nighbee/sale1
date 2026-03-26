@@ -6,7 +6,6 @@ export interface Team {
   name: string;
   description?: string;
   auto_assign: boolean;
-  company_id: string;
   members?: User[];
   script?: Script;
 }

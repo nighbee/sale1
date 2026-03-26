@@ -33,10 +33,12 @@ func (r *ScriptRepository) Create(ctx context.Context, script *domain.Script) er
 func (r *ScriptRepository) GetByID(ctx context.Context, id string) (*domain.Script, error) {
 	query := `SELECT id, name, file_path_minio FROM scripts_schema.scripts WHERE id = $1`
 	script := &domain.Script{}
-	err := r.db.QueryRowContext(ctx, query, id).Scan(&script.ID, &script.Name, &script.FilePathMinio)
+	var minioPath sql.NullString
+	err := r.db.QueryRowContext(ctx, query, id).Scan(&script.ID, &script.Name, &minioPath)
 	if err != nil {
 		return nil, err
 	}
+	script.FilePathMinio = minioPath.String
 	return script, nil
 }
 
@@ -51,7 +53,7 @@ func (r *ScriptRepository) List(ctx context.Context) ([]*domain.Script, error) {
 	var scripts []*domain.Script
 	for rows.Next() {
 		script := &domain.Script{}
-		var createdAt string
+		var createdAt sql.NullString
 		if err := rows.Scan(&script.ID, &script.Name, &script.Version, &script.IsActive, &createdAt); err != nil {
 			return nil, err
 		}

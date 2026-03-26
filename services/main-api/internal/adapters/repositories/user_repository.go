@@ -55,22 +55,22 @@ func (r *userRepository) GetByID(ctx context.Context, id string) (*domain.User, 
 
 	user := &domain.User{}
 	// scan nullable columns into sql.NullString to avoid converting NULL -> string errors
-	var username sql.NullString
-	var phone sql.NullString
+	var mName, fName, lName, username, phone sql.NullString
+
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&user.ID,
 		&user.Email,
 		&user.PasswordHash,
 		&user.Role,
 		&user.ManagerID,
-		&user.ManagerName,
+		&mName,
 		&user.IsActive,
 		&user.LastLogin,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 		&user.TeamID,
-		&user.FirstName,
-		&user.LastName,
+		&fName,
+		&lName,
 		&username,
 		&phone,
 	)
@@ -82,16 +82,11 @@ func (r *userRepository) GetByID(ctx context.Context, id string) (*domain.User, 
 		return nil, err
 	}
 
-	if username.Valid {
-		user.Username = username.String
-	} else {
-		user.Username = ""
-	}
-	if phone.Valid {
-		user.Phone = phone.String
-	} else {
-		user.Phone = ""
-	}
+	user.ManagerName = mName.String
+	user.FirstName = fName.String
+	user.LastName = lName.String
+	user.Username = username.String
+	user.Phone = phone.String
 
 	return user, nil
 }
@@ -105,22 +100,22 @@ func (r *userRepository) GetByEmail(ctx context.Context, email string) (*domain.
 	`
 
 	user := &domain.User{}
-	var username sql.NullString
-	var phone sql.NullString
+	var mName, fName, lName, username, phone sql.NullString
+
 	err := r.db.QueryRowContext(ctx, query, email).Scan(
 		&user.ID,
 		&user.Email,
 		&user.PasswordHash,
 		&user.Role,
 		&user.ManagerID,
-		&user.ManagerName,
+		&mName,
 		&user.IsActive,
 		&user.LastLogin,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 		&user.TeamID,
-		&user.FirstName,
-		&user.LastName,
+		&fName,
+		&lName,
 		&username,
 		&phone,
 	)
@@ -132,16 +127,11 @@ func (r *userRepository) GetByEmail(ctx context.Context, email string) (*domain.
 		return nil, err
 	}
 
-	if username.Valid {
-		user.Username = username.String
-	} else {
-		user.Username = ""
-	}
-	if phone.Valid {
-		user.Phone = phone.String
-	} else {
-		user.Phone = ""
-	}
+	user.ManagerName = mName.String
+	user.FirstName = fName.String
+	user.LastName = lName.String
+	user.Username = username.String
+	user.Phone = phone.String
 
 	return user, nil
 }
@@ -181,32 +171,30 @@ func (r *userRepository) List(ctx context.Context) ([]*domain.User, error) {
 	users := []*domain.User{}
 	for rows.Next() {
 		user := &domain.User{}
-		var username sql.NullString
-		var phone sql.NullString
+		var mName, fName, lName, username, phone sql.NullString
 		err := rows.Scan(
 			&user.ID,
 			&user.Email,
 			&user.Role,
 			&user.ManagerID,
-			&user.ManagerName,
+			&mName,
 			&user.IsActive,
 			&user.CreatedAt,
 			&user.UpdatedAt,
 			&user.TeamID,
-			&user.FirstName,
-			&user.LastName,
+			&fName,
+			&lName,
 			&username,
 			&phone,
 		)
 		if err != nil {
 			return nil, err
 		}
-		if username.Valid {
-			user.Username = username.String
-		}
-		if phone.Valid {
-			user.Phone = phone.String
-		}
+		user.ManagerName = mName.String
+		user.FirstName = fName.String
+		user.LastName = lName.String
+		user.Username = username.String
+		user.Phone = phone.String
 		users = append(users, user)
 	}
 
@@ -223,22 +211,21 @@ func (r *userRepository) GetByManagerID(ctx context.Context, managerID string) (
 	`
 
 	user := &domain.User{}
-	var username sql.NullString
-	var phone sql.NullString
+	var mName, fName, lName, username, phone sql.NullString
 	err := r.db.QueryRowContext(ctx, query, managerID).Scan(
 		&user.ID,
 		&user.Email,
 		&user.PasswordHash,
 		&user.Role,
 		&user.ManagerID,
-		&user.ManagerName,
+		&mName,
 		&user.IsActive,
 		&user.LastLogin,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 		&user.TeamID,
-		&user.FirstName,
-		&user.LastName,
+		&fName,
+		&lName,
 		&username,
 		&phone,
 	)
@@ -250,12 +237,11 @@ func (r *userRepository) GetByManagerID(ctx context.Context, managerID string) (
 		return nil, err
 	}
 
-	if username.Valid {
-		user.Username = username.String
-	}
-	if phone.Valid {
-		user.Phone = phone.String
-	}
+	user.ManagerName = mName.String
+	user.FirstName = fName.String
+	user.LastName = lName.String
+	user.Username = username.String
+	user.Phone = phone.String
 
 	return user, nil
 }
@@ -271,22 +257,21 @@ func (r *userRepository) GetByPhone(ctx context.Context, phone string) (*domain.
 	`
 
 	user := &domain.User{}
-	var username sql.NullString
-	var phoneNS sql.NullString
+	var mName, fName, lName, username, phoneNS sql.NullString
 	err := r.db.QueryRowContext(ctx, query, phone).Scan(
 		&user.ID,
 		&user.Email,
 		&user.PasswordHash,
 		&user.Role,
 		&user.ManagerID,
-		&user.ManagerName,
+		&mName,
 		&user.IsActive,
 		&user.LastLogin,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 		&user.TeamID,
-		&user.FirstName,
-		&user.LastName,
+		&fName,
+		&lName,
 		&username,
 		&phoneNS,
 	)
@@ -298,12 +283,11 @@ func (r *userRepository) GetByPhone(ctx context.Context, phone string) (*domain.
 		return nil, err
 	}
 
-	if username.Valid {
-		user.Username = username.String
-	}
-	if phoneNS.Valid {
-		user.Phone = phoneNS.String
-	}
+	user.ManagerName = mName.String
+	user.FirstName = fName.String
+	user.LastName = lName.String
+	user.Username = username.String
+	user.Phone = phoneNS.String
 
 	return user, nil
 }
