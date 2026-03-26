@@ -16,6 +16,8 @@ interface IntegrationModalProps {
 const IntegrationModal: React.FC<IntegrationModalProps> = ({ isOpen, onClose, type, onSuccess }) => {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [credentials, setCredentials] = useState<Record<string, string>>({});
   const [config, setConfig] = useState<Record<string, string>>({});
 
@@ -34,6 +36,26 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ isOpen, onClose, ty
         fetchIntegration();
     }
   }, [isOpen, type]);
+
+  const handleTest = async () => {
+    setIsTesting(true);
+    setTestResult(null);
+    try {
+      const res = await integrationApi.test(type, { credentials, config });
+      if (res.data.success) {
+        setTestResult({ success: true, message: res.data.message || 'Connection successful' });
+        toast.success('Connection test successful');
+      } else {
+        setTestResult({ success: false, message: res.data.error || 'Connection failed' });
+        toast.error('Connection test failed');
+      }
+    } catch (err) {
+      setTestResult({ success: false, message: 'Failed to reach test endpoint' });
+      toast.error('Test endpoint unreachable');
+    } finally {
+      setIsTesting(false);
+    }
+  };
 
   const handleSave = async () => {
     setLoading(true);
@@ -126,9 +148,22 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ isOpen, onClose, ty
     <Modal isOpen={isOpen} onClose={onClose} title={`Configure ${type}`}>
       <div className="space-y-6">
         {renderFields()}
-        <div className="flex justify-end gap-3 pt-6 border-t border-slate-100 dark:border-slate-800">
-          <Button variant="ghost" onClick={onClose}>{t('common.cancel')}</Button>
-          <Button onClick={handleSave} isLoading={loading}>{t('common.save')}</Button>
+
+        {testResult && (
+          <div className={`p-3 rounded-lg text-sm flex items-start gap-2 ${testResult.success ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+            <span className="material-symbols-outlined text-base mt-0.5">{testResult.success ? 'check_circle' : 'error'}</span>
+            <p>{testResult.message}</p>
+          </div>
+        )}
+
+        <div className="flex justify-between items-center pt-6 border-t border-slate-100 dark:border-slate-800">
+          <Button variant="outline" onClick={handleTest} isLoading={isTesting} disabled={loading}>
+            {t('integrations.test_connection')}
+          </Button>
+          <div className="flex gap-3">
+            <Button variant="ghost" onClick={onClose}>{t('common.cancel')}</Button>
+            <Button onClick={handleSave} isLoading={loading}>{t('common.save')}</Button>
+          </div>
         </div>
       </div>
     </Modal>

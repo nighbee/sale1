@@ -119,6 +119,7 @@ func SetupRoutes(
 	integrations.Get("/", integrationHandler.List)
 	integrations.Post("/google-sheets/sync", integrationHandler.TriggerSheetSync)
 	integrations.Get("/:type", integrationHandler.Get)
+	integrations.Post("/:type/test", integrationHandler.TestConnection)
 	integrations.Delete("/:type", integrationHandler.Delete)
 
 	// Internal

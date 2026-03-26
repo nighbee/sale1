@@ -4,4 +4,6 @@ export interface Integration {
   credentials?: Record<string, unknown>;
   config: Record<string, unknown>;
   is_active: boolean;
+  last_checked_at?: string;
+  status_message?: string;
 }

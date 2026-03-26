@@ -185,8 +185,8 @@ func (h *ScriptHandler) UpdateScript(c *fiber.Ctx) error {
 	}
 
 	var update struct {
-		Name      string                 `json:"name"`
-		IsActive  bool                   `json:"is_active"`
+		Name      *string                 `json:"name"`
+		IsActive  *bool                   `json:"is_active"`
 		Structure map[string]interface{} `json:"structure"`
 	}
 
@@ -194,10 +194,12 @@ func (h *ScriptHandler) UpdateScript(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid body"})
 	}
 
-	if update.Name != "" {
-		script.Name = update.Name
+	if update.Name != nil {
+		script.Name = *update.Name
 	}
-	script.IsActive = update.IsActive
+	if update.IsActive != nil {
+		script.IsActive = *update.IsActive
+	}
 	if update.Structure != nil {
 		script.Structure = update.Structure
 	}
@@ -223,10 +225,27 @@ func (h *ScriptHandler) UpdateScript(c *fiber.Ctx) error {
 func (h *ScriptHandler) DeleteScript(c *fiber.Ctx) error {
 	log := applogger.FromFiberCtx(c).With(zap.String("operation", "delete_script"))
 	id := c.Params("id")
+
+	// 1. Delete record in main-api DB (soft or metadata)
 	if err := h.scriptRepo.Delete(c.Context(), id); err != nil {
-		log.Error("delete script failed", zap.String("script_id", id), zap.Error(err))
+		log.Error("delete script metadata failed", zap.String("script_id", id), zap.Error(err))
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
+
+	// 2. Proxy physical deletion to script-service
+	req, _ := http.NewRequest("DELETE", h.scriptServiceURL+"/api/v1/scripts/"+id, nil)
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Warn("failed to notify script-service for physical deletion", zap.Error(err))
+		// We don't return 500 here if metadata was deleted successfully, but log it
+	} else {
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
+			log.Warn("script-service deletion returned non-success status", zap.Int("status", resp.StatusCode))
+		}
+	}
+
 	log.Info("script deleted", zap.String("script_id", id))
 	return c.SendStatus(fiber.StatusNoContent)
 }

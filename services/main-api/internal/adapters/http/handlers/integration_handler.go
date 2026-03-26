@@ -120,6 +120,44 @@ func (h *IntegrationHandler) Get(c *fiber.Ctx) error {
 	return c.JSON(integration)
 }
 
+// TestConnection godoc
+// @Summary Test integration connectivity
+// @Description Verify credentials and configuration for a specific integration
+// @Tags integrations
+// @Produce json
+// @Param type path string true "Integration Type"
+// @Param request body map[string]interface{} false "Temporary credentials to test"
+// @Success 200 {object} fiber.Map
+// @Failure 400 {object} fiber.Map
+// @Failure 500 {object} fiber.Map
+// @Security BearerAuth
+// @Router /integrations/{type}/test [post]
+func (h *IntegrationHandler) TestConnection(c *fiber.Ctx) error {
+	it := c.Params("type")
+	log := applogger.FromFiberCtx(c).With(zap.String("operation", "test_integration"), zap.String("type", it))
+
+	var req struct {
+		Credentials json.RawMessage `json:"credentials"`
+		Config      json.RawMessage `json:"config"`
+	}
+	c.BodyParser(&req)
+
+	err := h.integrationUC.TestConnection(c.Context(), domain.IntegrationType(it), req.Credentials, req.Config)
+	if err != nil {
+		log.Warn("test connection failed", zap.Error(err))
+		return c.Status(200).JSON(fiber.Map{
+			"success": false,
+			"error":   err.Error(),
+		})
+	}
+
+	log.Info("test connection successful")
+	return c.JSON(fiber.Map{
+		"success": true,
+		"message": "Connection successful",
+	})
+}
+
 // Delete godoc
 // @Summary Delete an integration
 // @Description Remove a third-party integration

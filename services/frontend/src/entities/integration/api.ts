@@ -7,4 +7,5 @@ export const integrationApi = {
   get: (type: string) => api.get<Integration>(`/integrations/${type}`),
   delete: (type: string) => api.delete(`/integrations/${type}`),
   triggerSheetSync: () => api.post('/integrations/google-sheets/sync'),
+  test: (type: string, data?: { credentials?: unknown; config?: unknown }) => api.post<{ success: boolean; message?: string; error?: string }>(`/integrations/${type}/test`, data),
 };
