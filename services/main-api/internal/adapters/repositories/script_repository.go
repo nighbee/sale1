@@ -56,8 +56,10 @@ func (r *scriptRepository) GetActive(ctx context.Context) (*domain.Script, error
 	s := &domain.Script{}
 	var structureJSON []byte
 	var metricsJSON []byte
+	var minioPath, pText sql.NullString
+
 	err := r.db.QueryRowContext(ctx, query).Scan(
-		&s.ID, &s.Name, &s.FilePathMinio, &s.ParsedText, &structureJSON, &s.Version, &s.IsActive, &s.CreatedAt, &s.UpdatedAt, &s.TeamID, &s.IsBaseScript, &s.IsActiveBase, &metricsJSON,
+		&s.ID, &s.Name, &minioPath, &pText, &structureJSON, &s.Version, &s.IsActive, &s.CreatedAt, &s.UpdatedAt, &s.TeamID, &s.IsBaseScript, &s.IsActiveBase, &metricsJSON,
 	)
 	if err == sql.ErrNoRows {
 		return nil, errors.New("active script not found")
@@ -65,6 +67,9 @@ func (r *scriptRepository) GetActive(ctx context.Context) (*domain.Script, error
 	if err != nil {
 		return nil, err
 	}
+	s.FilePathMinio = minioPath.String
+	s.ParsedText = pText.String
+
 	if structureJSON != nil {
 		json.Unmarshal(structureJSON, &s.Structure)
 	}
@@ -92,11 +97,13 @@ func (r *scriptRepository) List(ctx context.Context) ([]*domain.Script, error) {
 		s := &domain.Script{}
 		var structureJSON []byte
 		var metricsJSON []byte
+		var minioPath, pText sql.NullString
+
 		err := rows.Scan(
 			&s.ID,
 			&s.Name,
-			&s.FilePathMinio,
-			&s.ParsedText,
+			&minioPath,
+			&pText,
 			&structureJSON,
 			&s.Version,
 			&s.IsActive,
@@ -110,6 +117,9 @@ func (r *scriptRepository) List(ctx context.Context) ([]*domain.Script, error) {
 		if err != nil {
 			return nil, err
 		}
+		s.FilePathMinio = minioPath.String
+		s.ParsedText = pText.String
+
 		if structureJSON != nil {
 			json.Unmarshal(structureJSON, &s.Structure)
 		}
@@ -132,11 +142,13 @@ func (r *scriptRepository) GetByID(ctx context.Context, id string) (*domain.Scri
 	s := &domain.Script{}
 	var structureJSON []byte
 	var metricsJSON []byte
+	var minioPath, pText sql.NullString
+
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&s.ID,
 		&s.Name,
-		&s.FilePathMinio,
-		&s.ParsedText,
+		&minioPath,
+		&pText,
 		&structureJSON,
 		&s.Version,
 		&s.IsActive,
@@ -154,6 +166,9 @@ func (r *scriptRepository) GetByID(ctx context.Context, id string) (*domain.Scri
 	if err != nil {
 		return nil, err
 	}
+	s.FilePathMinio = minioPath.String
+	s.ParsedText = pText.String
+
 	if structureJSON != nil {
 		json.Unmarshal(structureJSON, &s.Structure)
 	}
@@ -175,11 +190,13 @@ func (r *scriptRepository) GetActiveBaseScript(ctx context.Context) (*domain.Scr
 	s := &domain.Script{}
 	var structureJSON []byte
 	var metricsJSON []byte
+	var minioPath, pText sql.NullString
+
 	err := r.db.QueryRowContext(ctx, query).Scan(
 		&s.ID,
 		&s.Name,
-		&s.FilePathMinio,
-		&s.ParsedText,
+		&minioPath,
+		&pText,
 		&structureJSON,
 		&s.Version,
 		&s.IsActive,
@@ -197,6 +214,9 @@ func (r *scriptRepository) GetActiveBaseScript(ctx context.Context) (*domain.Scr
 	if err != nil {
 		return nil, err
 	}
+	s.FilePathMinio = minioPath.String
+	s.ParsedText = pText.String
+
 	if structureJSON != nil {
 		json.Unmarshal(structureJSON, &s.Structure)
 	}
@@ -226,11 +246,13 @@ func (r *scriptRepository) GetAllBaseScripts(ctx context.Context) ([]*domain.Scr
 		s := &domain.Script{}
 		var structureJSON []byte
 		var metricsJSON []byte
+		var minioPath, pText sql.NullString
+
 		err := rows.Scan(
 			&s.ID,
 			&s.Name,
-			&s.FilePathMinio,
-			&s.ParsedText,
+			&minioPath,
+			&pText,
 			&structureJSON,
 			&s.Version,
 			&s.IsActive,
@@ -244,6 +266,9 @@ func (r *scriptRepository) GetAllBaseScripts(ctx context.Context) ([]*domain.Scr
 		if err != nil {
 			return nil, err
 		}
+		s.FilePathMinio = minioPath.String
+		s.ParsedText = pText.String
+
 		if structureJSON != nil {
 			json.Unmarshal(structureJSON, &s.Structure)
 		}
