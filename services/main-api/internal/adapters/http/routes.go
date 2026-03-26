@@ -41,6 +41,10 @@ func SetupRoutes(
 	auth.Post("/refresh", authHandler.Refresh)
 	auth.Post("/logout", authHandler.Logout)
 
+	// Internal
+	internal := api.Group("/internal", middleware.InternalAuth())
+	internal.Get("/integrations", integrationHandler.ListInternal)
+
 	// Protected routes
 	protected := api.Group("", middleware.JWTAuth(jwtService))
 
@@ -121,8 +125,4 @@ func SetupRoutes(
 	integrations.Get("/:type", integrationHandler.Get)
 	integrations.Post("/:type/test", integrationHandler.TestConnection)
 	integrations.Delete("/:type", integrationHandler.Delete)
-
-	// Internal
-	internal := api.Group("/internal")
-	internal.Get("/integrations", integrationHandler.ListInternal)
 }

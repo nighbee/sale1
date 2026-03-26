@@ -84,15 +84,6 @@ func (h *IntegrationHandler) List(c *fiber.Ctx) error {
 // @Failure 500 {object} fiber.Map
 // @Router /internal/integrations [get]
 func (h *IntegrationHandler) ListInternal(c *fiber.Ctx) error {
-	secret := c.Get("X-Internal-Secret")
-	internalSecret := os.Getenv("INTERNAL_SECRET")
-	if internalSecret == "" {
-		internalSecret = "internal-secret-key"
-	}
-
-	if secret == "" || secret != internalSecret {
-		return c.Status(403).JSON(fiber.Map{"error": "Forbidden: internal access only"})
-	}
 	integrations, err := h.integrationUC.ListAllActive(c.Context())
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
