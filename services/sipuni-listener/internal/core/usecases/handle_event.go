@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/url"
 	"strings"
 	"time"
 
@@ -167,12 +166,10 @@ func (uc *HandleEventUseCase) Execute(ctx context.Context, request json.RawMessa
 		}
 	}
 
-	// call_record_link is URL-encoded per Sipuni docs — decode before storing.
-	recordLink, err := url.QueryUnescape(notify.CallRecordLink)
-	if err != nil {
-		// If decoding fails keep the raw value
-		recordLink = notify.CallRecordLink
-	}
+	// call_record_link is used as-is. Sipuni typically provides a full clickable URL.
+	// We no longer call url.QueryUnescape on the entire URL, as it can mangle
+	// standard query parameters.
+	recordLink := notify.CallRecordLink
 
 	call := &domain.Call{
 		ID:          callID,
