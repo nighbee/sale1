@@ -128,6 +128,7 @@ services:
       MINIO_PRESIGN_EXPIRY_SECONDS: "300"
       MINIO_PUBLIC_ENDPOINT: "http://localhost/minio"
       MINIO_SECURE: "false"
+      INTERNAL_SECRET: ${INTERNAL_SECRET:-internal-secret-key}
     depends_on:
       postgres:
         condition: service_healthy
@@ -164,6 +165,7 @@ services:
       SIPUNI_API_KEY: ${SIPUNI_API_KEY}
       COMPANY_ID: ${COMPANY_ID}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      INTERNAL_SECRET: ${INTERNAL_SECRET:-internal-secret-key}
     depends_on:
       postgres:
         condition: service_healthy
@@ -193,6 +195,7 @@ services:
       MINIO_ACCESS_KEY: "minioadmin"
       MINIO_SECRET_KEY: "minioadmin123"
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      INTERNAL_SECRET: ${INTERNAL_SECRET:-internal-secret-key}
     depends_on:
       postgres:
         condition: service_healthy
@@ -229,6 +232,7 @@ services:
       MINIO_SECRET_KEY: "minioadmin123"
       MINIO_SECURE: "false"
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      INTERNAL_SECRET: ${INTERNAL_SECRET:-internal-secret-key}
     depends_on:
       postgres:
         condition: service_healthy
@@ -263,6 +267,7 @@ services:
       GOOGLE_API_KEY: ${GOOGLE_API_KEY}
       GOOGLE_AI_MODEL: ${GOOGLE_AI_MODEL}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      INTERNAL_SECRET: ${INTERNAL_SECRET:-internal-secret-key}
     depends_on:
       postgres:
         condition: service_healthy
@@ -311,6 +316,7 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       TEAM_NAME: ${TEAM_NAME:-callteam1}
       MAIN_API_URL: "http://main-api:8080"
+      INTERNAL_SECRET: ${INTERNAL_SECRET:-internal-secret-key}
     ports:
       - "8085:8085"
     depends_on:
