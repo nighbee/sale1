@@ -47,11 +47,12 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ isOpen, onClose, ty
         toast.success('Connection test successful');
       } else {
         setTestResult({ success: false, message: res.data.error || 'Connection failed' });
-        toast.error('Connection test failed');
+        toast.error(res.data.error || 'Connection test failed');
       }
-    } catch (err) {
-      setTestResult({ success: false, message: 'Failed to reach test endpoint' });
-      toast.error('Test endpoint unreachable');
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.error || err.message || 'Failed to reach test endpoint';
+      setTestResult({ success: false, message: errorMsg });
+      toast.error(errorMsg);
     } finally {
       setIsTesting(false);
     }
