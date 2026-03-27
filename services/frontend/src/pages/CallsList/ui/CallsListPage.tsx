@@ -39,8 +39,11 @@ const CallsListPage: React.FC = () => {
         const data = res.data as { calls?: Call[]; total?: number };
         setCalls(data.calls || []);
         const total = data.total || (data.calls ? data.calls.length : 0);
-        const avg = data.calls && data.calls.length > 0 ? 78.4 : 0;
-        setStats({ total, avgScore: avg, failed: 12 });
+        const callsWithScore = (data.calls || []).filter(c => c.quality_score !== undefined);
+        const avg = callsWithScore.length > 0
+          ? callsWithScore.reduce((sum, c) => sum + (c.quality_score || 0), 0) / callsWithScore.length
+          : 0;
+        setStats({ total, avgScore: parseFloat(avg.toFixed(1)), failed: 0 });
       } catch {
         console.error("Failed to fetch calls");
       } finally {
@@ -184,8 +187,12 @@ const CallsListPage: React.FC = () => {
                           </Link>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            92
+                          <span className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            call.quality_score && call.quality_score >= 80 ? 'bg-green-100 text-green-800' :
+                            call.quality_score && call.quality_score >= 60 ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-red-100 text-red-800'
+                          }`}>
+                            {call.quality_score !== undefined ? call.quality_score : t('common.not_available')}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">

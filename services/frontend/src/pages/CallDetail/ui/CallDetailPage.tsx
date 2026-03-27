@@ -16,6 +16,7 @@ const CallDetailPage: React.FC = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [playbackRate, setPlaybackRate] = useState(1);
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [audioSrc, setAudioSrc] = useState<string | null>(null);
   const blobUrlRef = useRef<string | null>(null);
@@ -110,6 +111,23 @@ const CallDetailPage: React.FC = () => {
       }
       setIsPlaying(!isPlaying);
     }
+  };
+
+  const handlePlaybackRateChange = (rate: number) => {
+    setPlaybackRate(rate);
+    if (audioRef.current) {
+      audioRef.current.playbackRate = rate;
+    }
+  };
+
+  const downloadAudio = () => {
+    if (!audioSrc) return;
+    const link = document.createElement('a');
+    link.href = audioSrc;
+    link.download = `call-${call?.id || 'audio'}.wav`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const seek = (amount: number) => {
@@ -305,6 +323,16 @@ const CallDetailPage: React.FC = () => {
             {call.status}
           </span>
           <div className="ml-auto flex items-center gap-2">
+            {audioSrc && (
+              <button
+                onClick={downloadAudio}
+                className="p-2 text-neutral-500 hover:text-primary transition-colors flex items-center gap-1 text-sm font-medium"
+                title={t('common.download', { defaultValue: 'Download' })}
+              >
+                <span className="material-icons text-lg">download</span>
+                <span className="hidden sm:inline">{t('common.download', { defaultValue: 'Download' })}</span>
+              </button>
+            )}
             <ReprocessButton callId={id!} />
             <button
               onClick={() => setShowAnalysis(!showAnalysis)}
@@ -449,6 +477,21 @@ const CallDetailPage: React.FC = () => {
                     </span>
                   )}
                 </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <select
+                  value={playbackRate}
+                  onChange={(e) => handlePlaybackRateChange(parseFloat(e.target.value))}
+                  className="bg-neutral-100 dark:bg-neutral-800 border-none rounded-lg px-2 py-1 text-xs font-medium focus:ring-1 focus:ring-primary outline-none"
+                  disabled={!audioSrc}
+                >
+                  <option value={0.5}>0.5x</option>
+                  <option value={0.75}>0.75x</option>
+                  <option value={1}>1.0x</option>
+                  <option value={1.25}>1.25x</option>
+                  <option value={1.5}>1.5x</option>
+                  <option value={2}>2.0x</option>
+                </select>
               </div>
             </div>
           </div>
