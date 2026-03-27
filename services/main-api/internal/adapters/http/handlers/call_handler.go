@@ -23,18 +23,20 @@ import (
 var _ = domain.Transcript{}
 
 type CallHandler struct {
-	listCallsUC    *calls.ListCallsUseCase
-	callRepo       ports.CallRepository
-	transcriptRepo ports.TranscriptRepository
-	analysisRepo   ports.AnalysisRepository
-	minioClient    *minio.Client
-	grpcClient     *grpc.GRPCClient
-	presignEnabled bool
-	presignExpiry  time.Duration
+	listCallsUC     *calls.ListCallsUseCase
+	reprocessCallUC *calls.ReprocessCallUseCase
+	callRepo        ports.CallRepository
+	transcriptRepo  ports.TranscriptRepository
+	analysisRepo    ports.AnalysisRepository
+	minioClient     *minio.Client
+	grpcClient      *grpc.GRPCClient
+	presignEnabled  bool
+	presignExpiry   time.Duration
 }
 
 func NewCallHandler(
 	listCallsUC *calls.ListCallsUseCase,
+	reprocessCallUC *calls.ReprocessCallUseCase,
 	callRepo ports.CallRepository,
 	transcriptRepo ports.TranscriptRepository,
 	analysisRepo ports.AnalysisRepository,
@@ -44,14 +46,15 @@ func NewCallHandler(
 	presignExpiry time.Duration,
 ) *CallHandler {
 	return &CallHandler{
-		listCallsUC:    listCallsUC,
-		callRepo:       callRepo,
-		transcriptRepo: transcriptRepo,
-		analysisRepo:   analysisRepo,
-		minioClient:    minioClient,
-		grpcClient:     grpcClient,
-		presignEnabled: presignEnabled,
-		presignExpiry:  presignExpiry,
+		listCallsUC:     listCallsUC,
+		reprocessCallUC: reprocessCallUC,
+		callRepo:        callRepo,
+		transcriptRepo:  transcriptRepo,
+		analysisRepo:    analysisRepo,
+		minioClient:     minioClient,
+		grpcClient:      grpcClient,
+		presignEnabled:  presignEnabled,
+		presignExpiry:   presignExpiry,
 	}
 }
 
@@ -271,7 +274,15 @@ func (h *CallHandler) ReprocessCall(c *fiber.Ctx) error {
 	id := c.Params("id")
 	userID, _ := c.Locals("user_id").(string)
 	log.Info("call reprocess requested", zap.String("call_id", id), zap.String("user_id", userID))
-	// Logic to re-enqueue job would go here
+
+	err := h.reprocessCallUC.Execute(c.Context(), id)
+	if err != nil {
+		log.Error("failed to reprocess call", zap.String("call_id", id), zap.Error(err))
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
 	return c.JSON(fiber.Map{
 		"call_id": id,
 		"status":  "queued",

@@ -15,7 +15,7 @@ class STTServiceServicer(stt_service_pb2_grpc.STTServiceServicer):
     def GetTranscript(self, request, context):
         with REQUEST_LATENCY.labels(app_name='stt-service', method='GRPC', path='/GetTranscript').time():
             call_id = request.call_id
-            logger.info("gRPC GetTranscript called", extra={"call_id": call_id, "method": "GetTranscript"})
+            logger.debug("gRPC GetTranscript called", extra={"call_id": call_id, "method": "GetTranscript"})
 
             conn = get_pool().getconn()
             cur = None
