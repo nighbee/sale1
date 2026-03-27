@@ -37,17 +37,45 @@ class STTServiceServicer(stt_service_pb2_grpc.STTServiceServicer):
                             "segment_count": segment_count,
                         },
                     )
+                    # Use segments (already decoded if it was a string) to ensure correct encoding
+                    resp_json = json.dumps(segments) if not isinstance(segments, str) else segments
+
                     return stt_service_pb2.TranscriptResponse(
                         call_id=call_id,
-                        transcript_json=json.dumps(row[0]),
+                        transcript_json=resp_json,
                         stt_provider=row[1],
                         processing_time=row[2] or 0
                     )
                 else:
+                    # Fallback: check call status to provide more context why transcript is missing
+                    cur.execute("SELECT status, manager_name, source FROM calls_schema.calls WHERE id = %s", (call_id,))
+                    call_row = cur.fetchone()
+
                     REQUEST_COUNT.labels(app_name='stt-service', method='GRPC', path='/GetTranscript', status_code='404').inc()
-                    logger.warning("gRPC GetTranscript not found", extra={"call_id": call_id})
+
+                    if call_row:
+                        logger.warning(
+                            "gRPC GetTranscript not found",
+                            extra={
+                                "call_id": call_id,
+                                "call_status": call_row[0],
+                                "manager_name": call_row[1],
+                                "source": call_row[2],
+                                "reason": "transcript_missing_but_call_exists"
+                            }
+                        )
+                        context.set_details(f"Transcript not found. Call status: {call_row[0]}")
+                    else:
+                        logger.warning(
+                            "gRPC GetTranscript not found",
+                            extra={
+                                "call_id": call_id,
+                                "reason": "call_not_found"
+                            }
+                        )
+                        context.set_details("Transcript and Call record not found")
+
                     context.set_code(grpc.StatusCode.NOT_FOUND)
-                    context.set_details("Transcript not found")
                     return stt_service_pb2.TranscriptResponse()
             except Exception as e:
                 REQUEST_COUNT.labels(app_name='stt-service', method='GRPC', path='/GetTranscript', status_code='500').inc()
