@@ -12,11 +12,12 @@ _pool = None
 def get_pool():
     global _pool
     if _pool is None:
-        _pool = pool.SimpleConnectionPool(1, 10, os.getenv("DATABASE_URL"))
+        _pool = pool.ThreadedConnectionPool(1, 20, os.getenv("DATABASE_URL"))
     return _pool
 
 def save_transcript(call_id, transcript_json, stt_provider):
     conn = get_pool().getconn()
+    cur = None
     try:
         cur = conn.cursor()
         query = """
@@ -25,23 +26,27 @@ def save_transcript(call_id, transcript_json, stt_provider):
         """
         cur.execute(query, (call_id, json.dumps(transcript_json), stt_provider))
         conn.commit()
-        cur.close()
     finally:
+        if cur:
+            cur.close()
         get_pool().putconn(conn)
 
 def update_call_status(call_id, status):
     conn = get_pool().getconn()
+    cur = None
     try:
         cur = conn.cursor()
         query = "UPDATE calls_schema.calls SET status = %s, updated_at = NOW() WHERE id = %s"
         cur.execute(query, (status, call_id))
         conn.commit()
-        cur.close()
     finally:
+        if cur:
+            cur.close()
         get_pool().putconn(conn)
 
 def log_processing_event(call_id, service_name, status, error_message=None, retry_count=0):
     conn = get_pool().getconn()
+    cur = None
     try:
         cur = conn.cursor()
         query = """
@@ -50,17 +55,20 @@ def log_processing_event(call_id, service_name, status, error_message=None, retr
         """
         cur.execute(query, (call_id, service_name, status, error_message, retry_count))
         conn.commit()
-        cur.close()
     finally:
+        if cur:
+            cur.close()
         get_pool().putconn(conn)
 
 def update_call_link(call_id, call_link):
     conn = get_pool().getconn()
+    cur = None
     try:
         cur = conn.cursor()
         query = "UPDATE calls_schema.calls SET call_link = %s, updated_at = NOW() WHERE id = %s"
         cur.execute(query, (call_link, call_id))
         conn.commit()
-        cur.close()
     finally:
+        if cur:
+            cur.close()
         get_pool().putconn(conn)

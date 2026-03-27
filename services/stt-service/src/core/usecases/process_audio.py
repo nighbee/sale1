@@ -44,6 +44,15 @@ class ProcessAudioUseCase:
             if isinstance(creds, dict):
                 api_key = creds.get("api_key")
 
+        logger.info(
+            "Initializing STT provider",
+            extra={
+                "provider": provider_name,
+                "has_integration": integration is not None,
+                "has_api_key": api_key is not None and len(api_key) > 0 if api_key else False,
+            },
+        )
+
         if provider_name == "gemini":
             return GeminiSTTProvider(api_key=api_key)
         elif provider_name == "groq":

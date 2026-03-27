@@ -15,6 +15,7 @@ class AnalyticsServiceServicer(analytics_service_pb2_grpc.AnalyticsServiceServic
         logger.info("gRPC GetAnalysis called", extra={"call_id": call_id, "method": "GetAnalysis"})
 
         conn = get_pool().getconn()
+        cur = None
         try:
             cur = conn.cursor()
             cur.execute("""
@@ -23,7 +24,6 @@ class AnalyticsServiceServicer(analytics_service_pb2_grpc.AnalyticsServiceServic
                 WHERE call_id = %s
             """, (call_id,))
             row = cur.fetchone()
-            cur.close()
 
             if row:
                 REQUEST_COUNT.labels(app_name='ai-analytics', method='GRPC', path='/GetAnalysis', status_code='200').inc()
@@ -61,6 +61,9 @@ class AnalyticsServiceServicer(analytics_service_pb2_grpc.AnalyticsServiceServic
             raise e
         finally:
             timer.stop()
+            if cur:
+                cur.close()
+            conn.rollback()
             get_pool().putconn(conn)
 
 import os

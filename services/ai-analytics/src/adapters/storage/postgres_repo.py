@@ -13,33 +13,40 @@ _pool = None
 def get_pool():
     global _pool
     if _pool is None:
-        # Use simple pool for now
-        _pool = pool.SimpleConnectionPool(1, 10, os.getenv("DATABASE_URL"))
+        # Threaded pool for gRPC and concurrent processing
+        _pool = pool.ThreadedConnectionPool(1, 20, os.getenv("DATABASE_URL"))
     return _pool
 
 def get_transcript(call_id):
     conn = get_pool().getconn()
+    cur = None
     try:
         cur = conn.cursor(cursor_factory=RealDictCursor)
         cur.execute("SELECT * FROM calls_schema.transcripts WHERE call_id = %s", (call_id,))
         return cur.fetchone()
     finally:
+        if cur:
+            cur.close()
         get_pool().putconn(conn)
 
 def update_call_status(call_id, status):
     conn = get_pool().getconn()
+    cur = None
     try:
         cur = conn.cursor()
         query = "UPDATE calls_schema.calls SET status = %s, updated_at = NOW() WHERE id = %s"
         cur.execute(query, (status, call_id))
         conn.commit()
-        cur.close()
     finally:
+        if cur:
+            cur.close()
+        conn.rollback()  # Ensure clean state for read-only
         get_pool().putconn(conn)
 
 def get_team_script(manager_id):
     """Get team-specific script for a manager."""
     conn = get_pool().getconn()
+    cur = None
     try:
         cur = conn.cursor(cursor_factory=RealDictCursor)
         
@@ -70,20 +77,28 @@ def get_team_script(manager_id):
         script = cur.fetchone()
         return script
     finally:
+        if cur:
+            cur.close()
+        conn.rollback()  # Ensure clean state for read-only
         get_pool().putconn(conn)
 
 def get_call(call_id):
     conn = get_pool().getconn()
+    cur = None
     try:
         cur = conn.cursor(cursor_factory=RealDictCursor)
         cur.execute("SELECT id, manager_id, duration, external_id FROM calls_schema.calls WHERE id = %s", (call_id,))
         return cur.fetchone()
     finally:
+        if cur:
+            cur.close()
+        conn.rollback()  # Ensure clean state for read-only
         get_pool().putconn(conn)
 
 def get_active_script_by_manager(manager_id):
     """Get active script. Returns None if not found."""
     conn = get_pool().getconn()
+    cur = None
     try:
         cur = conn.cursor(cursor_factory=RealDictCursor)
         cur.execute("""
@@ -93,10 +108,14 @@ def get_active_script_by_manager(manager_id):
         """)
         return cur.fetchone()
     finally:
+        if cur:
+            cur.close()
+        conn.rollback()  # Ensure clean state for read-only
         get_pool().putconn(conn)
 
 def save_analysis(report):
     conn = get_pool().getconn()
+    cur = None
     try:
         cur = conn.cursor()
         query = """
@@ -118,12 +137,14 @@ def save_analysis(report):
             report['llm_provider']
         ))
         conn.commit()
-        cur.close()
     finally:
+        if cur:
+            cur.close()
         get_pool().putconn(conn)
 
 def create_notification(user_id, n_type, subject, message):
     conn = get_pool().getconn()
+    cur = None
     try:
         cur = conn.cursor()
         query = """
@@ -132,12 +153,14 @@ def create_notification(user_id, n_type, subject, message):
         """
         cur.execute(query, (user_id, n_type, subject, message))
         conn.commit()
-        cur.close()
     finally:
+        if cur:
+            cur.close()
         get_pool().putconn(conn)
 
 def log_processing_event(call_id, service_name, status, error_message=None, retry_count=0):
     conn = get_pool().getconn()
+    cur = None
     try:
         cur = conn.cursor()
         query = """
@@ -146,13 +169,15 @@ def log_processing_event(call_id, service_name, status, error_message=None, retr
         """
         cur.execute(query, (call_id, service_name, status, error_message, retry_count))
         conn.commit()
-        cur.close()
     finally:
+        if cur:
+            cur.close()
         get_pool().putconn(conn)
 
 def get_admin_user():
     """Get first super_admin user. Returns None if not found."""
     conn = get_pool().getconn()
+    cur = None
     try:
         cur = conn.cursor(cursor_factory=RealDictCursor)
         cur.execute("""
@@ -162,4 +187,6 @@ def get_admin_user():
         """)
         return cur.fetchone()
     finally:
+        if cur:
+            cur.close()
         get_pool().putconn(conn)
