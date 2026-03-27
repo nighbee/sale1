@@ -7,6 +7,7 @@ from prometheus_client import make_asgi_app
 from src.infrastructure.logging.json_logger import setup_logging
 from src.adapters.queue.bullmq_consumer import start_consumer
 from src.infrastructure.grpc.server import serve
+from src.infrastructure.monitoring.metrics import APP_INFO
 
 setup_logging("stt-service")
 logger = logging.getLogger(__name__)
@@ -28,6 +29,8 @@ async def run_http_server():
 
 async def main():
     logger.info("STT service starting")
+
+    APP_INFO.labels(app_name="stt-service").set(1)
 
     grpc_server = serve()
 
