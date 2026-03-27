@@ -63,6 +63,169 @@ class ProcessAudioUseCase:
         else:
             return OpenAISTTProvider(api_key=api_key)
 
+    async def _download_with_resume(
+        self,
+        url: str,
+        target_path: str,
+        max_attempts: int = 5,
+        base_backoff: float = 5.0,
+        chunk_size: int = 1024 * 1024,
+        split_fallback: bool = True,
+    ) -> None:
+        """
+        Download a file with resumption support using Range headers.
+        Uses HTTP/1.1 to avoid HTTP/2 flow control issues.
+        Persists cookies across attempts.
+        If resuming fails (server returns 200 instead of 206), falls back to
+        splitting the download into small chunks if split_fallback is True.
+        """
+        # Create a client with HTTP/1.1 forced and cookie jar
+        async with httpx.AsyncClient(
+            http2=False,  # force HTTP/1.1
+            timeout=httpx.Timeout(10.0, read=120.0),
+            follow_redirects=True,
+        ) as client:
+            for attempt in range(1, max_attempts + 1):
+                try:
+                    start_byte = 0
+                    if os.path.exists(target_path):
+                        start_byte = os.path.getsize(target_path)
+                    total_size = None
+
+                    headers = {}
+                    if start_byte > 0:
+                        headers["Range"] = f"bytes={start_byte}-"
+
+                    logger.info(
+                        f"Download attempt {attempt}/{max_attempts}",
+                        extra={"url": url, "start_byte": start_byte, "attempt": attempt}
+                    )
+
+                    async with client.stream("GET", url, headers=headers) as response:
+                        response.raise_for_status()
+                        status = response.status_code
+                        content_length = response.headers.get("content-length")
+                        content_range = response.headers.get("content-range")
+                        accept_ranges = response.headers.get("accept-ranges")
+
+                        logger.info(
+                            "Download response headers",
+                            extra={
+                                "status": status,
+                                "content_length": content_length,
+                                "content_range": content_range,
+                                "accept_ranges": accept_ranges,
+                                "attempt": attempt,
+                            }
+                        )
+
+                        if status == 206 and content_range:
+                            try:
+                                total_size = int(content_range.split("/")[-1])
+                            except Exception:
+                                total_size = None
+                        elif status == 200 and content_length:
+                            try:
+                                total_size = int(content_length)
+                            except Exception:
+                                total_size = None
+
+                        mode = "ab" if start_byte > 0 else "wb"
+                        with open(target_path, mode) as f:
+                            bytes_downloaded = 0
+                            async for chunk in response.aiter_bytes():
+                                f.write(chunk)
+                                bytes_downloaded += len(chunk)
+
+                        current_size = os.path.getsize(target_path)
+                        if total_size is not None and current_size >= total_size:
+                            logger.info(
+                                "Download completed successfully",
+                                extra={"total_bytes": current_size, "attempt": attempt}
+                            )
+                            return
+
+                        logger.warning(
+                            "Partial transfer, need more attempts",
+                            extra={
+                                "current_size": current_size,
+                                "expected": total_size,
+                                "attempt": attempt,
+                            }
+                        )
+
+                except (httpx.ReadTimeout, httpx.ConnectTimeout, httpx.HTTPError, Exception) as exc:
+                    logger.warning(
+                        f"Download attempt {attempt} failed",
+                        extra={"url": url, "error": str(exc), "attempt": attempt}
+                    )
+                    if attempt == max_attempts:
+                        if split_fallback:
+                            logger.warning(
+                                "Resuming failed, falling back to chunked download",
+                                extra={"url": url}
+                            )
+                            await self._download_in_chunks(url, target_path, client, chunk_size)
+                            return
+                        else:
+                            raise
+
+                if attempt < max_attempts:
+                    backoff = base_backoff * attempt
+                    logger.info(f"Retrying in {backoff}s", extra={"attempt": attempt, "backoff": backoff})
+                    await asyncio.sleep(backoff)
+
+            raise RuntimeError(f"Failed to download after {max_attempts} attempts: {url}")
+
+    async def _download_in_chunks(
+        self,
+        url: str,
+        target_path: str,
+        client: httpx.AsyncClient,
+        chunk_size: int = 1024 * 1024,
+    ) -> None:
+        """
+        Fallback: download the file in fixed-size chunks using Range requests.
+        Assumes server supports Accept-Ranges: bytes.
+        """
+        # Get total size
+        head_response = await client.head(url)
+        head_response.raise_for_status()
+        total_size = int(head_response.headers.get("content-length", 0))
+        if total_size == 0:
+            # Fallback: try to get size from a GET with Range: bytes=0-0
+            resp = await client.get(url, headers={"Range": "bytes=0-0"})
+            if resp.status_code == 206:
+                content_range = resp.headers.get("content-range", "")
+                total_size = int(content_range.split("/")[-1])
+            else:
+                raise RuntimeError("Unable to determine total file size for chunked download")
+
+        logger.info(
+            f"Chunked download: total size {total_size} bytes, chunk size {chunk_size}",
+            extra={"url": url, "total_size": total_size}
+        )
+
+        # Create empty file
+        with open(target_path, "wb"):
+            pass
+
+        start = 0
+        while start < total_size:
+            end = min(start + chunk_size - 1, total_size - 1)
+            headers = {"Range": f"bytes={start}-{end}"}
+            async with client.stream("GET", url, headers=headers) as resp:
+                resp.raise_for_status()
+                if resp.status_code != 206:
+                    raise RuntimeError(f"Unexpected status {resp.status_code} for chunk {start}-{end}")
+                with open(target_path, "ab") as f:
+                    async for chunk in resp.aiter_bytes():
+                        f.write(chunk)
+            logger.info(f"Chunk {start}-{end} downloaded", extra={"url": url})
+            start = end + 1
+
+        logger.info("Chunked download completed", extra={"url": url, "total_size": total_size})
+
     async def execute(self, job: dict):
         call_id = job.get('call_id')
         # Support both key names: 'audio_url' (sipuni-listener) and 'call_link' (sheets-sync legacy)
@@ -81,61 +244,23 @@ class ProcessAudioUseCase:
         wav_path = None
         t_total = time.monotonic()
         try:
-            # 1. Download audio with retries and sensible timeouts
-            logger.info("[1/6] downloading audio",
-                        extra={"call_id": call_id, "audio_url": audio_url})
+            # 1. Download audio with resume and cookie persistence
+            logger.info("[1/6] downloading audio", extra={"call_id": call_id, "audio_url": audio_url})
 
-            max_attempts = 3
-            base_backoff = 5
-            download_success = False
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
+                tmp_path = tmp.name
 
-            for attempt in range(1, max_attempts + 1):
-                tmp_path = None
-                try:
-                    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
-                        tmp_path = tmp.name
+            await self._download_with_resume(
+                url=audio_url,
+                target_path=tmp_path,
+                max_attempts=5,
+                base_backoff=5,
+                chunk_size=1024 * 1024,
+                split_fallback=True,
+            )
 
-                        timeout = httpx.Timeout(10.0, read=60.0)
-                        async with httpx.AsyncClient(timeout=timeout) as client:
-                            async with client.stream("GET", audio_url) as response:
-                                # log upstream response status and headers to help debug stalls/truncation
-                                status = response.status_code
-                                content_length = response.headers.get("content-length")
-                                logger.info("download response headers",
-                                            extra={"call_id": call_id, "status": status, "content_length": content_length, "attempt": attempt})
-                                response.raise_for_status()
-                                async for chunk in response.aiter_bytes():
-                                    # write chunk to the temporary file
-                                    tmp.write(chunk)
-
-                    # if we reach here the download completed
-                    file_size_kb = round(os.path.getsize(tmp_path) / 1024, 1)
-                    logger.info("[1/6] audio downloaded",
-                                extra={"call_id": call_id, "file_size_kb": file_size_kb, "tmp_path": tmp_path, "attempt": attempt})
-                    download_success = True
-                    break
-
-                except (httpx.ReadTimeout, httpx.ConnectTimeout, httpx.HTTPError) as exc:
-                    # cleanup partial file if exists
-                    if tmp_path and os.path.exists(tmp_path):
-                        try:
-                            os.remove(tmp_path)
-                        except Exception:
-                            pass
-
-                    # if last attempt, re-raise for outer handler
-                    if attempt == max_attempts:
-                        logger.exception("download failed after retries",
-                                         extra={"call_id": call_id, "attempt": attempt, "error": str(exc)})
-                        raise
-                    else:
-                        backoff = base_backoff * attempt
-                        logger.warning("download attempt failed, retrying",
-                                       extra={"call_id": call_id, "attempt": attempt, "backoff_s": backoff, "error": str(exc)})
-                        await asyncio.sleep(backoff)
-
-            if not download_success:
-                raise RuntimeError(f"Failed to download audio after {max_attempts} attempts: {audio_url}")
+            file_size_kb = round(os.path.getsize(tmp_path) / 1024, 1)
+            logger.info("[1/6] audio downloaded", extra={"call_id": call_id, "file_size_kb": file_size_kb, "tmp_path": tmp_path})
 
             # 2. Convert to 16kHz WAV
             logger.info("[2/6] converting to 16kHz WAV", extra={"call_id": call_id})
@@ -234,7 +359,11 @@ class ProcessAudioUseCase:
                 },
             )
         except Exception as e:
-            logger.error("audio job failed", extra={"call_id": call_id, "error": str(e)})
+            # capture full traceback so higher-level consumers/logs see the real error
+            import traceback
+            tb = traceback.format_exc()
+            # logger.exception will write the traceback to logs; include tb in extra so structured logs show it
+            logger.exception("audio job failed", extra={"call_id": call_id, "error": tb[:2000]})
             raise
         finally:
             if tmp_path and os.path.exists(tmp_path):
