@@ -11,16 +11,32 @@ export const useCall = (id?: string) => {
   const fetchCallData = useCallback(async () => {
     if (!id) return;
     setLoading(true);
+    setCall(null);
+    setTranscript(null);
+    setAnalysis(null);
     try {
-      const [callRes, transRes, analRes] = await Promise.all([
+      const [callRes, transRes, analRes] = await Promise.allSettled([
         callApi.getCall(id),
         callApi.getTranscript(id),
         callApi.getAnalysis(id),
       ]);
-      const rawCall = callRes.data as any;
-      setCall(rawCall.call ? rawCall.call : (callRes.data as Call));
-      setTranscript(transRes.data as CallTranscript);
-      setAnalysis(analRes.data as CallAnalysis);
+
+      if (callRes.status === 'fulfilled') {
+        const rawCall = callRes.value.data as any;
+        setCall(rawCall.call ? rawCall.call : (callRes.value.data as Call));
+      }
+
+      if (transRes.status === 'fulfilled') {
+        setTranscript(transRes.value.data as CallTranscript);
+      } else {
+        setTranscript(null);
+      }
+
+      if (analRes.status === 'fulfilled') {
+        setAnalysis(analRes.value.data as CallAnalysis);
+      } else {
+        setAnalysis(null);
+      }
     } catch (err) {
       console.error('Failed to fetch call data:', err);
     } finally {
