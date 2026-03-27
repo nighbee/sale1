@@ -38,6 +38,7 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/salesai/main-api/internal/adapters/events"
 	"github.com/salesai/main-api/internal/adapters/grpc"
+	"github.com/salesai/main-api/internal/adapters/queue"
 	httpAdapter "github.com/salesai/main-api/internal/adapters/http"
 	"github.com/salesai/main-api/internal/adapters/http/handlers"
 	"github.com/salesai/main-api/internal/adapters/http/middleware"
@@ -121,15 +122,6 @@ func main() {
 			zap.String("analytics", cfg.AnalyticsGRPC))
 	}
 
-	// Use Cases
-	registerUC := auth.NewRegisterUseCase(userRepo, jwtService)
-	loginUC := auth.NewLoginUseCase(userRepo, jwtService)
-	refreshUC := auth.NewRefreshUseCase(userRepo, jwtService)
-	listCallsUC := calls.NewListCallsUseCase(callRepo)
-	teamPerformanceUC := analytics.NewTeamPerformanceUseCase(analysisRepo)
-	teamUC := teams.NewTeamUseCase(teamRepo, userRepo, scriptRepo)
-	integrationUC := integrations.NewIntegrationUseCase(integrationRepo)
-
 	// Redis client
 	redisAddr := strings.TrimSpace(cfg.RedisURL)
 	if strings.Contains(redisAddr, "://") {
@@ -147,6 +139,19 @@ func main() {
 	})
 	log.Info("Redis client initialised", zap.String("addr", redisAddr))
 
+	// Publishers
+	bullmqPublisher := queue.NewBullMQPublisher(rdb)
+
+	// Use Cases
+	registerUC := auth.NewRegisterUseCase(userRepo, jwtService)
+	loginUC := auth.NewLoginUseCase(userRepo, jwtService)
+	refreshUC := auth.NewRefreshUseCase(userRepo, jwtService)
+	listCallsUC := calls.NewListCallsUseCase(callRepo)
+	reprocessCallUC := calls.NewReprocessCallUseCase(callRepo, bullmqPublisher)
+	teamPerformanceUC := analytics.NewTeamPerformanceUseCase(analysisRepo)
+	teamUC := teams.NewTeamUseCase(teamRepo, userRepo, scriptRepo)
+	integrationUC := integrations.NewIntegrationUseCase(integrationRepo)
+
 	// WebSocket Hub
 	hub := ws.NewHub()
 	go hub.Run()
@@ -157,7 +162,7 @@ func main() {
 
 	// Handlers
 	authHandler := handlers.NewAuthHandler(registerUC, loginUC, refreshUC)
-	callHandler := handlers.NewCallHandler(listCallsUC, callRepo, transcriptRepo, analysisRepo, minioClient, grpcClient, cfg.MinioPresign, time.Duration(cfg.MinioPresignExpirySeconds)*time.Second)
+	callHandler := handlers.NewCallHandler(listCallsUC, reprocessCallUC, callRepo, transcriptRepo, analysisRepo, minioClient, grpcClient, cfg.MinioPresign, time.Duration(cfg.MinioPresignExpirySeconds)*time.Second)
 	analyticsHandler := handlers.NewAnalyticsHandler(teamPerformanceUC)
 	companyHandler := handlers.NewCompanyHandler(companyRepo)
 	userHandler := handlers.NewUserHandler(userRepo, listCallsUC)
