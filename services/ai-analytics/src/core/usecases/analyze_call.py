@@ -84,6 +84,8 @@ class AnalyzeCallUseCase:
                 "call_id": call_id,
                 "llm_provider": llm_provider,
                 "prompt_chars": len(SYSTEM_PROMPT) + len(user_prompt),
+                "has_integration": integration is not None,
+                "has_api_key": api_key is not None and len(api_key) > 0 if api_key else False,
             },
         )
 

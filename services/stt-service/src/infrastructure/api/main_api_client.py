@@ -16,7 +16,15 @@ class MainAPIClient:
             async with httpx.AsyncClient() as client:
                 response = await client.get(url, headers=headers, timeout=10.0)
                 response.raise_for_status()
-                return response.json().get("integrations", [])
+                integrations = response.json().get("integrations", [])
+                logger.info(
+                    "Fetched active integrations from main-api",
+                    extra={
+                        "count": len(integrations),
+                        "types": [i.get("integration_type") for i in integrations],
+                    },
+                )
+                return integrations
         except Exception as e:
             logger.error("Failed to fetch active integrations from main-api", extra={"url": url, "error": str(e)})
             return []

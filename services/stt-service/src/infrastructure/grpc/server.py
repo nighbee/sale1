@@ -18,11 +18,11 @@ class STTServiceServicer(stt_service_pb2_grpc.STTServiceServicer):
         logger.info("gRPC GetTranscript called", extra={"call_id": call_id, "method": "GetTranscript"})
 
         conn = get_pool().getconn()
+        cur = None
         try:
             cur = conn.cursor()
             cur.execute("SELECT speaker_diarized_json, stt_provider, processing_time_seconds FROM calls_schema.transcripts WHERE call_id = %s", (call_id,))
             row = cur.fetchone()
-            cur.close()
 
             if row:
                 REQUEST_COUNT.labels(app_name='stt-service', method='GRPC', path='/GetTranscript', status_code='200').inc()
@@ -55,6 +55,9 @@ class STTServiceServicer(stt_service_pb2_grpc.STTServiceServicer):
             raise e
         finally:
             timer.stop()
+            if cur:
+                cur.close()
+            conn.rollback()
             get_pool().putconn(conn)
 
 def serve():
