@@ -5,6 +5,7 @@ import asyncio
 import logging
 import tempfile
 import time
+from urllib.parse import urlparse
 from src.adapters.storage.postgres_repo import save_transcript, update_call_link
 from src.adapters.events.redis_publisher import publish_transcript_ready
 from src.adapters.storage.minio_client import MinioClient
@@ -85,6 +86,22 @@ class ProcessAudioUseCase:
             timeout=httpx.Timeout(10.0, read=30.0),
             follow_redirects=True,
         ) as client:
+            # If this is the problematic host that stalls on long streams,
+            # bypass long-lived connection streaming and download in small
+            # fixed-size chunks using separate requests so each chunk completes
+            # before the per-connection cap is hit.
+            parsed = urlparse(url)
+            host = (parsed.hostname or "").lower()
+            if "sipuni.com" in host:
+                logger.info(
+                    "Using chunked-only download for problematic host",
+                    extra={"url": url, "host": host, "chunk_size": chunk_size},
+                )
+                # Use the same client (preserve cookies/session) and a small
+                # chunk size (default 15 KB) to avoid per-connection limits.
+                await self._download_in_chunks(url, target_path, client, chunk_size=chunk_size)
+                return
+
             for attempt in range(1, max_attempts + 1):
                 try:
                     start_byte = 0
