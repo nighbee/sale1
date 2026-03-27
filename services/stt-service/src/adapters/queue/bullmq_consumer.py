@@ -57,8 +57,27 @@ async def start_consumer():
                                "attempt": retry_count + 1, "elapsed_s": elapsed},
                     )
                 except Exception as e:
+                    # mark metric
                     JOBS_PROCESSED.labels(status='error').inc()
-                    log_processing_event(call_id, "stt-service", "error", error_message=str(e), retry_count=retry_count)
+
+                    # capture full traceback for diagnostics
+                    import traceback
+                    tb = traceback.format_exc()
+
+                    # Log full exception + traceback (this prints the stacktrace to logs)
+                    logger.exception(
+                        "STT job processing failed",
+                        extra={"call_id": call_id, "audio_url": audio_url}
+                    )
+
+                    # Store a concise error message (trim if too long) with the processing event
+                    error_message = tb.strip() if tb else str(e)
+                    # limit error message length to avoid DB field overflow
+                    MAX_ERR_LEN = 2000
+                    if len(error_message) > MAX_ERR_LEN:
+                        error_message = error_message[:MAX_ERR_LEN] + "... (truncated)"
+
+                    log_processing_event(call_id, "stt-service", "error", error_message=error_message, retry_count=retry_count)
                     update_call_status(call_id, "error")
 
                     if retry_count < max_retries:
@@ -68,14 +87,14 @@ async def start_consumer():
                         logger.warning(
                             "STT job failed, retrying",
                             extra={"call_id": call_id, "attempt": next_attempt,
-                                   "backoff_s": backoff, "error": str(e)},
+                                   "backoff_s": backoff, "error": error_message},
                         )
                         await asyncio.sleep(backoff)
                         await r.rpush("bullmq:audio_processing", json.dumps(job))
                     else:
                         logger.error(
                             "STT job max retries reached",
-                            extra={"call_id": call_id, "max_retries": max_retries, "error": str(e)},
+                            extra={"call_id": call_id, "max_retries": max_retries, "error": error_message},
                         )
 
         except Exception as e:
