@@ -50,10 +50,35 @@ class AnalyticsServiceServicer(analytics_service_pb2_grpc.AnalyticsServiceServic
                         next_best_action=row[7]
                     )
                 else:
+                    # Fallback: check call status to provide more context why analysis is missing
+                    cur.execute("SELECT status, manager_name, source FROM calls_schema.calls WHERE id = %s", (call_id,))
+                    call_row = cur.fetchone()
+
                     REQUEST_COUNT.labels(app_name='ai-analytics', method='GRPC', path='/GetAnalysis', status_code='404').inc()
-                    logger.warning("gRPC GetAnalysis not found", extra={"call_id": call_id})
+
+                    if call_row:
+                        logger.warning(
+                            "gRPC GetAnalysis not found",
+                            extra={
+                                "call_id": call_id,
+                                "call_status": call_row[0],
+                                "manager_name": call_row[1],
+                                "source": call_row[2],
+                                "reason": "analysis_missing_but_call_exists"
+                            }
+                        )
+                        context.set_details(f"Analysis not found. Call status: {call_row[0]}")
+                    else:
+                        logger.warning(
+                            "gRPC GetAnalysis not found",
+                            extra={
+                                "call_id": call_id,
+                                "reason": "call_not_found"
+                            }
+                        )
+                        context.set_details("Analysis and Call record not found")
+
                     context.set_code(grpc.StatusCode.NOT_FOUND)
-                    context.set_details("Analysis not found")
                     return analytics_service_pb2.AnalysisResponse()
             except Exception as e:
                 REQUEST_COUNT.labels(app_name='ai-analytics', method='GRPC', path='/GetAnalysis', status_code='500').inc()
