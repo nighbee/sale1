@@ -206,8 +206,8 @@ class ProcessAudioUseCase:
         """
         Fallback: download the file in fixed-size chunks using Range requests.
         Assumes server supports Accept-Ranges: bytes.
+        Includes delay and retry logic to handle rate limits and transient failures.
         """
-        # Try to get total size and ETag via HEAD
         etag = None
         total_size = None
         try:
@@ -216,36 +216,23 @@ class ProcessAudioUseCase:
             etag = head_response.headers.get("etag")
             content_length = head_response.headers.get("content-length")
             if content_length:
-                try:
-                    total_size = int(content_length)
-                except Exception:
-                    total_size = None
+                total_size = int(content_length)
         except httpx.HTTPError:
-            # ignore and try GET fallback
             pass
 
-        # If HEAD didn't provide total size, try a small ranged GET to discover it
         if total_size is None:
             resp = await client.get(url, headers={"Range": "bytes=0-0"})
             resp.raise_for_status()
             if resp.status_code == 206:
                 content_range = resp.headers.get("content-range", "")
                 if "/" in content_range:
-                    try:
-                        total_size = int(content_range.split("/")[-1])
-                    except Exception:
-                        total_size = None
-                # capture ETag if provided
+                    total_size = int(content_range.split("/")[-1])
                 if not etag:
                     etag = resp.headers.get("etag")
             else:
-                # If server doesn't support ranged probe, try to get content-length
                 content_length = resp.headers.get("content-length")
                 if content_length:
-                    try:
-                        total_size = int(content_length)
-                    except Exception:
-                        total_size = None
+                    total_size = int(content_length)
 
         if total_size is None or total_size == 0:
             raise RuntimeError("Unable to determine total file size for chunked download")
@@ -268,38 +255,43 @@ class ProcessAudioUseCase:
             if etag and not first_chunk:
                 headers["If-Range"] = etag
 
-            logger.info(
-                "Requesting chunk",
-                extra={"url": url, "range": f"{start}-{end}", "if_range": headers.get("If-Range")},
-            )
+            for attempt in range(1, 4):
+                try:
+                    async with client.stream("GET", url, headers=headers) as resp:
+                        resp.raise_for_status()
+                        # The server should return 206 for ranged requests
+                        if resp.status_code == 206:
+                            # capture/refresh ETag if server returns one
+                            resp_etag = resp.headers.get("etag")
+                            if resp_etag:
+                                etag = resp_etag
+                            with open(target_path, "ab") as f:
+                                async for chunk in resp.aiter_bytes():
+                                    f.write(chunk)
+                        elif resp.status_code == 200:
+                            # If server returned the whole file for this request,
+                            # accept it only if this is the first chunk covering the whole file
+                            if start == 0 and end >= total_size - 1:
+                                with open(target_path, "wb") as f:
+                                    async for chunk in resp.aiter_bytes():
+                                        f.write(chunk)
+                            else:
+                                raise RuntimeError(f"Unexpected 200 OK for chunk {start}-{end}")
+                        else:
+                            raise RuntimeError(f"Unexpected status {resp.status_code} for chunk {start}-{end}")
 
-            async with client.stream("GET", url, headers=headers) as resp:
-                resp.raise_for_status()
-                # The server should return 206 for ranged requests
-                if resp.status_code == 206:
-                    # capture/refresh ETag if server returns one
-                    resp_etag = resp.headers.get("etag")
-                    if resp_etag:
-                        etag = resp_etag
-                    with open(target_path, "ab") as f:
-                        async for chunk in resp.aiter_bytes():
-                            f.write(chunk)
-                elif resp.status_code == 200:
-                    # If server returned the whole file for this request,
-                    # accept it only if this is the first chunk covering the whole file
-                    if start == 0 and end >= total_size - 1:
-                        with open(target_path, "wb") as f:
-                            async for chunk in resp.aiter_bytes():
-                                f.write(chunk)
-                    else:
-                        raise RuntimeError(f"Unexpected 200 OK for chunk {start}-{end}")
-                else:
-                    raise RuntimeError(f"Unexpected status {resp.status_code} for chunk {start}-{end}")
+                    break
+                except (httpx.ReadTimeout, httpx.ConnectTimeout, httpx.HTTPError) as exc:
+                    if attempt == 3:
+                        raise
+                    backoff = 2 ** attempt
+                    logger.warning(
+                        f"Chunk download failed, retrying in {backoff}s",
+                        extra={"attempt": attempt, "error": str(exc)}
+                    )
+                    await asyncio.sleep(backoff)
 
-            logger.info(
-                "Chunk downloaded",
-                extra={"url": url, "start": start, "end": end, "etag": etag},
-            )
+            await asyncio.sleep(0.5)
             first_chunk = False
             start = end + 1
 
