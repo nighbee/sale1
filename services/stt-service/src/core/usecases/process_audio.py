@@ -67,9 +67,9 @@ class ProcessAudioUseCase:
         self,
         url: str,
         target_path: str,
-        max_attempts: int = 5,
+        max_attempts: int = 2,
         base_backoff: float = 5.0,
-        chunk_size: int = 1024 * 1024,
+        chunk_size: int = 15 * 1024,
         split_fallback: bool = True,
     ) -> None:
         """
@@ -82,7 +82,7 @@ class ProcessAudioUseCase:
         # Create a client with HTTP/1.1 forced and cookie jar
         async with httpx.AsyncClient(
             http2=False,  # force HTTP/1.1
-            timeout=httpx.Timeout(10.0, read=120.0),
+            timeout=httpx.Timeout(10.0, read=30.0),
             follow_redirects=True,
         ) as client:
             for attempt in range(1, max_attempts + 1):
@@ -255,9 +255,9 @@ class ProcessAudioUseCase:
             await self._download_with_resume(
                 url=audio_url,
                 target_path=tmp_path,
-                max_attempts=5,
+                max_attempts=2,
                 base_backoff=5,
-                chunk_size=1024 * 1024,
+                chunk_size=15 * 1024,
                 split_fallback=True,
             )
 
