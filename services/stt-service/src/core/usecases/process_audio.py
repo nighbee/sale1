@@ -155,9 +155,11 @@ class ProcessAudioUseCase:
                         )
 
                 except (httpx.ReadTimeout, httpx.ConnectTimeout, httpx.HTTPError, Exception) as exc:
+                    import traceback as _traceback
+                    tb = _traceback.format_exc()
                     logger.warning(
                         f"Download attempt {attempt} failed",
-                        extra={"url": url, "error": str(exc), "attempt": attempt}
+                        extra={"url": url, "error": tb, "attempt": attempt}
                     )
                     if attempt == max_attempts:
                         if split_fallback:
