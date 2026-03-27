@@ -1,6 +1,7 @@
 import os
 import json
 import httpx
+import asyncio
 import logging
 import tempfile
 import time
@@ -80,19 +81,61 @@ class ProcessAudioUseCase:
         wav_path = None
         t_total = time.monotonic()
         try:
-            # 1. Download audio
+            # 1. Download audio with retries and sensible timeouts
             logger.info("[1/6] downloading audio",
                         extra={"call_id": call_id, "audio_url": audio_url})
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
-                tmp_path = tmp.name
-                async with httpx.AsyncClient() as client:
-                    async with client.stream("GET", audio_url, timeout=60) as response:
-                        response.raise_for_status()
-                        async for chunk in response.aiter_bytes():
-                            tmp.write(chunk)
-            file_size_kb = round(os.path.getsize(tmp_path) / 1024, 1)
-            logger.info("[1/6] audio downloaded",
-                        extra={"call_id": call_id, "file_size_kb": file_size_kb, "tmp_path": tmp_path})
+
+            max_attempts = 3
+            base_backoff = 5
+            download_success = False
+
+            for attempt in range(1, max_attempts + 1):
+                tmp_path = None
+                try:
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
+                        tmp_path = tmp.name
+
+                        timeout = httpx.Timeout(10.0, read=60.0)
+                        async with httpx.AsyncClient(timeout=timeout) as client:
+                            async with client.stream("GET", audio_url) as response:
+                                # log upstream response status and headers to help debug stalls/truncation
+                                status = response.status_code
+                                content_length = response.headers.get("content-length")
+                                logger.info("download response headers",
+                                            extra={"call_id": call_id, "status": status, "content_length": content_length, "attempt": attempt})
+                                response.raise_for_status()
+                                async for chunk in response.aiter_bytes():
+                                    # write chunk to the temporary file
+                                    tmp.write(chunk)
+
+                    # if we reach here the download completed
+                    file_size_kb = round(os.path.getsize(tmp_path) / 1024, 1)
+                    logger.info("[1/6] audio downloaded",
+                                extra={"call_id": call_id, "file_size_kb": file_size_kb, "tmp_path": tmp_path, "attempt": attempt})
+                    download_success = True
+                    break
+
+                except (httpx.ReadTimeout, httpx.ConnectTimeout, httpx.HTTPError) as exc:
+                    # cleanup partial file if exists
+                    if tmp_path and os.path.exists(tmp_path):
+                        try:
+                            os.remove(tmp_path)
+                        except Exception:
+                            pass
+
+                    # if last attempt, re-raise for outer handler
+                    if attempt == max_attempts:
+                        logger.exception("download failed after retries",
+                                         extra={"call_id": call_id, "attempt": attempt, "error": str(exc)})
+                        raise
+                    else:
+                        backoff = base_backoff * attempt
+                        logger.warning("download attempt failed, retrying",
+                                       extra={"call_id": call_id, "attempt": attempt, "backoff_s": backoff, "error": str(exc)})
+                        await asyncio.sleep(backoff)
+
+            if not download_success:
+                raise RuntimeError(f"Failed to download audio after {max_attempts} attempts: {audio_url}")
 
             # 2. Convert to 16kHz WAV
             logger.info("[2/6] converting to 16kHz WAV", extra={"call_id": call_id})
