@@ -38,11 +38,11 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/salesai/main-api/internal/adapters/events"
 	"github.com/salesai/main-api/internal/adapters/grpc"
-	"github.com/salesai/main-api/internal/adapters/queue"
 	httpAdapter "github.com/salesai/main-api/internal/adapters/http"
 	"github.com/salesai/main-api/internal/adapters/http/handlers"
 	"github.com/salesai/main-api/internal/adapters/http/middleware"
 	"github.com/salesai/main-api/internal/adapters/http/ws"
+	"github.com/salesai/main-api/internal/adapters/queue"
 	"github.com/salesai/main-api/internal/adapters/repositories"
 	"github.com/salesai/main-api/internal/core/usecases/analytics"
 	"github.com/salesai/main-api/internal/core/usecases/auth"
@@ -103,7 +103,9 @@ func main() {
 	// Services
 	jwtService := security.NewJWTService(cfg.JWTSecret, cfg.JWTExpiry)
 
-	minioClient, err := minio.New(cfg.MinioEndpoint, &minio.Options{
+	endpoint := cfg.MinioPublicEndpoint
+
+	minioClient, err := minio.New(endpoint, &minio.Options{
 		Creds:  credentials.NewStaticV4(cfg.MinioAccessKey, cfg.MinioSecretKey, ""),
 		Secure: false,
 	})
