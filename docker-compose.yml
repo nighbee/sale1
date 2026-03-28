@@ -265,10 +265,9 @@ services:
       DATABASE_URL: "host=postgres port=5432 user=salesai_user password=strong_password dbname=salesai sslmode=disable"
       REDIS_URL: "redis://redis:6379"
       OPENAI_API_KEY: ${OPENAI_API_KEY}
-      BLACKBOX_API_KEY: ${BLACKBOX_API_KEY}
-      LLM_BASE_URL: ${LLM_BASE_URL:-https://api.blackbox.ai/v1}
+      LLM_BASE_URL: ${LLM_BASE_URL}
       LLM_API_KEY: ${LLM_API_KEY}
-      LLM_MODEL: ${LLM_MODEL:-deepseek/deepseek-v3-base:free}
+      LLM_MODEL: ${LLM_MODEL}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY}
       GOOGLE_AI_MODEL: ${GOOGLE_AI_MODEL}
       LOG_LEVEL: ${LOG_LEVEL:-info}
