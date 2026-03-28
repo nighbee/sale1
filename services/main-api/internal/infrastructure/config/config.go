@@ -20,6 +20,7 @@ type Config struct {
 	MinioPresignExpirySeconds int
 	STTServiceGRPC            string
 	AnalyticsGRPC             string
+	MinioPublicEndpoint	   string
 }
 
 func Load() *Config {
@@ -55,6 +56,11 @@ func Load() *Config {
 	minioEndpoint := os.Getenv("MINIO_ENDPOINT")
 	if minioEndpoint == "" {
 		minioEndpoint = "minio:9000"
+	}
+
+	minioPublicEndpoint := os.Getenv("MINIO_PUBLIC_ENDPOINT")
+	if minioPublicEndpoint == "" {
+		minioPublicEndpoint = "157.230.92.4:9000"
 	}
 
 	sttGRPC := os.Getenv("STT_SERVICE_GRPC")
