@@ -108,13 +108,33 @@ func main() {
 		Creds:  credentials.NewStaticV4(cfg.MinioAccessKey, cfg.MinioSecretKey, ""),
 		Secure: false,
 	})
-if err != nil {
-    log.Fatal("Failed to connect to MinIO", zap.Error(err))
-}
 	if err != nil {
-		log.Warn("Failed to connect to MinIO", zap.Error(err))
+		log.Fatal("Failed to connect to MinIO", zap.Error(err))
 	} else {
 		log.Info("MinIO connected", zap.String("endpoint", cfg.MinioEndpoint))
+	}
+
+	// Initialize public MinIO client if public endpoint is provided
+	var publicMinioClient *minio.Client
+	if cfg.MinioPublicEndpoint != "" {
+		publicEndpoint := cfg.MinioPublicEndpoint
+		// Parse host from endpoint if it's a full URL
+		if strings.Contains(publicEndpoint, "://") {
+			u, err := url.Parse(publicEndpoint)
+			if err == nil && u.Host != "" {
+				publicEndpoint = u.Host
+			}
+		}
+
+		publicMinioClient, err = minio.New(publicEndpoint, &minio.Options{
+			Creds:  credentials.NewStaticV4(cfg.MinioAccessKey, cfg.MinioSecretKey, ""),
+			Secure: false,
+		})
+		if err != nil {
+			log.Warn("Failed to connect to public MinIO", zap.String("endpoint", publicEndpoint), zap.Error(err))
+		} else {
+			log.Info("Public MinIO connected", zap.String("endpoint", publicEndpoint))
+		}
 	}
 
 	grpcClient, err := grpc.NewGRPCClient(cfg.STTServiceGRPC, cfg.AnalyticsGRPC)
@@ -166,7 +186,7 @@ if err != nil {
 
 	// Handlers
 	authHandler := handlers.NewAuthHandler(registerUC, loginUC, refreshUC)
-	callHandler := handlers.NewCallHandler(listCallsUC, reprocessCallUC, callRepo, transcriptRepo, analysisRepo, minioClient, grpcClient, cfg.MinioPresign, time.Duration(cfg.MinioPresignExpirySeconds)*time.Second)
+	callHandler := handlers.NewCallHandler(listCallsUC, reprocessCallUC, callRepo, transcriptRepo, analysisRepo, minioClient, publicMinioClient, grpcClient, cfg.MinioPresign, time.Duration(cfg.MinioPresignExpirySeconds)*time.Second)
 	analyticsHandler := handlers.NewAnalyticsHandler(teamPerformanceUC)
 	companyHandler := handlers.NewCompanyHandler(companyRepo)
 	userHandler := handlers.NewUserHandler(userRepo, listCallsUC)

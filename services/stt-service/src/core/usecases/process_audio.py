@@ -250,6 +250,7 @@ class ProcessAudioUseCase:
         first_chunk = True
         while start < total_size:
             end = min(start + chunk_size - 1, total_size - 1)
+            requested_bytes = end - start + 1
             headers = {"Range": f"bytes={start}-{end}"}
             # Include If-Range with ETag after the first successful chunk
             if etag and not first_chunk:
@@ -257,8 +258,11 @@ class ProcessAudioUseCase:
 
             for attempt in range(1, 4):
                 try:
+                    logger.debug(f"Downloading chunk {start}-{end} ({requested_bytes} bytes)", extra={"attempt": attempt})
                     async with client.stream("GET", url, headers=headers) as resp:
                         resp.raise_for_status()
+
+                        chunk_bytes_received = 0
                         # The server should return 206 for ranged requests
                         if resp.status_code == 206:
                             # capture/refresh ETag if server returns one
@@ -268,6 +272,7 @@ class ProcessAudioUseCase:
                             with open(target_path, "ab") as f:
                                 async for chunk in resp.aiter_bytes():
                                     f.write(chunk)
+                                    chunk_bytes_received += len(chunk)
                         elif resp.status_code == 200:
                             # If server returned the whole file for this request,
                             # accept it only if this is the first chunk covering the whole file
@@ -275,12 +280,20 @@ class ProcessAudioUseCase:
                                 with open(target_path, "wb") as f:
                                     async for chunk in resp.aiter_bytes():
                                         f.write(chunk)
+                                        chunk_bytes_received += len(chunk)
                             else:
                                 raise RuntimeError(f"Unexpected 200 OK for chunk {start}-{end}")
                         else:
                             raise RuntimeError(f"Unexpected status {resp.status_code} for chunk {start}-{end}")
 
-                    break
+                        if chunk_bytes_received < requested_bytes and start + chunk_bytes_received < total_size:
+                             logger.warning(f"Chunk truncated: received {chunk_bytes_received}/{requested_bytes}")
+                             # Update 'start' based on what we actually got so the next iteration continues correctly
+                             start += chunk_bytes_received
+                             break # move to next chunk iteration with updated start
+
+                        start = end + 1
+                        break # break attempt loop
                 except (httpx.ReadTimeout, httpx.ConnectTimeout, httpx.HTTPError) as exc:
                     if attempt == 3:
                         raise
@@ -293,7 +306,6 @@ class ProcessAudioUseCase:
 
             await asyncio.sleep(0.5)
             first_chunk = False
-            start = end + 1
 
         logger.info("Chunked download completed", extra={"url": url, "total_size": total_size})
 
@@ -315,20 +327,30 @@ class ProcessAudioUseCase:
         wav_path = None
         t_total = time.monotonic()
         try:
-            # 1. Download audio with resume and cookie persistence
+            # 1. Download audio
             logger.info("[1/6] downloading audio", extra={"call_id": call_id, "audio_url": audio_url})
 
             with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
                 tmp_path = tmp.name
 
-            await self._download_with_resume(
-                url=audio_url,
-                target_path=tmp_path,
-                max_attempts=2,
-                base_backoff=5,
-                chunk_size=15 * 1024,
-                split_fallback=True,
-            )
+            if audio_url.startswith("minio://"):
+                # Handle MinIO protocol
+                parts = audio_url.replace("minio://", "").split("/")
+                if len(parts) < 2:
+                    raise ValueError(f"Invalid minio URL: {audio_url}")
+                # bucket = parts[0] # MinioClient uses its own bucket or we can extend it
+                object_name = "/".join(parts[1:])
+                self.minio.download_file(object_name, tmp_path)
+            else:
+                # Handle HTTP(S) protocol with resume and cookie persistence
+                await self._download_with_resume(
+                    url=audio_url,
+                    target_path=tmp_path,
+                    max_attempts=2,
+                    base_backoff=5,
+                    chunk_size=15 * 1024,
+                    split_fallback=True,
+                )
 
             file_size_kb = round(os.path.getsize(tmp_path) / 1024, 1)
             logger.info("[1/6] audio downloaded", extra={"call_id": call_id, "file_size_kb": file_size_kb, "tmp_path": tmp_path})

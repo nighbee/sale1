@@ -101,5 +101,6 @@ func Load() *Config {
 		MinioPresignExpirySeconds: presignExpiry,
 		STTServiceGRPC:            sttGRPC,
 		AnalyticsGRPC:             analyticsGRPC,
+		MinioPublicEndpoint:       minioPublicEndpoint,
 	}
 }
