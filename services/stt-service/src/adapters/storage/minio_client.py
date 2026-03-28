@@ -48,3 +48,12 @@ class MinioClient:
         except Exception as e:
             logger.error(f"Failed to upload to MinIO: {e}")
             raise
+
+    def download_file(self, object_name, file_path):
+        try:
+            self.client.fget_object(self.bucket_name, object_name, file_path)
+            logger.info(f"Downloaded {object_name} from MinIO to {file_path}")
+            return file_path
+        except Exception as e:
+            logger.error(f"Failed to download from MinIO: {e}")
+            raise

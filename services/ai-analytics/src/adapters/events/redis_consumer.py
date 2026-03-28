@@ -17,20 +17,21 @@ async def start_consumer():
     group_name = "ai_analytics_group"
     consumer_name = "ai_analytics_consumer_1"
 
-    # Create consumer group if not exists
-    try:
-        await r.xgroup_create(stream_name, group_name, id="0", mkstream=True)
-        logger.info("Redis consumer group created",
-                    extra={"stream": stream_name, "group": group_name})
-    except Exception:
-        logger.debug("Redis consumer group already exists",
-                     extra={"stream": stream_name, "group": group_name})
-
     logger.info("AI Analytics consumer started",
                 extra={"stream": stream_name, "group": group_name, "consumer": consumer_name})
 
     while True:
         try:
+            # Attempt to ensure the consumer group exists before reading
+            try:
+                await r.xgroup_create(stream_name, group_name, id="0", mkstream=True)
+                logger.info("Redis consumer group created",
+                            extra={"stream": stream_name, "group": group_name})
+            except Exception as e:
+                # Catch "BUSYGROUP Consumer Group name already exists" or other errors
+                if "BUSYGROUP" not in str(e):
+                    logger.debug(f"Note: Consumer group creation skipped or failed: {e}")
+
             messages = await r.xreadgroup(group_name, consumer_name, {stream_name: ">"}, count=1, block=5000)
 
             if messages:

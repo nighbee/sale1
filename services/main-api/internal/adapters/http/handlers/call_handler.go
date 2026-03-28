@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	neturl "net/url"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -27,10 +26,11 @@ type CallHandler struct {
 	reprocessCallUC *calls.ReprocessCallUseCase
 	callRepo        ports.CallRepository
 	transcriptRepo  ports.TranscriptRepository
-	analysisRepo    ports.AnalysisRepository
-	minioClient     *minio.Client
-	grpcClient      *grpc.GRPCClient
-	presignEnabled  bool
+	analysisRepo      ports.AnalysisRepository
+	minioClient       *minio.Client
+	publicMinioClient *minio.Client
+	grpcClient        *grpc.GRPCClient
+	presignEnabled    bool
 	presignExpiry   time.Duration
 }
 
@@ -41,20 +41,22 @@ func NewCallHandler(
 	transcriptRepo ports.TranscriptRepository,
 	analysisRepo ports.AnalysisRepository,
 	minioClient *minio.Client,
+	publicMinioClient *minio.Client,
 	grpcClient *grpc.GRPCClient,
 	presignEnabled bool,
 	presignExpiry time.Duration,
 ) *CallHandler {
 	return &CallHandler{
-		listCallsUC:     listCallsUC,
-		reprocessCallUC: reprocessCallUC,
-		callRepo:        callRepo,
-		transcriptRepo:  transcriptRepo,
-		analysisRepo:    analysisRepo,
-		minioClient:     minioClient,
-		grpcClient:      grpcClient,
-		presignEnabled:  presignEnabled,
-		presignExpiry:   presignExpiry,
+		listCallsUC:       listCallsUC,
+		reprocessCallUC:   reprocessCallUC,
+		callRepo:          callRepo,
+		transcriptRepo:    transcriptRepo,
+		analysisRepo:      analysisRepo,
+		minioClient:       minioClient,
+		publicMinioClient: publicMinioClient,
+		grpcClient:        grpcClient,
+		presignEnabled:    presignEnabled,
+		presignExpiry:     presignExpiry,
 	}
 }
 
@@ -348,32 +350,19 @@ func (h *CallHandler) GetAudio(c *fiber.Ctx) error {
 	// If presign mode is enabled, return a presigned URL instead of proxying
 	if h.presignEnabled {
 		// generate presigned URL
-		presignedURL, err := h.minioClient.PresignedGetObject(ctx, bucketName, objectName, h.presignExpiry, neturl.Values{})
+		// Use publicMinioClient if available for correct signature and host
+		client := h.minioClient
+		if h.publicMinioClient != nil {
+			client = h.publicMinioClient
+		}
+
+		presignedURL, err := client.PresignedGetObject(ctx, bucketName, objectName, h.presignExpiry, neturl.Values{})
 		if err != nil {
 			log := applogger.FromFiberCtx(c).With(zap.String("operation", "get_audio"))
 			log.Error("failed to generate presigned url", zap.String("bucket", bucketName), zap.String("object", objectName), zap.Error(err))
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to generate presigned URL"})
 		}
-		// If a public-facing MinIO endpoint is provided (for example, nginx proxy or host-accessible
-		// address), rewrite the host/scheme on the generated presigned URL so browsers can reach it.
-		// Set MINIO_PUBLIC_ENDPOINT to a full URL like "http://localhost:9000" or "https://assets.example.com".
-		if pub := os.Getenv("MINIO_PUBLIC_ENDPOINT"); pub != "" {
-			parsedPub, err := neturl.Parse(pub)
-			if err == nil && parsedPub.Host != "" {
-				// Use the scheme from MINIO_PUBLIC_ENDPOINT if provided, otherwise keep the original scheme
-				if parsedPub.Scheme != "" {
-					presignedURL.Scheme = parsedPub.Scheme
-				}
-				presignedURL.Host = parsedPub.Host
-				// Append any path prefix from MINIO_PUBLIC_ENDPOINT
-				if parsedPub.Path != "" && parsedPub.Path != "/" {
-					presignedURL.Path = strings.TrimRight(parsedPub.Path, "/") + presignedURL.Path
-				}
-				applogger.FromFiberCtx(c).Debug("Rewrote presigned URL for public endpoint", zap.String("original_url", presignedURL.String()))
-			} else {
-				applogger.FromFiberCtx(c).Warn("Invalid MINIO_PUBLIC_ENDPOINT, using original presigned URL", zap.String("MINIO_PUBLIC_ENDPOINT", pub))
-			}
-		}
+
 		return c.JSON(fiber.Map{"presigned_url": presignedURL.String(), "expires_in_seconds": int(h.presignExpiry.Seconds())})
 	}
 
