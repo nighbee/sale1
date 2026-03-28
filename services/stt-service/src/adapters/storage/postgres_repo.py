@@ -23,12 +23,17 @@ def save_transcript(call_id, transcript_json, stt_provider):
         query = """
             INSERT INTO calls_schema.transcripts (id, call_id, speaker_diarized_json, stt_provider)
             VALUES (gen_random_uuid(), %s, %s, %s)
+            ON CONFLICT (call_id) DO UPDATE SET
+                speaker_diarized_json = EXCLUDED.speaker_diarized_json,
+                stt_provider = EXCLUDED.stt_provider,
+                processed_at = NOW()
         """
         cur.execute(query, (call_id, json.dumps(transcript_json), stt_provider))
         conn.commit()
     finally:
         if cur:
             cur.close()
+        conn.rollback()  # Ensure clean state
         get_pool().putconn(conn)
 
 def update_call_status(call_id, status):
@@ -42,6 +47,7 @@ def update_call_status(call_id, status):
     finally:
         if cur:
             cur.close()
+        conn.rollback()  # Ensure clean state for read-only or on failure
         get_pool().putconn(conn)
 
 def log_processing_event(call_id, service_name, status, error_message=None, retry_count=0):
@@ -58,6 +64,7 @@ def log_processing_event(call_id, service_name, status, error_message=None, retr
     finally:
         if cur:
             cur.close()
+        conn.rollback()  # Ensure clean state
         get_pool().putconn(conn)
 
 def update_call_link(call_id, call_link):
@@ -71,4 +78,5 @@ def update_call_link(call_id, call_link):
     finally:
         if cur:
             cur.close()
+        conn.rollback()  # Ensure clean state
         get_pool().putconn(conn)
