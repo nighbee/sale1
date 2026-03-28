@@ -358,39 +358,21 @@ func (h *CallHandler) GetAudio(c *fiber.Ctx) error {
 		// address), rewrite the host/scheme on the generated presigned URL so browsers can reach it.
 		// Set MINIO_PUBLIC_ENDPOINT to a full URL like "http://localhost:9000" or "https://assets.example.com".
 		if pub := os.Getenv("MINIO_PUBLIC_ENDPOINT"); pub != "" {
-			// More robust parsing: accept full URL (scheme + host + optional path),
-			// bare host, host:port, or host with a path prefix. If the provided value
-			// lacks a scheme, try parsing it as a host by prefixing '//' so the
-			// URL parser fills the Host field. Preserve the presigned URL's scheme
-			// unless an explicit scheme is provided in MINIO_PUBLIC_ENDPOINT.
-			var u *neturl.URL
-			if parsed, err := neturl.Parse(pub); err == nil {
-				u = parsed
-			}
-			if u == nil || u.Host == "" {
-				// Try parsing as a host (allow values like "10.0.0.5", "10.0.0.5:9000" or "example.com/minio")
-				if parsed, err := neturl.Parse("//" + strings.TrimPrefix(pub, "/")); err == nil {
-					u = parsed
+			parsedPub, err := neturl.Parse(pub)
+			if err == nil && parsedPub.Host != "" {
+				// Use the scheme from MINIO_PUBLIC_ENDPOINT if provided, otherwise keep the original scheme
+				if parsedPub.Scheme != "" {
+					presignedURL.Scheme = parsedPub.Scheme
 				}
-			}
-
-			if u != nil && u.Host != "" {
-				// Only overwrite scheme if MINIO_PUBLIC_ENDPOINT included it
-				if u.Scheme != "" {
-					presignedURL.Scheme = u.Scheme
+				presignedURL.Host = parsedPub.Host
+				// Append any path prefix from MINIO_PUBLIC_ENDPOINT
+				if parsedPub.Path != "" && parsedPub.Path != "/" {
+					presignedURL.Path = strings.TrimRight(parsedPub.Path, "/") + presignedURL.Path
 				}
-				presignedURL.Host = u.Host
-				if u.Path != "" && u.Path != "/" {
-					// Ensure we don't produce duplicate slashes when prepending
-					presignedURL.Path = strings.TrimRight(u.Path, "/") + presignedURL.Path
-				}
+				applogger.FromFiberCtx(c).Debug("Rewrote presigned URL for public endpoint", zap.String("original_url", presignedURL.String()))
 			} else {
-				// Fallback: treat the entire value as host (best-effort)
-				presignedURL.Host = pub
+				applogger.FromFiberCtx(c).Warn("Invalid MINIO_PUBLIC_ENDPOINT, using original presigned URL", zap.String("MINIO_PUBLIC_ENDPOINT", pub))
 			}
-
-			// Emit debug log so operators can see the final rewritten URL
-			applogger.FromFiberCtx(c).With(zap.String("presigned_url", presignedURL.String())).Debug("rewrote presigned url for public endpoint")
 		}
 		return c.JSON(fiber.Map{"presigned_url": presignedURL.String(), "expires_in_seconds": int(h.presignExpiry.Seconds())})
 	}

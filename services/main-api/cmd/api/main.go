@@ -103,12 +103,14 @@ func main() {
 	// Services
 	jwtService := security.NewJWTService(cfg.JWTSecret, cfg.JWTExpiry)
 
-	endpoint := cfg.MinioPublicEndpoint
 
-	minioClient, err := minio.New(endpoint, &minio.Options{
+	minioClient, err := minio.New(cfg.MinioEndpoint, &minio.Options{
 		Creds:  credentials.NewStaticV4(cfg.MinioAccessKey, cfg.MinioSecretKey, ""),
 		Secure: false,
 	})
+if err != nil {
+    log.Fatal("Failed to connect to MinIO", zap.Error(err))
+}
 	if err != nil {
 		log.Warn("Failed to connect to MinIO", zap.Error(err))
 	} else {
