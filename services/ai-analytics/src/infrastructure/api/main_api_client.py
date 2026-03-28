@@ -28,3 +28,17 @@ class MainAPIClient:
         except Exception as e:
             logger.error("Failed to fetch active integrations from main-api", extra={"url": url, "error": str(e)})
             return []
+
+    async def get_ai_settings(self):
+        url = f"{self.base_url}/api/v1/internal/ai-settings"
+        try:
+            headers = {"X-Internal-Secret": self.internal_secret}
+            async with httpx.AsyncClient() as client:
+                response = await client.get(url, headers=headers, timeout=5.0)
+                response.raise_for_status()
+                settings = response.json()
+                logger.info("Fetched AI settings from main-api", extra={"llm_provider": settings.get("llm_provider")})
+                return settings
+        except Exception as e:
+            logger.error("Failed to fetch AI settings from main-api", extra={"url": url, "error": str(e)})
+            return None

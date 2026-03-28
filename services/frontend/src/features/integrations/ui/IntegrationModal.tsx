@@ -116,6 +116,12 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ isOpen, onClose, ty
               return (
                   <div className="space-y-4">
                       <Input label="API Key" type="password" value={credentials.api_key || ''} onChange={e => setCredentials({...credentials, api_key: e.target.value})} />
+                      <Input
+                          label="Base URL (Optional)"
+                          placeholder="https://api.openai.com/v1"
+                          value={credentials.base_url || ''}
+                          onChange={e => setCredentials({...credentials, base_url: e.target.value})}
+                      />
                   </div>
               );
           case 'slack':

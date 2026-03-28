@@ -11,10 +11,7 @@ from src.adapters.events.redis_publisher import publish_transcript_ready
 from src.adapters.storage.minio_client import MinioClient
 from src.infrastructure.audio.diarization import DiarizationService, merge_transcript_with_diarization
 from src.infrastructure.audio.converter import AudioConverter
-from src.adapters.stt.openai_provider import OpenAISTTProvider
-from src.adapters.stt.gemini_provider import GeminiSTTProvider
-from src.adapters.stt.groq_provider import GroqSTTProvider
-from src.adapters.stt.deepgram_provider import DeepgramSTTProvider
+from src.adapters.stt.factory import STTProviderFactory
 from src.infrastructure.api.main_api_client import MainAPIClient
 
 logger = logging.getLogger(__name__)
@@ -29,40 +26,6 @@ class ProcessAudioUseCase:
         # We will initialize provider on each execute to handle dynamic credentials
         self.stt_provider_name = os.getenv("STT_PROVIDER", "openai")
 
-    def _get_stt_provider(self, integrations: list):
-        provider_name = self.stt_provider_name
-
-        # Look for integration that matches provider_name
-        integration = next((i for i in integrations if i.get("integration_type") == provider_name), None)
-
-        api_key = None
-        if integration:
-            creds = integration.get("credentials", {})
-            if isinstance(creds, str):
-                try:
-                    creds = json.loads(creds)
-                except:
-                    pass
-            if isinstance(creds, dict):
-                api_key = creds.get("api_key")
-
-        logger.info(
-            "Initializing STT provider",
-            extra={
-                "provider": provider_name,
-                "has_integration": integration is not None,
-                "has_api_key": api_key is not None and len(api_key) > 0 if api_key else False,
-            },
-        )
-
-        if provider_name == "gemini":
-            return GeminiSTTProvider(api_key=api_key)
-        elif provider_name == "groq":
-            return GroqSTTProvider(api_key=api_key)
-        elif provider_name == "deepgram":
-            return DeepgramSTTProvider(api_key=api_key)
-        else:
-            return OpenAISTTProvider(api_key=api_key)
 
     async def _download_stream(self, url: str, target_path: str) -> None:
         start_time = time.monotonic()
@@ -428,26 +391,32 @@ class ProcessAudioUseCase:
             update_call_link(call_id, f"minio://audio/{object_name}")
 
             # 4. Transcribe (using API provider)
-            # Old local STT logic commented out:
-            # async with httpx.AsyncClient() as client:
-            #     # Note: stt-local expected 'url' in form data.
-            #     # Since we archived it, we can still use the original url or the new minio url if stt-local supports it.
-            #     # PRD says stt-local uses the URL.
-            #     resp = await client.post(f"{self.stt_local_url}/transcribe", data={"url": audio_url}, timeout=300)
-            #     resp.raise_for_status()
-            #     transcript_data = resp.json()
-
-            # New API logic:
             # Send the original compressed MP3 to the STT API — WAV is uncompressed
             # and can exceed provider size limits (e.g. Groq 25 MB free tier).
             # All API providers (OpenAI, Groq, Gemini) handle MP3 natively and
             # do their own 16 kHz downsampling server-side.
+
+            # Fetch default settings from main-api
+            ai_settings = await self.api_client.get_ai_settings()
+
+            # Priority: 1. Job metadata 2. integrations (DB) 3. .env
+            stt_provider_name = job.get("stt_provider")
+            stt_model_name = job.get("stt_model")
+
+            if ai_settings:
+                stt_provider_name = stt_provider_name or ai_settings.get("stt_provider")
+                stt_model_name = stt_model_name or ai_settings.get("stt_model")
+
+            # Fallback to .env
+            stt_provider_name = stt_provider_name or self.stt_provider_name
+
             logger.info("[4/6] sending to STT provider",
-                        extra={"call_id": call_id, "stt_provider": self.stt_provider_name,
+                        extra={"call_id": call_id, "stt_provider": stt_provider_name,
+                               "stt_model": stt_model_name,
                                "file_size_kb": file_size_kb})
 
             integrations = await self.api_client.get_active_integrations()
-            stt_provider = self._get_stt_provider(integrations)
+            stt_provider = STTProviderFactory.create(stt_provider_name, integrations, default_model=stt_model_name)
 
             t_stt = time.monotonic()
             transcript_data = await stt_provider.transcribe(tmp_path)
@@ -455,7 +424,7 @@ class ProcessAudioUseCase:
             stt_text = transcript_data.get("text", "")
             stt_segments = transcript_data.get("segments", [])
             logger.info("[4/6] STT transcription received",
-                        extra={"call_id": call_id, "stt_provider": self.stt_provider_name,
+                        extra={"call_id": call_id, "stt_provider": stt_provider_name,
                                "elapsed_s": stt_elapsed, "segment_count": len(stt_segments),
                                "text_length": len(stt_text),
                                "text_preview": stt_text[:200] if stt_text else ""})
@@ -487,7 +456,7 @@ class ProcessAudioUseCase:
 
             # Save to DB
             # We wrap the segments in the expected JSON column structure
-            save_transcript(call_id, segments, self.stt_provider_name)
+            save_transcript(call_id, segments, stt_provider_name)
 
             # Publish event
             await publish_transcript_ready(call_id)
@@ -497,7 +466,7 @@ class ProcessAudioUseCase:
                 "[6/6] audio job completed successfully",
                 extra={
                     "call_id": call_id,
-                    "stt_provider": self.stt_provider_name,
+                    "stt_provider": stt_provider_name,
                     "duration_s": duration_s,
                     "segment_count": len(segments),
                     "text_length": len(stt_text),

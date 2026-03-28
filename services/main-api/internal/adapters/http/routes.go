@@ -21,6 +21,7 @@ func SetupRoutes(
 	integrationHandler *handlers.IntegrationHandler,
 	scriptHandler *handlers.ScriptHandler,
 	notificationHandler *handlers.NotificationHandler,
+	aiSettingsHandler *handlers.AISettingsHandler,
 	wsHandler *handlers.WSHandler,
 	jwtService ports.JWTService,
 ) {
@@ -44,6 +45,7 @@ func SetupRoutes(
 	// Internal
 	internal := api.Group("/internal", middleware.InternalAuth())
 	internal.Get("/integrations", integrationHandler.ListInternal)
+	internal.Get("/ai-settings", aiSettingsHandler.GetInternal)
 
 	// Protected routes
 	protected := api.Group("", middleware.JWTAuth(jwtService))
@@ -125,4 +127,9 @@ func SetupRoutes(
 	integrations.Get("/:type", integrationHandler.Get)
 	integrations.Post("/:type/test", integrationHandler.TestConnection)
 	integrations.Delete("/:type", integrationHandler.Delete)
+
+	// AI Settings
+	aiSettings := protected.Group("/ai-settings", middleware.RequireRole("super_admin", "tenant_admin"))
+	aiSettings.Get("/", aiSettingsHandler.Get)
+	aiSettings.Put("/", aiSettingsHandler.Update)
 }

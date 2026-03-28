@@ -97,6 +97,7 @@ func main() {
 	notificationRepo := repositories.NewNotificationRepository(db)
 	teamRepo := repositories.NewTeamRepository(db)
 	integrationRepo := repositories.NewIntegrationRepository(db)
+	aiSettingsRepo := repositories.NewAISettingsRepository(db)
 
 	log.Info("PostgreSQL connected")
 
@@ -194,6 +195,7 @@ func main() {
 	integrationHandler := handlers.NewIntegrationHandler(integrationUC)
 	scriptHandler := handlers.NewScriptHandler(scriptRepo, cfg.ScriptServiceURL)
 	notificationHandler := handlers.NewNotificationHandler(notificationRepo)
+	aiSettingsHandler := handlers.NewAISettingsHandler(aiSettingsRepo)
 	wsHandler := handlers.NewWSHandler(hub)
 
 	app := fiber.New()
@@ -206,7 +208,7 @@ func main() {
 	prometheus.RegisterAt(app, "/metrics")
 	app.Use(prometheus.Middleware)
 
-	httpAdapter.SetupRoutes(app, authHandler, callHandler, analyticsHandler, companyHandler, userHandler, teamHandler, integrationHandler, scriptHandler, notificationHandler, wsHandler, jwtService)
+	httpAdapter.SetupRoutes(app, authHandler, callHandler, analyticsHandler, companyHandler, userHandler, teamHandler, integrationHandler, scriptHandler, notificationHandler, aiSettingsHandler, wsHandler, jwtService)
 
 	port := os.Getenv("PORT")
 	if port == "" {

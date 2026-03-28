@@ -6,7 +6,7 @@ from openai import AsyncOpenAI
 logger = logging.getLogger(__name__)
 
 class OpenAIClient:
-    def __init__(self, api_key: str = None, base_url: str = None, model: str = None):
+    def __init__(self, api_key: str = None, base_url: str = None, model: str = "gpt-4-turbo-preview"):
         # Priority order for API key:
         #   1. explicit api_key passed in
         #   2. LLM_API_KEY  (generic, set per-provider in docker-compose)

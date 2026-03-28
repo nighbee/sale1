@@ -6,14 +6,16 @@ import google.generativeai as genai
 logger = logging.getLogger(__name__)
 
 class GeminiClient:
-    def __init__(self, api_key: str = None):
+    def __init__(self, api_key: str = None, model: str = "gemini-pro"):
         self.api_key = api_key or os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
         if self.api_key:
             genai.configure(api_key=self.api_key)
         else:
             logger.warning("GOOGLE_API_KEY is not set")
+        self.default_model = model
 
-    async def analyze(self, system_prompt: str, user_prompt: str, model: str = "gemini-pro") -> dict:
+    async def analyze(self, system_prompt: str, user_prompt: str, model: str = None) -> dict:
+        model = model or self.default_model
         logger.info("sending request to Gemini",
                     extra={"model": model,
                            "system_prompt_chars": len(system_prompt),
