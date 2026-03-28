@@ -6,23 +6,21 @@ from openai import AsyncOpenAI
 logger = logging.getLogger(__name__)
 
 class OpenAIClient:
-    def __init__(self, api_key: str = None, base_url: str = None, model: str = "gpt-4-turbo-preview"):
+    def __init__(self, api_key: str = None, base_url: str = None, model: str = None):
         # Priority order for API key:
         #   1. explicit api_key passed in
         #   2. LLM_API_KEY  (generic, set per-provider in docker-compose)
-        #   3. BLACKBOX_API_KEY
-        #   4. OPENAI_API_KEY
+        #   3. OPENAI_API_KEY
         self.api_key = (
             api_key
             or os.getenv("LLM_API_KEY")
-            or os.getenv("BLACKBOX_API_KEY")
             or os.getenv("OPENAI_API_KEY")
         )
         self.base_url = base_url or os.getenv("LLM_BASE_URL")  # None → default OpenAI endpoint
-        self.default_model = model or os.getenv("LLM_MODEL", "gpt-4-turbo-preview")
+        self.default_model = model or os.getenv("LLM_MODEL") or "gpt-4-turbo-preview"
 
         if not self.api_key:
-            logger.warning("Neither BLACKBOX_API_KEY nor OPENAI_API_KEY is set")
+            logger.warning("Neither LLM_API_KEY nor OPENAI_API_KEY is set")
 
         client_kwargs = {"api_key": self.api_key}
         if self.base_url:
