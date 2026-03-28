@@ -265,39 +265,45 @@ const CallDetailPage: React.FC = () => {
 
   if (loading) return <div className="p-8">{t("calls.loading")}</div>;
 
-  if (!call) {
+  if (!call || call.status === 'error') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background-light dark:bg-background-dark text-neutral-800 dark:text-neutral-100">
         <div className="max-w-xl w-full p-8 rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 shadow-lg text-center">
           <div className="flex items-center justify-center mb-4">
-            <div className="h-20 w-20 rounded-full bg-primary/10 text-primary flex items-center justify-center text-4xl">
-              <span className="material-icons">call</span>
+            <div className={`h-20 w-20 rounded-full ${call?.status === 'error' ? 'bg-red-50 text-red-500' : 'bg-primary/10 text-primary'} flex items-center justify-center text-4xl`}>
+              <span className="material-icons">{call?.status === 'error' ? 'error_outline' : 'call'}</span>
             </div>
           </div>
-          <h2 className="text-2xl font-bold mb-2">
-            {t("calls.processing", {
-              defaultValue: "Call is processing — please return later",
-            })}
+          <h2 className={`text-2xl font-bold mb-2 ${call?.status === 'error' ? 'text-red-600' : ''}`}>
+            {call?.status === 'error'
+              ? t("calls.error_processing", { defaultValue: "Error processing call" })
+              : t("calls.processing", { defaultValue: "Call is processing — please return later" })
+            }
           </h2>
           <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6">
-            {t("calls.processing_description", {
-              defaultValue:
-                "The call data is not available yet. Our background workers are processing the audio and analysis. Please check back in a few minutes.",
-            })}
+            {call?.status === 'error'
+              ? t("calls.error_description", {
+                  defaultValue: "There was an error processing this call (e.g., empty audio or transcription failure). You can try to reprocess it."
+                })
+              : t("calls.processing_description", {
+                  defaultValue: "The call data is not available yet. Our background workers are processing the audio and analysis. Please check back in a few minutes."
+                })
+            }
           </p>
-          <div className="flex items-center justify-center gap-3">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <button
               onClick={() => window.history.back()}
-              className="px-4 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 text-sm font-medium hover:bg-neutral-50 dark:hover:bg-neutral-800"
+              className="w-full sm:w-auto px-4 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 text-sm font-medium hover:bg-neutral-50 dark:hover:bg-neutral-800"
             >
               {t("common.back", { defaultValue: "Go back" })}
             </button>
             <Link
               to="/calls"
-              className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-95"
+              className="w-full sm:w-auto px-4 py-2 rounded-lg bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 text-sm font-medium hover:bg-neutral-200 dark:hover:bg-neutral-700"
             >
               {t("calls.view_calls", { defaultValue: "View calls" })}
             </Link>
+            {call?.id && <ReprocessButton callId={call.id} />}
           </div>
         </div>
       </div>
@@ -319,7 +325,13 @@ const CallDetailPage: React.FC = () => {
           <h1 className="text-base md:text-lg font-bold text-neutral-900 dark:text-white truncate">
             {t("calls.call_with")} {call.manager_name}
           </h1>
-          <span className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border border-green-200 dark:border-green-800 uppercase shrink-0">
+          <span className={`hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border uppercase shrink-0 ${
+            call.status === 'completed'
+              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border-green-200 dark:border-green-800'
+              : call.status === 'error'
+              ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 border-red-200 dark:border-red-800'
+              : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800'
+          }`}>
             {call.status}
           </span>
           <div className="ml-auto flex items-center gap-2">

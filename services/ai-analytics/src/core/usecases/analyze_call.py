@@ -46,6 +46,17 @@ class AnalyzeCallUseCase:
         # 3. Prepare prompt
         transcript_text = self._format_transcript(transcript['speaker_diarized_json'])
         transcript_segments = transcript['speaker_diarized_json'] or []
+
+        if not transcript_text.strip():
+            logger.warning(
+                "transcript is empty, skipping analysis",
+                extra={"call_id": call_id, "manager_id": manager_id}
+            )
+            update_call_status(call_id, 'error')
+            from src.adapters.storage.postgres_repo import log_processing_event
+            log_processing_event(call_id, "ai-analytics", "error", error_message="Empty transcript")
+            return
+
         user_prompt = get_user_prompt(transcript_text, script_text)
 
         logger.info(

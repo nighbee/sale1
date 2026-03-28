@@ -249,15 +249,16 @@ class ProcessAudioUseCase:
         start = 0
         first_chunk = True
         while start < total_size:
-            end = min(start + chunk_size - 1, total_size - 1)
-            requested_bytes = end - start + 1
-            headers = {"Range": f"bytes={start}-{end}"}
-            # Include If-Range with ETag after the first successful chunk
-            if etag and not first_chunk:
-                headers["If-Range"] = etag
-
             for attempt in range(1, 4):
                 try:
+                    end = min(start + chunk_size - 1, total_size - 1)
+                    requested_bytes = end - start + 1
+
+                    headers = {"Range": f"bytes={start}-{end}"}
+                    # Include If-Range with ETag after the first successful chunk
+                    if etag and not first_chunk:
+                        headers["If-Range"] = etag
+
                     logger.debug(f"Downloading chunk {start}-{end} ({requested_bytes} bytes)", extra={"attempt": attempt})
                     async with client.stream("GET", url, headers=headers) as resp:
                         resp.raise_for_status()
@@ -269,7 +270,18 @@ class ProcessAudioUseCase:
                             resp_etag = resp.headers.get("etag")
                             if resp_etag:
                                 etag = resp_etag
+
+                            # Ensure we are at the end of the file for appending correctly
+                            # or just open with 'ab' which always appends to the end.
                             with open(target_path, "ab") as f:
+                                # We need to make sure the file size matches 'start'
+                                # to avoid duplication or gaps on retry.
+                                current_file_size = f.tell()
+                                if current_file_size != start:
+                                    logger.warning(f"File size mismatch: start={start}, file_size={current_file_size}. Truncating/Seeking.")
+                                    f.truncate(start)
+                                    f.seek(start)
+
                                 async for chunk in resp.aiter_bytes():
                                     f.write(chunk)
                                     chunk_bytes_received += len(chunk)
@@ -286,15 +298,18 @@ class ProcessAudioUseCase:
                         else:
                             raise RuntimeError(f"Unexpected status {resp.status_code} for chunk {start}-{end}")
 
-                        if chunk_bytes_received < requested_bytes and start + chunk_bytes_received < total_size:
-                             logger.warning(f"Chunk truncated: received {chunk_bytes_received}/{requested_bytes}")
-                             # Update 'start' based on what we actually got so the next iteration continues correctly
-                             start += chunk_bytes_received
-                             break # move to next chunk iteration with updated start
+                        # If we got at least some data, update start for the next outer loop iteration
+                        # or next attempt if it was truncated.
+                        start += chunk_bytes_received
 
-                        start = end + 1
-                        break # break attempt loop
-                except (httpx.ReadTimeout, httpx.ConnectTimeout, httpx.HTTPError) as exc:
+                        if chunk_bytes_received < requested_bytes and start < total_size:
+                             logger.warning(f"Chunk truncated: received {chunk_bytes_received}/{requested_bytes}")
+                             # We break the attempt loop but continue the while loop with updated 'start'
+                             break
+
+                        # If we got the full chunk, we also break the attempt loop
+                        break
+                except (httpx.ReadTimeout, httpx.ConnectTimeout, httpx.HTTPError, Exception) as exc:
                     if attempt == 3:
                         raise
                     backoff = 2 ** attempt

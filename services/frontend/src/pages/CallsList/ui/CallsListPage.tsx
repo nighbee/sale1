@@ -198,9 +198,15 @@ const CallsListPage: React.FC = () => {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center text-sm">
                             <div
-                              className={`h-2 w-2 rounded-full mr-2 ${call.status === "completed" ? "bg-green-500" : "bg-yellow-500"}`}
+                              className={`h-2 w-2 rounded-full mr-2 ${
+                                call.status === "completed" ? "bg-green-500" :
+                                call.status === "error" ? "bg-red-500" :
+                                "bg-yellow-500"
+                              }`}
                             ></div>
-                            {call.status}
+                            <span className={call.status === "error" ? "text-red-600 font-medium" : ""}>
+                              {call.status}
+                            </span>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right">
