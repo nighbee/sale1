@@ -122,6 +122,18 @@ def save_analysis(report):
             INSERT INTO calls_schema.analysis_reports
             (id, call_id, script_id, quality_score, script_match, errors_free, overall_rating, kpi, recommendation, brief, next_best_action, llm_provider)
             VALUES (gen_random_uuid(), %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (call_id) DO UPDATE SET
+                script_id = EXCLUDED.script_id,
+                quality_score = EXCLUDED.quality_score,
+                script_match = EXCLUDED.script_match,
+                errors_free = EXCLUDED.errors_free,
+                overall_rating = EXCLUDED.overall_rating,
+                kpi = EXCLUDED.kpi,
+                recommendation = EXCLUDED.recommendation,
+                brief = EXCLUDED.brief,
+                next_best_action = EXCLUDED.next_best_action,
+                llm_provider = EXCLUDED.llm_provider,
+                processed_at = NOW()
         """
         cur.execute(query, (
             report['call_id'],
