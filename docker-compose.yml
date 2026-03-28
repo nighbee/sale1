@@ -45,6 +45,7 @@ services:
       MINIO_ROOT_PASSWORD: minioadmin123
       MINIO_PRESIGN_ENABLED: "true"
       MINIO_PRESIGN_EXPIRY_SECONDS: "300"
+      MINIO_PUBLIC_ENDPOINT: "http://127.0.0.1:9000/minio"
     volumes:
       - minio_data:/data
     ports:
