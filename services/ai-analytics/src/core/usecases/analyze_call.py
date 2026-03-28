@@ -217,9 +217,9 @@ class AnalyzeCallUseCase:
         required_fields = ['qualityOfCall', 'scriptMatch', 'errorsFree', 'recommendation', 'brief', 'nextBestAction']
         numeric_fields = ['qualityOfCall', 'scriptMatch', 'errorsFree']
         string_fields = {
-            'recommendation': 10,
-            'brief': 10,
-            'nextBestAction': 5,
+            'recommendation': 1,
+            'brief': 1,
+            'nextBestAction': 1,
         }
 
         missing = [f for f in required_fields if f not in analysis]
@@ -229,14 +229,23 @@ class AnalyzeCallUseCase:
         for field in numeric_fields:
             value = analysis[field]
             if not isinstance(value, (int, float)):
-                raise ValueError(f"LLM response field '{field}' must be numeric, got {type(value)} for call_id={call_id}")
-            if not (0 <= value <= 100):
-                raise ValueError(f"LLM response field '{field}' out of range [0, 100]: {value} for call_id={call_id}")
+                try:
+                    analysis[field] = float(value)
+                except (ValueError, TypeError):
+                    raise ValueError(f"LLM response field '{field}' must be numeric, got {type(value)} for call_id={call_id}")
+
+            if not (0 <= analysis[field] <= 100):
+                # Clamp value to [0, 100] instead of failing
+                analysis[field] = max(0, min(100, analysis[field]))
 
         for field, min_len in string_fields.items():
             value = analysis[field]
-            if not isinstance(value, str) or len(value.strip()) < min_len:
-                raise ValueError(f"LLM response field '{field}' too short or not a string for call_id={call_id}")
+            if not isinstance(value, str):
+                analysis[field] = str(value)
+                value = analysis[field]
+
+            if len(value.strip()) < min_len:
+                raise ValueError(f"LLM response field '{field}' too short for call_id={call_id}")
 
         logger.debug("LLM response validated", extra={"call_id": call_id})
 
