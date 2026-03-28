@@ -1,0 +1,60 @@
+# Architecture and SOLID Principles
+
+This document describes the architectural patterns and SOLID principles applied in the AI Transcription and Analytics platform.
+
+## Clean Architecture
+
+The project follows Clean Architecture principles to ensure separation of concerns and maintainability. Each microservice is organized into layers:
+
+### 1. Core (Domain & Use Cases)
+Located in `src/core/`. This is the heart of the application.
+- **Entities**: Business objects (e.g., `Call`, `Transcript`, `AnalysisReport`).
+- **Use Cases**: Orchestrate the flow of data to and from entities, and direct those entities to use their business logic to achieve the goals of the use case.
+- **Ports**: Interfaces (Abstract Base Classes in Python) that define how the core interacts with the outside world (e.g., `STTProvider`, `Repository`).
+
+### 2. Adapters (Interface Adapters)
+Located in `src/adapters/`. These convert data from the format most convenient for the use cases and entities, to the format most convenient for some external agency like the Database or the Web.
+- **Repositories**: Implementations of the core's repository ports using specific databases (e.g., `PostgresRepository`).
+- **External API Clients**: Implementations of external service ports (e.g., `DeepgramSTTProvider`).
+- **Queue Consumers/Publishers**: Handle messaging (e.g., `BullMQConsumer`, `RedisPublisher`).
+
+### 3. Infrastructure (Frameworks & Drivers)
+Located in `src/infrastructure/`. This layer is where all the details go. The Web, the Database, the UI, etc.
+- **HTTP/gRPC Servers**: Entry points to the application.
+- **Audio Processing**: Low-level audio conversion and manipulation.
+- **Monitoring**: Prometheus metrics and logging configurations.
+
+---
+
+## SOLID Principles Applied
+
+### Single Responsibility Principle (SRP)
+Each class and module has one, and only one, reason to change.
+- `DeepgramSTTProvider` is only responsible for communicating with Deepgram API.
+- `ProcessAudioUseCase` is only responsible for the orchestration of the audio processing pipeline.
+- `AudioConverter` only handles format conversions.
+
+### Open/Closed Principle (OCP)
+The system is open for extension but closed for modification.
+- New STT providers can be added by implementing the `STTProvider` interface without changing the `ProcessAudioUseCase`.
+
+### Liskov Substitution Principle (LSP)
+Objects of a superclass should be replaceable with objects of its subclasses without affecting the correctness of the program.
+- Any implementation of `STTProvider` (OpenAI, Gemini, Deepgram) can be used interchangeably by the use case.
+
+### Interface Segregation Principle (ISP)
+Clients should not be forced to depend on methods they do not use.
+- Use of specific abstract base classes for different external needs (Storage, STT, Events).
+
+### Dependency Inversion Principle (DIP)
+High-level modules should not depend on low-level modules. Both should depend on abstractions.
+- Use cases depend on abstract ports (interfaces), not concrete adapter implementations. Dependencies are injected or initialized via factories.
+
+---
+
+## Recent Fixes and Adherence
+
+1. **Deepgram Provider Robustness**: Updated `DeepgramSTTProvider` to safely handle varied response structures from the SDK, maintaining the `STTProvider` interface while improving internal resilience.
+2. **Download Resumption**: Fixed `_download_in_chunks` to correctly track bytes and handle partial failures, ensuring the "Infrastructure" layer (audio download) provides reliable data to the "Core" layer.
+3. **Empty Transcript Handling**: Enhanced `AnalyzeCallUseCase` to handle edge cases (empty transcripts) at the business logic level, providing clear status updates and avoiding unnecessary external infrastructure (LLM) calls.
+4. **Frontend Status Handling**: Updated the UI to reflect the domain status (`error`), providing the user with corrective actions (`ReprocessButton`) that trigger the backend use cases.

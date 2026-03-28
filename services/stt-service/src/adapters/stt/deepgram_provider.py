@@ -31,33 +31,64 @@ class DeepgramSTTProvider(STTProvider):
                 {"buffer": buffer}, options
             )
 
-            result = response.results
-            channel = result.channels[0].alternatives[0]
-            full_text = channel.transcript
+            # In Deepgram SDK v3, response is typically an object.
+            # We use to_dict() for easier and safer field access if available,
+            # otherwise we fall back to attribute access.
+            res_dict = {}
+            if hasattr(response, "to_dict"):
+                res_dict = response.to_dict()
+            elif hasattr(response, "results"):
+                # Manual conversion of the results part if it's an object
+                res_obj = getattr(response, "results", None)
+                if hasattr(res_obj, "to_dict"):
+                    res_dict = {"results": res_obj.to_dict()}
+                else:
+                    # Last resort fallback - though SDK v3 PrerecordedResponse has to_dict()
+                    res_dict = {"results": res_obj}
+
+            results = res_dict.get("results", {})
+            channels = results.get("channels", [])
+
+            if not channels:
+                logger.warning("Deepgram returned no channels", extra={"response": str(res_dict)[:1000]})
+                return {"text": "", "segments": []}
+
+            alternatives = channels[0].get("alternatives", [])
+            if not alternatives:
+                logger.warning("Deepgram returned no alternatives", extra={"response": str(res_dict)[:1000]})
+                return {"text": "", "segments": []}
+
+            channel = alternatives[0]
+            full_text = channel.get("transcript", "")
 
             # Map utterances → segments (start / end / text)
             segments = []
-            if result.utterances:
-                for utt in result.utterances:
+            utterances = results.get("utterances", [])
+            if utterances:
+                for utt in utterances:
                     segments.append({
-                        "start": utt.start,
-                        "end": utt.end,
-                        "text": utt.transcript,
+                        "start": utt.get("start", 0),
+                        "end": utt.get("end", 0),
+                        "text": utt.get("transcript", ""),
                     })
             else:
                 # Fallback: use word-level timestamps grouped into one segment
-                words = channel.words or []
+                words = channel.get("words", [])
                 if words:
                     segments.append({
-                        "start": words[0].start,
-                        "end": words[-1].end,
+                        "start": words[0].get("start", 0),
+                        "end": words[-1].get("end", 0),
                         "text": full_text,
                     })
 
             logger.info(
                 "Deepgram transcription complete",
-                extra={"audio_path": audio_path, "segments": len(segments),
-                       "chars": len(full_text)},
+                extra={
+                    "audio_path": audio_path,
+                    "segments": len(segments),
+                    "chars": len(full_text),
+                    "has_utterances": len(utterances) > 0
+                },
             )
             return {"text": full_text, "segments": segments}
 
