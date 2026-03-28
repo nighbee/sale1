@@ -71,7 +71,7 @@ const DirectorDashboardPage: React.FC = () => {
                 { label: t('dashboard.total_calls'), value: totalCalls, icon: 'phone_in_talk' },
                 { label: t('dashboard.avg_quality'),  value: avgQuality,  icon: 'analytics' },
                 { label: t('dashboard.active_teams'), value: managers.length, sub: t('dashboard.managers'), icon: 'groups' },
-                { label: 'Sheet Calls', value: 'Active', sub: 'Google Sheets', icon: 'table_chart' },
+                { label: t('dashboard.sheet_calls_title'), value: t('dashboard.active'), sub: t('calls.sources.sheets'), icon: 'table_chart' },
               ].map(m => (
                 <div key={m.label} className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow">
                   <div className="mb-4">

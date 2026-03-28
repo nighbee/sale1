@@ -62,41 +62,41 @@ export const ExpandableManagerRow: React.FC<ExpandableManagerRowProps> = ({
             </div>
 
             {/* Metrics */}
-            <div className="flex items-center gap-6 ml-auto">
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 ml-auto justify-end">
               {/* Quality */}
-              <div className="flex flex-col items-end min-w-max">
+              <div className="flex flex-col items-end min-w-[80px]">
                 <div className="flex items-center gap-2">
                   <span className={`text-sm font-bold ${getQualityColor(manager.avg_quality || 0)}`}>
                     {(manager.avg_quality || 0).toFixed(1)}
                   </span>
-                  <div className="w-16 h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                  <div className="hidden sm:block w-16 h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
                     <div
                       className={`h-full ${getQualityBgColor(manager.avg_quality || 0)}`}
                       style={{ width: `${Math.min(manager.avg_quality || 0, 100)}%` }}
                     />
                   </div>
                 </div>
-                <span className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                <span className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 mt-1">
                   {t('dashboard.quality')}
                 </span>
               </div>
 
               {/* Script Match */}
-              <div className="flex flex-col items-end min-w-max">
+              <div className="flex flex-col items-end min-w-[70px]">
                 <span className="text-sm font-bold text-slate-700 dark:text-slate-200">
                   {(manager.avg_script_match || 0).toFixed(0)}%
                 </span>
-                <span className="text-xs text-slate-500 dark:text-slate-400">
+                <span className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">
                   {t('dashboard.script_match')}
                 </span>
               </div>
 
               {/* KPI */}
-              <div className="flex flex-col items-end min-w-max">
+              <div className="flex flex-col items-end min-w-[60px]">
                 <span className="text-sm font-bold text-slate-700 dark:text-slate-200">
                   {(manager.avg_kpi || 0).toFixed(2)}
                 </span>
-                <span className="text-xs text-slate-500 dark:text-slate-400">
+                <span className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">
                   {t('dashboard.kpi')}
                 </span>
               </div>
