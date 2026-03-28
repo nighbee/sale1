@@ -125,7 +125,7 @@ services:
       # Docker network. MINIO_PUBLIC_ENDPOINT is used to rewrite presigned URLs returned to clients.
       MINIO_PRESIGN_ENABLED: "true"
       MINIO_PRESIGN_EXPIRY_SECONDS: "300"
-      MINIO_PUBLIC_ENDPOINT: http://localhost:9000
+      MINIO_PUBLIC_ENDPOINT: http://157.230.92.4:9000
       MINIO_SECURE: "false"
       INTERNAL_SECRET: ${INTERNAL_SECRET:-internal-secret-key}
     depends_on:
