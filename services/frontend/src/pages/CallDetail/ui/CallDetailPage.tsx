@@ -276,18 +276,14 @@ const CallDetailPage: React.FC = () => {
           </div>
           <h2 className={`text-2xl font-bold mb-2 ${call?.status === 'error' ? 'text-red-600' : ''}`}>
             {call?.status === 'error'
-              ? t("calls.error_processing", { defaultValue: "Error processing call" })
-              : t("calls.processing", { defaultValue: "Call is processing — please return later" })
+              ? t("calls.error_processing")
+              : t("dashboard.processing")
             }
           </h2>
           <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6">
             {call?.status === 'error'
-              ? t("calls.error_description", {
-                  defaultValue: "There was an error processing this call (e.g., empty audio or transcription failure). You can try to reprocess it."
-                })
-              : t("calls.processing_description", {
-                  defaultValue: "The call data is not available yet. Our background workers are processing the audio and analysis. Please check back in a few minutes."
-                })
+              ? t("calls.error_description")
+              : t("calls.processing_description")
             }
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -295,13 +291,13 @@ const CallDetailPage: React.FC = () => {
               onClick={() => window.history.back()}
               className="w-full sm:w-auto px-4 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 text-sm font-medium hover:bg-neutral-50 dark:hover:bg-neutral-800"
             >
-              {t("common.back", { defaultValue: "Go back" })}
+              {t("common.back")}
             </button>
             <Link
               to="/calls"
               className="w-full sm:w-auto px-4 py-2 rounded-lg bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 text-sm font-medium hover:bg-neutral-200 dark:hover:bg-neutral-700"
             >
-              {t("calls.view_calls", { defaultValue: "View calls" })}
+              {t("calls.view_calls")}
             </Link>
             {call?.id && <ReprocessButton callId={call.id} />}
           </div>
@@ -312,20 +308,20 @@ const CallDetailPage: React.FC = () => {
 
   return (
     <div className="bg-background-light dark:bg-background-dark text-neutral-800 dark:text-neutral-100 font-display min-h-screen flex flex-col overflow-hidden">
-      <header className="bg-surface-light dark:bg-surface-dark border-b border-neutral-200 dark:border-neutral-700 h-16 flex items-center px-6 shrink-0 z-20">
-        <div className="flex items-center gap-4 w-full">
+      <header className="bg-surface-light dark:bg-surface-dark border-b border-neutral-200 dark:border-neutral-700 min-h-16 flex items-center px-4 sm:px-6 shrink-0 z-20">
+        <div className="flex items-center gap-2 sm:gap-4 w-full overflow-hidden">
           <button
             onClick={() => window.history.back()}
-            className="text-neutral-500 hover:text-primary dark:text-neutral-400 dark:hover:text-primary transition-colors flex items-center gap-1 text-sm font-medium"
+            className="text-neutral-500 hover:text-primary dark:text-neutral-400 dark:hover:text-primary transition-colors flex items-center gap-1 text-xs sm:text-sm font-medium shrink-0"
           >
-            <span className="material-icons text-lg">arrow_back</span>{" "}
-            {t("calls.back")}
+            <span className="material-icons text-base sm:text-lg">arrow_back</span>{" "}
+            <span className="hidden xs:inline">{t("calls.back")}</span>
           </button>
-          <div className="h-6 w-px bg-neutral-200 dark:bg-neutral-700 mx-2"></div>
-          <h1 className="text-base md:text-lg font-bold text-neutral-900 dark:text-white truncate">
+          <div className="h-6 w-px bg-neutral-200 dark:bg-neutral-700 mx-1 sm:mx-2 shrink-0"></div>
+          <h1 className="text-sm sm:text-base md:text-lg font-bold text-neutral-900 dark:text-white truncate flex-1 min-w-0">
             {t("calls.call_with")} {call.manager_name}
           </h1>
-          <span className={`hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border uppercase shrink-0 ${
+          <span className={`hidden md:inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-medium border uppercase shrink-0 ${
             call.status === 'completed'
               ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border-green-200 dark:border-green-800'
               : call.status === 'error'
@@ -339,10 +335,10 @@ const CallDetailPage: React.FC = () => {
               <button
                 onClick={downloadAudio}
                 className="p-2 text-neutral-500 hover:text-primary transition-colors flex items-center gap-1 text-sm font-medium"
-                title={t('common.download', { defaultValue: 'Download' })}
+                title={t('common.download')}
               >
                 <span className="material-icons text-lg">download</span>
-                <span className="hidden sm:inline">{t('common.download', { defaultValue: 'Download' })}</span>
+                <span className="hidden sm:inline">{t('common.download')}</span>
               </button>
             )}
             <ReprocessButton callId={id!} />
@@ -423,9 +419,9 @@ const CallDetailPage: React.FC = () => {
               onEnded={() => setIsPlaying(false)}
             />
           ) : null}
-          <div className="shrink-0 bg-surface-light dark:bg-surface-dark border-b border-neutral-200 dark:border-neutral-700 p-6 z-10 shadow-sm">
+          <div className="shrink-0 bg-surface-light dark:bg-surface-dark border-b border-neutral-200 dark:border-neutral-700 p-4 sm:p-6 z-10 shadow-sm">
             <div
-              className="relative h-16 w-full mb-4 group rounded overflow-hidden"
+              className="relative h-12 sm:h-16 w-full mb-4 group rounded overflow-hidden"
               onClick={(e) => {
                 if (!audioSrc || !audioRef.current) return;
                 const rect = e.currentTarget.getBoundingClientRect();
@@ -442,7 +438,7 @@ const CallDetailPage: React.FC = () => {
                 {waveformData.current.map((height, i) => (
                   <div
                     key={i}
-                    className="w-1 mx-0.5 bg-primary/20 rounded-full"
+                    className="w-0.5 sm:w-1 mx-0.5 bg-primary/20 rounded-full"
                     style={{ height: `${height}%` }}
                   />
                 ))}
@@ -452,23 +448,23 @@ const CallDetailPage: React.FC = () => {
                 style={{ width: `${(currentTime / duration) * 100}%` }}
               />
             </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
+            <div className="flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
+              <div className="flex items-center gap-2 sm:gap-4 order-2 sm:order-1 w-full sm:w-auto justify-center sm:justify-start">
                 <button
                   className="text-neutral-500 hover:text-primary transition-colors"
                   onClick={() => seek(-10)}
                 >
-                  <span className="material-icons">replay_10</span>
+                  <span className="material-icons text-xl sm:text-2xl">replay_10</span>
                 </button>
                 <button
-                  className={`h-10 w-10 rounded-full flex items-center justify-center shadow-lg transition-all ${audioSrc ? "bg-primary text-white hover:scale-105 active:scale-95" : "bg-neutral-200 text-neutral-400 cursor-not-allowed"}`}
+                  className={`h-8 w-8 sm:h-10 sm:w-10 rounded-full flex items-center justify-center shadow-lg transition-all ${audioSrc ? "bg-primary text-white hover:scale-105 active:scale-95" : "bg-neutral-200 text-neutral-400 cursor-not-allowed"}`}
                   onClick={() => {
                     if (!audioSrc) return;
                     togglePlay();
                   }}
                   aria-disabled={!audioSrc}
                 >
-                  <span className="material-icons">
+                  <span className="material-icons text-xl sm:text-2xl">
                     {isPlaying ? "pause" : "play_arrow"}
                   </span>
                 </button>
@@ -476,25 +472,25 @@ const CallDetailPage: React.FC = () => {
                   className="text-neutral-500 hover:text-primary transition-colors"
                   onClick={() => seek(10)}
                 >
-                  <span className="material-icons">forward_10</span>
+                  <span className="material-icons text-xl sm:text-2xl">forward_10</span>
                 </button>
-                <div className="text-sm font-mono font-medium text-neutral-600 dark:text-neutral-300 ml-2">
+                <div className="text-[10px] sm:text-sm font-mono font-medium text-neutral-600 dark:text-neutral-300 ml-1 sm:ml-2">
                   {audioSrc ? (
                     <>
                       {formatTime(currentTime)} / {formatTime(duration)}
                     </>
                   ) : (
-                    <span className="text-sm text-neutral-500">
+                    <span className="text-xs text-neutral-500">
                       {t("calls.no_audio")}
                     </span>
                   )}
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 order-1 sm:order-2 ml-auto">
                 <select
                   value={playbackRate}
                   onChange={(e) => handlePlaybackRateChange(parseFloat(e.target.value))}
-                  className="bg-neutral-100 dark:bg-neutral-800 border-none rounded-lg px-2 py-1 text-xs font-medium focus:ring-1 focus:ring-primary outline-none"
+                  className="bg-neutral-100 dark:bg-neutral-800 border-none rounded-lg px-1.5 py-0.5 sm:px-2 sm:py-1 text-[10px] sm:text-xs font-medium focus:ring-1 focus:ring-primary outline-none"
                   disabled={!audioSrc}
                 >
                   <option value={0.5}>0.5x</option>
