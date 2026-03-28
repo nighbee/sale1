@@ -5,6 +5,8 @@ import { PageLayout } from '../../../widgets/PageLayout';
 import { integrationApi } from '../../../entities/integration/api';
 import type { Integration } from '../../../entities/integration/types';
 import IntegrationModal from '../../../features/integrations/ui/IntegrationModal';
+import Button from '../../../shared/ui/Button';
+import Input from '../../../shared/ui/Input';
 
 const IntegrationsPage: React.FC = () => {
   const { t } = useTranslation();
@@ -13,11 +15,17 @@ const IntegrationsPage: React.FC = () => {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedType, setSelectedType] = useState<string | null>(null);
+  const [aiSettings, setAiSettings] = useState<any>(null);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
 
   const fetchIntegrations = async () => {
     try {
-      const res = await integrationApi.list();
+      const [res, settingsRes] = await Promise.all([
+          integrationApi.list(),
+          integrationApi.getAISettings()
+      ]);
       setIntegrations(res.data.integrations || []);
+      setAiSettings(settingsRes.data);
     } catch {
       console.error('Failed to fetch integrations');
     } finally {
@@ -62,6 +70,18 @@ const IntegrationsPage: React.FC = () => {
     }
   };
 
+  const handleSaveAISettings = async () => {
+      setIsSavingSettings(true);
+      try {
+          await integrationApi.updateAISettings(aiSettings);
+          toast.success('AI settings updated');
+      } catch {
+          toast.error('Failed to update AI settings');
+      } finally {
+          setIsSavingSettings(false);
+      }
+  };
+
   if (loading) return (
     <PageLayout title={t('integrations.title')}>
         <div className="p-8">{t('integrations.loading')}</div>
@@ -80,6 +100,63 @@ const IntegrationsPage: React.FC = () => {
             {t('integrations.request')}
           </button>
         </div>
+
+        <section className="mb-16">
+          <div className="flex items-center gap-2 mb-6">
+            <span className="material-symbols-outlined text-primary">psychology</span>
+            <h2 className="text-slate-900 dark:text-white text-2xl font-bold tracking-tight">AI Provider Settings</h2>
+          </div>
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-8 shadow-sm">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+              <div className="space-y-4">
+                  <h3 className="font-bold text-lg text-slate-800 dark:text-slate-200">Transcription (STT)</h3>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Default STT Provider</label>
+                    <select
+                      className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 text-sm"
+                      value={aiSettings?.stt_provider || 'openai'}
+                      onChange={e => setAiSettings({...aiSettings, stt_provider: e.target.value})}
+                    >
+                      <option value="openai">OpenAI (Whisper)</option>
+                      <option value="groq">Groq (Whisper)</option>
+                      <option value="deepgram">Deepgram</option>
+                      <option value="gemini">Google Gemini</option>
+                    </select>
+                  </div>
+                  <Input
+                    label="Default STT Model"
+                    placeholder="whisper-1"
+                    value={aiSettings?.stt_model || ''}
+                    onChange={e => setAiSettings({...aiSettings, stt_model: e.target.value})}
+                  />
+              </div>
+
+              <div className="space-y-4">
+                  <h3 className="font-bold text-lg text-slate-800 dark:text-slate-200">Analysis (LLM)</h3>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Default LLM Provider</label>
+                    <select
+                      className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 text-sm"
+                      value={aiSettings?.llm_provider || 'openai'}
+                      onChange={e => setAiSettings({...aiSettings, llm_provider: e.target.value})}
+                    >
+                      <option value="openai">OpenAI (GPT)</option>
+                      <option value="gemini">Google Gemini</option>
+                    </select>
+                  </div>
+                  <Input
+                    label="Default LLM Model"
+                    placeholder="gpt-4-turbo-preview"
+                    value={aiSettings?.llm_model || ''}
+                    onChange={e => setAiSettings({...aiSettings, llm_model: e.target.value})}
+                  />
+              </div>
+            </div>
+            <div className="flex justify-end">
+                <Button onClick={handleSaveAISettings} isLoading={isSavingSettings}>Save AI Settings</Button>
+            </div>
+          </div>
+        </section>
 
         <section className="mb-16">
           <div className="flex items-center gap-2 mb-6">

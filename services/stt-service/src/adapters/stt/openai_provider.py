@@ -3,17 +3,23 @@ from openai import AsyncOpenAI
 from src.core.ports.stt_provider import STTProvider
 
 class OpenAISTTProvider(STTProvider):
-    def __init__(self, api_key: str = None):
+    def __init__(self, api_key: str = None, base_url: str = None, model: str = "whisper-1"):
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         if not self.api_key:
             raise ValueError("OPENAI_API_KEY is not set")
-        self.client = AsyncOpenAI(api_key=self.api_key)
+
+        client_kwargs = {"api_key": self.api_key}
+        if base_url:
+            client_kwargs["base_url"] = base_url
+
+        self.client = AsyncOpenAI(**client_kwargs)
+        self.model = model
 
     async def transcribe(self, audio_path: str) -> dict:
         try:
             with open(audio_path, "rb") as audio_file:
                 transcript = await self.client.audio.transcriptions.create(
-                    model="whisper-1",
+                    model=self.model,
                     file=audio_file,
                     response_format="verbose_json"
                 )

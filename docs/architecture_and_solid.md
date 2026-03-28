@@ -59,3 +59,24 @@ High-level modules should not depend on low-level modules. Both should depend on
 3. **Empty Transcript Handling**: Enhanced `AnalyzeCallUseCase` to handle edge cases (empty transcripts) at the business logic level, providing clear status updates and avoiding unnecessary external infrastructure (LLM) calls.
 4. **Frontend Status Handling**: Updated the UI to reflect the domain status (`error`), providing the user with corrective actions (`ReprocessButton`) that trigger the backend use cases.
 5. **Idempotent Data Operations**: Updated `stt-service` and `ai-analytics` database adapters to use `ON CONFLICT (call_id) DO UPDATE` (upsert) for transcripts and analysis reports. This ensures the processing pipeline is idempotent and correctly handles call reprocessing without duplicate key violations.
+6. **Unified AI Provider System**: Introduced a multi-provider abstraction for STT and LLM. `STTProviderFactory` and `LLMProviderFactory` dynamically instantiate providers (OpenAI, Gemini, Groq, Deepgram) based on global settings fetched from `main-api`. This centralizes provider configuration and allows for runtime provider/model selection without redeploying microservices.
+
+## AI Provider Integration Guide
+
+### 1. Adding a New STT Provider
+To add a new Speech-to-Text provider to `stt-service`:
+1.  **Define the Adapter**: Create a new class in `services/stt-service/src/adapters/stt/` (e.g., `MyNewSTTProvider.py`) that implements the `STTProvider` interface from `src/core/ports/stt_provider.py`.
+2.  **Update the Factory**: Add the new provider to `STTProviderFactory.create` in `services/stt-service/src/adapters/stt/factory.py`.
+3.  **Configure Credentials**: Ensure the provider can fetch its API key from the `integrations` list or environment variables.
+
+### 2. Adding a New LLM Provider
+To add a new Large Language Model provider to `ai-analytics`:
+1.  **Define the Adapter**: Create a new class in `services/ai-analytics/src/adapters/llm/` that implements the `LLMProvider` interface from `src/core/ports/llm_provider.py`.
+2.  **Update the Factory**: Add the new provider to `LLMProviderFactory.create` in `services/ai-analytics/src/adapters/llm/factory.py`.
+3.  **Update Frontend**: Add the new provider name to the selection dropdown in `services/frontend/src/pages/Integrations/ui/IntegrationsPage.tsx`.
+
+### 3. Using OpenAI-Compatible APIs
+The system supports any OpenAI-compatible API (like Groq, Together AI, or local vLLM).
+1.  **Create Integration**: In the Integrations UI, select "OpenAI".
+2.  **Set Base URL**: Provide the custom `Base URL` (e.g., `https://api.groq.com/openai/v1`).
+3.  **Set Model**: Update the "Default Model" in the AI Provider Settings section of the Integrations page.

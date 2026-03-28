@@ -86,3 +86,9 @@ type IntegrationRepository interface {
 	Update(ctx context.Context, integration *domain.Integration) error
 	Delete(ctx context.Context, integrationType domain.IntegrationType) error
 }
+
+// AISettingsRepository defines the contract for AI configuration settings.
+type AISettingsRepository interface {
+	Get(ctx context.Context) (*domain.AISettings, error)
+	Update(ctx context.Context, settings *domain.AISettings) error
+}

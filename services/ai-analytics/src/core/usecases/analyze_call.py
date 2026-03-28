@@ -5,8 +5,7 @@ from src.adapters.storage.postgres_repo import (
     get_transcript, get_call, get_active_script_by_manager, get_team_script, save_analysis,
     create_notification, get_admin_user, update_call_status
 )
-from src.infrastructure.llm.openai_client import OpenAIClient
-from src.infrastructure.llm.gemini_client import GeminiClient
+from src.adapters.llm.factory import LLMProviderFactory
 from src.infrastructure.prompts.system_prompts import SYSTEM_PROMPT, get_user_prompt
 from src.adapters.events.redis_publisher import publish_analysis_completed, publish_critical_error
 from src.adapters.crm.amocrm_client import AmoCRMClient
@@ -72,40 +71,38 @@ class AnalyzeCallUseCase:
             },
         )
 
-        # 4. Get LLM settings - default to openai for single-company
-        llm_provider = os.getenv("LLM_PROVIDER", "openai")
+        # 4. Get LLM settings
+        ai_settings = await self.api_client.get_ai_settings()
+
+        # Priority: 1. integrations (DB) 2. fallback to .env
+        llm_provider_name = None
+        llm_model_name = None
+
+        if ai_settings:
+            llm_provider_name = ai_settings.get("llm_provider")
+            llm_model_name = ai_settings.get("llm_model")
+
+        # Fallback to .env
+        llm_provider_name = llm_provider_name or os.getenv("LLM_PROVIDER")
+        llm_model_name = llm_model_name or os.getenv("LLM_MODEL")
+
+        # Final default
+        llm_provider_name = llm_provider_name or "openai"
 
         integrations = await self.api_client.get_active_integrations()
-        integration = next((i for i in integrations if i.get("integration_type") == llm_provider), None)
-
-        api_key = None
-        if integration:
-            creds = integration.get("credentials", {})
-            if isinstance(creds, str):
-                try:
-                    creds = json.loads(creds)
-                except:
-                    pass
-            if isinstance(creds, dict):
-                api_key = creds.get("api_key")
 
         logger.info(
             "[2/4] sending to LLM",
             extra={
                 "call_id": call_id,
-                "llm_provider": llm_provider,
+                "llm_provider": llm_provider_name,
+                "llm_model": llm_model_name,
                 "prompt_chars": len(SYSTEM_PROMPT) + len(user_prompt),
-                "has_integration": integration is not None,
-                "has_api_key": api_key is not None and len(api_key) > 0 if api_key else False,
             },
         )
 
-        if llm_provider == "gemini":
-            gemini_client = GeminiClient(api_key=api_key)
-            analysis = await gemini_client.analyze(SYSTEM_PROMPT, user_prompt)
-        else:
-            openai_client = OpenAIClient(api_key=api_key)
-            analysis = await openai_client.analyze(SYSTEM_PROMPT, user_prompt)
+        llm_provider = LLMProviderFactory.create(llm_provider_name, integrations, default_model=llm_model_name)
+        analysis = await llm_provider.analyze(SYSTEM_PROMPT, user_prompt)
 
         logger.info(
             "[2/4] LLM response received",
@@ -157,7 +154,7 @@ class AnalyzeCallUseCase:
             'recommendation': analysis.get('recommendation', ''),
             'brief': analysis.get('brief', ''),
             'next_best_action': analysis.get('nextBestAction', ''),
-            'llm_provider': llm_provider
+            'llm_provider': llm_provider_name
         }
 
         save_analysis(report)
