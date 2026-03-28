@@ -64,6 +64,42 @@ class ProcessAudioUseCase:
         else:
             return OpenAISTTProvider(api_key=api_key)
 
+    async def _download_stream(self, url: str, target_path: str) -> None:
+        start_time = time.monotonic()
+        async with httpx.AsyncClient(
+            timeout=httpx.Timeout(None, connect=10.0),
+            follow_redirects=True,
+            http2=False,
+        ) as client:
+            async with client.stream("GET", url) as response:
+                response.raise_for_status()
+
+                bytes_downloaded = 0
+
+                with open(target_path, "wb") as f:
+                    async for chunk in response.aiter_bytes():
+                        f.write(chunk)
+                        bytes_downloaded += len(chunk)
+
+                        if bytes_downloaded % (100 * 1024) < len(chunk):
+                            logger.info(
+                                "Streaming download progress",
+                                extra={
+                                    "url": url,
+                                    "downloaded_kb": round(bytes_downloaded / 1024, 1),
+                                },
+                            )
+
+        duration = round(time.monotonic() - start_time, 2)
+        logger.info(
+            "Streaming download completed",
+            extra={
+                "url": url,
+                "total_kb": round(bytes_downloaded / 1024, 1),
+                "duration_s": duration,
+            },
+        )
+
     async def _download_with_resume(
         self,
         url: str,
@@ -83,7 +119,7 @@ class ProcessAudioUseCase:
         # Create a client with HTTP/1.1 forced and cookie jar
         async with httpx.AsyncClient(
             http2=False,  # force HTTP/1.1
-            timeout=httpx.Timeout(10.0, read=30.0),
+            timeout=httpx.Timeout(None, connect=10.0),
             follow_redirects=True,
         ) as client:
             # If this is the problematic host that stalls on long streams,
@@ -94,12 +130,10 @@ class ProcessAudioUseCase:
             host = (parsed.hostname or "").lower()
             if "sipuni.com" in host:
                 logger.info(
-                    "Using chunked-only download for problematic host",
-                    extra={"url": url, "host": host, "chunk_size": chunk_size},
+                    "Detected Sipuni streaming endpoint, using streaming download",
+                    extra={"url": url}
                 )
-                # Use the same client (preserve cookies/session) and a small
-                # chunk size (default 15 KB) to avoid per-connection limits.
-                await self._download_in_chunks(url, target_path, client, chunk_size=chunk_size)
+                await self._download_stream(url, target_path)
                 return
 
             for attempt in range(1, max_attempts + 1):
@@ -367,7 +401,12 @@ class ProcessAudioUseCase:
                     split_fallback=True,
                 )
 
-            file_size_kb = round(os.path.getsize(tmp_path) / 1024, 1)
+            # Safety validation after download
+            file_size = os.path.getsize(tmp_path)
+            if file_size < 50 * 1024:  # 50KB sanity check
+                raise RuntimeError(f"Downloaded file too small: {file_size} bytes")
+
+            file_size_kb = round(file_size / 1024, 1)
             logger.info("[1/6] audio downloaded", extra={"call_id": call_id, "file_size_kb": file_size_kb, "tmp_path": tmp_path})
 
             # 2. Convert to 16kHz WAV
