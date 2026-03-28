@@ -45,7 +45,6 @@ services:
       MINIO_ROOT_PASSWORD: minioadmin123
       MINIO_PRESIGN_ENABLED: "true"
       MINIO_PRESIGN_EXPIRY_SECONDS: "300"
-      MINIO_PUBLIC_ENDPOINT: "http://127.0.0.1:9000/minio"
     volumes:
       - minio_data:/data
     ports:
@@ -126,7 +125,7 @@ services:
       # Docker network. MINIO_PUBLIC_ENDPOINT is used to rewrite presigned URLs returned to clients.
       MINIO_PRESIGN_ENABLED: "true"
       MINIO_PRESIGN_EXPIRY_SECONDS: "300"
-      MINIO_PUBLIC_ENDPOINT: "http://localhost/minio"
+      MINIO_PUBLIC_ENDPOINT: "http://127.0.0.1:9000/minio"
       MINIO_SECURE: "false"
       INTERNAL_SECRET: ${INTERNAL_SECRET:-internal-secret-key}
     depends_on:
