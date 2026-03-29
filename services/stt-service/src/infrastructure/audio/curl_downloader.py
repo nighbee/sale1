@@ -27,14 +27,17 @@ class CurlDownloader(AudioDownloader):
         cmd = [
             "curl",
             "-L",
+            "-C", "-",
             "-o", target_path,
             "--fail",
             "--connect-timeout", "10",
             "--max-time", str(self.timeout_s),
             "--http1.1",
-            "--retry", "3",
-            "--speed-limit", "1000",
-            "--speed-time", "30",
+            "--retry", "5",
+            "--retry-delay", "5",
+            "--retry-all-errors",
+            "--speed-limit", "100",
+            "--speed-time", "60",
             "-v",
             url
         ]
