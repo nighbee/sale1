@@ -37,7 +37,10 @@ class CurlDownloader(AudioDownloader):
             "--retry-delay", "5",
             "--retry-all-errors",
             "--speed-limit", "100",
-            "--speed-time", "60",
+            "--speed-time", "20",
+            "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            "--compressed",
+            "--keepalive-time", "60",
             "-v",
             url
         ]
