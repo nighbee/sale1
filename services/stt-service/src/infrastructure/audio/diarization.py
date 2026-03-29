@@ -1,4 +1,5 @@
 import os
+import asyncio
 import logging
 try:
     import torch
@@ -26,12 +27,12 @@ class DiarizationService:
         else:
             logger.warning("HF_TOKEN not set or torch not installed, Pyannote diarization will be skipped")
 
-    def process(self, audio_path):
+    async def process(self, audio_path):
         if not self.pipeline:
             return None
 
         try:
-            diarization = self.pipeline(audio_path)
+            diarization = await asyncio.to_thread(self.pipeline, audio_path)
             segments = []
             for turn, _, speaker in diarization.itertracks(yield_label=True):
                 segments.append({

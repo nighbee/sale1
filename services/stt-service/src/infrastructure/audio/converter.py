@@ -1,4 +1,5 @@
 import os
+import asyncio
 import logging
 from pydub import AudioSegment
 
@@ -11,11 +12,15 @@ class AudioConverter:
     """
 
     @staticmethod
-    def to_stt_wav(input_path: str) -> str:
+    async def to_stt_wav(input_path: str) -> str:
         """
         Converts any audio file to a 16kHz mono WAV file suitable for transcription and diarization.
         Returns the path to the newly created WAV file.
         """
+        return await asyncio.to_thread(AudioConverter._to_stt_wav_sync, input_path)
+
+    @staticmethod
+    def _to_stt_wav_sync(input_path: str) -> str:
         try:
             # Determine output path (e.g., input.mp3 -> input_16k.wav)
             base_path, _ = os.path.splitext(input_path)
@@ -34,8 +39,12 @@ class AudioConverter:
             raise
 
     @staticmethod
-    def get_duration_seconds(file_path: str) -> float:
+    async def get_duration_seconds(file_path: str) -> float:
         """ Returns the duration of an audio file in seconds. """
+        return await asyncio.to_thread(AudioConverter._get_duration_seconds_sync, file_path)
+
+    @staticmethod
+    def _get_duration_seconds_sync(file_path: str) -> float:
         try:
             audio = AudioSegment.from_file(file_path)
             return round(len(audio) / 1000, 2)
