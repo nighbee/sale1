@@ -41,15 +41,16 @@ async def start_consumer():
                         "max_retries": max_retries,
                     },
                 )
-                log_processing_event(call_id, "stt-service", "processing", retry_count=retry_count)
-                update_call_status(call_id, "processing")
-
                 t_start = time.monotonic()
                 try:
                     logger.info("STT processing started", extra={"call_id": call_id})
+                    await asyncio.to_thread(log_processing_event, call_id, "stt-service", "processing", retry_count=retry_count)
+                    await asyncio.to_thread(update_call_status, call_id, "processing")
+
                     await use_case.execute(job)
                     elapsed = round(time.monotonic() - t_start, 2)
-                    log_processing_event(call_id, "stt-service", "completed", retry_count=retry_count)
+                    await asyncio.to_thread(log_processing_event, call_id, "stt-service", "completed", retry_count=retry_count)
+                    await asyncio.to_thread(update_call_status, call_id, "completed")
                     JOBS_PROCESSED.labels(status='completed').inc()
                     logger.info(
                         "STT job completed successfully",
@@ -77,8 +78,8 @@ async def start_consumer():
                     if len(error_message) > MAX_ERR_LEN:
                         error_message = error_message[:MAX_ERR_LEN] + "... (truncated)"
 
-                    log_processing_event(call_id, "stt-service", "error", error_message=error_message, retry_count=retry_count)
-                    update_call_status(call_id, "error")
+                    await asyncio.to_thread(log_processing_event, call_id, "stt-service", "error", error_message=error_message, retry_count=retry_count)
+                    await asyncio.to_thread(update_call_status, call_id, "error")
 
                     if retry_count < max_retries:
                         next_attempt = retry_count + 1
