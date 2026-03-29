@@ -10,7 +10,17 @@ class Config:
         "DATABASE_URL",
         "host=postgres port=5432 user=salesai_user password=strong_password dbname=salesai sslmode=disable",
     )
-    REDIS_URL: str = os.getenv("REDIS_URL", "redis://redis:6379")
+    @staticmethod
+    def get_redis_url() -> str:
+        url = os.getenv("REDIS_URL")
+        if url:
+            return url
+        password = os.getenv("REDIS_PASSWORD")
+        host = os.getenv("REDIS_HOST", "redis")
+        port = os.getenv("REDIS_PORT", "6379")
+        if password:
+            return f"redis://:{password}@{host}:{port}"
+        return f"redis://{host}:{port}"
 
     # Google Sheets
     GOOGLE_SHEETS_ID: str = os.getenv("GOOGLE_SHEETS_ID", "")

@@ -9,7 +9,16 @@ from src.infrastructure.monitoring.metrics import EVENTS_PROCESSED
 logger = logging.getLogger(__name__)
 
 async def start_consumer():
-    redis_url = os.getenv("REDIS_URL", "redis://redis:6379")
+    redis_url = os.getenv("REDIS_URL")
+    if not redis_url:
+        password = os.getenv("REDIS_PASSWORD")
+        host = os.getenv("REDIS_HOST", "redis")
+        port = os.getenv("REDIS_PORT", "6379")
+        if password:
+            redis_url = f"redis://:{password}@{host}:{port}"
+        else:
+            redis_url = f"redis://{host}:{port}"
+
     r = await redis.from_url(redis_url)
 
     use_case = AnalyzeCallUseCase()

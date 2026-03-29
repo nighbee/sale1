@@ -59,14 +59,15 @@ class Pipeline:
     def __init__(self):
         self.api_client = MainAPIClient()
         # Initialise queue client with logging and fail-fast on error
+        redis_url = Config.get_redis_url()
         try:
             self.queue = QueueClient(
-                redis_url=Config.REDIS_URL,
+                redis_url=redis_url,
                 queue_name=Config.QUEUE_NAME,
             )
-            logger.info("Queue client initialised", extra={"redis_url": Config.REDIS_URL, "queue_name": Config.QUEUE_NAME})
+            logger.info("Queue client initialised", extra={"redis_url": redis_url, "queue_name": Config.QUEUE_NAME})
         except Exception:
-            logger.exception("Failed to initialise QueueClient", extra={"redis_url": Config.REDIS_URL, "queue_name": Config.QUEUE_NAME})
+            logger.exception("Failed to initialise QueueClient", extra={"redis_url": redis_url, "queue_name": Config.QUEUE_NAME})
             raise
 
         logger.info("Pipeline initialised")

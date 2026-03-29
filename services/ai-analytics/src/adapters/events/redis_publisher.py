@@ -7,7 +7,16 @@ from datetime import datetime
 logger = logging.getLogger(__name__)
 
 async def publish_analysis_completed(call_id, overall_rating):
-    redis_url = os.getenv("REDIS_URL", "redis://redis:6379")
+    redis_url = os.getenv("REDIS_URL")
+    if not redis_url:
+        password = os.getenv("REDIS_PASSWORD")
+        host = os.getenv("REDIS_HOST", "redis")
+        port = os.getenv("REDIS_PORT", "6379")
+        if password:
+            redis_url = f"redis://:{password}@{host}:{port}"
+        else:
+            redis_url = f"redis://{host}:{port}"
+
     r = await redis.from_url(redis_url)
 
     event = {
@@ -29,7 +38,16 @@ async def publish_analysis_completed(call_id, overall_rating):
         await r.close()
 
 async def publish_critical_error(call_id, error_type, message):
-    redis_url = os.getenv("REDIS_URL", "redis://redis:6379")
+    redis_url = os.getenv("REDIS_URL")
+    if not redis_url:
+        password = os.getenv("REDIS_PASSWORD")
+        host = os.getenv("REDIS_HOST", "redis")
+        port = os.getenv("REDIS_PORT", "6379")
+        if password:
+            redis_url = f"redis://:{password}@{host}:{port}"
+        else:
+            redis_url = f"redis://{host}:{port}"
+
     r = await redis.from_url(redis_url)
 
     event = {

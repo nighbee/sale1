@@ -50,7 +50,20 @@ func main() {
 
 	redisURL := os.Getenv("REDIS_URL")
 	if redisURL == "" {
-		redisURL = "redis://redis:6379"
+		password := os.Getenv("REDIS_PASSWORD")
+		host := os.Getenv("REDIS_HOST")
+		if host == "" {
+			host = "redis"
+		}
+		port := os.Getenv("REDIS_PORT")
+		if port == "" {
+			port = "6379"
+		}
+		if password != "" {
+			redisURL = "redis://:" + password + "@" + host + ":" + port
+		} else {
+			redisURL = "redis://" + host + ":" + port
+		}
 	}
 
 	dbURL := os.Getenv("DATABASE_URL")

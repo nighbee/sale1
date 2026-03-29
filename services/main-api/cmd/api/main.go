@@ -148,21 +148,20 @@ func main() {
 	}
 
 	// Redis client
-	redisAddr := strings.TrimSpace(cfg.RedisURL)
-	if strings.Contains(redisAddr, "://") {
-		u, err := url.Parse(redisAddr)
-		if err == nil && u.Host != "" {
-			redisAddr = u.Host
-		} else {
-			redisAddr = strings.TrimPrefix(redisAddr, "redis://")
-			redisAddr = strings.TrimPrefix(redisAddr, "rediss://")
+	var opts *redis.Options
+	if strings.Contains(cfg.RedisURL, "://") {
+		opts, err = redis.ParseURL(cfg.RedisURL)
+		if err != nil {
+			log.Fatal("Failed to parse Redis URL", zap.Error(err))
+		}
+	} else {
+		opts = &redis.Options{
+			Addr: cfg.RedisURL,
 		}
 	}
 
-	rdb := redis.NewClient(&redis.Options{
-		Addr: redisAddr,
-	})
-	log.Info("Redis client initialised", zap.String("addr", redisAddr))
+	rdb := redis.NewClient(opts)
+	log.Info("Redis client initialised", zap.String("addr", opts.Addr))
 
 	// Publishers
 	bullmqPublisher := queue.NewBullMQPublisher(rdb)
