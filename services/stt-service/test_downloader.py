@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 async def test_http_download():
     # Use a reliable public file for testing
-    url = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
+    url = "https://raw.githubusercontent.com/mathiasbynens/he/master/README.md"
     with tempfile.NamedTemporaryFile(delete=False) as tmp:
         tmp_path = tmp.name
 
@@ -29,7 +29,7 @@ async def test_http_download():
 
 async def test_curl_download():
     # Use a reliable public file for testing
-    url = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
+    url = "https://raw.githubusercontent.com/mathiasbynens/he/master/README.md"
     with tempfile.NamedTemporaryFile(delete=False) as tmp:
         tmp_path = tmp.name
 
