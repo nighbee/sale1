@@ -11,6 +11,10 @@ class DownloaderFactory:
         if url.startswith("minio://"):
             return MinioDownloader(minio_client)
 
+        # Force curl for Sipuni as it is more robust for their streaming endpoint
+        if "sipuni.com" in url.lower():
+            return CurlDownloader()
+
         strategy = os.getenv("STT_DOWNLOAD_STRATEGY", "http").lower()
         if strategy == "curl":
             return CurlDownloader()
