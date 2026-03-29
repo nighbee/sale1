@@ -57,7 +57,7 @@ class ProcessAudioUseCase:
 
             # Safety validation after download
             file_size = os.path.getsize(tmp_path)
-            if file_size < 50 * 1024:  # 50KB sanity check
+            if file_size < 5 * 1024:  # 5KB sanity check (reduced from 50KB to allow short valid calls)
                 raise RuntimeError(f"Downloaded file too small: {file_size} bytes")
 
             file_size_kb = round(file_size / 1024, 1)
@@ -65,8 +65,8 @@ class ProcessAudioUseCase:
 
             # 2. Convert to 16kHz WAV
             logger.info("[2/6] converting to 16kHz WAV", extra={"call_id": call_id})
-            duration_s = AudioConverter.get_duration_seconds(tmp_path)
-            wav_path = AudioConverter.to_stt_wav(tmp_path)
+            duration_s = await AudioConverter.get_duration_seconds(tmp_path)
+            wav_path = await AudioConverter.to_stt_wav(tmp_path)
             wav_size_kb = round(os.path.getsize(wav_path) / 1024, 1)
             logger.info("[2/6] WAV conversion done",
                         extra={"call_id": call_id, "duration_s": duration_s,
@@ -110,10 +110,34 @@ class ProcessAudioUseCase:
             stt_provider = STTProviderFactory.create(stt_provider_name, integrations, default_model=stt_model_name)
 
             t_stt = time.monotonic()
-            transcript_data = await stt_provider.transcribe(tmp_path)
+            try:
+                transcript_data = await stt_provider.transcribe(tmp_path)
+            except Exception as e:
+                logger.error(
+                    "STT provider transcription failed",
+                    extra={
+                        "call_id": call_id,
+                        "stt_provider": stt_provider_name,
+                        "error": str(e)
+                    }
+                )
+                raise
             stt_elapsed = round(time.monotonic() - t_stt, 2)
             stt_text = transcript_data.get("text", "")
             stt_segments = transcript_data.get("segments", [])
+
+            # Fallback: if text is present but segments are missing, create a single segment
+            if stt_text.strip() and not stt_segments:
+                logger.info(
+                    "STT provider returned text but no segments, using fallback",
+                    extra={"call_id": call_id, "stt_provider": stt_provider_name}
+                )
+                stt_segments = [{
+                    "start": 0.0,
+                    "end": duration_s or 0.0,
+                    "text": stt_text
+                }]
+                transcript_data["segments"] = stt_segments
             logger.info("[4/6] STT transcription received",
                         extra={"call_id": call_id, "stt_provider": stt_provider_name,
                                "elapsed_s": stt_elapsed, "segment_count": len(stt_segments),
@@ -122,7 +146,7 @@ class ProcessAudioUseCase:
 
             # 5. Diarization (still uses the 16 kHz WAV for local processing)
             logger.info("[5/6] running diarization", extra={"call_id": call_id, "wav_path": wav_path})
-            diarization_segments = self.diarization_service.process(wav_path)
+            diarization_segments = await self.diarization_service.process(wav_path)
             logger.info("[5/6] diarization done",
                         extra={"call_id": call_id,
                                "diarization_segments": len(diarization_segments) if diarization_segments else 0})

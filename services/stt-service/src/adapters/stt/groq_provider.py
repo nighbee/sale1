@@ -1,4 +1,5 @@
 import os
+import asyncio
 from openai import AsyncOpenAI
 from src.core.ports.stt_provider import STTProvider
 
@@ -17,22 +18,33 @@ class GroqSTTProvider(STTProvider):
 
     async def transcribe(self, audio_path: str) -> dict:
         try:
-            with open(audio_path, "rb") as audio_file:
-                transcript = await self.client.audio.transcriptions.create(
-                    model=self.model,
-                    file=audio_file,
-                    response_format="verbose_json",
-                    timestamp_granularities=["segment"],
-                )
+            # Move synchronous file reading to a thread
+            audio_buffer = await asyncio.to_thread(self._read_file, audio_path)
+
+            transcript = await self.client.audio.transcriptions.create(
+                model=self.model,
+                file=("audio.mp3", audio_buffer),
+                # If audio_path is used as a path, AsyncOpenAI might try to open it synchronously.
+                # Passing the buffer directly ensures we control the I/O.
+                response_format="verbose_json",
+                timestamp_granularities=["segment"],
+            )
 
             segments = []
             if hasattr(transcript, "segments") and transcript.segments:
                 for seg in transcript.segments:
-                    segments.append({
-                        "start": seg["start"],
-                        "end": seg["end"],
-                        "text": seg["text"],
-                    })
+                    if isinstance(seg, dict):
+                        segments.append({
+                            "start": seg.get("start") or 0.0,
+                            "end": seg.get("end") or 0.0,
+                            "text": seg.get("text") or "",
+                        })
+                    else:
+                        segments.append({
+                            "start": getattr(seg, "start", 0.0) or 0.0,
+                            "end": getattr(seg, "end", 0.0) or 0.0,
+                            "text": getattr(seg, "text", "") or "",
+                        })
 
             return {
                 "text": transcript.text,
@@ -40,3 +52,7 @@ class GroqSTTProvider(STTProvider):
             }
         except Exception as e:
             raise Exception(f"Groq STT failed: {str(e)}")
+
+    def _read_file(self, path: str) -> bytes:
+        with open(path, "rb") as f:
+            return f.read()
