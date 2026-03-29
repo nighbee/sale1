@@ -75,11 +75,11 @@ class ProcessAudioUseCase:
             # 3. Archive to MinIO
             logger.info("[3/6] uploading to MinIO", extra={"call_id": call_id, "object_name": f"{call_id}.wav"})
             object_name = f"{call_id}.wav"
-            self.minio.upload_file(object_name, wav_path)
+            await asyncio.to_thread(self.minio.upload_file, object_name, wav_path)
             logger.info("[3/6] MinIO upload done", extra={"call_id": call_id, "object_name": object_name})
 
             # Update call record with MinIO reference
-            update_call_link(call_id, f"minio://audio/{object_name}")
+            await asyncio.to_thread(update_call_link, call_id, f"minio://audio/{object_name}")
 
             # 4. Transcribe (using API provider)
             # Send the original compressed MP3 to the STT API — WAV is uncompressed
@@ -171,7 +171,7 @@ class ProcessAudioUseCase:
 
             # Save to DB
             # We wrap the segments in the expected JSON column structure
-            save_transcript(call_id, segments, stt_provider_name)
+            await asyncio.to_thread(save_transcript, call_id, segments, stt_provider_name)
 
             # Publish event
             await publish_transcript_ready(call_id)
