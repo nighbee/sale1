@@ -27,28 +27,31 @@ async def test_http_download():
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
 
-async def test_minio_download():
-    # This might fail if MinIO is not running or accessible, but let's see if it initializes
-    url = "minio://audio/test.wav"
+async def test_curl_download():
+    # Use a reliable public file for testing
+    url = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
     with tempfile.NamedTemporaryFile(delete=False) as tmp:
         tmp_path = tmp.name
 
     try:
-        logger.info(f"Testing MinIO download initialization for {url}")
+        logger.info(f"Testing Curl download from {url}")
+        os.environ["STT_DOWNLOAD_STRATEGY"] = "curl"
         downloader = DownloaderFactory.create(url)
-        # We won't actually call download unless we are sure MinIO is up,
-        # but let's try it and catch the error to see if it routes correctly.
-        try:
-            await downloader.download(url, tmp_path)
-        except Exception as e:
-            logger.info(f"MinIO download failed as expected (or due to env): {e}")
+        await downloader.download(url, tmp_path)
+
+        if os.path.exists(tmp_path) and os.path.getsize(tmp_path) > 0:
+            logger.info(f"Curl download successful. Size: {os.path.getsize(tmp_path)} bytes")
+        else:
+            logger.error("Curl download failed: File empty or not found")
     finally:
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
+        if "STT_DOWNLOAD_STRATEGY" in os.environ:
+            del os.environ["STT_DOWNLOAD_STRATEGY"]
 
 async def main():
     await test_http_download()
-    await test_minio_download()
+    await test_curl_download()
 
 if __name__ == "__main__":
     asyncio.run(main())
