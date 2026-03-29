@@ -31,6 +31,10 @@ class CurlDownloader(AudioDownloader):
             "--fail",
             "--connect-timeout", "10",
             "--max-time", str(self.timeout_s),
+            "--http1.1",
+            "--retry", "3",
+            "--speed-limit", "1000",
+            "--speed-time", "30",
             "-v",
             url
         ]

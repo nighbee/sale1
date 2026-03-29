@@ -19,12 +19,17 @@ services:
 
   redis:
     image: redis:7.2-alpine
-    ports:
-      - "6379:6379"
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD:-strong_redis_password}
+      --rename-command CONFIG ""
+      --rename-command FLUSHALL ""
+      --rename-command FLUSHDB ""
+      --loglevel verbose
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-strong_redis_password}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -115,7 +120,7 @@ services:
     environment:
       DATABASE_URL: "host=postgres port=5432 user=salesai_user password=strong_password dbname=salesai sslmode=disable"
       JWT_SECRET: "mysecret"
-      REDIS_URL: "redis://redis:6379"
+      REDIS_URL: "redis://:${REDIS_PASSWORD:-strong_redis_password}@redis:6379"
       LOG_LEVEL: ${LOG_LEVEL:-info}
       MINIO_ENDPOINT: "minio:9000"
       MINIO_ACCESS_KEY: "minioadmin"
@@ -160,7 +165,7 @@ services:
       - "8081:8081"
     environment:
       DATABASE_URL: "host=postgres port=5432 user=salesai_user password=strong_password dbname=salesai sslmode=disable"
-      REDIS_URL: "redis://redis:6379"
+      REDIS_URL: "redis://:${REDIS_PASSWORD:-strong_redis_password}@redis:6379"
       SIPUNI_API_KEY: ${SIPUNI_API_KEY}
       COMPANY_ID: ${COMPANY_ID}
       LOG_LEVEL: ${LOG_LEVEL:-info}
@@ -218,7 +223,7 @@ services:
     build: ./services/stt-service
     environment:
       DATABASE_URL: "host=postgres port=5432 user=salesai_user password=strong_password dbname=salesai sslmode=disable"
-      REDIS_URL: "redis://redis:6379"
+      REDIS_URL: "redis://:${REDIS_PASSWORD:-strong_redis_password}@redis:6379"
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY}
       GOOGLE_AI_MODEL: ${GOOGLE_AI_MODEL}
@@ -263,7 +268,7 @@ services:
     build: ./services/ai-analytics
     environment:
       DATABASE_URL: "host=postgres port=5432 user=salesai_user password=strong_password dbname=salesai sslmode=disable"
-      REDIS_URL: "redis://redis:6379"
+      REDIS_URL: "redis://:${REDIS_PASSWORD:-strong_redis_password}@redis:6379"
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       LLM_BASE_URL: ${LLM_BASE_URL}
       LLM_API_KEY: ${LLM_API_KEY}
@@ -316,7 +321,7 @@ services:
     build: ./services/sheets-sync
     environment:
       DATABASE_URL: "host=postgres port=5432 user=salesai_user password=strong_password dbname=salesai sslmode=disable"
-      REDIS_URL: "redis://redis:6379"
+      REDIS_URL: "redis://:${REDIS_PASSWORD:-strong_redis_password}@redis:6379"
       GOOGLE_SHEETS_ID: ${GOOGLE_SHEETS_ID}
       SYNC_INTERVAL: ${SHEETS_SYNC_INTERVAL:-5m}
       SHEET_NAME: ${SHEET_NAME:-Sheet1}
@@ -456,6 +461,7 @@ services:
     restart: unless-stopped
     environment:
       - REDIS_ADDR=redis:6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-strong_redis_password}
     ports:
       - "9121:9121"
     networks:
@@ -467,6 +473,7 @@ services:
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-strong_redis_password}
       - PORT=3000
     networks:
       - sale1-network
