@@ -20,18 +20,6 @@ class HTTPDownloader(AudioDownloader):
         self.streaming_chunk_size = streaming_chunk_size
 
     async def download(self, url: str, target_path: str) -> None:
-        parsed = urlparse(url)
-        host = (parsed.hostname or "").lower()
-
-        # Special handling for Sipuni as in original code
-        if "sipuni.com" in host:
-            logger.info(
-                "Detected Sipuni streaming endpoint, using streaming download",
-                extra={"url": url}
-            )
-            await self._download_stream(url, target_path)
-            return
-
         await self._download_with_resume(url, target_path)
 
     async def _download_stream(self, url: str, target_path: str) -> None:
