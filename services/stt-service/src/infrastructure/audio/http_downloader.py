@@ -37,23 +37,35 @@ class HTTPDownloader(AudioDownloader):
     async def _download_stream(self, url: str, target_path: str) -> None:
         start_time = time.monotonic()
         async with httpx.AsyncClient(
-            timeout=httpx.Timeout(300.0, connect=10.0),
+            timeout=httpx.Timeout(60.0, connect=10.0),
             follow_redirects=True,
             http2=False,
         ) as client:
             async with client.stream("GET", url) as response:
+                logger.info(
+                    "Streaming download response received",
+                    extra={
+                        "url": url,
+                        "status": response.status_code,
+                        "headers": dict(response.headers),
+                    }
+                )
                 response.raise_for_status()
                 bytes_downloaded = 0
+                content_length = response.headers.get("content-length")
+                total_kb = round(int(content_length) / 1024, 1) if content_length else "unknown"
+
                 with open(target_path, "wb") as f:
                     async for chunk in response.aiter_bytes():
                         f.write(chunk)
                         bytes_downloaded += len(chunk)
-                        if bytes_downloaded % (500 * 1024) < len(chunk):
+                        if bytes_downloaded % (100 * 1024) < len(chunk):
                             logger.info(
                                 "Streaming download progress",
                                 extra={
                                     "url": url,
                                     "downloaded_kb": round(bytes_downloaded / 1024, 1),
+                                    "total_kb": total_kb,
                                 },
                             )
 
@@ -70,7 +82,7 @@ class HTTPDownloader(AudioDownloader):
     async def _download_with_resume(self, url: str, target_path: str) -> None:
         async with httpx.AsyncClient(
             http2=False,
-            timeout=httpx.Timeout(300.0, connect=10.0),
+            timeout=httpx.Timeout(60.0, connect=10.0),
             follow_redirects=True,
         ) as client:
             last_size = -1
@@ -137,8 +149,16 @@ class HTTPDownloader(AudioDownloader):
                             async for chunk in response.aiter_bytes():
                                 f.write(chunk)
                                 bytes_received_this_attempt += len(chunk)
-                                if bytes_received_this_attempt % (256 * 1024) < len(chunk):
-                                    logger.debug(f"Received {bytes_received_this_attempt} bytes in attempt {attempt}")
+                                if bytes_received_this_attempt % (100 * 1024) < len(chunk):
+                                    logger.info(
+                                        "Resume download progress",
+                                        extra={
+                                            "url": url,
+                                            "attempt": attempt,
+                                            "received_kb": round(bytes_received_this_attempt / 1024, 1),
+                                            "current_total_kb": round(os.path.getsize(target_path) / 1024, 1),
+                                        }
+                                    )
 
                         current_size = os.path.getsize(target_path)
                         if total_size is not None and current_size >= total_size:
