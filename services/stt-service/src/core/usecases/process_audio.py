@@ -144,12 +144,17 @@ class ProcessAudioUseCase:
                                "text_length": len(stt_text),
                                "text_preview": stt_text[:200] if stt_text else ""})
 
-            # 5. Diarization (still uses the 16 kHz WAV for local processing)
-            logger.info("[5/6] running diarization", extra={"call_id": call_id, "wav_path": wav_path})
-            diarization_segments = await self.diarization_service.process(wav_path)
-            logger.info("[5/6] diarization done",
-                        extra={"call_id": call_id,
-                               "diarization_segments": len(diarization_segments) if diarization_segments else 0})
+            # 5. Diarization (only if not already diarized by provider)
+            is_diarized = transcript_data.get("is_diarized", False)
+            if not is_diarized:
+                logger.info("[5/6] running local diarization", extra={"call_id": call_id, "wav_path": wav_path})
+                diarization_segments = await self.diarization_service.process(wav_path)
+                logger.info("[5/6] diarization done",
+                            extra={"call_id": call_id,
+                                   "diarization_segments": len(diarization_segments) if diarization_segments else 0})
+            else:
+                logger.info("[5/6] skipping local diarization (already diarized by provider)", extra={"call_id": call_id})
+                diarization_segments = []
 
             # 6. Transform and Merge
             logger.info("[6/6] merging transcript with diarization", extra={"call_id": call_id})
@@ -158,10 +163,15 @@ class ProcessAudioUseCase:
                 transcript_segments.append({
                     "start": seg.get("start"),
                     "end": seg.get("end"),
-                    "text": seg.get("text")
+                    "text": seg.get("text"),
+                    "speaker": seg.get("speaker") # Preserving speaker if present
                 })
 
-            segments = merge_transcript_with_diarization(transcript_segments, diarization_segments)
+            if not is_diarized:
+                segments = merge_transcript_with_diarization(transcript_segments, diarization_segments)
+            else:
+                # If already diarized, we just use the transcript segments directly
+                segments = transcript_segments
 
             final_transcript = {
                 "call_id": call_id,

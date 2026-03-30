@@ -274,7 +274,7 @@ script-service/
 - Download audio from URL
 - Run STT based on company preference:
   - **Local**: WhisperX + Pyannote
-  - **Cloud**: OpenAI Whisper API or Google Gemini STT
+  - **Cloud**: OpenAI Whisper, Google Gemini, or ElevenLabs Scribe
 - Save transcript to PostgreSQL
 - Emit event to Redis Stream for AI Analytics
 
@@ -305,7 +305,8 @@ stt-service/
 │   │   ├── stt/
 │   │   │   ├── whisperx_local.py
 │   │   │   ├── openai_api.py
-│   │   │   └── gemini_api.py
+│   │   │   ├── gemini_api.py
+│   │   │   └── elevenlabs_api.py
 │   │   ├── diarization/
 │   │   │   └── pyannote.py
 │   │   └── audio/
@@ -322,8 +323,8 @@ stt-service/
 2. Fetch company settings (STT preference)
 3. Download audio to `/tmp`
 4. Convert to 16kHz WAV
-5. Run diarization (Pyannote)
-6. Run STT (WhisperX/OpenAI/Gemini)
+5. Run diarization (Pyannote) - *Skipped if provider (e.g. ElevenLabs) provides native diarization*
+6. Run STT (WhisperX/OpenAI/Gemini/ElevenLabs)
 7. Merge diarization + transcript
 8. Save to `transcripts` table
 9. Delete audio from `/tmp`

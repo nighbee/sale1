@@ -28,7 +28,7 @@ The AI Analytics Service is responsible for analyzing transcribed calls using La
 | Database | PostgreSQL | 16 |
 | Event Stream | Redis Streams | 7.2 |
 | LLM (OpenAI) | GPT-4 API | - |
-| LLM (Google) | Gemini Pro | - |
+| LLM (Google) | Gemini 3 Flash Preview | - |
 | Monitoring | Prometheus | - |
 | Logging | Python logging | - |
 
@@ -215,12 +215,12 @@ json
 - **Configuration**: `OPENAI_API_KEY`
 - **Use Case**: Primary analysis provider
 
-### 5.2 Google Gemini Pro
+### 5.2 Google Gemini 3 Flash Preview
 
 - **Provider**: Google AI
-- **Model**: Configurable via `GOOGLE_AI_MODEL`
-- **Configuration**: `GOOGLE_API_KEY`
-- **Use Case**: Alternative analysis provider
+- **Model**: `gemini-3-flash-preview`
+- **Configuration**: `GEMINI_API_KEY`
+- **Use Case**: Primary analysis provider, offering low latency and high accuracy for Russian language.
 
 ---
 

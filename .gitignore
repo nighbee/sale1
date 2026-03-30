@@ -6,6 +6,7 @@ backend/dist/
 frontend/dist/
 .pnp
 .pnp.js
+academic/ 
 
 logs
 *.log

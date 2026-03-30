@@ -6,12 +6,12 @@ import google.generativeai as genai
 logger = logging.getLogger(__name__)
 
 class GeminiClient:
-    def __init__(self, api_key: str = None, model: str = "gemini-pro"):
-        self.api_key = api_key or os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+    def __init__(self, api_key: str = None, model: str = "gemini-3-flash-preview"):
+        self.api_key = api_key or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
         if self.api_key:
             genai.configure(api_key=self.api_key)
         else:
-            logger.warning("GOOGLE_API_KEY is not set")
+            logger.warning("Neither GEMINI_API_KEY nor GOOGLE_API_KEY is set")
         self.default_model = model
 
     async def analyze(self, system_prompt: str, user_prompt: str, model: str = None) -> dict:

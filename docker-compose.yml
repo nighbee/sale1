@@ -230,7 +230,8 @@ services:
       GROQ_API_KEY: ${GROQ_API_KEY}
       DEEPGRAM_API_KEY: ${DEEPGRAM_API_KEY}
       DEEPGRAM_MODEL: ${DEEPGRAM_MODEL:-nova-2}
-      STT_PROVIDER: "deepgram"
+      ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY}
+      STT_PROVIDER: "elevenlabs"
       MINIO_ENDPOINT: "minio:9000"
       MINIO_ACCESS_KEY: "minioadmin"
       MINIO_SECRET_KEY: "minioadmin123"
@@ -272,7 +273,9 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       LLM_BASE_URL: ${LLM_BASE_URL}
       LLM_API_KEY: ${LLM_API_KEY}
-      LLM_MODEL: ${LLM_MODEL}
+      LLM_MODEL: "gemini-3-flash-preview"
+      LLM_PROVIDER: "gemini"
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY}
       GOOGLE_AI_MODEL: ${GOOGLE_AI_MODEL}
       LOG_LEVEL: ${LOG_LEVEL:-info}

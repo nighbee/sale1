@@ -30,8 +30,9 @@ The STT (Speech-to-Text) Service is responsible for converting call audio record
 | Queue | BullMQ (Redis) | 7.2 |
 | STT (OpenAI) | Whisper API | - |
 | STT (Google) | Gemini STT | - |
+| STT (ElevenLabs) | Scribe API | - |
 | STT (Local) | WhisperX | - |
-| Diarization | Pyannote | 3.x |
+| Diarization | Pyannote / ElevenLabs | 3.x / Scribe |
 | Audio Processing | pydub | 0.25 |
 | Monitoring | Prometheus | - |
 | Logging | Python logging | - |
@@ -279,6 +280,15 @@ json
 - **Model**: `base`, `small`, `medium`, `large`
 - **Configuration**: `STT_PROVIDER=local`
 - **Advantage**: No API costs, runs locally
+
+### 5.7 ElevenLabs Scribe
+
+- **Provider**: ElevenLabs
+- **Model**: `scribe_v1`
+- **Configuration**: `STT_PROVIDER=elevenlabs`
+- **API Key**: `ELEVENLABS_API_KEY`
+- **Advantage**: Superior quality for Russian language, built-in high-quality speaker diarization.
+- **Optimization**: Automatically skips local Pyannote processing when used.
 
 ---
 

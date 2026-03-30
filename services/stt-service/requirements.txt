@@ -4,6 +4,7 @@ openai==1.12.0
 google-generativeai==0.3.2
 deepgram-sdk==3.2.7
 google-cloud-speech==2.24.0
+elevenlabs==1.53.3
 fastapi==0.109.0
 pydantic==2.7.4
 psycopg2-binary==2.9.9
