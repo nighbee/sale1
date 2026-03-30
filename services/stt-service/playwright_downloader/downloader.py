@@ -9,6 +9,7 @@ from playwright.sync_api import sync_playwright, Browser, BrowserContext, APIRes
 # Add current dir to sys.path for absolute imports
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
+from urllib.parse import urlparse, parse_qs
 from utils.cookies import load_cookies
 from utils.retry import retry
 
@@ -35,12 +36,38 @@ class PlaywrightDownloader:
         self.timeout_ms = timeout_ms
         self.proxy = proxy
 
+    def _extract_sipuni_cookies(self, url: str) -> List[Dict[str, str]]:
+        """
+        Auto-extracts cookies from Sipuni URL parameters if present.
+        """
+        cookies = []
+        parsed_url = urlparse(url)
+        params = parse_qs(parsed_url.query)
+
+        if "sipuni.com" in parsed_url.netloc:
+            domain = "sipuni.com"
+            if "hash" in params:
+                cookies.append({"name": "hcode", "value": params["hash"][0], "domain": domain, "path": "/"})
+            if "user" in params:
+                cookies.append({"name": "user", "value": params["user"][0], "domain": domain, "path": "/"})
+
+            if cookies:
+                logger.info(f"Auto-extracted {len(cookies)} cookies from Sipuni URL parameters.")
+            else:
+                logger.warning("Sipuni URL detected but 'hash' or 'user' parameters are missing.")
+
+        return cookies
+
     @retry(max_attempts=3, base_delay=2.0, exceptions=(DownloadError, Exception))
     def download(self, url: str, output_path: str, cookies: Optional[List[Dict]] = None) -> None:
         """
         Downloads a file using Playwright's browser context.
         """
         logger.info(f"Starting download from {url}")
+
+        # If no explicit cookies provided, try auto-extraction for Sipuni
+        if not cookies:
+            cookies = self._extract_sipuni_cookies(url)
         start_time = time.monotonic()
 
         with sync_playwright() as p:

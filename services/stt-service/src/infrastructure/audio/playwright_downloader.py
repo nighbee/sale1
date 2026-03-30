@@ -44,7 +44,11 @@ class PlaywrightDownloader(AudioDownloader):
                     cookies.append({"name": "hcode", "value": params["hash"][0], "domain": domain, "path": "/"})
                 if "user" in params:
                     cookies.append({"name": "user", "value": params["user"][0], "domain": domain, "path": "/"})
-                logger.debug(f"Extracted Sipuni cookies for Playwright: {len(cookies)}")
+
+                if cookies:
+                    logger.info(f"Auto-extracted {len(cookies)} cookies from Sipuni URL parameters.")
+                else:
+                    logger.warning("Sipuni URL detected but 'hash' or 'user' parameters are missing.")
         except Exception as e:
             logger.warning(f"Failed to extract cookies from URL for Playwright: {e}")
 
