@@ -33,7 +33,6 @@ class ResilientDownloader(AudioDownloader):
         2. Fallback to Curl (Resilient) with local resume
         3. Adaptive delays to handle 'Eventually Ready' files
         """
-        temp_path = f"{target_path}.tmp"
         attempt = 0
         last_error = None
 
@@ -62,14 +61,8 @@ class ResilientDownloader(AudioDownloader):
                     logger.debug(f"Waiting {wait_time:.1f}s for upstream generation...", extra={"url": url})
                     await asyncio.sleep(wait_time)
 
-                await downloader.download(url, target_path if name != "HTTP_SMART" else temp_path)
+                await downloader.download(url, target_path)
                 
-                if name == "HTTP_SMART":
-                    # HTTPDownloader in my implementation uses temp_path internally, 
-                    # but it already does os.replace(temp_path, target_path).
-                    # Wait, let's check my http_downloader.py implementation.
-                    pass
-
                 # Success!
                 return
 

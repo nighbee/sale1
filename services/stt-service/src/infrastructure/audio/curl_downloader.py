@@ -2,7 +2,8 @@ import asyncio
 import logging
 import os
 import time
-from typing import List, Optional
+from typing import List, Optional, Dict
+from urllib.parse import urlparse, parse_qs
 from src.core.ports.audio_downloader import AudioDownloader
 
 logger = logging.getLogger(__name__)
@@ -11,20 +12,42 @@ class CurlDownloader(AudioDownloader):
     def __init__(self, timeout_s: int = 300, max_retries: int = 5):
         self.timeout_s = timeout_s
         self.max_retries = max_retries
+        self.user_agent = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Mobile/15E148 Safari/604.1"
+
+    def _extract_cookies(self, url: str) -> str:
+        """
+        Extracts cookies from URL parameters for Sipuni and formats them for curl.
+        """
+        cookies = []
+        try:
+            parsed_url = urlparse(url)
+            params = parse_qs(parsed_url.query)
+
+            if "sipuni.com" in parsed_url.netloc:
+                if "hash" in params:
+                    cookies.append(f"hcode={params['hash'][0]}")
+                if "user" in params:
+                    cookies.append(f"user={params['user'][0]}")
+        except Exception as e:
+            logger.warning(f"Failed to extract cookies for Curl: {e}")
+
+        return "; ".join(cookies)
 
     async def download(self, url: str, target_path: str) -> None:
         """
-        Downloads audio using the curl command line tool with resilient flags.
+        Downloads audio using the curl command line tool with resilient flags and browser headers.
         """
         logger.info("Starting resilient download with curl", extra={"url": url, "target_path": target_path})
         start_time = time.monotonic()
         
+        cookie_header = self._extract_cookies(url)
+
         # -L: follow redirects
         # -C -: Auto-resume from file size
         # --fail: fail on HTTP errors
         # --connect-timeout: max time for connection
         # --max-time: max time for the entire operation
-        # --speed-limit 1 --speed-time 60: abort only if < 1 byte/sec for 60s (very tolerant)
+        # --speed-limit 100 --speed-time 20: abort if < 100 bytes/sec for 20s
         # -v: verbose (logs headers to stderr)
 
         cmd = [
@@ -35,17 +58,23 @@ class CurlDownloader(AudioDownloader):
             "--fail",
             "--connect-timeout", "15",
             "--max-time", str(self.timeout_s),
-            "--speed-limit", "1",
-            "--speed-time", "60",
+            "--speed-limit", "100",
+            "--speed-time", "20",
             "--http1.1",
             "--retry", str(self.max_retries),
             "--retry-delay", "5",
             "--retry-all-errors",
-            "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            "--user-agent", self.user_agent,
             "--compressed",
+            "-H", "Accept: */*",
+            "-H", "Accept-Encoding: identity;q=1, *;q=0",
+            "-H", "sec-fetch-dest: video",
             "-v",
             url
         ]
+
+        if cookie_header:
+            cmd.extend(["--cookie", cookie_header])
 
         logger.debug(f"Executing: {' '.join(cmd)}")
 
@@ -68,6 +97,15 @@ class CurlDownloader(AudioDownloader):
                 raise RuntimeError(f"Curl failed (code {process.returncode}): {error_msg}")
 
             file_size = os.path.getsize(target_path) if os.path.exists(target_path) else 0
+
+            # Simple HTML check
+            if file_size < 1024:
+                with open(target_path, "rb") as f:
+                    content = f.read().lower()
+                    if b"<html>" in content or b"<!doctype html>" in content:
+                        os.remove(target_path)
+                        raise RuntimeError(f"Curl downloaded HTML instead of audio from {url}")
+
             logger.info(
                 "Curl download completed",
                 extra={
