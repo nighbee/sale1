@@ -13,10 +13,10 @@ class DownloaderFactory:
 
         # Force curl for Sipuni as it is more robust for their streaming endpoint
         if "sipuni.com" in url.lower():
-            return CurlDownloader()
+            return HTTPDownloader()
 
         strategy = os.getenv("STT_DOWNLOAD_STRATEGY", "http").lower()
         if strategy == "curl":
-            return CurlDownloader()
+            return HTTPDownloader()
 
         return HTTPDownloader()
