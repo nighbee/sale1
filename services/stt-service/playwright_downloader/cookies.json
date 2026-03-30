@@ -1,0 +1,5 @@
+[
+  {"name": "PHPSESSID", "value": "test_session_id", "domain": "sipuni.com", "path": "/"},
+  {"name": "hcode", "value": "test_hcode", "domain": "sipuni.com", "path": "/"},
+  {"name": "user", "value": "test_user", "domain": "sipuni.com", "path": "/"}
+]
