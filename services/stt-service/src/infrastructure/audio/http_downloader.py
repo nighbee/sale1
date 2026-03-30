@@ -3,10 +3,16 @@ import time
 import logging
 import asyncio
 import httpx
-from typing import Optional
+from typing import Optional, Dict, Any
 from src.core.ports.audio_downloader import AudioDownloader
 
 logger = logging.getLogger(__name__)
+
+class DownloadError(Exception):
+    """Custom exception for download-specific failures."""
+    def __init__(self, message: str, details: Dict[str, Any] = None):
+        super().__init__(message)
+        self.details = details or {}
 
 class HTTPDownloader(AudioDownloader):
     def __init__(
@@ -32,137 +38,132 @@ class HTTPDownloader(AudioDownloader):
         }
 
     async def download(self, url: str, target_path: str) -> None:
+        """
+        Download with pre-flight check, resume support, and smart validation.
+        """
         attempt = 0
         temp_path = f"{target_path}.tmp"
+        
+        # Pre-flight check
+        metadata = await self._preflight(url)
+        content_length = metadata.get("Content-Length")
+        accept_ranges = metadata.get("Accept-Ranges") == "bytes"
 
         while attempt < self.max_attempts:
             attempt += 1
             start_time = time.monotonic()
-            bytes_downloaded = 0
+            bytes_received = 0
+            
             try:
-                # Clean up any existing temp file if not resuming or on first attempt
-                if attempt == 1 and os.path.exists(temp_path):
-                    os.remove(temp_path)
+                # Decide if we can resume
+                can_resume = accept_ranges and os.path.exists(temp_path)
+                if attempt == 1 and not can_resume:
+                    if os.path.exists(temp_path):
+                        os.remove(temp_path)
 
-                bytes_downloaded = await self._download_with_resume(url, temp_path)
-
+                bytes_received = await self._download_chunked(url, temp_path, can_resume)
+                
                 duration = time.monotonic() - start_time
-                self._validate_download(temp_path)
+                self._validate_download(temp_path, content_length)
 
-                # Atomically move temp file to final destination
+                # Finalize
                 os.replace(temp_path, target_path)
                 file_size = os.path.getsize(target_path)
 
                 logger.info(
-                    "HTTP Download completed successfully",
+                    "HTTP Download successful",
                     extra={
                         "url": url,
-                        "file_path": target_path,
                         "attempt": attempt,
                         "duration_s": round(duration, 2),
                         "size_bytes": file_size,
-                        "speed_kbps": round((file_size / 1024) / duration, 2) if duration > 0 else 0
-                    },
+                        "resumed": can_resume
+                    }
                 )
                 return
+
             except Exception as e:
                 duration = time.monotonic() - start_time
                 logger.warning(
-                    "HTTP Download attempt failed",
+                    f"HTTP Attempt {attempt} failed",
                     extra={
                         "url": url,
-                        "attempt": attempt,
+                        "error": str(e),
                         "duration_so_far": round(duration, 2),
-                        "bytes_received": bytes_downloaded,
-                        "error_type": type(e).__name__,
-                        "error_message": str(e)
-                    },
+                        "bytes_received": bytes_received
+                    }
                 )
 
-                if attempt == self.max_attempts:
+                if attempt >= self.max_attempts:
                     if os.path.exists(temp_path):
-                        try:
-                            os.remove(temp_path)
-                        except:
-                            pass
-                    raise RuntimeError(f"HTTP Failed after {self.max_attempts} attempts: {str(e)}")
+                        try: os.remove(temp_path)
+                        except: pass
+                    raise DownloadError(f"HTTP Failed after {attempt} attempts: {str(e)}")
 
                 backoff = self.base_backoff * (2 ** (attempt - 1))
-                logger.info(f"Retrying in {backoff}s", extra={"attempt": attempt, "backoff": backoff})
+                # Add extra delay if it looks like a generation stall
+                if isinstance(e, (httpx.ReadTimeout, httpx.PoolTimeout)):
+                    backoff += 5.0 
+                
+                logger.info(f"Waiting {backoff}s before retry...", extra={"url": url, "next_attempt": attempt + 1})
                 await asyncio.sleep(backoff)
 
-    async def _download_with_resume(self, url: str, temp_path: str) -> int:
-        start_byte = os.path.getsize(temp_path) if os.path.exists(temp_path) else 0
+    async def _preflight(self, url: str) -> Dict[str, str]:
+        """Perform HEAD request to get metadata."""
+        try:
+            async with httpx.AsyncClient(verify=self.verify_ssl, timeout=10.0) as client:
+                resp = await client.head(url, headers=self.headers, follow_redirects=True)
+                # Some servers might not support HEAD, treat as empty metadata
+                if resp.status_code != 200:
+                    return {}
+                return {k: v.lower() for k, v in resp.headers.items()}
+        except Exception as e:
+            logger.debug(f"Pre-flight failed for {url}: {str(e)}")
+            return {}
+
+    async def _download_chunked(self, url: str, path: str, resume: bool) -> int:
+        start_byte = os.path.getsize(path) if resume and os.path.exists(path) else 0
         headers = self.headers.copy()
         if start_byte > 0:
             headers["Range"] = f"bytes={start_byte}-"
 
-        # httpx timeouts
-        timeout = httpx.Timeout(
-            connect=10.0,
-            read=self.stall_timeout,
-            write=30.0,
-            pool=60.0
-        )
-
-        async with httpx.AsyncClient(
-            timeout=timeout,
-            follow_redirects=True,
-            verify=self.verify_ssl
-        ) as client:
+        timeout = httpx.Timeout(self.stall_timeout, connect=10.0)
+        
+        async with httpx.AsyncClient(timeout=timeout, verify=self.verify_ssl, follow_redirects=True) as client:
             async with client.stream("GET", url, headers=headers) as response:
-                if start_byte > 0 and response.status_code == 200:
-                    logger.info("Server does not support Range, restarting download", extra={"url": url})
+                if start_byte > 0 and response.status_code != 206:
+                    logger.info("Server ignored Range request, restarting...", extra={"url": url})
                     start_byte = 0
-                    await asyncio.to_thread(self._truncate_file, temp_path)
+                    mode = "wb"
+                else:
+                    mode = "ab" if start_byte > 0 else "wb"
 
                 response.raise_for_status()
-
-                content_length = response.headers.get("content-length")
-                expected_total = int(content_length) + start_byte if content_length else None
-
-                mode = "ab" if start_byte > 0 else "wb"
-                bytes_at_start = start_byte
-
-                # Open file in a thread-safe way
-                fd = await asyncio.to_thread(open, temp_path, mode)
-                try:
+                
+                total_bytes = start_byte
+                with open(path, mode) as f:
                     async for chunk in response.aiter_bytes(self.chunk_size):
-                        if not chunk:
-                            continue
+                        if chunk:
+                            f.write(chunk)
+                            total_bytes += len(chunk)
+                return total_bytes
 
-                        await asyncio.to_thread(fd.write, chunk)
-                        start_byte += len(chunk)
+    def _validate_download(self, path: str, expected_size: Optional[str]) -> None:
+        if not os.path.exists(path):
+            raise DownloadError("Final file missing")
+            
+        actual_size = os.path.getsize(path)
+        if actual_size < self.min_file_size:
+            raise DownloadError(f"File too small: {actual_size} bytes")
 
-                        # Sampled progress logging
-                        if start_byte % (self.chunk_size * 20) == 0:
-                            logger.debug(
-                                "Downloading progress",
-                                extra={
-                                    "url": url,
-                                    "bytes_downloaded": start_byte,
-                                    "total_size": expected_total,
-                                },
-                            )
-                finally:
-                    await asyncio.to_thread(fd.close)
+        if expected_size and expected_size.isdigit():
+            expected_val = int(expected_size)
+            if actual_size < expected_val:
+                raise DownloadError(f"Incomplete file: {actual_size}/{expected_val} bytes")
 
-                # Validation: If we have a content-length, verify we got it all
-                if expected_total and start_byte < expected_total:
-                    raise RuntimeError(
-                        f"Incomplete download: received {start_byte} bytes, expected {expected_total}"
-                    )
-
-                return start_byte - bytes_at_start
-
-    def _truncate_file(self, path: str):
-        with open(path, "wb") as f:
-            pass # opening with "wb" already truncates
-
-    def _validate_download(self, file_path: str) -> None:
-        if not os.path.exists(file_path):
-            raise RuntimeError("Downloaded file does not exist")
-
-        file_size = os.path.getsize(file_path)
-        if file_size < self.min_file_size:
-            raise RuntimeError(f"Downloaded file is too small: {file_size} bytes (min: {self.min_file_size})")
+        # Basic MPEG check (MP3 starts with 0xFF 0xFB or "ID3")
+        with open(path, "rb") as f:
+            header = f.read(4)
+            if not (header.startswith(b"ID3") or header.startswith(b"\xff\xfb") or header.startswith(b"\xff\xf3")):
+                # We log warning but don't fail unless strictly MP3 required
+                logger.debug(f"Audio header validation: unexpected sequence {header.hex().upper()}")

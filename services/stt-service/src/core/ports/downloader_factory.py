@@ -5,6 +5,7 @@ from src.infrastructure.audio.http_downloader import HTTPDownloader
 from src.infrastructure.audio.minio_downloader import MinioDownloader
 from src.infrastructure.audio.curl_downloader import CurlDownloader
 from src.infrastructure.audio.fallback_downloader import FallbackDownloader
+from src.infrastructure.audio.resilient_downloader import ResilientDownloader
 from src.adapters.storage.minio_client import MinioClient
 
 logger = logging.getLogger(__name__)
@@ -16,23 +17,20 @@ class DownloaderFactory:
             logger.info("Using MinioDownloader", extra={"url": url})
             return MinioDownloader(minio_client)
 
-        strategy = os.getenv("STT_DOWNLOAD_STRATEGY", "resilient").lower()
-
-        # Define standard HTTP downloaders with fallback
-        # HTTPDownloader (httpx) -> CurlDownloader (subprocess)
-        http_downloaders = [
-            HTTPDownloader(),
-            CurlDownloader()
-        ]
+        strategy = os.getenv("STT_DOWNLOAD_STRATEGY", "pipeline").lower()
 
         if strategy == "curl":
-            logger.info("Using CurlDownloader strategy", extra={"url": url})
+            logger.info("Using pure CurlDownloader strategy", extra={"url": url})
             return CurlDownloader()
 
         if strategy == "http":
-            logger.info("Using HTTPDownloader strategy", extra={"url": url})
+            logger.info("Using pure HTTPDownloader strategy", extra={"url": url})
             return HTTPDownloader()
 
-        # Default strategy is resilient fallback
-        logger.info("Using resilient FallbackDownloader strategy", extra={"url": url, "strategy": strategy})
-        return FallbackDownloader(http_downloaders)
+        if strategy == "fallback":
+            logger.info("Using basic FallbackDownloader (HTTP -> Curl)", extra={"url": url})
+            return FallbackDownloader([HTTPDownloader(), CurlDownloader()])
+
+        # Default strategy is the new resilient Pipeline
+        logger.info("Using Resilient Pipeline strategy", extra={"url": url, "strategy": strategy})
+        return ResilientDownloader()
