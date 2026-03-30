@@ -1,31 +1,34 @@
 import os
 import asyncio
+import logging
 from openai import AsyncOpenAI
 from src.core.ports.stt_provider import STTProvider
 
+logger = logging.getLogger(__name__)
 
 class GroqSTTProvider(STTProvider):
     def __init__(self, api_key: str = None):
         self.api_key = api_key or os.getenv("GROQ_API_KEY")
         if not self.api_key:
-            raise ValueError("GROQ_API_KEY is not set")
-        # Groq exposes an OpenAI-compatible API — same SDK, different base_url
+             logger.warning("GROQ_API_KEY is not set")
         self.client = AsyncOpenAI(
-            api_key=self.api_key,
+            api_key=self.api_key or "sk-dummy",
             base_url="https://api.groq.com/openai/v1",
         )
         self.model = os.getenv("GROQ_STT_MODEL", "whisper-large-v3-turbo")
 
     async def transcribe(self, audio_path: str) -> dict:
+        if not self.api_key:
+            raise RuntimeError("Groq API key missing")
+
         try:
-            # Move synchronous file reading to a thread
+            logger.info(f"Transcribing with Groq: {audio_path}")
+
             audio_buffer = await asyncio.to_thread(self._read_file, audio_path)
 
             transcript = await self.client.audio.transcriptions.create(
                 model=self.model,
                 file=("audio.mp3", audio_buffer),
-                # If audio_path is used as a path, AsyncOpenAI might try to open it synchronously.
-                # Passing the buffer directly ensures we control the I/O.
                 response_format="verbose_json",
                 timestamp_granularities=["segment"],
             )
@@ -46,12 +49,15 @@ class GroqSTTProvider(STTProvider):
                             "text": getattr(seg, "text", "") or "",
                         })
 
+            logger.info(f"Groq transcription complete", extra={"audio_path": audio_path, "segments": len(segments)})
+
             return {
                 "text": transcript.text,
                 "segments": segments,
             }
         except Exception as e:
-            raise Exception(f"Groq STT failed: {str(e)}")
+            logger.error("Groq STT failed", extra={"error": str(e), "audio_path": audio_path})
+            raise RuntimeError(f"Groq STT failed: {str(e)}") from e
 
     def _read_file(self, path: str) -> bytes:
         with open(path, "rb") as f:

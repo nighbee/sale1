@@ -8,6 +8,7 @@ from src.adapters.stt.gemini_provider import GeminiSTTProvider
 from src.adapters.stt.groq_provider import GroqSTTProvider
 from src.adapters.stt.deepgram_provider import DeepgramSTTProvider
 from src.adapters.stt.elevenlabs_provider import ElevenLabsSTTProvider
+from src.adapters.stt.soniox_provider import SonioxSTTProvider
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +49,8 @@ class STTProviderFactory:
             return DeepgramSTTProvider(api_key=api_key)
         elif provider_name == "elevenlabs":
             return ElevenLabsSTTProvider(api_key=api_key)
+        elif provider_name == "soniox":
+            return SonioxSTTProvider(api_key=api_key)
         else:
             # Default to OpenAI-compatible provider
             model = default_model or "whisper-1"
