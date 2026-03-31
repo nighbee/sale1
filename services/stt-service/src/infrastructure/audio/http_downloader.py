@@ -40,6 +40,8 @@ class HTTPDownloader(AudioDownloader):
             "sec-fetch-dest": "video",
             "sec-fetch-mode": "no-cors",
             "sec-fetch-site": "cross-site",
+            "Cache-Control": "no-cache",
+            "Pragma": "no-cache",
         }
 
     def _extract_cookies(self, url: str) -> Dict[str, str]:
@@ -167,6 +169,12 @@ class HTTPDownloader(AudioDownloader):
     async def _download_chunked(self, client: httpx.AsyncClient, url: str, path: str, resume: bool) -> int:
         start_byte = os.path.getsize(path) if resume and os.path.exists(path) else 0
         headers = {}
+        # Explicitly ask to ignore cached versions if possible (using headers that are expected by some servers)
+        # Note: We don't set If-None-Match: None because httpx might fail if it's not a string.
+        # Instead we just don't include them, or if we want to be sure we can try setting them to empty string,
+        # but usually not including them is enough. Some servers might react to empty strings differently.
+        # Given the previous error, I will avoid setting them to None.
+
         if start_byte > 0:
             headers["Range"] = f"bytes={start_byte}-"
         else:
@@ -183,8 +191,8 @@ class HTTPDownloader(AudioDownloader):
 
             # Handle 304 Not Modified
             if response.status_code == 304:
-                logger.info("Server returned 304 Not Modified", extra={"url": url})
-                return start_byte
+                logger.warning("Server returned 304 Not Modified despite no-cache headers", extra={"url": url})
+                raise DownloadError("Received 304 Not Modified - cached response is not acceptable")
 
             response.raise_for_status()
 

@@ -104,6 +104,8 @@ class PlaywrightDownloader(AudioDownloader):
                 viewport={'width': 1920, 'height': 1080},
                 extra_http_headers={
                     "Accept": "audio/mpeg,audio/*;q=0.9,application/octet-stream;q=0.8,*/*;q=0.7",
+                    "Cache-Control": "no-cache",
+                    "Pragma": "no-cache",
                 }
             )
 
@@ -112,10 +114,18 @@ class PlaywrightDownloader(AudioDownloader):
 
             try:
                 # Use context.request for binary data
-                response: PlaywrightResponse = await context.request.get(url, timeout=self.timeout_ms)
+                # By using a fresh context and NOT providing If-None-Match/If-Modified-Since
+                # in the request or context headers, they should be omitted.
+                response: PlaywrightResponse = await context.request.get(
+                    url,
+                    timeout=self.timeout_ms
+                )
 
                 if not response:
                     raise DownloadError("No response received from Playwright")
+
+                if response.status == 304:
+                    raise DownloadError("Received 304 Not Modified - cached response is not acceptable")
 
                 if response.status != 200:
                     raise DownloadError(f"HTTP {response.status}")
