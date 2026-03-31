@@ -73,7 +73,10 @@ class StreamingDownloader(AudioDownloader):
 
                 return cookie_str
         except Exception as e:
-            logger.error(f"Playwright session warming failed: {e}")
+            if "Executable doesn't exist" in str(e):
+                logger.warning("Playwright browser not found, skipping session warming (using fallback logic)")
+            else:
+                logger.error(f"Playwright session warming failed: {e}")
             return ""
 
     def _get_url_cookies(self, url: str) -> str:
