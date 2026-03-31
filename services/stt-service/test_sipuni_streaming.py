@@ -12,8 +12,8 @@ from src.infrastructure.audio.streaming_downloader import StreamingDownloader
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("test_sipuni_streaming")
 
-URL = "https://sipuni.com/api/crm/record?id=1774941211.1253640&hash=cfdece8d82acc90df2427d7c0307afd2&user=017910"
-ATTEMPTS = 15
+URL = "https://sipuni.com/api/crm/record?id=1774941624.1254309&hash=ca62ae07a148d931c7804ee8098c254e&user=017910"
+ATTEMPTS = 5 # Reduced for session warming tests to save time
 OUTPUT_DIR = "test_downloads"
 
 async def test_download(attempt: int, downloader: StreamingDownloader):

@@ -3,8 +3,9 @@ import time
 import asyncio
 import logging
 import aiohttp
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, List, Any
 from urllib.parse import urlparse, parse_qs
+from playwright.async_api import async_playwright
 from src.core.ports.audio_downloader import AudioDownloader
 
 logger = logging.getLogger(__name__)
@@ -27,7 +28,7 @@ class StreamingDownloader(AudioDownloader):
         self.chunk_size = chunk_size
         self.stall_timeout = stall_timeout
         self.min_file_size = min_file_size
-        # Strict browser headers as requested
+        # Strict browser headers
         self.headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
             "Accept": "*/*",
@@ -35,42 +36,84 @@ class StreamingDownloader(AudioDownloader):
             "sec-fetch-dest": "video",
             "Cache-Control": "no-cache",
             "Pragma": "no-cache",
-            "Range": "bytes=0-",  # Always start from 0
+            "Range": "bytes=0-",
         }
 
-    def _get_cookies(self, url: str) -> str:
+    async def _get_warmed_cookies(self, url: str) -> str:
         """
-        Support full cookie string from environment or extract from URL params.
+        Visits the Sipuni URL with Playwright to 'warm up' the session
+        and extract all browser-validated cookies (like PHPSESSID).
         """
-        # 1. Check environment variable for full Cookie string
+        if "sipuni.com" not in url:
+            return ""
+
+        logger.info("Warming up Sipuni session via Playwright...", extra={"url": url})
+        try:
+            async with async_playwright() as p:
+                browser = await p.chromium.launch(headless=True)
+                # Mimic a real browser session
+                context = await browser.new_context(
+                    user_agent=self.headers["User-Agent"],
+                    viewport={'width': 1280, 'height': 720}
+                )
+                page = await context.new_page()
+
+                # Navigate to establish the session.
+                # We expect this to either load the media or redirect.
+                # Use a timeout because we only need the cookies, not the whole file.
+                try:
+                    await page.goto(url, wait_until="commit", timeout=15000)
+                except Exception as e:
+                    logger.debug(f"Session warming goto finished with: {e}")
+
+                cookies = await context.cookies()
+                await browser.close()
+
+                cookie_pairs = [f"{c['name']}={c['value']}" for c in cookies]
+                cookie_str = "; ".join(cookie_pairs)
+
+                if cookie_str:
+                    logger.info(f"Extracted {len(cookies)} cookies from warming session", extra={"url": url})
+                return cookie_str
+        except Exception as e:
+            logger.warning(f"Session warming failed: {e}. Falling back to basic cookie extraction.", extra={"url": url})
+            return ""
+
+    def _get_basic_cookies(self, url: str) -> str:
+        """Fallback for extraction from URL parameters."""
         env_cookies = os.getenv("SIPUNI_COOKIES")
         if env_cookies:
             return env_cookies
 
-        # 2. Extract from URL (fallback for Sipuni)
         cookies = []
         try:
             parsed_url = urlparse(url)
             params = parse_qs(parsed_url.query)
-
             if "sipuni.com" in parsed_url.netloc:
                 if "hash" in params:
                     cookies.append(f"hcode={params['hash'][0]}")
                 if "user" in params:
                     cookies.append(f"user={params['user'][0]}")
-        except Exception as e:
-            logger.warning(f"Failed to extract cookies from URL: {e}")
-
+        except Exception:
+            pass
         return "; ".join(cookies)
 
     async def download(self, url: str, target_path: str) -> None:
         attempt = 0
-        cookie_string = self._get_cookies(url)
-        headers = self.headers.copy()
-        if cookie_string:
-            headers["Cookie"] = cookie_string
 
-        # Explicitly ensure caching headers are NOT present
+        # 1. Warm session for Sipuni
+        warmed_cookies = await self._get_warmed_cookies(url)
+
+        # 2. Prepare headers
+        headers = self.headers.copy()
+        basic_cookies = self._get_basic_cookies(url)
+
+        # Combine cookies, preferring warmed ones
+        if warmed_cookies:
+            headers["Cookie"] = warmed_cookies
+        elif basic_cookies:
+            headers["Cookie"] = basic_cookies
+
         headers.pop("If-Modified-Since", None)
         headers.pop("If-None-Match", None)
 
@@ -114,16 +157,15 @@ class StreamingDownloader(AudioDownloader):
                 await asyncio.sleep(backoff)
 
     async def _do_download(self, url: str, target_path: str, headers: Dict[str, str]) -> None:
+        # total=None to prevent global timeout, sock_read for stall detection
         timeout = aiohttp.ClientTimeout(total=None, connect=15, sock_read=self.stall_timeout)
 
         async with aiohttp.ClientSession(headers=headers, timeout=timeout) as session:
             async with session.get(url, allow_redirects=True) as response:
 
-                # Handle 304 specifically
                 if response.status == 304:
                     raise DownloadError("Received 304 Not Modified - refreshing cache required")
 
-                # Accept 200 and 206
                 if response.status not in (200, 206):
                     raise DownloadError(f"HTTP {response.status}: {await response.text()}")
 
@@ -131,16 +173,12 @@ class StreamingDownloader(AudioDownloader):
                 expected_size = int(content_length) if content_length and content_length.isdigit() else None
 
                 bytes_received = 0
-
-                # Use a thread for file writing to avoid blocking the event loop
                 with open(target_path, 'wb') as f:
-                    # Manually detect stall using wait_for on chunk reading
                     async for chunk in response.content.iter_chunked(self.chunk_size):
                         if chunk:
                             await asyncio.to_thread(f.write, chunk)
                             bytes_received += len(chunk)
 
-                # Validation
                 if bytes_received < self.min_file_size:
                     raise DownloadError(f"File too small: {bytes_received} bytes")
 
