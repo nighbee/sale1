@@ -247,6 +247,12 @@
     "representative": "Сату өкілі",
     "id": "Қоңырау ID",
     "datetime": "Күні/Уақыты",
+    "stats": {
+      "completed": "Аяқталды",
+      "pending": "Күтуде",
+      "processing": "Өңделуде",
+      "error": "Қате"
+    },
     "sources": {
       "sipuni": "Sipuni қоңыраулары",
       "sheets": "Google кестелері"
@@ -468,6 +474,15 @@
       "next": "Алға",
       "of": "барлығы"
     }
+  },
+  "pagination": {
+    "prev": "Артқа",
+    "next": "Алға",
+    "page": "Бет",
+    "of": "барлығы",
+    "showing": "Көрсетілуде",
+    "to": "-",
+    "results": "нәтиже"
   },
   "landing": {
     "nav": {

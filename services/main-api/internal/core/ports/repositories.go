@@ -29,7 +29,7 @@ type CallRepository interface {
 	Create(ctx context.Context, call *domain.Call) error
 	GetByID(ctx context.Context, id string) (*domain.Call, error)
 	GetByIDInternal(ctx context.Context, id string) (*domain.Call, error)
-	List(ctx context.Context, filters map[string]interface{}) ([]*domain.Call, int, error)
+	List(ctx context.Context, filters map[string]interface{}) ([]*domain.Call, int, map[string]int, error)
 	UpdateStatus(ctx context.Context, id string, status domain.CallStatus) error
 }
 

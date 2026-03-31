@@ -2,8 +2,9 @@ import React, { useState, useEffect } from "react";
 import { PageLayout } from "../../../widgets/PageLayout";
 import { callApi } from "../../../entities/call/api";
 import { userApi } from "../../../entities/user/api";
-import type { Call } from "../../../entities/call/types";
+import type { Call, ListCallsResponse } from "../../../entities/call/types";
 import Skeleton from "../../../shared/ui/Skeleton";
+import Pagination from "../../../shared/ui/Pagination";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useUserStore } from "../../../entities/user/model/store";
@@ -16,34 +17,58 @@ const CallsListPage: React.FC = () => {
   const [source, setSource] = useState<CallSource>("google_sheets");
   const [calls, setCalls] = useState<Call[]>([]);
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({ total: 0, avgScore: 0, failed: 0 });
+  const [page, setPage] = useState(1);
+  const [limit] = useState(20);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalResults, setTotalResults] = useState(0);
+  const [stats, setStats] = useState({
+    total: 0,
+    avgScore: 0,
+    completed: 0,
+    pending: 0,
+    processing: 0,
+    error: 0
+  });
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Only include team_id if it's not null/undefined
-        const params: Record<string, unknown> = { source };
+        const params: Record<string, unknown> = {
+          source,
+          page,
+          limit
+        };
         if (currentTeamId) {
           params.team_id = currentTeamId;
         }
 
-        // Admins use listCalls (backend enforces company-wide scope).
-        // sales_rep also uses listCalls — the backend restricts it to their own calls via role check.
         let res;
         if (user?.role === 'sales_rep' && user.id) {
           res = await userApi.getUserCalls(user.id, params);
         } else {
           res = await callApi.listCalls(params);
         }
-        const data = res.data as { calls?: Call[]; total?: number };
+
+        const data = res.data as ListCallsResponse;
         setCalls(data.calls || []);
-        const total = data.total || (data.calls ? data.calls.length : 0);
+        const total = data.total || 0;
+        setTotalResults(total);
+        setTotalPages(Math.ceil(total / limit));
+
         const callsWithScore = (data.calls || []).filter(c => c.quality_score !== undefined);
         const avg = callsWithScore.length > 0
           ? callsWithScore.reduce((sum, c) => sum + (c.quality_score || 0), 0) / callsWithScore.length
           : 0;
-        setStats({ total, avgScore: parseFloat(avg.toFixed(1)), failed: 0 });
+
+        setStats({
+          total,
+          avgScore: parseFloat(avg.toFixed(1)),
+          completed: data.status_counts?.completed || 0,
+          pending: data.status_counts?.pending || 0,
+          processing: data.status_counts?.processing || 0,
+          error: data.status_counts?.error || 0
+        });
       } catch {
         console.error("Failed to fetch calls");
       } finally {
@@ -51,7 +76,7 @@ const CallsListPage: React.FC = () => {
       }
     };
     fetchData();
-  }, [currentTeamId, user, source]);
+  }, [currentTeamId, user, source, page, limit]);
 
   return (
     <PageLayout title={t("calls.list_title")}>
@@ -65,8 +90,8 @@ const CallsListPage: React.FC = () => {
               {t("calls.list_subtitle")}
             </p>
           </div>
-          <div className="flex gap-4">
-            <div className="bg-white dark:bg-slate-900 px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-3">
+          <div className="flex flex-wrap gap-4">
+            <div className="bg-white dark:bg-slate-900 px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-3 min-w-[140px]">
               <div className="p-2 rounded-md bg-blue-50 dark:bg-blue-900/30 text-blue-600">
                 <span className="material-icons">call</span>
               </div>
@@ -77,7 +102,56 @@ const CallsListPage: React.FC = () => {
                 <p className="text-lg font-bold">{stats.total}</p>
               </div>
             </div>
-            <div className="bg-white dark:bg-slate-900 px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-3">
+
+            <div className="bg-white dark:bg-slate-900 px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-3 min-w-[140px]">
+              <div className="p-2 rounded-md bg-green-50 dark:bg-green-900/30 text-green-600">
+                <span className="material-icons">check_circle</span>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 uppercase font-semibold">
+                  {t("calls.stats.completed")}
+                </p>
+                <p className="text-lg font-bold">{stats.completed}</p>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-3 min-w-[140px]">
+              <div className="p-2 rounded-md bg-yellow-50 dark:bg-yellow-900/30 text-yellow-600">
+                <span className="material-icons">pending</span>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 uppercase font-semibold">
+                  {t("calls.stats.pending")}
+                </p>
+                <p className="text-lg font-bold">{stats.pending}</p>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-3 min-w-[140px]">
+              <div className="p-2 rounded-md bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600">
+                <span className="material-icons">sync</span>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 uppercase font-semibold">
+                  {t("calls.stats.processing")}
+                </p>
+                <p className="text-lg font-bold">{stats.processing}</p>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-3 min-w-[140px]">
+              <div className="p-2 rounded-md bg-red-50 dark:bg-red-900/30 text-red-600">
+                <span className="material-icons">error_outline</span>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 uppercase font-semibold">
+                  {t("calls.stats.error")}
+                </p>
+                <p className="text-lg font-bold">{stats.error}</p>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-3 min-w-[140px]">
               <div className="p-2 rounded-md bg-green-50 dark:bg-green-900/30 text-green-600">
                 <span className="material-icons">analytics</span>
               </div>
@@ -229,6 +303,13 @@ const CallsListPage: React.FC = () => {
               </tbody>
             </table>
           </div>
+          <Pagination
+            currentPage={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            totalResults={totalResults}
+            limit={limit}
+          />
         </div>
       </div>
     </PageLayout>

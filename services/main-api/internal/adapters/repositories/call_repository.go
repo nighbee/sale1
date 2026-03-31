@@ -114,19 +114,24 @@ func (r *callRepository) GetByIDInternal(ctx context.Context, id string) (*domai
 	return call, err
 }
 
-func (r *callRepository) List(ctx context.Context, filters map[string]interface{}) ([]*domain.Call, int, error) {
+func (r *callRepository) List(ctx context.Context, filters map[string]interface{}) ([]*domain.Call, int, map[string]int, error) {
 	where := []string{"1=1"}
+	countsWhere := []string{"1=1"}
 	args := []interface{}{}
 	argIdx := 1
 
 	if managerID, ok := filters["manager_id"].(string); ok && managerID != "" {
-		where = append(where, fmt.Sprintf("c.manager_id = $%d", argIdx))
+		condition := fmt.Sprintf("c.manager_id = $%d", argIdx)
+		where = append(where, condition)
+		countsWhere = append(countsWhere, condition)
 		args = append(args, managerID)
 		argIdx++
 	}
 
 	if teamID, ok := filters["team_id"].(string); ok && teamID != "" {
-		where = append(where, fmt.Sprintf("c.manager_id IN (SELECT manager_id FROM auth_schema.users WHERE team_id = $%d)", argIdx))
+		condition := fmt.Sprintf("c.manager_id IN (SELECT manager_id FROM auth_schema.users WHERE team_id = $%d)", argIdx)
+		where = append(where, condition)
+		countsWhere = append(countsWhere, condition)
 		args = append(args, teamID)
 		argIdx++
 	}
@@ -138,31 +143,41 @@ func (r *callRepository) List(ctx context.Context, filters map[string]interface{
 	}
 
 	if source, ok := filters["source"].(string); ok && source != "" {
-		where = append(where, fmt.Sprintf("c.source = $%d", argIdx))
+		condition := fmt.Sprintf("c.source = $%d", argIdx)
+		where = append(where, condition)
+		countsWhere = append(countsWhere, condition)
 		args = append(args, source)
 		argIdx++
 	}
 
 	if managerName, ok := filters["manager_name"].(string); ok && managerName != "" {
-		where = append(where, fmt.Sprintf("c.manager_name ILIKE $%d", argIdx))
+		condition := fmt.Sprintf("c.manager_name ILIKE $%d", argIdx)
+		where = append(where, condition)
+		countsWhere = append(countsWhere, condition)
 		args = append(args, "%"+managerName+"%")
 		argIdx++
 	}
 
 	if clientPhone, ok := filters["client_phone"].(string); ok && clientPhone != "" {
-		where = append(where, fmt.Sprintf("c.client_phone ILIKE $%d", argIdx))
+		condition := fmt.Sprintf("c.client_phone ILIKE $%d", argIdx)
+		where = append(where, condition)
+		countsWhere = append(countsWhere, condition)
 		args = append(args, "%"+clientPhone+"%")
 		argIdx++
 	}
 
 	if dateFrom, ok := filters["date_from"].(string); ok && dateFrom != "" {
-		where = append(where, fmt.Sprintf("c.call_date >= $%d", argIdx))
+		condition := fmt.Sprintf("c.call_date >= $%d", argIdx)
+		where = append(where, condition)
+		countsWhere = append(countsWhere, condition)
 		args = append(args, dateFrom)
 		argIdx++
 	}
 
 	if dateTo, ok := filters["date_to"].(string); ok && dateTo != "" {
-		where = append(where, fmt.Sprintf("c.call_date <= $%d", argIdx))
+		condition := fmt.Sprintf("c.call_date <= $%d", argIdx)
+		where = append(where, condition)
+		countsWhere = append(countsWhere, condition)
 		args = append(args, dateTo)
 		argIdx++
 	}
@@ -192,7 +207,7 @@ func (r *callRepository) List(ctx context.Context, filters map[string]interface{
 
 	rows, err := r.db.QueryContext(ctx, query, append(args, limit, offset)...)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, nil, err
 	}
 	defer rows.Close()
 
@@ -220,7 +235,7 @@ func (r *callRepository) List(ctx context.Context, filters map[string]interface{
 			&call.ErrorsFree,
 		)
 		if err != nil {
-			return nil, 0, err
+			return nil, 0, nil, err
 		}
 		calls = append(calls, call)
 	}
@@ -230,10 +245,34 @@ func (r *callRepository) List(ctx context.Context, filters map[string]interface{
 	var total int
 	err = r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, nil, err
 	}
 
-	return calls, total, nil
+	// Status counts (ignoring status filter itself to get counts for all statuses)
+	statusCountsQuery := fmt.Sprintf(`
+		SELECT status, COUNT(*)
+		FROM calls_schema.calls c
+		WHERE %s
+		GROUP BY status
+	`, strings.Join(countsWhere, " AND "))
+
+	statusRows, err := r.db.QueryContext(ctx, statusCountsQuery, args...)
+	if err != nil {
+		return nil, 0, nil, err
+	}
+	defer statusRows.Close()
+
+	statusCounts := make(map[string]int)
+	for statusRows.Next() {
+		var status string
+		var count int
+		if err := statusRows.Scan(&status, &count); err != nil {
+			return nil, 0, nil, err
+		}
+		statusCounts[status] = count
+	}
+
+	return calls, total, statusCounts, nil
 }
 
 func (r *callRepository) UpdateStatus(ctx context.Context, id string, status domain.CallStatus) error {

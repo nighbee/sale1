@@ -247,6 +247,12 @@
     "representative": "Sales Representative",
     "id": "Call ID",
     "datetime": "Date/Time",
+    "stats": {
+      "completed": "Completed",
+      "pending": "Pending",
+      "processing": "Processing",
+      "error": "Error"
+    },
     "sources": {
       "sipuni": "Sipuni Calls",
       "sheets": "Google Sheets"
@@ -472,6 +478,15 @@
       "next": "Next",
       "of": "of"
     }
+  },
+  "pagination": {
+    "prev": "Previous",
+    "next": "Next",
+    "page": "Page",
+    "of": "of",
+    "showing": "Showing",
+    "to": "to",
+    "results": "results"
   },
   "landing": {
     "nav": {

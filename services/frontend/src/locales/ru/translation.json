@@ -247,6 +247,12 @@
     "representative": "Торговый представитель",
     "id": "ID звонка",
     "datetime": "Дата/Время",
+    "stats": {
+      "completed": "Завершено",
+      "pending": "Ожидание",
+      "processing": "Обработка",
+      "error": "Ошибка"
+    },
     "sources": {
       "sipuni": "Звонки Sipuni",
       "sheets": "Google Таблицы"
@@ -468,6 +474,15 @@
       "next": "След",
       "of": "из"
     }
+  },
+  "pagination": {
+    "prev": "Назад",
+    "next": "Вперед",
+    "page": "Страница",
+    "of": "из",
+    "showing": "Показано",
+    "to": "до",
+    "results": "результатов"
   },
   "landing": {
     "nav": {
