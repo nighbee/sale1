@@ -4,6 +4,7 @@ import Modal from '../../../shared/ui/Modal';
 import Button from '../../../shared/ui/Button';
 import Input from '../../../shared/ui/Input';
 import { integrationApi } from '../../../entities/integration/api';
+import { useCheckModel } from '../hooks/useCheckModel';
 import { toast } from 'sonner';
 
 interface IntegrationModalProps {
@@ -20,6 +21,7 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ isOpen, onClose, ty
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [credentials, setCredentials] = useState<Record<string, string>>({});
   const [config, setConfig] = useState<Record<string, string>>({});
+  const { isChecking, checkResult, checkModel, setCheckResult } = useCheckModel(type);
 
   useEffect(() => {
     const fetchIntegration = async () => {
@@ -34,8 +36,10 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ isOpen, onClose, ty
     }
     if (isOpen) {
         fetchIntegration();
+        setCheckResult(null);
+        setTestResult(null);
     }
-  }, [isOpen, type]);
+  }, [isOpen, type, setCheckResult]);
 
   const handleTest = async () => {
     setIsTesting(true);
@@ -56,6 +60,10 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ isOpen, onClose, ty
     } finally {
       setIsTesting(false);
     }
+  };
+
+  const handleCheckModel = () => {
+    checkModel(credentials, config.model);
   };
 
   const handleSave = async () => {
@@ -163,12 +171,34 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ isOpen, onClose, ty
           </div>
         )}
 
+        {checkResult && (
+          <div className={`p-3 rounded-lg text-sm flex flex-col gap-2 ${checkResult.success ? 'bg-blue-50 text-blue-700' : 'bg-red-50 text-red-700'}`}>
+            <div className="flex items-start gap-2">
+              <span className="material-symbols-outlined text-base mt-0.5">{checkResult.success ? 'verified' : 'error'}</span>
+              <p className="font-bold">{checkResult.success ? 'Sample Transcription:' : 'Model Check Failed'}</p>
+            </div>
+            {checkResult.success ? (
+              <p className="italic bg-white/50 p-2 rounded border border-blue-100 max-h-40 overflow-y-auto">{checkResult.transcript}</p>
+            ) : (
+              <p>{checkResult.error}</p>
+            )}
+          </div>
+        )}
+
         <div className="flex justify-between items-center pt-6 border-t border-slate-100 dark:border-slate-800">
-          <Button variant="outline" onClick={handleTest} isLoading={isTesting} disabled={loading}>
-            {t('integrations.test_connection')}
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleTest} isLoading={isTesting} disabled={loading || isChecking}>
+              {t('integrations.test_connection')}
+            </Button>
+            {['openai', 'groq', 'deepgram', 'gemini'].includes(type) && (
+              <Button variant="outline" onClick={handleCheckModel} isLoading={isChecking} disabled={loading || isTesting}>
+                <span className="material-symbols-outlined text-base mr-1">audio_file</span>
+                Check model
+              </Button>
+            )}
+          </div>
           <div className="flex gap-3">
-            <Button variant="ghost" onClick={onClose}>{t('common.cancel')}</Button>
+            <Button variant="ghost" onClick={onClose} disabled={loading || isTesting || isChecking}>{t('common.cancel')}</Button>
             <Button onClick={handleSave} isLoading={loading}>{t('common.save')}</Button>
           </div>
         </div>

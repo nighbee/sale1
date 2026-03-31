@@ -126,6 +126,7 @@ func SetupRoutes(
 	integrations.Post("/google-sheets/sync", integrationHandler.TriggerSheetSync)
 	integrations.Get("/:type", integrationHandler.Get)
 	integrations.Post("/:type/test", integrationHandler.TestConnection)
+	integrations.Post("/:type/check", integrationHandler.CheckModel)
 	integrations.Delete("/:type", integrationHandler.Delete)
 
 	// AI Settings

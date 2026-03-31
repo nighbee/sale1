@@ -63,6 +63,71 @@ func (uc *IntegrationUseCase) ListAllActive(ctx context.Context) ([]*domain.Inte
 	return uc.repo.ListAllActive(ctx)
 }
 
+func (uc *IntegrationUseCase) CheckModel(ctx context.Context, it domain.IntegrationType, credentials json.RawMessage, model string) (map[string]interface{}, error) {
+	sttServiceURL := os.Getenv("STT_SERVICE_URL")
+	if sttServiceURL == "" {
+		sttServiceURL = "http://stt-service:8001"
+	}
+	url := sttServiceURL + "/api/v1/check-model"
+
+	payload := map[string]interface{}{
+		"provider_name": string(it),
+		"credentials":   nil,
+		"model":         model,
+	}
+
+	if len(credentials) == 0 || string(credentials) == "null" {
+		existing, err := uc.repo.GetByType(ctx, it)
+		if err == nil {
+			credentials = existing.Credentials
+			if model == "" {
+				var cfg struct {
+					Model string `json:"model"`
+				}
+				if err := json.Unmarshal(existing.Config, &cfg); err == nil {
+					model = cfg.Model
+				}
+			}
+		}
+	}
+
+	if len(credentials) > 0 && string(credentials) != "null" {
+		var creds map[string]interface{}
+		if err := json.Unmarshal(credentials, &creds); err == nil {
+			payload["credentials"] = creds
+		}
+	}
+	payload["model"] = model
+
+	body, _ := json.Marshal(payload)
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(body))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 60 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("stt-service unreachable: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var result map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		if detail, ok := result["detail"].(string); ok {
+			return nil, errors.New(detail)
+		}
+		return nil, fmt.Errorf("stt-service error (status %d)", resp.StatusCode)
+	}
+
+	return result, nil
+}
+
 func (uc *IntegrationUseCase) TestConnection(ctx context.Context, it domain.IntegrationType, credentials, config json.RawMessage) error {
 	// If credentials or config are not provided in request, fetch from DB
 	if len(credentials) == 0 || string(credentials) == "null" {
