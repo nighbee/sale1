@@ -5,6 +5,7 @@ from src.infrastructure.audio.http_downloader import HTTPDownloader
 from src.infrastructure.audio.minio_downloader import MinioDownloader
 from src.infrastructure.audio.curl_downloader import CurlDownloader
 from src.infrastructure.audio.playwright_downloader import PlaywrightDownloader
+from src.infrastructure.audio.streaming_downloader import StreamingDownloader
 from src.infrastructure.audio.fallback_downloader import FallbackDownloader
 from src.infrastructure.audio.resilient_downloader import ResilientDownloader
 from src.adapters.storage.minio_client import MinioClient
@@ -31,6 +32,15 @@ class DownloaderFactory:
         if strategy == "playwright":
             logger.info("Using PlaywrightDownloader strategy", extra={"url": url})
             return PlaywrightDownloader()
+
+        if strategy == "streaming":
+            logger.info("Using StreamingDownloader strategy", extra={"url": url})
+            return StreamingDownloader()
+
+        # For Sipuni URLs, always use StreamingDownloader by default as it's the most reliable
+        if "sipuni.com" in url:
+            logger.info("Sipuni URL detected, using StreamingDownloader", extra={"url": url})
+            return StreamingDownloader()
 
         if strategy == "fallback":
             logger.info("Using basic FallbackDownloader (HTTP -> Curl)", extra={"url": url})
