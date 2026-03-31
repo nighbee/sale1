@@ -104,8 +104,15 @@ class PlaywrightDownloader(AudioDownloader):
                 viewport={'width': 1920, 'height': 1080},
                 extra_http_headers={
                     "Accept": "audio/mpeg,audio/*;q=0.9,application/octet-stream;q=0.8,*/*;q=0.7",
+                    "Accept-Language": "en-US,en;q=0.9",
                     "Cache-Control": "no-cache",
                     "Pragma": "no-cache",
+                    "sec-ch-ua": '"Chromium";v="122", "Not(A:Brand";v="24", "Google Chrome";v="122"',
+                    "sec-ch-ua-mobile": "?0",
+                    "sec-ch-ua-platform": '"Windows"',
+                    "sec-fetch-dest": "audio",
+                    "sec-fetch-mode": "no-cors",
+                    "sec-fetch-site": "same-site",
                 }
             )
 
