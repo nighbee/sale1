@@ -69,6 +69,8 @@ class CurlDownloader(AudioDownloader):
             "-H", "Accept: */*",
             "-H", "Accept-Encoding: identity;q=1, *;q=0",
             "-H", "sec-fetch-dest: video",
+            "-H", "Cache-Control: no-cache",
+            "-H", "Pragma: no-cache",
             "-v",
             url
         ]
