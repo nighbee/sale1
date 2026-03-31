@@ -21,10 +21,11 @@ type ListCallsRequest struct {
 }
 
 type ListCallsResponse struct {
-	Calls []*domain.Call `json:"calls"`
-	Total int            `json:"total"`
-	Page  int            `json:"page"`
-	Limit int            `json:"limit"`
+	Calls        []*domain.Call `json:"calls"`
+	Total        int            `json:"total"`
+	Page         int            `json:"page"`
+	Limit        int            `json:"limit"`
+	StatusCounts map[string]int `json:"status_counts"`
 }
 
 type ListCallsUseCase struct {
@@ -49,15 +50,16 @@ func (uc *ListCallsUseCase) Execute(ctx context.Context, req ListCallsRequest) (
 		"limit":        req.Limit,
 	}
 
-	calls, total, err := uc.callRepo.List(ctx, filters)
+	calls, total, statusCounts, err := uc.callRepo.List(ctx, filters)
 	if err != nil {
 		return nil, err
 	}
 
 	return &ListCallsResponse{
-		Calls: calls,
-		Total: total,
-		Page:  req.Page,
-		Limit: req.Limit,
+		Calls:        calls,
+		Total:        total,
+		Page:         req.Page,
+		Limit:        req.Limit,
+		StatusCounts: statusCounts,
 	}, nil
 }

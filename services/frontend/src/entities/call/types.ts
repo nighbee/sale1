@@ -50,3 +50,11 @@ export interface CallAnalysis {
   brief?: string;
   next_best_action?: string;
 }
+
+export interface ListCallsResponse {
+  calls: Call[];
+  total: number;
+  page: number;
+  limit: number;
+  status_counts: Record<string, number>;
+}
