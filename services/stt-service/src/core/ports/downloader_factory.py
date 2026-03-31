@@ -37,10 +37,10 @@ class DownloaderFactory:
             logger.info("Using StreamingDownloader strategy", extra={"url": url})
             return StreamingDownloader()
 
-        # For Sipuni URLs, always use StreamingDownloader by default as it's the most reliable
+        # For Sipuni URLs, use PlaywrightDownloader (browser emulator) by default as it's the most reliable for their throttle
         if "sipuni.com" in url:
-            logger.info("Sipuni URL detected, using StreamingDownloader", extra={"url": url})
-            return StreamingDownloader()
+            logger.info("Sipuni URL detected, using PlaywrightDownloader", extra={"url": url})
+            return PlaywrightDownloader()
 
         if strategy == "fallback":
             logger.info("Using basic FallbackDownloader (HTTP -> Curl)", extra={"url": url})

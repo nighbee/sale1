@@ -6,7 +6,7 @@ import logging
 import tempfile
 import time
 from urllib.parse import urlparse
-from src.adapters.storage.postgres_repo import save_transcript, update_call_link
+from src.adapters.storage.postgres_repo import save_transcript, update_call_link, get_call_link
 from src.adapters.events.redis_publisher import publish_transcript_ready
 from src.adapters.storage.minio_client import MinioClient
 from src.infrastructure.audio.diarization import DiarizationService, merge_transcript_with_diarization
@@ -48,6 +48,12 @@ class ProcessAudioUseCase:
         try:
             # 1. Download audio
             logger.info("[1/6] downloading audio", extra={"call_id": call_id, "audio_url": audio_url})
+
+            # Check if MinIO link already exists in the database
+            db_call_link = await asyncio.to_thread(get_call_link, call_id)
+            if db_call_link and db_call_link.startswith("minio://"):
+                logger.info("MinIO link found in database, prioritizing it", extra={"call_id": call_id, "minio_link": db_call_link})
+                audio_url = db_call_link
 
             with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
                 tmp_path = tmp.name
@@ -140,7 +146,7 @@ class ProcessAudioUseCase:
                 transcript_data["segments"] = stt_segments
             logger.info("[4/6] STT transcription received",
                         extra={"call_id": call_id, "stt_provider": stt_provider_name,
-                               "elapsed_s": stt_elapsed, "segment_count": len(stt_segments),
+                               "elapsed_s": stt_elapsed, "count": len(stt_segments),
                                "text_length": len(stt_text),
                                "text_preview": stt_text[:200] if stt_text else ""})
 
