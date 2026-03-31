@@ -236,6 +236,7 @@ services:
       MINIO_ACCESS_KEY: "minioadmin"
       MINIO_SECRET_KEY: "minioadmin123"
       MINIO_SECURE: "false"
+      STT_DOWNLOAD_STRATEGY: "streaming"
       LOG_LEVEL: ${LOG_LEVEL:-info}
       INTERNAL_SECRET: ${INTERNAL_SECRET:-internal-secret-key}
     depends_on:

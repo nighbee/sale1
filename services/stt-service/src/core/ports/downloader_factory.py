@@ -19,7 +19,7 @@ class DownloaderFactory:
             logger.info("Using MinioDownloader", extra={"url": url})
             return MinioDownloader(minio_client)
 
-        strategy = os.getenv("STT_DOWNLOAD_STRATEGY", "pipeline").lower()
+        strategy = os.getenv("STT_DOWNLOAD_STRATEGY", "streaming").lower()
 
         if strategy == "curl":
             logger.info("Using pure CurlDownloader strategy", extra={"url": url})
@@ -37,15 +37,14 @@ class DownloaderFactory:
             logger.info("Using StreamingDownloader strategy", extra={"url": url})
             return StreamingDownloader()
 
-        # For Sipuni URLs, use PlaywrightDownloader (browser emulator) by default as it's the most reliable for their throttle
-        if "sipuni.com" in url:
-            logger.info("Sipuni URL detected, using PlaywrightDownloader", extra={"url": url})
-            return PlaywrightDownloader()
-
         if strategy == "fallback":
             logger.info("Using basic FallbackDownloader (HTTP -> Curl)", extra={"url": url})
             return FallbackDownloader([HTTPDownloader(), CurlDownloader()])
 
-        # Default strategy is the new resilient Pipeline
-        logger.info("Using Resilient Pipeline strategy", extra={"url": url, "strategy": strategy})
-        return ResilientDownloader()
+        if strategy == "resilient":
+            logger.info("Using Resilient Pipeline strategy", extra={"url": url, "strategy": strategy})
+            return ResilientDownloader()
+
+        # Default to streaming for everything else
+        logger.info(f"Using default StreamingDownloader strategy (requested strategy was: {strategy})", extra={"url": url})
+        return StreamingDownloader()
