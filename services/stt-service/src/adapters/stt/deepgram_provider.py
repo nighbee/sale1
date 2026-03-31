@@ -6,12 +6,12 @@ from src.core.ports.stt_provider import STTProvider
 logger = logging.getLogger(__name__)
 
 class DeepgramSTTProvider(STTProvider):
-    def __init__(self, api_key: str = None):
+    def __init__(self, api_key: str = None, model: str = None):
         self.api_key = api_key or os.getenv("DEEPGRAM_API_KEY")
         if not self.api_key:
             logger.warning("DEEPGRAM_API_KEY is not set")
         self.client = DeepgramClient(self.api_key)
-        self.model = os.getenv("DEEPGRAM_MODEL", "nova-2")
+        self.model = model or os.getenv("DEEPGRAM_MODEL", "nova-2")
 
     async def transcribe(self, audio_path: str) -> dict:
         if not self.api_key:

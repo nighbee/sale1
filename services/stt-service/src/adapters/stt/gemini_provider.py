@@ -1,4 +1,5 @@
 import os
+import json
 import asyncio
 import logging
 import google.generativeai as genai
@@ -7,15 +8,15 @@ from src.core.ports.stt_provider import STTProvider
 logger = logging.getLogger(__name__)
 
 class GeminiSTTProvider(STTProvider):
-    def __init__(self, api_key: str = None):
+    def __init__(self, api_key: str = None, model: str = None):
         self.api_key = api_key or os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
         if not self.api_key:
             logger.warning("GEMINI/GOOGLE_API_KEY is not set")
         else:
             genai.configure(api_key=self.api_key)
         
-        model_name = os.getenv("GOOGLE_AI_MODEL", "gemini-1.5-flash")
-        self.model = genai.GenerativeModel(model_name)
+        self.model_name = model or os.getenv("GOOGLE_AI_MODEL", "gemini-1.5-flash")
+        self.model = genai.GenerativeModel(self.model_name)
 
     async def transcribe(self, audio_path: str) -> dict:
         if not self.api_key:
@@ -30,10 +31,21 @@ class GeminiSTTProvider(STTProvider):
             )
 
             # Prompt for transcription using the async method
-            response = await self.model.generate_content_async([
-                "Transcribe this audio file strictly. Output JSON with 'text' and 'segments' (if possible, otherwise just text).",
-                sample_file
-            ])
+            prompt = (
+                "Transcribe this audio file. "
+                "Output strictly valid JSON with the following structure:\n"
+                "{\n"
+                "  \"text\": \"full transcript text\",\n"
+                "  \"segments\": [\n"
+                "    {\"start\": 0.0, \"end\": 1.5, \"text\": \"segment text\"}\n"
+                "  ]\n"
+                "}"
+            )
+
+            response = await self.model.generate_content_async(
+                [prompt, sample_file],
+                generation_config={"response_mime_type": "application/json"}
+            )
 
             # Clean up the file after processing
             try:
@@ -41,13 +53,19 @@ class GeminiSTTProvider(STTProvider):
             except Exception:
                 pass
 
-            text = response.text
+            try:
+                result = json.loads(response.text)
+                text = result.get("text", "")
+                segments = result.get("segments", [])
+            except (json.JSONDecodeError, AttributeError):
+                text = response.text
+                segments = []
             
-            logger.info(f"Gemini transcription complete", extra={"audio_path": audio_path, "text_length": len(text)})
+            logger.info(f"Gemini transcription complete", extra={"audio_path": audio_path, "text_length": len(text), "segments": len(segments)})
 
             return {
                 "text": text,
-                "segments": []
+                "segments": segments
             }
         except Exception as e:
             logger.error("Gemini STT failed", extra={"error": str(e), "audio_path": audio_path})

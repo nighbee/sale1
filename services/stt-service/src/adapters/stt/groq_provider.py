@@ -7,7 +7,7 @@ from src.core.ports.stt_provider import STTProvider
 logger = logging.getLogger(__name__)
 
 class GroqSTTProvider(STTProvider):
-    def __init__(self, api_key: str = None):
+    def __init__(self, api_key: str = None, model: str = None):
         self.api_key = api_key or os.getenv("GROQ_API_KEY")
         if not self.api_key:
              logger.warning("GROQ_API_KEY is not set")
@@ -15,7 +15,7 @@ class GroqSTTProvider(STTProvider):
             api_key=self.api_key or "sk-dummy",
             base_url="https://api.groq.com/openai/v1",
         )
-        self.model = os.getenv("GROQ_STT_MODEL", "whisper-large-v3-turbo")
+        self.model = model or os.getenv("GROQ_STT_MODEL", "whisper-large-v3-turbo")
 
     async def transcribe(self, audio_path: str) -> dict:
         if not self.api_key:

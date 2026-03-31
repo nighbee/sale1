@@ -42,15 +42,15 @@ class STTProviderFactory:
         )
 
         if provider_name == "gemini":
-            return GeminiSTTProvider(api_key=api_key)
+            return GeminiSTTProvider(api_key=api_key, model=default_model)
         elif provider_name == "groq":
-            return GroqSTTProvider(api_key=api_key)
+            return GroqSTTProvider(api_key=api_key, model=default_model)
         elif provider_name == "deepgram":
-            return DeepgramSTTProvider(api_key=api_key)
+            return DeepgramSTTProvider(api_key=api_key, model=default_model)
         elif provider_name == "elevenlabs":
-            return ElevenLabsSTTProvider(api_key=api_key)
+            return ElevenLabsSTTProvider(api_key=api_key, model=default_model)
         elif provider_name == "soniox":
-            return SonioxSTTProvider(api_key=api_key)
+            return SonioxSTTProvider(api_key=api_key, model=default_model)
         else:
             # Default to OpenAI-compatible provider
             model = default_model or "whisper-1"

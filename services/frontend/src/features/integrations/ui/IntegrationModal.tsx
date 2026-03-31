@@ -121,14 +121,30 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ isOpen, onClose, ty
           case 'groq':
           case 'deepgram':
           case 'gemini':
+          case 'elevenlabs':
+          case 'soniox':
               return (
                   <div className="space-y-4">
                       <Input label="API Key" type="password" value={credentials.api_key || ''} onChange={e => setCredentials({...credentials, api_key: e.target.value})} />
+                      {['openai', 'groq', 'deepgram', 'gemini'].includes(type) && (
+                          <Input
+                              label="Base URL (Optional)"
+                              placeholder="https://api.openai.com/v1"
+                              value={credentials.base_url || ''}
+                              onChange={e => setCredentials({...credentials, base_url: e.target.value})}
+                          />
+                      )}
                       <Input
-                          label="Base URL (Optional)"
-                          placeholder="https://api.openai.com/v1"
-                          value={credentials.base_url || ''}
-                          onChange={e => setCredentials({...credentials, base_url: e.target.value})}
+                          label="Model"
+                          placeholder={
+                              type === 'openai' ? 'whisper-1' :
+                              type === 'groq' ? 'whisper-large-v3-turbo' :
+                              type === 'deepgram' ? 'nova-2' :
+                              type === 'gemini' ? 'gemini-1.5-flash' :
+                              type === 'elevenlabs' ? 'scribe_v1' : 'en_v2'
+                          }
+                          value={config.model || ''}
+                          onChange={e => setConfig({...config, model: e.target.value})}
                       />
                   </div>
               );
@@ -190,7 +206,7 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ isOpen, onClose, ty
             <Button variant="outline" onClick={handleTest} isLoading={isTesting} disabled={loading || isChecking}>
               {t('integrations.test_connection')}
             </Button>
-            {['openai', 'groq', 'deepgram', 'gemini'].includes(type) && (
+            {['openai', 'groq', 'deepgram', 'gemini', 'elevenlabs', 'soniox'].includes(type) && (
               <Button variant="outline" onClick={handleCheckModel} isLoading={isChecking} disabled={loading || isTesting}>
                 <span className="material-symbols-outlined text-base mr-1">audio_file</span>
                 Check model

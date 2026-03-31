@@ -16,10 +16,11 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 class SonioxSTTProvider(STTProvider):
-    def __init__(self, api_key: str = None):
+    def __init__(self, api_key: str = None, model: str = None):
         self.api_key = api_key or os.getenv("SONIOX_API_KEY")
         if not self.api_key:
              logger.warning("SONIOX_API_KEY is not set")
+        self.model = model or "en_v2" # Default soniox model
 
     async def transcribe(self, audio_path: str) -> dict:
         if not SONIOX_AVAILABLE:

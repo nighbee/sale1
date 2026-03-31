@@ -45,6 +45,8 @@ const IntegrationsPage: React.FC = () => {
     { id: 'groq', name: 'Groq', type: 'AI Provider', icon: 'bolt', color: 'yellow', desc: 'High-speed Whisper STT provider.' },
     { id: 'gemini', name: 'Google Gemini', type: 'AI Provider', icon: 'cloud', color: 'blue', desc: 'Google Gemini STT and LLM provider.' },
     { id: 'deepgram', name: 'Deepgram', type: 'AI Provider', icon: 'graphic_eq', color: 'purple', desc: 'Enterprise-grade STT provider.' },
+    { id: 'elevenlabs', name: 'ElevenLabs', type: 'AI Provider', icon: 'record_voice_over', color: 'purple', desc: 'High-quality STT with diarization.' },
+    { id: 'soniox', name: 'Soniox', type: 'AI Provider', icon: 'settings_voice', color: 'blue', desc: 'Accurate and fast speech recognition.' },
     { id: 'telegram', name: t('integrations.telegram_name'), type: t('integrations.notifications'), icon: 'send', color: 'blue', desc: t('integrations.telegram_desc') },
     { id: 'slack', name: t('integrations.slack_name'), type: t('integrations.communication'), icon: 'chat_bubble', color: 'purple', desc: t('integrations.slack_desc') },
   ];
@@ -121,6 +123,8 @@ const IntegrationsPage: React.FC = () => {
                       <option value="groq">Groq (Whisper)</option>
                       <option value="deepgram">Deepgram</option>
                       <option value="gemini">Google Gemini</option>
+                      <option value="elevenlabs">ElevenLabs</option>
+                      <option value="soniox">Soniox</option>
                     </select>
                   </div>
                   <Input
