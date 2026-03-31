@@ -36,6 +36,20 @@ def save_transcript(call_id, transcript_json, stt_provider):
         conn.rollback()  # Ensure clean state
         get_pool().putconn(conn)
 
+def get_latest_minio_call():
+    conn = get_pool().getconn()
+    cur = None
+    try:
+        cur = conn.cursor()
+        query = "SELECT id, call_link FROM calls_schema.calls WHERE call_link LIKE 'minio://%' ORDER BY created_at DESC LIMIT 1"
+        cur.execute(query)
+        return cur.fetchone()
+    finally:
+        if cur:
+            cur.close()
+        conn.rollback()
+        get_pool().putconn(conn)
+
 def update_call_status(call_id, status):
     conn = get_pool().getconn()
     cur = None

@@ -149,6 +149,40 @@ func (h *IntegrationHandler) TestConnection(c *fiber.Ctx) error {
 	})
 }
 
+// CheckModel godoc
+// @Summary Check STT model with sample audio
+// @Description Send a request to stt-service to verify if a provider and model can transcribe a sample call
+// @Tags integrations
+// @Produce json
+// @Param type path string true "Integration Type"
+// @Param request body map[string]interface{} false "Model and credentials to check"
+// @Success 200 {object} fiber.Map
+// @Failure 400 {object} fiber.Map
+// @Failure 500 {object} fiber.Map
+// @Security BearerAuth
+// @Router /integrations/{type}/check [post]
+func (h *IntegrationHandler) CheckModel(c *fiber.Ctx) error {
+	it := c.Params("type")
+	log := applogger.FromFiberCtx(c).With(zap.String("operation", "check_model"), zap.String("type", it))
+
+	var req struct {
+		Credentials json.RawMessage `json:"credentials"`
+		Model       string          `json:"model"`
+	}
+	c.BodyParser(&req)
+
+	result, err := h.integrationUC.CheckModel(c.Context(), domain.IntegrationType(it), req.Credentials, req.Model)
+	if err != nil {
+		log.Warn("check model failed", zap.Error(err))
+		return c.Status(400).JSON(fiber.Map{
+			"success": false,
+			"error":   err.Error(),
+		})
+	}
+
+	return c.JSON(result)
+}
+
 // Delete godoc
 // @Summary Delete an integration
 // @Description Remove a third-party integration

@@ -2,9 +2,10 @@ import asyncio
 import logging
 import os
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Body, HTTPException
 from prometheus_client import make_asgi_app
 from src.infrastructure.logging.json_logger import setup_logging
+from src.core.usecases.check_model import CheckModelUseCase
 from src.adapters.queue.bullmq_consumer import start_consumer
 from src.infrastructure.grpc.server import serve
 from src.infrastructure.monitoring.metrics import APP_INFO
@@ -19,6 +20,18 @@ app.mount("/metrics", metrics_app)
 @app.get("/health")
 async def health():
     return {"status": "ok", "service": "stt-service"}
+
+@app.post("/api/v1/check-model")
+async def check_model(
+    provider_name: str = Body(...),
+    credentials: dict = Body(None),
+    model: str = Body(None)
+):
+    use_case = CheckModelUseCase()
+    result = await use_case.execute(provider_name, credentials, model)
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("error"))
+    return result
 
 async def run_http_server():
     metrics_port = int(os.getenv("METRICS_PORT", 8001))

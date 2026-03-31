@@ -8,6 +8,7 @@ export const integrationApi = {
   delete: (type: string) => api.delete(`/integrations/${type}`),
   triggerSheetSync: () => api.post('/integrations/google-sheets/sync'),
   test: (type: string, data?: { credentials?: unknown; config?: unknown }) => api.post<{ success: boolean; message?: string; error?: string }>(`/integrations/${type}/test`, data),
+  checkModel: (type: string, data?: { credentials?: unknown; model?: string }) => api.post<{ success: boolean; transcript?: string; error?: string }>(`/integrations/${type}/check`, data),
   getAISettings: () => api.get<any>('/ai-settings'),
   updateAISettings: (data: any) => api.put<any>('/ai-settings', data),
 };
