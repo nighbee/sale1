@@ -17,6 +17,8 @@ const (
 	IntegrationGroq         IntegrationType = "groq"
 	IntegrationDeepgram     IntegrationType = "deepgram"
 	IntegrationGemini       IntegrationType = "gemini"
+	IntegrationElevenLabs   IntegrationType = "elevenlabs"
+	IntegrationSoniox       IntegrationType = "soniox"
 )
 
 type Integration struct {

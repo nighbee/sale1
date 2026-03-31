@@ -141,7 +141,7 @@ func (uc *IntegrationUseCase) TestConnection(ctx context.Context, it domain.Inte
 	}
 
 	switch it {
-	case domain.IntegrationOpenAI, domain.IntegrationGroq, domain.IntegrationDeepgram, domain.IntegrationGemini:
+	case domain.IntegrationOpenAI, domain.IntegrationGroq, domain.IntegrationDeepgram, domain.IntegrationGemini, domain.IntegrationElevenLabs, domain.IntegrationSoniox:
 		return uc.testAIProvider(ctx, it, credentials)
 
 	case domain.IntegrationSipuni:
@@ -194,6 +194,14 @@ func (uc *IntegrationUseCase) testAIProvider(ctx context.Context, it domain.Inte
 		authValue = "Token " + creds.APIKey
 	case domain.IntegrationGemini:
 		url = fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models?key=%s", creds.APIKey)
+	case domain.IntegrationElevenLabs:
+		url = "https://api.elevenlabs.io/v1/models"
+		authHeader = "xi-api-key"
+		authValue = creds.APIKey
+	case domain.IntegrationSoniox:
+		url = "https://api.soniox.com/v1/GetTest"
+		authHeader = "Authorization"
+		authValue = creds.APIKey
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)

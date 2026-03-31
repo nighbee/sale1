@@ -8,11 +8,12 @@ from src.core.ports.stt_provider import STTProvider
 logger = logging.getLogger(__name__)
 
 class ElevenLabsSTTProvider(STTProvider):
-    def __init__(self, api_key: str = None):
+    def __init__(self, api_key: str = None, model: str = None):
         self.api_key = api_key or os.getenv("ELEVENLABS_API_KEY")
         if not self.api_key:
             logger.warning("ELEVENLABS_API_KEY is not set")
         self.client = ElevenLabs(api_key=self.api_key or "dummy")
+        self.model = model or "scribe_v1"
 
     async def transcribe(self, audio_path: str) -> dict:
         if not self.api_key:
@@ -25,7 +26,7 @@ class ElevenLabsSTTProvider(STTProvider):
                 transcript = await asyncio.to_thread(
                     self.client.scribe.transcribe,
                     file=audio_file,
-                    model_id="scribe_v1",
+                    model_id=self.model,
                 )
 
             full_text = ""
