@@ -67,13 +67,15 @@ class StreamingDownloader(AudioDownloader):
 
         return cookies
 
-    async def download(self, url: str, target_path: str, cookies: Dict[str, str] = None) -> None:
+    async def download(self, url: str, target_path: str, cookies: Dict[str, str] = None, extra_headers: Dict[str, str] = None) -> None:
         start_total_time = time.monotonic()
         attempt = 0
         # Allow caller-provided cookies (from Playwright) to override URL-extracted cookies
         if cookies is None:
             cookies = self._extract_cookies(url)
         temp_path = f"{target_path}.tmp"
+        etag = None
+        last_modified = None
 
         # Long timeout for slow/paused streams (sock_read=120)
         timeout = aiohttp.ClientTimeout(total=None, sock_read=120, connect=30)
@@ -89,8 +91,17 @@ class StreamingDownloader(AudioDownloader):
                 start_byte = os.path.getsize(temp_path)
 
             headers = self.headers.copy()
+            # Merge extra headers provided by caller (e.g., User-Agent, Referer from Playwright)
+            if extra_headers:
+                headers.update(extra_headers)
             if start_byte > 0:
                 headers["Range"] = f"bytes={start_byte}-"
+                # If we previously received an ETag or Last-Modified, use If-Range to allow
+                # the server to respond with partial content only if the resource is unchanged.
+                if etag:
+                    headers["If-Range"] = etag
+                elif last_modified:
+                    headers["If-Range"] = last_modified
                 mode = "ab"
                 logger.info(f"Download attempt {attempt}: Resuming from {start_byte} bytes")
             else:
@@ -110,6 +121,11 @@ class StreamingDownloader(AudioDownloader):
                         if response.status not in (200, 206):
                             text = await response.text()
                             raise DownloadError(f"HTTP {response.status}: {text[:200]}")
+
+                        # Capture ETag/Last-Modified for potential resume
+                        etag = response.headers.get("ETag") or etag
+                        last_modified = response.headers.get("Last-Modified") or last_modified
+                        logger.debug(f"Response headers: ETag={etag} Last-Modified={last_modified} Accept-Ranges={response.headers.get('Accept-Ranges')}")
 
                         # Validation: Content-Type
                         content_type = response.headers.get("Content-Type", "").lower()

@@ -164,7 +164,15 @@ class PlaywrightDownloader(AudioDownloader):
                     base_backoff=2.0,
                 )
 
-                await streaming.download(url, target_path, cookies=cookies_dict)
+                extra_headers = {
+                    "User-Agent": self.user_agent,
+                    "Accept": "audio/mpeg,audio/*;q=0.9,application/octet-stream;q=0.8,*/*;q=0.7",
+                    "Accept-Language": "en-US,en;q=0.9",
+                    "Referer": url,
+                    "Cache-Control": "no-cache",
+                }
+
+                await streaming.download(url, target_path, cookies=cookies_dict, extra_headers=extra_headers)
 
             finally:
                 await context.close()
