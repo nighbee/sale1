@@ -120,21 +120,53 @@ class PlaywrightDownloader(AudioDownloader):
                 await context.add_cookies(cookies)
 
             try:
-                # Use context.request for binary data
-                # By using a fresh context and NOT providing If-None-Match/If-Modified-Since
-                # in the request or context headers, they should be omitted.
+                # Step 1: Request the document/html to establish any server-side session or cookies.
+                # Some providers (Sipuni) respond with an HTML document on the first request which
+                # sets cookies or other session state; following the document request we then
+                # request the audio binary using the same context so cookies are preserved.
+                doc_headers = {
+                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                    "Cache-Control": "no-cache",
+                    "Pragma": "no-cache",
+                }
+
+                try:
+                    doc_response: PlaywrightResponse = await context.request.get(
+                        url,
+                        timeout=self.timeout_ms,
+                        headers=doc_headers
+                    )
+                except Exception:
+                    # Non-fatal: if document request fails, continue to try audio request below.
+                    doc_response = None
+
+                # If we got a document response and it looks like HTML, log it and continue.
+                if doc_response and doc_response.ok:
+                    ct = (doc_response.headers.get("content-type") or "").lower()
+                    logger.debug(f"Playwright document response status={doc_response.status} content-type={ct}")
+
+                # Step 2: Request audio binary using permissive audio accept headers and no-cache.
+                audio_headers = {
+                    "Accept": "audio/mpeg,audio/*;q=0.9,application/octet-stream;q=0.8,*/*;q=0.7",
+                    "Cache-Control": "no-cache",
+                    "Pragma": "no-cache",
+                    # browsers often request ranges — request full file; server may respond with 206
+                    "Range": "bytes=0-",
+                }
+
                 response: PlaywrightResponse = await context.request.get(
                     url,
-                    timeout=self.timeout_ms
+                    timeout=self.timeout_ms,
+                    headers=audio_headers
                 )
 
                 if not response:
                     raise DownloadError("No response received from Playwright")
 
-                if response.status == 304:
-                    raise DownloadError("Received 304 Not Modified - cached response is not acceptable")
-
-                if response.status != 200:
+                # Accept 200 or 206 (partial content) as valid audio responses
+                if response.status not in (200, 206):
+                    # If we previously got a document that returned 304, prefer the audio request
+                    # error message for clarity.
                     raise DownloadError(f"HTTP {response.status}")
 
                 body = await response.body()
@@ -144,7 +176,7 @@ class PlaywrightDownloader(AudioDownloader):
 
                 # Basic binary check to avoid HTML
                 if body.startswith(b"<!DOCTYPE html>") or body.startswith(b"<html>"):
-                     raise DownloadError("Downloaded HTML instead of audio")
+                    raise DownloadError("Downloaded HTML instead of audio")
 
                 # Write to file
                 with open(target_path, 'wb') as f:

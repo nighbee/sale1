@@ -20,8 +20,8 @@ class DownloaderFactory:
             return MinioDownloader(minio_client)
 
         if "sipuni.com" in url:
-            logger.info("Sipuni URL detected - forcing StreamingDownloader", extra={"url": url})
-            return StreamingDownloader()
+            logger.info("Sipuni URL detected - forcing PlaywrightDownloader (browser emulator)", extra={"url": url})
+            return PlaywrightDownloader()
 
         strategy = os.getenv("STT_DOWNLOAD_STRATEGY", "streaming").lower()
 
