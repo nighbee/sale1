@@ -19,6 +19,10 @@ class DownloaderFactory:
             logger.info("Using MinioDownloader", extra={"url": url})
             return MinioDownloader(minio_client)
 
+        if "sipuni.com" in url:
+            logger.info("Sipuni URL detected - forcing StreamingDownloader", extra={"url": url})
+            return StreamingDownloader()
+
         strategy = os.getenv("STT_DOWNLOAD_STRATEGY", "streaming").lower()
 
         if strategy == "curl":

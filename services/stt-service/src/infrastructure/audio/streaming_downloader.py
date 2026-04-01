@@ -3,7 +3,8 @@ import time
 import asyncio
 import logging
 import aiohttp
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
+from urllib.parse import urlparse, parse_qs
 from src.core.ports.audio_downloader import AudioDownloader
 
 logger = logging.getLogger(__name__)
@@ -23,7 +24,7 @@ class FatalDownloadError(DownloadError):
 class StreamingDownloader(AudioDownloader):
     def __init__(
         self,
-        max_attempts: int = 5,
+        max_attempts: int = 15,
         base_backoff: float = 2.0,
         chunk_size: int = 8192,
         min_file_size: int = 5 * 1024,
@@ -42,15 +43,43 @@ class StreamingDownloader(AudioDownloader):
             "Accept-Encoding": "identity",
             "Connection": "close",
             "Range": "bytes=0-",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Sec-Fetch-Dest": "audio",
+            "Sec-Fetch-Mode": "no-cors",
+            "Sec-Fetch-Site": "same-site",
         }
+
+    def _extract_cookies(self, url: str) -> Dict[str, str]:
+        """
+        Extracts cookies from URL parameters for specific providers like Sipuni.
+        Sipuni uses 'hash' as 'hcode' cookie and 'user' as 'user' cookie.
+        """
+        cookies = {}
+        try:
+            parsed_url = urlparse(url)
+            params = parse_qs(parsed_url.query)
+
+            if "sipuni.com" in parsed_url.netloc:
+                if "hash" in params:
+                    cookies["hcode"] = params["hash"][0]
+                if "user" in params:
+                    cookies["user"] = params["user"][0]
+                if cookies:
+                    logger.debug(f"Extracted Sipuni cookies for Streaming: {list(cookies.keys())}")
+        except Exception as e:
+            logger.warning(f"Failed to extract cookies from URL: {e}")
+
+        return cookies
 
     async def download(self, url: str, target_path: str) -> None:
         attempt = 0
         force_no_cache = False
+        cookies = self._extract_cookies(url)
 
         while attempt < self.max_attempts:
             attempt += 1
             start_time = time.monotonic()
+            stats = {"url": url, "attempt": attempt}
 
             headers = self.base_headers.copy()
             if force_no_cache:
@@ -60,7 +89,8 @@ class StreamingDownloader(AudioDownloader):
                 headers.pop("If-None-Match", None)
 
             try:
-                await self._do_download(url, target_path, headers)
+                download_stats = await self._do_download(url, target_path, headers, cookies)
+                stats.update(download_stats)
 
                 duration = time.monotonic() - start_time
                 file_size = os.path.getsize(target_path)
@@ -68,8 +98,7 @@ class StreamingDownloader(AudioDownloader):
                 logger.info(
                     "Streaming Download successful",
                     extra={
-                        "url": url,
-                        "attempt": attempt,
+                        **stats,
                         "duration_s": round(duration, 2),
                         "size_bytes": file_size
                     }
@@ -83,7 +112,7 @@ class StreamingDownloader(AudioDownloader):
                 duration = time.monotonic() - start_time
                 logger.warning(
                     f"Streaming Attempt {attempt} failed (Retryable): {e}",
-                    extra={"url": url, "attempt": attempt, "duration_so_far": round(duration, 2)}
+                    extra={**stats, "duration_so_far": round(duration, 2), "error": str(e)}
                 )
 
                 if attempt >= self.max_attempts:
@@ -97,13 +126,15 @@ class StreamingDownloader(AudioDownloader):
                 logger.error(f"Streaming Fatal Error on attempt {attempt}: {e}", extra={"url": url})
                 raise
 
-    async def _do_download(self, url: str, target_path: str, headers: Dict[str, str]) -> None:
+    async def _do_download(self, url: str, target_path: str, headers: Dict[str, str], cookies: Dict[str, str] = None) -> Dict[str, Any]:
         # total timeout: 120s, connect timeout: 30s, sock_read: 30s
         # sock_read is the timeout between reading chunks.
         timeout = aiohttp.ClientTimeout(total=120, connect=30, sock_read=30)
+        start_time = time.monotonic()
 
-        async with aiohttp.ClientSession(headers=headers, timeout=timeout) as session:
+        async with aiohttp.ClientSession(headers=headers, timeout=timeout, cookies=cookies) as session:
             async with session.get(url, allow_redirects=True) as response:
+                ttfb = time.monotonic() - start_time
                 if response.status == 304:
                     raise RetryableDownloadError("Received 304 Not Modified")
 
@@ -121,8 +152,20 @@ class StreamingDownloader(AudioDownloader):
                 with open(target_path, 'wb') as f:
                     async for chunk in response.content.iter_chunked(self.chunk_size):
                         if chunk:
+                            # Detect HTML in the first chunk
+                            if bytes_received == 0:
+                                if chunk.startswith(b"<!DOCTYPE html>") or chunk.startswith(b"<html>"):
+                                    raise FatalDownloadError("Downloaded HTML instead of audio")
+
                             await asyncio.to_thread(f.write, chunk)
                             bytes_received += len(chunk)
 
                 if bytes_received < self.min_file_size:
                     raise FatalDownloadError(f"File too small: {bytes_received} bytes")
+
+                return {
+                    "status": response.status,
+                    "ttfb_s": round(ttfb, 3),
+                    "bytes_received": bytes_received,
+                    "content_type": content_type
+                }
