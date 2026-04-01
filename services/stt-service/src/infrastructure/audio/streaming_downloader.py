@@ -3,6 +3,7 @@ import time
 import asyncio
 import logging
 import aiohttp
+import random
 from typing import Optional, Dict, Any, List
 from urllib.parse import urlparse, parse_qs
 from src.core.ports.audio_downloader import AudioDownloader
@@ -24,13 +25,9 @@ class FatalDownloadError(DownloadError):
 class StreamingDownloader(AudioDownloader):
     def __init__(
         self,
-        max_attempts: int = 15,
-        base_backoff: float = 2.0,
-        chunk_size: int = 8192,
+        chunk_size: int = 65536, # 64KB
         min_file_size: int = 5 * 1024,
     ):
-        self.max_attempts = max_attempts
-        self.base_backoff = base_backoff
         self.chunk_size = chunk_size
         self.min_file_size = min_file_size
 
@@ -41,12 +38,11 @@ class StreamingDownloader(AudioDownloader):
             "User-Agent": self.user_agent,
             "Accept": "*/*",
             "Accept-Encoding": "identity",
-            "Connection": "close",
-            "Range": "bytes=0-",
+            "Connection": "keep-alive",
             "Accept-Language": "en-US,en;q=0.9",
             "Sec-Fetch-Dest": "audio",
             "Sec-Fetch-Mode": "no-cors",
-            "Sec-Fetch-Site": "same-site",
+            "Sec-Fetch-Site": "cross-site",
         }
 
     def _extract_cookies(self, url: str) -> Dict[str, str]:
@@ -65,107 +61,149 @@ class StreamingDownloader(AudioDownloader):
                 if "user" in params:
                     cookies["user"] = params["user"][0]
                 if cookies:
-                    logger.debug(f"Extracted Sipuni cookies for Streaming: {list(cookies.keys())}")
+                    logger.debug(f"Extracted Sipuni cookies for Range downloader: {list(cookies.keys())}")
         except Exception as e:
             logger.warning(f"Failed to extract cookies from URL: {e}")
 
         return cookies
 
     async def download(self, url: str, target_path: str) -> None:
-        attempt = 0
-        force_no_cache = False
+        start_time = time.monotonic()
         cookies = self._extract_cookies(url)
+        bytes_received = 0
+        chunk_index = 0
+        force_no_cache = False
 
-        while attempt < self.max_attempts:
-            attempt += 1
-            start_time = time.monotonic()
-            stats = {"url": url, "attempt": attempt}
+        logger.info(f"Starting range-based download for {url}")
 
-            headers = self.base_headers.copy()
-            if force_no_cache:
-                headers["Cache-Control"] = "no-cache"
-                headers["Pragma"] = "no-cache"
-                headers.pop("If-Modified-Since", None)
-                headers.pop("If-None-Match", None)
+        try:
+            with open(target_path, 'wb') as f:
+                while True:
+                    start_byte = bytes_received
+                    end_byte = start_byte + self.chunk_size - 1
+                    range_header = f"bytes={start_byte}-{end_byte}"
 
+                    chunk_data = await self._download_chunk_with_retries(
+                        url, range_header, cookies, chunk_index, force_no_cache
+                    )
+
+                    if not chunk_data:
+                        # End of file reached via 416 or empty response
+                        break
+
+                    # Detect HTML in the first chunk
+                    if chunk_index == 0:
+                        if chunk_data.startswith(b"<!DOCTYPE html>") or chunk_data.startswith(b"<html>"):
+                            raise FatalDownloadError("Downloaded HTML instead of audio")
+
+                    await asyncio.to_thread(f.write, chunk_data)
+                    received_size = len(chunk_data)
+                    bytes_received += received_size
+
+                    logger.info(
+                        f"Chunk {chunk_index} received",
+                        extra={
+                            "chunk_index": chunk_index,
+                            "range": range_header,
+                            "size_received": received_size,
+                            "total_bytes": bytes_received
+                        }
+                    )
+
+                    if received_size < self.chunk_size:
+                        # Last chunk received
+                        break
+
+                    chunk_index += 1
+
+            if bytes_received < self.min_file_size:
+                raise FatalDownloadError(f"File too small: {bytes_received} bytes")
+
+            duration = time.monotonic() - start_time
+            logger.info(
+                "Range-based download successful",
+                extra={
+                    "url": url,
+                    "duration_s": round(duration, 2),
+                    "total_size_bytes": bytes_received,
+                    "chunks": chunk_index + 1
+                }
+            )
+
+        except Exception as e:
+            logger.error(f"Range-based download failed: {e}", extra={"url": url})
+            if os.path.exists(target_path):
+                try: os.remove(target_path)
+                except: pass
+            raise
+
+    async def _download_chunk_with_retries(
+        self,
+        url: str,
+        range_header: str,
+        cookies: Dict[str, str],
+        chunk_index: int,
+        force_no_cache: bool
+    ) -> bytes:
+        headers = self.base_headers.copy()
+        headers["Range"] = range_header
+        if force_no_cache:
+            headers["Cache-Control"] = "no-cache"
+            headers["Pragma"] = "no-cache"
+
+        # Short timeout per chunk as requested
+        timeout = aiohttp.ClientTimeout(total=10, connect=5, sock_read=5)
+
+        max_retries = 3
+        for attempt in range(max_retries + 1):
             try:
-                download_stats = await self._do_download(url, target_path, headers, cookies)
-                stats.update(download_stats)
+                async with aiohttp.ClientSession(headers=headers, timeout=timeout, cookies=cookies) as session:
+                    async with session.get(url, allow_redirects=True) as response:
+                        if response.status == 304:
+                            if not force_no_cache:
+                                logger.info(f"Chunk {chunk_index} returned 304, retrying with no-cache")
+                                force_no_cache = True
+                                headers["Cache-Control"] = "no-cache"
+                                headers["Pragma"] = "no-cache"
+                                continue
+                            else:
+                                raise FatalDownloadError("Received 304 Not Modified even with no-cache")
 
-                duration = time.monotonic() - start_time
-                file_size = os.path.getsize(target_path)
+                        if response.status == 416:
+                            # Requested range not satisfiable - usually means we reached EOF
+                            return b""
 
-                logger.info(
-                    "Streaming Download successful",
+                        if response.status not in (200, 206):
+                            text = await response.text()
+                            raise RetryableDownloadError(f"HTTP {response.status}: {text[:200]}")
+
+                        content_type = response.headers.get("Content-Type", "").lower()
+                        if chunk_index == 0 and "sipuni.com" in url:
+                            if "audio" not in content_type and "octet-stream" not in content_type:
+                                raise FatalDownloadError(f"Invalid Content-Type for Sipuni: {content_type}")
+
+                        data = await response.read()
+
+                        if attempt > 0:
+                            logger.info(f"Chunk {chunk_index} succeeded after {attempt} retries")
+
+                        return data
+
+            except (aiohttp.ClientError, asyncio.TimeoutError, RetryableDownloadError) as e:
+                retries_left = max_retries - attempt
+                logger.warning(
+                    f"Chunk {chunk_index} attempt {attempt+1} failed: {e}",
                     extra={
-                        **stats,
-                        "duration_s": round(duration, 2),
-                        "size_bytes": file_size
+                        "chunk_index": chunk_index,
+                        "attempt": attempt + 1,
+                        "retries_left": retries_left,
+                        "error": str(e)
                     }
                 )
-                return
+                if retries_left <= 0:
+                    raise DownloadError(f"Failed to download chunk {chunk_index} after {max_retries} retries")
 
-            except (RetryableDownloadError, aiohttp.ClientError, asyncio.TimeoutError) as e:
-                if isinstance(e, RetryableDownloadError) and "304" in str(e):
-                    force_no_cache = True
+                delay = random.uniform(1, 3)
+                await asyncio.sleep(delay)
 
-                duration = time.monotonic() - start_time
-                logger.warning(
-                    f"Streaming Attempt {attempt} failed (Retryable): {e}",
-                    extra={**stats, "duration_so_far": round(duration, 2), "error": str(e)}
-                )
-
-                if attempt >= self.max_attempts:
-                    raise DownloadError(f"Streaming Failed after {attempt} attempts: {str(e)}")
-
-                backoff = self.base_backoff * (2 ** (attempt - 1))
-                logger.info(f"Waiting {backoff}s before retry...", extra={"url": url})
-                await asyncio.sleep(backoff)
-
-            except Exception as e:
-                logger.error(f"Streaming Fatal Error on attempt {attempt}: {e}", extra={"url": url})
-                raise
-
-    async def _do_download(self, url: str, target_path: str, headers: Dict[str, str], cookies: Dict[str, str] = None) -> Dict[str, Any]:
-        # total timeout: 120s, connect timeout: 30s, sock_read: 30s
-        # sock_read is the timeout between reading chunks.
-        timeout = aiohttp.ClientTimeout(total=120, connect=30, sock_read=30)
-        start_time = time.monotonic()
-
-        async with aiohttp.ClientSession(headers=headers, timeout=timeout, cookies=cookies) as session:
-            async with session.get(url, allow_redirects=True) as response:
-                ttfb = time.monotonic() - start_time
-                if response.status == 304:
-                    raise RetryableDownloadError("Received 304 Not Modified")
-
-                if response.status not in (200, 206):
-                    text = await response.text()
-                    raise FatalDownloadError(f"HTTP {response.status}: {text[:200]}")
-
-                content_type = response.headers.get("Content-Type", "").lower()
-                # Relaxed content-type check to allow testing with non-audio files (like README.md in tests)
-                # while still being strict for Sipuni production URLs.
-                if "sipuni.com" in url and "audio" not in content_type and "octet-stream" not in content_type:
-                    raise FatalDownloadError(f"Invalid Content-Type for Sipuni: {content_type}")
-
-                bytes_received = 0
-                with open(target_path, 'wb') as f:
-                    async for chunk in response.content.iter_chunked(self.chunk_size):
-                        if chunk:
-                            # Detect HTML in the first chunk
-                            if bytes_received == 0:
-                                if chunk.startswith(b"<!DOCTYPE html>") or chunk.startswith(b"<html>"):
-                                    raise FatalDownloadError("Downloaded HTML instead of audio")
-
-                            await asyncio.to_thread(f.write, chunk)
-                            bytes_received += len(chunk)
-
-                if bytes_received < self.min_file_size:
-                    raise FatalDownloadError(f"File too small: {bytes_received} bytes")
-
-                return {
-                    "status": response.status,
-                    "ttfb_s": round(ttfb, 3),
-                    "bytes_received": bytes_received,
-                    "content_type": content_type
-                }
+        return b""
