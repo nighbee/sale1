@@ -5,6 +5,7 @@ import asyncio
 from typing import Optional, Dict, List, Any
 from urllib.parse import urlparse, parse_qs
 from playwright.async_api import async_playwright, APIResponse as PlaywrightResponse
+from src.infrastructure.audio.streaming_downloader import StreamingDownloader
 from src.core.ports.audio_downloader import AudioDownloader
 
 logger = logging.getLogger(__name__)
@@ -137,7 +138,7 @@ class PlaywrightDownloader(AudioDownloader):
                         headers=doc_headers
                     )
                 except Exception:
-                    # Non-fatal: if document request fails, continue to try audio request below.
+                    # Non-fatal: if document request fails, continue to try streaming below.
                     doc_response = None
 
                 # If we got a document response and it looks like HTML, log it and continue.
@@ -145,42 +146,25 @@ class PlaywrightDownloader(AudioDownloader):
                     ct = (doc_response.headers.get("content-type") or "").lower()
                     logger.debug(f"Playwright document response status={doc_response.status} content-type={ct}")
 
-                # Step 2: Request audio binary using permissive audio accept headers and no-cache.
-                audio_headers = {
-                    "Accept": "audio/mpeg,audio/*;q=0.9,application/octet-stream;q=0.8,*/*;q=0.7",
-                    "Cache-Control": "no-cache",
-                    "Pragma": "no-cache",
-                    # browsers often request ranges — request full file; server may respond with 206
-                    "Range": "bytes=0-",
-                }
+                # Extract cookies from the Playwright context so aiohttp can reuse them.
+                try:
+                    raw_cookies = await context.cookies()
+                    # Playwright returns a list of cookie dicts; convert to name->value mapping
+                    cookies_dict = {c.get('name'): c.get('value') for c in raw_cookies if 'name' in c and 'value' in c}
+                    logger.debug(f"Extracted cookies from Playwright context: {list(cookies_dict.keys())}")
+                except Exception as e:
+                    logger.warning(f"Failed to extract cookies from Playwright context: {e}")
+                    cookies_dict = None
 
-                response: PlaywrightResponse = await context.request.get(
-                    url,
-                    timeout=self.timeout_ms,
-                    headers=audio_headers
+                # Use StreamingDownloader (aiohttp) with cookies to perform resumable streaming download.
+                streaming = StreamingDownloader(
+                    chunk_size=8192,
+                    min_file_size=self.min_file_size,
+                    max_attempts=5,
+                    base_backoff=2.0,
                 )
 
-                if not response:
-                    raise DownloadError("No response received from Playwright")
-
-                # Accept 200 or 206 (partial content) as valid audio responses
-                if response.status not in (200, 206):
-                    # If we previously got a document that returned 304, prefer the audio request
-                    # error message for clarity.
-                    raise DownloadError(f"HTTP {response.status}")
-
-                body = await response.body()
-
-                if len(body) < self.min_file_size:
-                    raise DownloadError(f"File too small: {len(body)} bytes")
-
-                # Basic binary check to avoid HTML
-                if body.startswith(b"<!DOCTYPE html>") or body.startswith(b"<html>"):
-                    raise DownloadError("Downloaded HTML instead of audio")
-
-                # Write to file
-                with open(target_path, 'wb') as f:
-                    f.write(body)
+                await streaming.download(url, target_path, cookies=cookies_dict)
 
             finally:
                 await context.close()

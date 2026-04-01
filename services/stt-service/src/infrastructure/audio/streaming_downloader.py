@@ -67,10 +67,12 @@ class StreamingDownloader(AudioDownloader):
 
         return cookies
 
-    async def download(self, url: str, target_path: str) -> None:
+    async def download(self, url: str, target_path: str, cookies: Dict[str, str] = None) -> None:
         start_total_time = time.monotonic()
         attempt = 0
-        cookies = self._extract_cookies(url)
+        # Allow caller-provided cookies (from Playwright) to override URL-extracted cookies
+        if cookies is None:
+            cookies = self._extract_cookies(url)
         temp_path = f"{target_path}.tmp"
 
         # Long timeout for slow/paused streams (sock_read=120)
