@@ -111,38 +111,100 @@ class StreamingDownloader(AudioDownloader):
 
             try:
                 async with aiohttp.ClientSession(headers=headers, timeout=timeout, cookies=cookies) as session:
-                    async with session.get(url, allow_redirects=True) as response:
-                        # Validation: HTTP status
-                        if response.status == 416:
-                            # Requested range not satisfiable - might be already finished
-                            logger.info("Server returned 416 (Range Not Satisfiable). Assuming download is complete.")
-                            break
+                    # Try a normal streaming GET first (server may stream fine)
+                    use_ranged_chunks = False
+                    try:
+                        async with session.get(url, allow_redirects=True) as response:
+                            # Validation: HTTP status
+                            if response.status == 416:
+                                logger.info("Server returned 416 (Range Not Satisfiable). Assuming download is complete.")
+                                break
 
-                        if response.status not in (200, 206):
-                            text = await response.text()
-                            raise DownloadError(f"HTTP {response.status}: {text[:200]}")
+                            if response.status not in (200, 206):
+                                text = await response.text()
+                                raise DownloadError(f"HTTP {response.status}: {text[:200]}")
 
-                        # Capture ETag/Last-Modified for potential resume
-                        etag = response.headers.get("ETag") or etag
-                        last_modified = response.headers.get("Last-Modified") or last_modified
-                        logger.debug(f"Response headers: ETag={etag} Last-Modified={last_modified} Accept-Ranges={response.headers.get('Accept-Ranges')}")
+                            # Capture ETag/Last-Modified for potential resume
+                            etag = response.headers.get("ETag") or etag
+                            last_modified = response.headers.get("Last-Modified") or last_modified
+                            accept_ranges = response.headers.get('Accept-Ranges', '').lower()
+                            logger.debug(f"Response headers: ETag={etag} Last-Modified={last_modified} Accept-Ranges={accept_ranges}")
 
-                        # Validation: Content-Type
-                        content_type = response.headers.get("Content-Type", "").lower()
-                        if "text/html" in content_type:
-                            raise DownloadError(f"Expected audio, got {content_type}")
+                            # If server advertises Accept-Ranges=bytes or responded with 206,
+                            # prefer ranged chunked downloads which create short requests
+                            # and avoid long-lived throttled connections.
+                            if accept_ranges == 'bytes' or response.status == 206:
+                                use_ranged_chunks = True
 
-                        # Write stream to file
-                        with open(temp_path, mode) as f:
-                            async for chunk in response.content.iter_chunked(self.chunk_size):
-                                if chunk:
-                                    # Detection of HTML in first chunk
+                            # If server didn't advertise ranges but the response appears
+                            # to be chunked and stalls, we'll fall back to ranged chunks below.
+                            content_type = response.headers.get("Content-Type", "").lower()
+                            if "text/html" in content_type:
+                                raise DownloadError(f"Expected audio, got {content_type}")
+
+                            if not use_ranged_chunks:
+                                # Write streaming response as before
+                                with open(temp_path, mode) as f:
+                                    async for chunk in response.content.iter_chunked(self.chunk_size):
+                                        if chunk:
+                                            if start_byte == 0 and bytes_in_this_attempt == 0:
+                                                if chunk.startswith(b"<!DOCTYPE html>") or chunk.startswith(b"<html>"):
+                                                    raise DownloadError("First chunk indicates HTML content")
+
+                                            await asyncio.to_thread(f.write, chunk)
+                                            bytes_in_this_attempt += len(chunk)
+
+                    except (asyncio.TimeoutError, aiohttp.ClientPayloadError) as e:
+                        # If the streaming GET timed out or payload error occurred, switch to ranged-chunk mode
+                        logger.warning(f"Streaming GET failed, switching to ranged chunk mode: {e}")
+                        use_ranged_chunks = True
+
+                    if use_ranged_chunks:
+                        # Perform repeated ranged requests of a modest size to avoid long throttled connections.
+                        ranged_chunk = max(self.chunk_size, 64 * 1024)
+                        # Recalculate start_byte in case data was written by earlier streaming attempt
+                        start_byte = os.path.getsize(temp_path) if os.path.exists(temp_path) else 0
+                        logger.info(f"Using ranged-chunk download mode, starting at byte {start_byte}, chunk={ranged_chunk}")
+
+                        while True:
+                            range_end = start_byte + ranged_chunk - 1
+                            headers["Range"] = f"bytes={start_byte}-{range_end}"
+                            # Use a short read timeout for small ranged requests
+                            small_timeout = aiohttp.ClientTimeout(total=None, sock_read=30, connect=15)
+                            async with aiohttp.ClientSession(headers=headers, timeout=small_timeout, cookies=cookies) as small_sess:
+                                async with small_sess.get(url, allow_redirects=True) as r:
+                                    if r.status == 416:
+                                        logger.info("Server returned 416 during ranged request. Assuming complete.")
+                                        break
+
+                                    if r.status not in (200, 206):
+                                        text = await r.text()
+                                        raise DownloadError(f"HTTP {r.status}: {text[:200]}")
+
+                                    # Capture ETag/Last-Modified for subsequent If-Range headers
+                                    etag = r.headers.get("ETag") or etag
+                                    last_modified = r.headers.get("Last-Modified") or last_modified
+
+                                    chunk_body = await r.content.read(ranged_chunk)
+                                    if not chunk_body:
+                                        # No more data
+                                        break
+
+                                    # Detect HTML first chunk
                                     if start_byte == 0 and bytes_in_this_attempt == 0:
-                                        if chunk.startswith(b"<!DOCTYPE html>") or chunk.startswith(b"<html>"):
-                                            raise DownloadError("First chunk indicates HTML content")
+                                        if chunk_body.startswith(b"<!DOCTYPE html>") or chunk_body.startswith(b"<html>"):
+                                            raise DownloadError("Downloaded HTML instead of audio")
 
-                                    await asyncio.to_thread(f.write, chunk)
-                                    bytes_in_this_attempt += len(chunk)
+                                    # Write chunk
+                                    with open(temp_path, 'ab') as f:
+                                        f.write(chunk_body)
+
+                                    bytes_in_this_attempt += len(chunk_body)
+                                    start_byte += len(chunk_body)
+
+                                    # If server returned 200 (whole file) or we received less than requested, assume done
+                                    if r.status == 200 or len(chunk_body) < ranged_chunk:
+                                        break
 
                 attempt_duration = time.monotonic() - attempt_start_time
                 logger.info(
