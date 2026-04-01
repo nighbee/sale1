@@ -188,6 +188,7 @@ class StreamingDownloader(AudioDownloader):
                         logger.info(f"Using ranged-chunk download mode, starting at byte {start_byte}, chunk={ranged_chunk}")
 
                         ranged_attempt = 0
+                        total_expected_size = None
                         while True:
                             ranged_attempt += 1
                             range_end = start_byte + ranged_chunk - 1
@@ -206,6 +207,14 @@ class StreamingDownloader(AudioDownloader):
                                         text = await r.text()
                                         raise DownloadError(f"HTTP {status}: {text[:200]}")
 
+                                    # Extract total size from Content-Range if possible (e.g. bytes 0-1023/5000)
+                                    content_range = r.headers.get("Content-Range")
+                                    if content_range and "/" in content_range:
+                                        try:
+                                            total_expected_size = int(content_range.split("/")[-1])
+                                        except (ValueError, IndexError):
+                                            pass
+
                                     # Capture ETag/Last-Modified for subsequent If-Range headers
                                     etag = r.headers.get("ETag") or etag
                                     last_modified = r.headers.get("Last-Modified") or last_modified
@@ -218,6 +227,10 @@ class StreamingDownloader(AudioDownloader):
                                     if not chunk_body:
                                         # No more data
                                         logger.debug(f"Ranged request {ranged_attempt}: no data returned (status={status})")
+                                        if total_expected_size and start_byte < total_expected_size:
+                                            logger.warning(f"Ranged request returned no data but expected more: {start_byte} < {total_expected_size}")
+                                            # We will let the outer attempt loop retry
+                                            raise DownloadError(f"Premature end of stream at {start_byte}/{total_expected_size}")
                                         break
 
                                     # Detect HTML first chunk
@@ -233,12 +246,22 @@ class StreamingDownloader(AudioDownloader):
                                     start_byte += len(chunk_body)
 
                                     logger.info(
-                                        f"Ranged request {ranged_attempt}: status={status} bytes={len(chunk_body)} total={start_byte} preview={body_preview[:16] if body_preview else None}"
+                                        f"Ranged request {ranged_attempt}: status={status} bytes={len(chunk_body)} total={start_byte} expected={total_expected_size} preview={body_preview[:16] if body_preview else None}"
                                     )
 
-                                    # If server returned 200 (whole file) or we received less than requested, assume done
-                                    if status == 200 or len(chunk_body) < ranged_chunk:
+                                    # If server returned 200 (whole file), we are done
+                                    if status == 200:
                                         break
+
+                                    # If we know the total size, check if we reached it
+                                    if total_expected_size and start_byte >= total_expected_size:
+                                        logger.info(f"Reached expected total size: {start_byte}")
+                                        break
+
+                                    # If we received less than requested but no Content-Range to tell us there is more,
+                                    # we might be done or the server might be just sending small chunks.
+                                    # For safety with Sipuni, we continue as long as we get data.
+                                    # But if status was 206 and we got data, we should probably continue unless we are sure.
 
                                     # Safety: stop after ranged_max_attempts to avoid infinite loops
                                     if ranged_attempt >= ranged_max_attempts:

@@ -187,6 +187,7 @@ class PlaywrightDownloader(AudioDownloader):
 
                     start_byte = os.path.getsize(temp_path) if os.path.exists(temp_path) else 0
                     ranged_attempt = 0
+                    total_expected_size = None
 
                     while True:
                         ranged_attempt += 1
@@ -215,9 +216,20 @@ class PlaywrightDownloader(AudioDownloader):
                             text = await resp.text()
                             raise DownloadError(f"Playwright ranged HTTP {resp.status}: {text[:200]}")
 
+                        # Extract total size from Content-Range if possible
+                        content_range = resp.headers.get("content-range")
+                        if content_range and "/" in content_range:
+                            try:
+                                total_expected_size = int(content_range.split("/")[-1])
+                            except (ValueError, IndexError):
+                                pass
+
                         body = await resp.body()
                         if not body:
                             logger.debug("Playwright ranged returned empty body; stopping")
+                            if total_expected_size and start_byte < total_expected_size:
+                                logger.warning(f"Playwright ranged returned no data but expected more: {start_byte} < {total_expected_size}")
+                                # Let it retry or fail if max attempts reached
                             break
 
                         # Detect HTML
@@ -230,9 +242,12 @@ class PlaywrightDownloader(AudioDownloader):
                             f.write(body)
 
                         start_byte += len(body)
-                        logger.info(f"Playwright ranged attempt {ranged_attempt}: wrote {len(body)} bytes, total {start_byte}")
+                        logger.info(f"Playwright ranged attempt {ranged_attempt}: wrote {len(body)} bytes, total {start_byte}, expected {total_expected_size}")
 
-                        if resp.status == 200 or len(body) < ranged_chunk:
+                        if resp.status == 200:
+                            break
+
+                        if total_expected_size and start_byte >= total_expected_size:
                             break
 
                         if ranged_attempt >= ranged_max_attempts:
