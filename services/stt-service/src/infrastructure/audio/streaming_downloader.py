@@ -179,7 +179,7 @@ class StreamingDownloader(AudioDownloader):
                         # Allow chunk size and small read timeout to be tuned via env vars
                         ranged_chunk = int(os.getenv("STT_RANGED_CHUNK", str(max(self.chunk_size, 64 * 1024))))
                         small_read_timeout = int(os.getenv("STT_RANGED_READ_TIMEOUT", "30"))
-                        ranged_max_attempts = int(os.getenv("STT_RANGED_MAX_ATTEMPTS", "5"))
+                        ranged_max_attempts = int(os.getenv("STT_RANGED_MAX_ATTEMPTS", "10000"))
 
                         # Recalculate start_byte in case data was written by earlier streaming attempt
                         start_byte = os.path.getsize(temp_path) if os.path.exists(temp_path) else 0
