@@ -111,8 +111,18 @@ class StreamingDownloader(AudioDownloader):
 
             try:
                 async with aiohttp.ClientSession(headers=headers, timeout=timeout, cookies=cookies) as session:
-                    # Try a normal streaming GET first (server may stream fine)
-                    use_ranged_chunks = False
+                    # Determine default mode: allow environment override so we can
+                    # make ranged-chunk mode the default behavior. Set
+                    # STT_RANGED_DEFAULT=0 to prefer normal streaming GET first.
+                    use_ranged_chunks = os.getenv("STT_RANGED_DEFAULT", "true").lower() in ("1", "true", "yes")
+
+                    # If default is not ranged-chunk, try a normal streaming GET first (server may stream fine)
+                    if not use_ranged_chunks:
+                        use_ranged_chunks = False
+                    else:
+                        # We will skip the initial long-lived streaming GET and go straight
+                        # to ranged-chunk mode which is more resilient to throttling.
+                        logger.debug("STT_RANGED_DEFAULT is true: using ranged-chunk as default")
                     try:
                         async with session.get(url, allow_redirects=True) as response:
                             # Validation: HTTP status
