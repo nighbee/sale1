@@ -172,7 +172,76 @@ class PlaywrightDownloader(AudioDownloader):
                     "Cache-Control": "no-cache",
                 }
 
-                await streaming.download(url, target_path, cookies=cookies_dict, extra_headers=extra_headers)
+                try:
+                    await streaming.download(url, target_path, cookies=cookies_dict, extra_headers=extra_headers)
+                except Exception as e:
+                    logger.warning(f"StreamingDownloader failed, attempting Playwright ranged fallback: {e}")
+
+                    # Playwright ranged-chunk fallback: use the browser context to issue
+                    # small Range requests. This helps when the server treats non-browser
+                    # User-Agents differently.
+                    temp_path = f"{target_path}.tmp"
+                    ranged_chunk = int(os.getenv("STT_RANGED_CHUNK", str(max(8192, 64 * 1024))))
+                    small_read_timeout = int(os.getenv("STT_RANGED_READ_TIMEOUT", "30"))
+                    ranged_max_attempts = int(os.getenv("STT_RANGED_MAX_ATTEMPTS", "5"))
+
+                    start_byte = os.path.getsize(temp_path) if os.path.exists(temp_path) else 0
+                    ranged_attempt = 0
+
+                    while True:
+                        ranged_attempt += 1
+                        range_end = start_byte + ranged_chunk - 1
+                        headers = {
+                            "Accept": "audio/mpeg,audio/*;q=0.9,application/octet-stream;q=0.8,*/*;q=0.7",
+                            "Range": f"bytes={start_byte}-{range_end}",
+                            "Referer": url,
+                            "Cache-Control": "no-cache",
+                        }
+
+                        try:
+                            resp: PlaywrightResponse = await context.request.get(url, timeout=self.timeout_ms, headers=headers)
+                        except Exception as ex:
+                            logger.warning(f"Playwright ranged request exception: {ex}")
+                            if ranged_attempt >= ranged_max_attempts:
+                                raise DownloadError(f"Playwright ranged fallback failed after {ranged_attempt} attempts: {ex}")
+                            await asyncio.sleep(self.base_backoff * ranged_attempt)
+                            continue
+
+                        if resp.status == 416:
+                            logger.info("Playwright ranged request returned 416. Assuming complete.")
+                            break
+
+                        if resp.status not in (200, 206):
+                            text = await resp.text()
+                            raise DownloadError(f"Playwright ranged HTTP {resp.status}: {text[:200]}")
+
+                        body = await resp.body()
+                        if not body:
+                            logger.debug("Playwright ranged returned empty body; stopping")
+                            break
+
+                        # Detect HTML
+                        if start_byte == 0:
+                            if body.startswith(b"<!DOCTYPE html>") or body.startswith(b"<html>"):
+                                raise DownloadError("Playwright fallback downloaded HTML instead of audio")
+
+                        # Append to temp file
+                        with open(temp_path, 'ab') as f:
+                            f.write(body)
+
+                        start_byte += len(body)
+                        logger.info(f"Playwright ranged attempt {ranged_attempt}: wrote {len(body)} bytes, total {start_byte}")
+
+                        if resp.status == 200 or len(body) < ranged_chunk:
+                            break
+
+                        if ranged_attempt >= ranged_max_attempts:
+                            raise DownloadError(f"Playwright ranged fallback failed after {ranged_attempt} attempts")
+
+                    # Finalize: rename temp to target
+                    if not os.path.exists(temp_path):
+                        raise DownloadError("Playwright ranged fallback failed: temporary file missing")
+                    os.replace(temp_path, target_path)
 
             finally:
                 await context.close()

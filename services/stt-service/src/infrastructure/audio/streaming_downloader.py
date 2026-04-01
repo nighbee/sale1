@@ -176,28 +176,46 @@ class StreamingDownloader(AudioDownloader):
                         start_byte = os.path.getsize(temp_path) if os.path.exists(temp_path) else 0
                         logger.info(f"Using ranged-chunk download mode, starting at byte {start_byte}, chunk={ranged_chunk}")
 
+                        # Allow chunk size and small read timeout to be tuned via env vars
+                        ranged_chunk = int(os.getenv("STT_RANGED_CHUNK", str(max(self.chunk_size, 64 * 1024))))
+                        small_read_timeout = int(os.getenv("STT_RANGED_READ_TIMEOUT", "30"))
+                        ranged_max_attempts = int(os.getenv("STT_RANGED_MAX_ATTEMPTS", "5"))
+
+                        # Recalculate start_byte in case data was written by earlier streaming attempt
+                        start_byte = os.path.getsize(temp_path) if os.path.exists(temp_path) else 0
+                        logger.info(f"Using ranged-chunk download mode, starting at byte {start_byte}, chunk={ranged_chunk}")
+
+                        ranged_attempt = 0
                         while True:
+                            ranged_attempt += 1
                             range_end = start_byte + ranged_chunk - 1
                             headers["Range"] = f"bytes={start_byte}-{range_end}"
                             # Use a short read timeout for small ranged requests
-                            small_timeout = aiohttp.ClientTimeout(total=None, sock_read=30, connect=15)
+                            small_timeout = aiohttp.ClientTimeout(total=None, sock_read=small_read_timeout, connect=15)
                             async with aiohttp.ClientSession(headers=headers, timeout=small_timeout, cookies=cookies) as small_sess:
                                 async with small_sess.get(url, allow_redirects=True) as r:
-                                    if r.status == 416:
+                                    status = r.status
+                                    if status == 416:
                                         logger.info("Server returned 416 during ranged request. Assuming complete.")
                                         break
 
-                                    if r.status not in (200, 206):
+                                    body_preview = None
+                                    if status not in (200, 206):
                                         text = await r.text()
-                                        raise DownloadError(f"HTTP {r.status}: {text[:200]}")
+                                        raise DownloadError(f"HTTP {status}: {text[:200]}")
 
                                     # Capture ETag/Last-Modified for subsequent If-Range headers
                                     etag = r.headers.get("ETag") or etag
                                     last_modified = r.headers.get("Last-Modified") or last_modified
 
                                     chunk_body = await r.content.read(ranged_chunk)
+                                    # Keep a tiny preview for logging/debugging
+                                    if chunk_body:
+                                        body_preview = chunk_body[:64]
+
                                     if not chunk_body:
                                         # No more data
+                                        logger.debug(f"Ranged request {ranged_attempt}: no data returned (status={status})")
                                         break
 
                                     # Detect HTML first chunk
@@ -212,8 +230,17 @@ class StreamingDownloader(AudioDownloader):
                                     bytes_in_this_attempt += len(chunk_body)
                                     start_byte += len(chunk_body)
 
+                                    logger.info(
+                                        f"Ranged request {ranged_attempt}: status={status} bytes={len(chunk_body)} total={start_byte} preview={body_preview[:16] if body_preview else None}"
+                                    )
+
                                     # If server returned 200 (whole file) or we received less than requested, assume done
-                                    if r.status == 200 or len(chunk_body) < ranged_chunk:
+                                    if status == 200 or len(chunk_body) < ranged_chunk:
+                                        break
+
+                                    # Safety: stop after ranged_max_attempts to avoid infinite loops
+                                    if ranged_attempt >= ranged_max_attempts:
+                                        logger.warning(f"Reached ranged_max_attempts={ranged_max_attempts}, stopping ranged loop")
                                         break
 
                 attempt_duration = time.monotonic() - attempt_start_time
