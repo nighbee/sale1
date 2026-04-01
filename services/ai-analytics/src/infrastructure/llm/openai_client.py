@@ -1,7 +1,8 @@
 import os
 import json
 import logging
-from openai import AsyncOpenAI
+import re
+from openai import AsyncOpenAI, BadRequestError
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +33,53 @@ class OpenAIClient:
             extra={"base_url": self.base_url or "openai-default", "model": self.default_model},
         )
 
+    def _supports_json_mode(self, model: str) -> bool:
+        """
+        Returns True if the model is known to support JSON mode (response_format={'type': 'json_object'}).
+        See: https://platform.openai.com/docs/guides/text-generation/json-mode
+        """
+        # Whitelist of models known to support JSON mode
+        json_models = [
+            "gpt-4-turbo",
+            "gpt-4-turbo-preview",
+            "gpt-4-1106-preview",
+            "gpt-3.5-turbo-1106",
+            "gpt-3.5-turbo-0125",
+            "gpt-4o",
+            "gpt-4o-mini"
+        ]
+        return any(m in model for m in json_models)
+
+    def _extract_json(self, content: str) -> dict:
+        """
+        Robustly extract JSON from a string that might be wrapped in markdown or contain text.
+        """
+        content = content.strip()
+        # Try direct parse
+        try:
+            return json.loads(content)
+        except json.JSONDecodeError:
+            pass
+
+        # Try to find JSON block in markdown
+        match = re.search(r'```json\s*(\{.*?\})\s*```', content, re.DOTALL)
+        if match:
+            try:
+                return json.loads(match.group(1))
+            except json.JSONDecodeError:
+                pass
+
+        # Try to find first { and last }
+        match = re.search(r'(\{.*\})', content, re.DOTALL)
+        if match:
+            try:
+                return json.loads(match.group(1))
+            except json.JSONDecodeError:
+                pass
+
+        # Final attempt: direct parse of what's left
+        return json.loads(content)
+
     async def analyze(self, system_prompt: str, user_prompt: str, model: str = None) -> dict:
         model = model or self.default_model
         logger.info("sending request to OpenAI-compatible API",
@@ -40,20 +88,35 @@ class OpenAIClient:
                            "system_prompt_chars": len(system_prompt),
                            "user_prompt_chars": len(user_prompt)})
 
+        kwargs = {
+            "model": model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ]
+        }
+
+        # Only add JSON mode if supported by model
+        use_json_mode = self._supports_json_mode(model)
+        if use_json_mode:
+            kwargs["response_format"] = {"type": "json_object"}
+
         try:
-            # Re-initialize client if api_key has changed (handled outside this class usually)
-            response = await self.client.chat.completions.create(
-                model=model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                response_format={"type": "json_object"}
-            )
+            try:
+                response = await self.client.chat.completions.create(**kwargs)
+            except BadRequestError as e:
+                # If we tried with JSON mode and it failed with a "not supported" error, retry without it
+                if use_json_mode and "response_format" in str(e) and "json_object" in str(e):
+                    logger.warning("Model reported no support for json_object, retrying without it",
+                                   extra={"model": model, "error": str(e)})
+                    kwargs.pop("response_format", None)
+                    response = await self.client.chat.completions.create(**kwargs)
+                else:
+                    raise
 
             content = response.choices[0].message.content
             usage = response.usage
-            result = json.loads(content)
+            result = self._extract_json(content)
             logger.info(
                 "LLM response received",
                 extra={
@@ -70,4 +133,3 @@ class OpenAIClient:
             logger.error("LLM API call failed",
                          extra={"model": model, "base_url": self.base_url or "openai-default", "error": str(e)})
             raise
-
