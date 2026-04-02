@@ -121,30 +121,21 @@ class PlaywrightDownloader(AudioDownloader):
                 await context.add_cookies(cookies)
 
             try:
-                # Step 1: Request the document/html to establish any server-side session or cookies.
-                # Some providers (Sipuni) respond with an HTML document on the first request which
-                # sets cookies or other session state; following the document request we then
-                # request the audio binary using the same context so cookies are preserved.
-                doc_headers = {
-                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                    "Cache-Control": "no-cache",
-                    "Pragma": "no-cache",
-                }
-
+                # Step 1: Establish session/cookies by visiting the URL.
+                # Using page.goto with wait_until="commit" allows us to trigger the request
+                # and receive headers (establishing cookies) without waiting for the full
+                # body, which might be a large/stalling audio stream.
+                page = await context.new_page()
                 try:
-                    doc_response: PlaywrightResponse = await context.request.get(
-                        url,
-                        timeout=self.timeout_ms,
-                        headers=doc_headers
-                    )
-                except Exception:
-                    # Non-fatal: if document request fails, continue to try streaming below.
-                    doc_response = None
-
-                # If we got a document response and it looks like HTML, log it and continue.
-                if doc_response and doc_response.ok:
-                    ct = (doc_response.headers.get("content-type") or "").lower()
-                    logger.debug(f"Playwright document response status={doc_response.status} content-type={ct}")
+                    # Use a shorter timeout for session establishment
+                    session_timeout = min(10000, self.timeout_ms)
+                    await page.goto(url, wait_until="commit", timeout=session_timeout)
+                    logger.debug("Playwright session established via page.goto")
+                except Exception as e:
+                    # Non-fatal: if page.goto fails (e.g. timeout), cookies might still be set
+                    logger.debug(f"Playwright page.goto (session establishment) had issues, but continuing: {e}")
+                finally:
+                    await page.close()
 
                 # Extract cookies from the Playwright context so aiohttp can reuse them.
                 try:
