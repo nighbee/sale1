@@ -140,7 +140,14 @@ class StreamingDownloader(AudioDownloader):
                             etag = response.headers.get("ETag") or etag
                             last_modified = response.headers.get("Last-Modified") or last_modified
                             accept_ranges = response.headers.get('Accept-Ranges', '').lower()
-                            logger.debug(f"Response headers: ETag={etag} Last-Modified={last_modified} Accept-Ranges={accept_ranges}")
+
+                            content_length_header = response.headers.get("Content-Length")
+                            total_expected_size = int(content_length_header) if content_length_header and content_length_header.isdigit() else None
+
+                            logger.debug(
+                                f"Response headers: ETag={etag} Last-Modified={last_modified} "
+                                f"Accept-Ranges={accept_ranges} Content-Length={content_length_header}"
+                            )
 
                             # If server advertises Accept-Ranges=bytes or responded with 206,
                             # prefer ranged chunked downloads which create short requests
@@ -165,6 +172,12 @@ class StreamingDownloader(AudioDownloader):
 
                                             await asyncio.to_thread(f.write, chunk)
                                             bytes_in_this_attempt += len(chunk)
+
+                                # Validate Content-Length if available
+                                final_size_so_far = os.path.getsize(temp_path)
+                                if total_expected_size and response.status == 200:
+                                    if final_size_so_far < total_expected_size:
+                                        raise DownloadError(f"Incomplete streaming download: {final_size_so_far}/{total_expected_size} bytes")
 
                     except (asyncio.TimeoutError, aiohttp.ClientPayloadError) as e:
                         # If the streaming GET timed out or payload error occurred, switch to ranged-chunk mode
@@ -229,7 +242,12 @@ class StreamingDownloader(AudioDownloader):
                                         logger.debug(f"Ranged request {ranged_attempt}: no data returned (status={status})")
                                         if total_expected_size and start_byte < total_expected_size:
                                             logger.warning(f"Ranged request returned no data but expected more: {start_byte} < {total_expected_size}")
-                                            # We will let the outer attempt loop retry
+                                            # We'll allow a couple of internal retries for the same range if it stalls
+                                            # This handles temporary pauses in the stream
+                                            if ranged_attempt < 3:
+                                                logger.info(f"Ranged stall detected, retrying range {start_byte}-")
+                                                await asyncio.sleep(1.0 * ranged_attempt)
+                                                continue
                                             raise DownloadError(f"Premature end of stream at {start_byte}/{total_expected_size}")
                                         break
 
@@ -261,7 +279,12 @@ class StreamingDownloader(AudioDownloader):
                                     # If we received less than requested but no Content-Range to tell us there is more,
                                     # we might be done or the server might be just sending small chunks.
                                     # For safety with Sipuni, we continue as long as we get data.
-                                    # But if status was 206 and we got data, we should probably continue unless we are sure.
+
+                                    # If we got a chunk that is smaller than requested, and we don't know the total size,
+                                    # it might mean the end of file or just a slow server.
+                                    if len(chunk_body) < ranged_chunk and not total_expected_size:
+                                        logger.debug(f"Received small chunk ({len(chunk_body)} < {ranged_chunk}) without total size. Assuming EOF.")
+                                        break
 
                                     # Safety: stop after ranged_max_attempts to avoid infinite loops
                                     if ranged_attempt >= ranged_max_attempts:

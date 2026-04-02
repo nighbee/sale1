@@ -6,6 +6,8 @@ from typing import List, Optional
 from src.core.ports.audio_downloader import AudioDownloader
 from src.infrastructure.audio.http_downloader import HTTPDownloader, DownloadError
 from src.infrastructure.audio.curl_downloader import CurlDownloader
+from src.infrastructure.audio.playwright_downloader import PlaywrightDownloader
+from src.infrastructure.audio.streaming_downloader import StreamingDownloader
 
 logger = logging.getLogger(__name__)
 
@@ -16,22 +18,23 @@ class ResilientDownloader(AudioDownloader):
     """
     def __init__(
         self, 
-        max_total_attempts: int = 5,
+        max_total_attempts: int = 6,
         initial_delay: float = 2.0,
         max_duration_s: int = 600
     ):
         self.max_total_attempts = max_total_attempts
         self.initial_delay = initial_delay
         self.max_duration_s = max_duration_s
-        self.http = HTTPDownloader(max_attempts=1) # One attempt per internal retry
+        self.streaming = StreamingDownloader(max_attempts=1)
+        self.playwright = PlaywrightDownloader(max_attempts=1)
         self.curl = CurlDownloader(timeout_s=max_duration_s)
 
     async def download(self, url: str, target_path: str) -> None:
         """
         Executes the resilient pipeline:
-        1. HTTP with Range/Resume (Smart)
-        2. Fallback to Curl (Resilient) with local resume
-        3. Adaptive delays to handle 'Eventually Ready' files
+        1. Streaming (aiohttp) - Fast, resilient for Sipuni
+        2. Playwright (Browser) - Handles tricky sessions/cookies
+        3. Curl (System tool) - Final fallback for the most difficult streams
         """
         attempt = 0
         last_error = None
@@ -41,10 +44,12 @@ class ResilientDownloader(AudioDownloader):
             start_time = time.monotonic()
             
             # 1. Decide which downloader to use
-            # Prefer HTTP for the first couple of tries, then switch to Curl
             if attempt <= 2:
-                downloader = self.http
-                name = "HTTP_SMART"
+                downloader = self.streaming
+                name = "STREAMING_AIOHTTP"
+            elif attempt <= 4:
+                downloader = self.playwright
+                name = "PLAYWRIGHT_BROWSER"
             else:
                 downloader = self.curl
                 name = "CURL_RESILIENT"
