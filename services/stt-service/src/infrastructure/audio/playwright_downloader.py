@@ -57,12 +57,15 @@ class PlaywrightDownloader(AudioDownloader):
         """
         attempt = 0
         cookies = self._extract_cookies(url)
+        logger.info("Starting Playwright download", extra={"url": url, "target": target_path})
+        logger.debug(f"Initial cookies extracted from URL: {cookies}")
 
         while attempt < self.max_attempts:
             attempt += 1
             start_time = time.monotonic()
 
             try:
+                logger.debug(f"Playwright attempt {attempt}: calling _do_download")
                 await self._do_download(url, target_path, cookies)
 
                 duration = time.monotonic() - start_time
@@ -99,7 +102,9 @@ class PlaywrightDownloader(AudioDownloader):
 
     async def _do_download(self, url: str, target_path: str, cookies: List[Dict]) -> None:
         async with async_playwright() as p:
+            logger.debug("Launching Playwright browser")
             browser = await p.chromium.launch(headless=True)
+            logger.debug("Creating Playwright browser context")
             context = await browser.new_context(
                 user_agent=self.user_agent,
                 viewport={'width': 1920, 'height': 1080},
@@ -118,6 +123,7 @@ class PlaywrightDownloader(AudioDownloader):
             )
 
             if cookies:
+                logger.debug(f"Adding {len(cookies)} cookies to Playwright context")
                 await context.add_cookies(cookies)
 
             try:
@@ -132,28 +138,31 @@ class PlaywrightDownloader(AudioDownloader):
                 }
 
                 try:
+                    logger.debug("Requesting document via Playwright to establish session/cookies")
                     doc_response: PlaywrightResponse = await context.request.get(
                         url,
                         timeout=self.timeout_ms,
                         headers=doc_headers
                     )
-                except Exception:
+                    logger.debug(f"Document request status: {getattr(doc_response, 'status', None)}")
+                except Exception as ex:
                     # Non-fatal: if document request fails, continue to try streaming below.
+                    logger.warning("Document request via Playwright failed", extra={"error": str(ex)})
                     doc_response = None
 
                 # If we got a document response and it looks like HTML, log it and continue.
-                if doc_response and doc_response.ok:
+                if doc_response and getattr(doc_response, 'ok', False):
                     ct = (doc_response.headers.get("content-type") or "").lower()
-                    logger.debug(f"Playwright document response status={doc_response.status} content-type={ct}")
+                    logger.debug("Playwright document response received", extra={"status": doc_response.status, "content-type": ct})
 
                 # Extract cookies from the Playwright context so aiohttp can reuse them.
                 try:
                     raw_cookies = await context.cookies()
                     # Playwright returns a list of cookie dicts; convert to name->value mapping
                     cookies_dict = {c.get('name'): c.get('value') for c in raw_cookies if 'name' in c and 'value' in c}
-                    logger.debug(f"Extracted cookies from Playwright context: {list(cookies_dict.keys())}")
+                    logger.debug("Extracted cookies from Playwright context", extra={"cookies": list(cookies_dict.keys())})
                 except Exception as e:
-                    logger.warning(f"Failed to extract cookies from Playwright context: {e}")
+                    logger.warning("Failed to extract cookies from Playwright context", extra={"error": str(e)})
                     cookies_dict = None
 
                 # Use StreamingDownloader (aiohttp) with cookies to perform resumable streaming download.
@@ -173,9 +182,11 @@ class PlaywrightDownloader(AudioDownloader):
                 }
 
                 try:
+                    logger.info("Invoking StreamingDownloader", extra={"url": url, "target": target_path})
                     await streaming.download(url, target_path, cookies=cookies_dict, extra_headers=extra_headers)
+                    logger.info("StreamingDownloader finished", extra={"url": url, "target": target_path})
                 except Exception as e:
-                    logger.warning(f"StreamingDownloader failed, attempting Playwright ranged fallback: {e}")
+                    logger.warning("StreamingDownloader failed, attempting Playwright ranged fallback", extra={"error": str(e)})
 
                     # Playwright ranged-chunk fallback: use the browser context to issue
                     # small Range requests. This helps when the server treats non-browser
@@ -189,6 +200,7 @@ class PlaywrightDownloader(AudioDownloader):
                     ranged_attempt = 0
                     total_expected_size = None
 
+                    logger.info("Starting Playwright ranged-chunk fallback", extra={"url": url, "target": target_path, "chunk": ranged_chunk})
                     while True:
                         ranged_attempt += 1
                         range_end = start_byte + ranged_chunk - 1
@@ -200,24 +212,27 @@ class PlaywrightDownloader(AudioDownloader):
                         }
 
                         try:
+                            logger.debug("Playwright ranged request", extra={"attempt": ranged_attempt, "range": headers["Range"]})
                             resp: PlaywrightResponse = await context.request.get(url, timeout=self.timeout_ms, headers=headers)
                         except Exception as ex:
-                            logger.warning(f"Playwright ranged request exception: {ex}")
+                            logger.warning("Playwright ranged request exception", extra={"error": str(ex), "attempt": ranged_attempt})
                             if ranged_attempt >= ranged_max_attempts:
                                 raise DownloadError(f"Playwright ranged fallback failed after {ranged_attempt} attempts: {ex}")
                             await asyncio.sleep(self.base_backoff * ranged_attempt)
                             continue
 
                         if resp.status == 416:
-                            logger.info("Playwright ranged request returned 416. Assuming complete.")
+                            logger.info("Playwright ranged request returned 416. Assuming complete.", extra={"attempt": ranged_attempt})
                             break
 
                         if resp.status not in (200, 206):
                             text = await resp.text()
+                            logger.warning("Playwright ranged unexpected HTTP status", extra={"status": resp.status, "text_preview": text[:200]})
                             raise DownloadError(f"Playwright ranged HTTP {resp.status}: {text[:200]}")
 
                         # Extract total size from Content-Range if possible
                         content_range = resp.headers.get("content-range")
+                        logger.debug("Playwright ranged response headers", extra={"content-range": content_range})
                         if content_range and "/" in content_range:
                             try:
                                 total_expected_size = int(content_range.split("/")[-1])
@@ -226,9 +241,9 @@ class PlaywrightDownloader(AudioDownloader):
 
                         body = await resp.body()
                         if not body:
-                            logger.debug("Playwright ranged returned empty body; stopping")
+                            logger.debug("Playwright ranged returned empty body; stopping", extra={"attempt": ranged_attempt})
                             if total_expected_size and start_byte < total_expected_size:
-                                logger.warning(f"Playwright ranged returned no data but expected more: {start_byte} < {total_expected_size}")
+                                logger.warning("Playwright ranged returned no data but expected more", extra={"have": start_byte, "expected": total_expected_size})
                                 # Let it retry or fail if max attempts reached
                             break
 
@@ -242,22 +257,32 @@ class PlaywrightDownloader(AudioDownloader):
                             f.write(body)
 
                         start_byte += len(body)
-                        logger.info(f"Playwright ranged attempt {ranged_attempt}: wrote {len(body)} bytes, total {start_byte}, expected {total_expected_size}")
+                        logger.info("Playwright ranged wrote chunk", extra={"attempt": ranged_attempt, "bytes": len(body), "total": start_byte, "expected": total_expected_size})
 
                         if resp.status == 200:
+                            logger.info("Playwright ranged returned full file (200). Finishing.", extra={"attempt": ranged_attempt})
                             break
 
                         if total_expected_size and start_byte >= total_expected_size:
                             break
 
                         if ranged_attempt >= ranged_max_attempts:
+                            logger.error("Playwright ranged fallback exceeded max attempts", extra={"ranged_attempt": ranged_attempt, "ranged_max_attempts": ranged_max_attempts})
                             raise DownloadError(f"Playwright ranged fallback failed after {ranged_attempt} attempts")
 
                     # Finalize: rename temp to target
                     if not os.path.exists(temp_path):
+                        logger.error("Playwright ranged fallback failed: temp file missing", extra={"temp_path": temp_path})
                         raise DownloadError("Playwright ranged fallback failed: temporary file missing")
                     os.replace(temp_path, target_path)
+                    logger.info("Playwright ranged fallback finished and moved temp to target", extra={"target": target_path})
 
             finally:
-                await context.close()
-                await browser.close()
+                try:
+                    await context.close()
+                except Exception as e:
+                    logger.debug("Error closing Playwright context", extra={"error": str(e)})
+                try:
+                    await browser.close()
+                except Exception as e:
+                    logger.debug("Error closing Playwright browser", extra={"error": str(e)})
