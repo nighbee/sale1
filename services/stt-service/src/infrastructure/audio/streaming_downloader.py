@@ -21,10 +21,12 @@ class StreamingDownloader(AudioDownloader):
 
     Fixes for streaming endpoints:
     1. Resume Support: Detects existing partial file and uses HTTP Range header to continue.
-    2. Append Mode: Writes in 'ab' mode to avoid overwriting successful chunks.
-    3. Proper Streaming: Uses aiohttp's iter_chunked to avoid buffering in memory.
-    4. Robust Timeouts: Configured to allow slow or temporarily paused streams.
-    5. Clean Retry: Retries only the remaining part of the file, not from byte 0.
+    2. Parsing: ALWAYS parses Content-Range header to extract start, end, total.
+    3. Offset Update: Updates offset using server values ONLY (next_start = end + 1).
+    4. Completion: Never requests beyond EOF, stops when next_start >= total.
+    5. Partial Responses: Handles server returning fewer bytes than requested as valid.
+    6. Retry: Retries the SAME range if request fails, doesn't skip ahead.
+    7. Streaming: Uses response.content.iter_chunked(8192) for memory efficiency.
     """
     def __init__(
         self,
@@ -63,9 +65,27 @@ class StreamingDownloader(AudioDownloader):
 
         return cookies
 
+    def _parse_content_range(self, content_range: Optional[str]):
+        """
+        Parses Content-Range header.
+        Example: bytes 100-200/1000
+        Returns (start, end, total)
+        """
+        if not content_range or not content_range.startswith("bytes "):
+            return None, None, None
+
+        try:
+            range_part, total_part = content_range.replace("bytes ", "").split("/")
+            start_end = range_part.split("-")
+            start = int(start_end[0])
+            end = int(start_end[1])
+            total = int(total_part) if total_part != "*" else None
+            return start, end, total
+        except (ValueError, IndexError):
+            return None, None, None
+
     async def download(self, url: str, target_path: str, cookies: Dict[str, str] = None, extra_headers: Dict[str, str] = None) -> None:
         start_total_time = time.monotonic()
-        attempt = 0
 
         # Determine cookies
         if cookies is None:
@@ -73,125 +93,137 @@ class StreamingDownloader(AudioDownloader):
 
         temp_path = f"{target_path}.tmp"
 
-        # Configure robust timeouts as requested
+        # Configure robust timeouts
         timeout = aiohttp.ClientTimeout(
-            total=None,       # Allow the total download to take as long as needed
-            sock_read=120,    # Allow 120s of silence (slow/paused stream)
-            sock_connect=10   # Standard connection timeout
+            total=None,
+            sock_read=120,
+            sock_connect=10
         )
 
         total_bytes_expected = None
+        next_start = 0
 
-        while attempt < self.max_attempts:
-            attempt += 1
-            attempt_start_time = time.monotonic()
+        # 1. Detect existing file size for initial resume
+        if os.path.exists(temp_path):
+            next_start = os.path.getsize(temp_path)
 
-            # 1. Detect existing file size for resume
-            start_byte = 0
-            if os.path.exists(temp_path):
-                start_byte = os.path.getsize(temp_path)
-
-            # 2. Use Range header for resume
-            headers = self.headers.copy()
-            if extra_headers:
-                headers.update(extra_headers)
-
-            headers["Range"] = f"bytes={start_byte}-"
-
-            # Log attempt details
-            logger.info(
-                f"Download attempt {attempt}/{self.max_attempts}",
-                extra={
-                    "resume_offset": start_byte,
-                    "url": url,
-                    "temp_path": temp_path
-                }
-            )
-
-            try:
-                async with aiohttp.ClientSession(headers=headers, timeout=timeout, cookies=cookies) as session:
-                    async with session.get(url, allow_redirects=True) as response:
-                        # Handle completion based on 416 (Range Not Satisfiable)
-                        if response.status == 416:
-                            logger.info("Server returned 416: Download already complete or range invalid.")
-                            break
-
-                        if response.status not in (200, 206):
-                            text = await response.text()
-                            raise DownloadError(f"HTTP {response.status}: {text[:200]}")
-
-                        # 5. Completion detection: total size
-                        content_range = response.headers.get("Content-Range")
-                        if content_range and "/" in content_range:
-                            try:
-                                total_bytes_expected = int(content_range.split("/")[-1])
-                            except (ValueError, IndexError):
-                                pass
-
-                        if total_bytes_expected is None:
-                            content_length = response.headers.get("Content-Length")
-                            if content_length and content_length.isdigit():
-                                # For 206, Content-Length is the size of the PART, not the whole file
-                                if response.status == 206:
-                                    total_bytes_expected = start_byte + int(content_length)
-                                else:
-                                    total_bytes_expected = int(content_length)
-
-                        # Validate Content-Type (avoid HTML)
-                        content_type = response.headers.get("Content-Type", "").lower()
-                        if "text/html" in content_type:
-                            raise DownloadError(f"Expected audio, got {content_type}")
-
-                        # 3. Streaming download with 2. Append mode
-                        # Use 'ab' to append to existing partial data
-                        with open(temp_path, "ab") as f:
-                            bytes_in_this_attempt = 0
-                            # iter_chunked for no buffering
-                            async for chunk in response.content.iter_chunked(self.chunk_size):
-                                if chunk:
-                                    # Security check for HTML on fresh start
-                                    if start_byte == 0 and bytes_in_this_attempt == 0:
-                                        if chunk.startswith(b"<!DOCTYPE html>") or chunk.startswith(b"<html>"):
-                                            raise DownloadError("First chunk indicates HTML content")
-
-                                    await asyncio.to_thread(f.write, chunk)
-                                    bytes_in_this_attempt += len(chunk)
-
-                                    current_total = start_byte + bytes_in_this_attempt
-                                    if total_bytes_expected and current_total >= total_bytes_expected:
-                                        logger.info(f"Reached total size: {current_total}/{total_bytes_expected}")
-                                        break
-
-                # Check if we are actually done
-                final_size_so_far = os.path.getsize(temp_path)
-                if total_bytes_expected and final_size_so_far < total_bytes_expected:
-                    raise DownloadError(f"Incomplete download: {final_size_so_far}/{total_bytes_expected} bytes")
-
-                # If we reached here without exception, the download is likely finished
+        while True:
+            # Check if we already finished
+            if total_bytes_expected is not None and next_start >= total_bytes_expected:
                 break
 
-            except (aiohttp.ClientError, asyncio.TimeoutError, DownloadError, IOError) as e:
-                attempt_duration = time.monotonic() - attempt_start_time
-                current_size = os.path.getsize(temp_path) if os.path.exists(temp_path) else 0
+            attempt = 0
+            success = False
 
-                logger.warning(
-                    f"Attempt {attempt} failed: {str(e)}",
-                    extra={
-                        "attempt": attempt,
-                        "duration": round(attempt_duration, 2),
-                        "bytes_downloaded_so_far": current_size,
-                        "total_expected": total_bytes_expected,
-                        "error_type": type(e).__name__
-                    }
+            while attempt < self.max_attempts:
+                attempt += 1
+                attempt_start_time = time.monotonic()
+
+                headers = self.headers.copy()
+                if extra_headers:
+                    headers.update(extra_headers)
+
+                headers["Range"] = f"bytes={next_start}-"
+
+                logger.info(
+                    f"Download attempt {attempt}/{self.max_attempts} for offset {next_start}",
+                    extra={"url": url, "next_start": next_start}
                 )
 
-                if attempt >= self.max_attempts:
-                    raise DownloadError(f"Download failed after {attempt} attempts: {str(e)}")
+                try:
+                    async with aiohttp.ClientSession(headers=headers, timeout=timeout, cookies=cookies) as session:
+                        async with session.get(url, allow_redirects=True) as response:
+                            if response.status == 416:
+                                logger.info("Server returned 416: Range Not Satisfiable.")
+                                success = True
+                                if total_bytes_expected is None:
+                                    if os.path.exists(temp_path) and os.path.getsize(temp_path) >= self.min_file_size:
+                                        next_start = float('inf')
+                                break
 
-                # 4. Robust retry logic: exponential backoff
-                delay = self.base_backoff * (2 ** (attempt - 1)) + random.uniform(0, 1)
-                logger.info(f"Retrying in {delay:.2f}s...")
-                await asyncio.sleep(delay)
+                            if response.status not in (200, 206):
+                                text = await response.text()
+                                raise DownloadError(f"HTTP {response.status}: {text[:200]}")
+
+                            # Parse Content-Range
+                            cr_header = response.headers.get("Content-Range")
+                            start, end, total = self._parse_content_range(cr_header)
+
+                            if total is not None:
+                                total_bytes_expected = total
+
+                            # If it's a 200 response, it's not ranged, treat as starting from 0
+                            if response.status == 200:
+                                start = 0
+                                content_length = response.headers.get("Content-Length")
+                                if content_length:
+                                    total_bytes_expected = int(content_length)
+                                end = total_bytes_expected - 1 if total_bytes_expected else None
+
+                            # Validate we are getting what we asked for
+                            if start is not None and start != next_start and response.status == 206:
+                                logger.warning(f"Server returned start {start} but we asked for {next_start}.")
+
+                            content_type = response.headers.get("Content-Type", "").lower()
+                            if "text/html" in content_type:
+                                raise DownloadError(f"Expected audio, got {content_type}")
+
+                            # Write to file
+                            mode = "ab" if next_start == (os.path.getsize(temp_path) if os.path.exists(temp_path) else 0) else "r+b"
+                            if not os.path.exists(temp_path):
+                                mode = "wb"
+
+                            with open(temp_path, mode) as f:
+                                if "r+" in mode:
+                                    f.seek(next_start)
+
+                                bytes_received = 0
+                                # Streaming: Uses response.content.iter_chunked(8192)
+                                async for chunk in response.content.iter_chunked(self.chunk_size):
+                                    if chunk:
+                                        if next_start == 0 and bytes_received == 0:
+                                            if chunk.startswith(b"<!DOCTYPE html>") or chunk.startswith(b"<html>"):
+                                                raise DownloadError("First chunk indicates HTML content")
+
+                                        await asyncio.to_thread(f.write, chunk)
+                                        bytes_received += len(chunk)
+
+                            # Update next_start based on server values
+                            if end is not None:
+                                # We assume we got all bytes up to 'end' if no exception occurred
+                                next_start = end + 1
+                                success = True
+                                break
+                            else:
+                                # Fallback if no Content-Range (e.g. 200 response)
+                                next_start += bytes_received
+                                success = True
+                                break
+
+                except (aiohttp.ClientError, asyncio.TimeoutError, DownloadError, IOError) as e:
+                    attempt_duration = time.monotonic() - attempt_start_time
+                    logger.warning(
+                        f"Attempt {attempt} failed: {str(e)}",
+                        extra={
+                            "attempt": attempt,
+                            "next_start": next_start,
+                            "error_type": type(e).__name__,
+                            "duration": round(attempt_duration, 2)
+                        }
+                    )
+                    if attempt >= self.max_attempts:
+                        raise DownloadError(f"Download failed after {attempt} attempts: {str(e)}")
+
+                    delay = self.base_backoff * (2 ** (attempt - 1)) + random.uniform(0, 1)
+                    await asyncio.sleep(delay)
+
+            if not success:
+                raise DownloadError(f"Failed to download range starting at {next_start}")
+
+            if total_bytes_expected is not None and next_start >= total_bytes_expected:
+                break
+            if next_start == float('inf'):
+                break
 
         # Final validations
         if not os.path.exists(temp_path):
@@ -213,7 +245,6 @@ class StreamingDownloader(AudioDownloader):
                 "url": url,
                 "target": target_path,
                 "final_size": final_size,
-                "total_attempts": attempt,
                 "total_duration": round(total_duration, 2)
             }
         )
