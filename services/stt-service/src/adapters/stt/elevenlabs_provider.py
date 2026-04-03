@@ -85,8 +85,23 @@ class ElevenLabsSTTProvider(STTProvider):
                 "is_diarized": True
             }
         except Exception as e:
-            logger.error("ElevenLabs STT failed", extra={"error": str(e), "audio_path": audio_path})
-            raise RuntimeError(f"ElevenLabs STT failed: {str(e)}") from e
+            msg = str(e)
+            # Detect common permission error returned by ElevenLabs API
+            if 'missing_permissions' in msg or 'missing permission' in msg or 'speech_to_text' in msg:
+                logger.error(
+                    "ElevenLabs STT failed due to API key permissions",
+                    extra={
+                        "error": msg,
+                        "audio_path": audio_path,
+                        "hint": "The provided ElevenLabs API key appears to be missing the `speech_to_text` permission. Create a key with speech_to_text (Scribe) enabled and set ELEVENLABS_API_KEY in your environment or integration settings."
+                    }
+                )
+                raise RuntimeError(
+                    "ElevenLabs STT failed: API key missing `speech_to_text` permission. Create a key with Scribe/speech_to_text permission and set ELEVENLABS_API_KEY."
+                ) from e
+
+            logger.error("ElevenLabs STT failed", extra={"error": msg, "audio_path": audio_path})
+            raise RuntimeError(f"ElevenLabs STT failed: {msg}") from e
 
     async def get_models(self) -> list:
         try:
