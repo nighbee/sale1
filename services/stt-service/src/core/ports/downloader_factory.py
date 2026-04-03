@@ -6,6 +6,7 @@ from src.infrastructure.audio.minio_downloader import MinioDownloader
 from src.infrastructure.audio.curl_downloader import CurlDownloader
 from src.infrastructure.audio.playwright_downloader import PlaywrightDownloader
 from src.infrastructure.audio.streaming_downloader import StreamingDownloader
+from src.infrastructure.audio.resilient_streaming_downloader import ResilientStreamingDownloader
 from src.infrastructure.audio.fallback_downloader import FallbackDownloader
 from src.infrastructure.audio.resilient_downloader import ResilientDownloader
 from src.adapters.storage.minio_client import MinioClient
@@ -20,8 +21,8 @@ class DownloaderFactory:
             return MinioDownloader(minio_client)
 
         if "sipuni.com" in url:
-            logger.info("Sipuni URL detected - forcing StreamingDownloader (robust aiohttp)", extra={"url": url})
-            return StreamingDownloader()
+            logger.info("Sipuni URL detected - forcing ResilientStreamingDownloader", extra={"url": url})
+            return ResilientStreamingDownloader()
 
         strategy = os.getenv("STT_DOWNLOAD_STRATEGY", "streaming").lower()
 
@@ -38,8 +39,8 @@ class DownloaderFactory:
             return PlaywrightDownloader()
 
         if strategy == "streaming":
-            logger.info("Using StreamingDownloader strategy", extra={"url": url})
-            return StreamingDownloader()
+            logger.info("Using ResilientStreamingDownloader strategy", extra={"url": url})
+            return ResilientStreamingDownloader()
 
         if strategy == "fallback":
             logger.info("Using basic FallbackDownloader (HTTP -> Curl)", extra={"url": url})
@@ -49,6 +50,6 @@ class DownloaderFactory:
             logger.info("Using Resilient Pipeline strategy", extra={"url": url, "strategy": strategy})
             return ResilientDownloader()
 
-        # Default to streaming for everything else
-        logger.info(f"Using default StreamingDownloader strategy (requested strategy was: {strategy})", extra={"url": url})
-        return StreamingDownloader()
+        # Default to resilient streaming for everything else
+        logger.info(f"Using default ResilientStreamingDownloader strategy (requested strategy was: {strategy})", extra={"url": url})
+        return ResilientStreamingDownloader()
