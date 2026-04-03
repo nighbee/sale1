@@ -33,6 +33,28 @@ async def check_model(
         raise HTTPException(status_code=400, detail=result.get("error"))
     return result
 
+@app.post("/api/v1/models")
+async def get_models(
+    provider_name: str = Body(...),
+    credentials: dict = Body(None)
+):
+    try:
+        # Mock integration list for factory
+        integrations = []
+        if credentials:
+            integrations.append({
+                "integration_type": provider_name,
+                "credentials": credentials
+            })
+
+        from src.adapters.stt.factory import STTProviderFactory
+        provider = STTProviderFactory.create(provider_name, integrations)
+        models = await provider.get_models()
+        return {"models": models}
+    except Exception as e:
+        logger.error(f"Failed to fetch models for {provider_name}: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+
 async def run_http_server():
     metrics_port = int(os.getenv("METRICS_PORT", 8001))
     config = uvicorn.Config(app, host="0.0.0.0", port=metrics_port, log_config=None)

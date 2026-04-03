@@ -5,6 +5,7 @@ import Button from '../../../shared/ui/Button';
 import Input from '../../../shared/ui/Input';
 import { integrationApi } from '../../../entities/integration/api';
 import { useCheckModel } from '../hooks/useCheckModel';
+import { useGetModels } from '../hooks/useGetModels';
 import { toast } from 'sonner';
 
 interface IntegrationModalProps {
@@ -22,13 +23,21 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ isOpen, onClose, ty
   const [credentials, setCredentials] = useState<Record<string, string>>({});
   const [config, setConfig] = useState<Record<string, string>>({});
   const { isChecking, checkResult, checkModel, setCheckResult } = useCheckModel(type);
+  const { isLoading: isFetchingModels, models, fetchModels } = useGetModels(type);
 
   useEffect(() => {
     const fetchIntegration = async () => {
         try {
             const res = await integrationApi.get(type);
-            setCredentials((res.data.credentials as Record<string, string>) || {});
-            setConfig((res.data.config as Record<string, string>) || {});
+            const creds = (res.data.credentials as Record<string, string>) || {};
+            const cfg = (res.data.config as Record<string, string>) || {};
+            setCredentials(creds);
+            setConfig(cfg);
+
+            // Auto fetch models if credentials exist
+            if (creds.api_key) {
+              fetchModels(creds);
+            }
         } catch {
             setCredentials({});
             setConfig({});
@@ -40,6 +49,16 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ isOpen, onClose, ty
         setTestResult(null);
     }
   }, [isOpen, type, setCheckResult]);
+
+  useEffect(() => {
+    // Re-fetch models when credentials change and have an API key
+    if (credentials.api_key && credentials.api_key.length > 10) {
+      const timeoutId = setTimeout(() => {
+        fetchModels(credentials);
+      }, 1000);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [credentials.api_key]);
 
   const handleTest = async () => {
     setIsTesting(true);
@@ -135,24 +154,67 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ isOpen, onClose, ty
                           />
                       )}
                       <div className="grid grid-cols-2 gap-4">
-                        <Input
-                            label="Model"
-                            placeholder={
-                                type === 'openai' ? 'whisper-1' :
-                                type === 'groq' ? 'whisper-large-v3-turbo' :
-                                type === 'deepgram' ? 'nova-2' :
-                                type === 'gemini' ? 'gemini-1.5-flash' :
-                                type === 'elevenlabs' ? 'scribe_v1' : 'stt-async-v4'
-                            }
-                            value={config.model || ''}
-                            onChange={e => setConfig({...config, model: e.target.value})}
-                        />
-                        <Input
-                            label="Language"
-                            placeholder="e.g. en, ru, auto"
-                            value={config.language || ''}
-                            onChange={e => setConfig({...config, language: e.target.value})}
-                        />
+                        <div className="w-full">
+                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Model</label>
+                          <div className="relative">
+                            <select
+                                className="appearance-none block w-full px-3 py-2.5 border border-slate-300 dark:border-slate-700 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary sm:text-sm bg-white dark:bg-slate-800 dark:text-white transition-all duration-200"
+                                value={config.model || ''}
+                                onChange={e => setConfig({...config, model: e.target.value})}
+                                disabled={isFetchingModels}
+                            >
+                                <option value="">Select Model</option>
+                                {models.map(m => (
+                                    <option key={m} value={m}>{m}</option>
+                                ))}
+                                {!models.includes(config.model) && config.model && (
+                                    <option value={config.model}>{config.model}</option>
+                                )}
+                            </select>
+                            {isFetchingModels && (
+                              <div className="absolute right-8 top-1/2 -translate-y-1/2">
+                                <span className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full block"></span>
+                              </div>
+                            )}
+                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
+                                <span className="material-symbols-outlined text-base">expand_more</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="w-full">
+                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Language</label>
+                          <div className="relative">
+                            <select
+                                className="appearance-none block w-full px-3 py-2.5 border border-slate-300 dark:border-slate-700 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary sm:text-sm bg-white dark:bg-slate-800 dark:text-white transition-all duration-200"
+                                value={config.language || ''}
+                                onChange={e => setConfig({...config, language: e.target.value})}
+                            >
+                                <option value="auto">Auto Detect</option>
+                                <option value="ru">Russian (ru)</option>
+                                <option value="en">English (en)</option>
+                                <option value="kk">Kazakh (kk)</option>
+                            </select>
+                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
+                                <span className="material-symbols-outlined text-base">expand_more</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800/30">
+                        <h4 className="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-1 flex items-center gap-2">
+                          <span className="material-symbols-outlined text-base">info</span>
+                          Transcription Strategy
+                        </h4>
+                        <p className="text-xs text-blue-700 dark:text-blue-400">
+                          {type === 'openai' && 'Uses Whisper-1 model. High accuracy, no diarization support.'}
+                          {type === 'groq' && 'Uses Whisper models via Groq. Extremely fast execution (~10s for 1h audio). No diarization.'}
+                          {type === 'deepgram' && 'Uses Nova-2 model. High speed, supports diarization and punctuation.'}
+                          {type === 'gemini' && 'Uses Gemini Multimodal LLM. Excellent at context and Kazakh language. Supports diarization.'}
+                          {type === 'elevenlabs' && 'Uses Scribe v2. High accuracy and natural punctuation. Supports diarization.'}
+                          {type === 'soniox' && 'Enterprise-grade STT. High accuracy in noisy environments. Supports diarization.'}
+                        </p>
                       </div>
                   </div>
               );

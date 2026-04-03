@@ -64,6 +64,14 @@ class GroqSTTProvider(STTProvider):
             logger.error("Groq STT failed", extra={"error": str(e), "audio_path": audio_path})
             raise RuntimeError(f"Groq STT failed: {str(e)}") from e
 
+    async def get_models(self) -> list:
+        try:
+            models = await self.client.models.list()
+            return [m.id for m in models.data if "whisper" in m.id or "stt" in m.id]
+        except Exception as e:
+            logger.error(f"Failed to fetch Groq models: {e}")
+            return ["whisper-large-v3-turbo", "whisper-large-v3", "distil-whisper-large-v3-en"]
+
     def _read_file(self, path: str) -> bytes:
         with open(path, "rb") as f:
             return f.read()

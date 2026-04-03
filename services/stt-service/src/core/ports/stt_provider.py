@@ -16,3 +16,13 @@ class STTProvider(ABC):
             dict: Transcription result containing 'text' and 'segments'.
         """
         pass
+
+    @abstractmethod
+    async def get_models(self) -> list:
+        """
+        Get list of available models for the provider.
+
+        Returns:
+            list: List of model identifiers.
+        """
+        pass

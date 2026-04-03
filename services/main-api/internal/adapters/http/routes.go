@@ -127,6 +127,7 @@ func SetupRoutes(
 	integrations.Get("/:type", integrationHandler.Get)
 	integrations.Post("/:type/test", integrationHandler.TestConnection)
 	integrations.Post("/:type/check", integrationHandler.CheckModel)
+	integrations.Post("/:type/models", integrationHandler.GetModels)
 	integrations.Delete("/:type", integrationHandler.Delete)
 
 	// AI Settings
