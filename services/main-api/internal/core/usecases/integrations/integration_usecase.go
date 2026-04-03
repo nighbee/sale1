@@ -254,7 +254,7 @@ func (uc *IntegrationUseCase) testAIProvider(ctx context.Context, it domain.Inte
 		authHeader = "xi-api-key"
 		authValue = creds.APIKey
 	case domain.IntegrationSoniox:
-		url = "https://api.soniox.com/v1/GetTest"
+		url = "https://api.soniox.com/v1/transcriptions"
 		authHeader = "Authorization"
 		authValue = creds.APIKey
 	}

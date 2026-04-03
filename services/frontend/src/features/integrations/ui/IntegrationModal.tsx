@@ -23,7 +23,7 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ isOpen, onClose, ty
   const [credentials, setCredentials] = useState<Record<string, string>>({});
   const [config, setConfig] = useState<Record<string, string>>({});
   const { isChecking, checkResult, checkModel, setCheckResult } = useCheckModel(type);
-  const { isLoading: isFetchingModels, models, fetchModels } = useGetModels(type);
+  const { isLoading: isFetchingModels, models, error: modelsError, fetchModels } = useGetModels(type);
 
   useEffect(() => {
     const fetchIntegration = async () => {
@@ -254,6 +254,16 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ isOpen, onClose, ty
           <div className={`p-3 rounded-lg text-sm flex items-start gap-2 ${testResult.success ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
             <span className="material-symbols-outlined text-base mt-0.5">{testResult.success ? 'check_circle' : 'error'}</span>
             <p>{testResult.message}</p>
+          </div>
+        )}
+
+        {modelsError && (
+          <div className="p-3 rounded-lg text-sm bg-red-50 text-red-700 flex items-start gap-2">
+            <span className="material-symbols-outlined text-base mt-0.5">error</span>
+            <div>
+              <p className="font-bold">Failed to fetch models</p>
+              <p>{modelsError}</p>
+            </div>
           </div>
         )}
 
