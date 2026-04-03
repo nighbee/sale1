@@ -7,7 +7,7 @@ from src.core.ports.stt_provider import STTProvider
 logger = logging.getLogger(__name__)
 
 class OpenAISTTProvider(STTProvider):
-    def __init__(self, api_key: str = None, base_url: str = None, model: str = "whisper-1"):
+    def __init__(self, api_key: str = None, base_url: str = None, model: str = "whisper-1", language: str = None):
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         if not self.api_key:
              logger.warning("OPENAI_API_KEY is not set")
@@ -18,20 +18,25 @@ class OpenAISTTProvider(STTProvider):
 
         self.client = AsyncOpenAI(**client_kwargs)
         self.model = model
+        self.language = language
 
     async def transcribe(self, audio_path: str) -> dict:
         if not self.api_key:
             raise RuntimeError("OpenAI API key missing")
 
         try:
-            logger.info(f"Transcribing with OpenAI: {audio_path}")
+            logger.info(f"Transcribing with OpenAI: {audio_path}", extra={"model": self.model, "language": self.language})
 
-            with open(audio_path, "rb") as audio_file:
-                transcript = await self.client.audio.transcriptions.create(
-                    model=self.model,
-                    file=audio_file,
-                    response_format="verbose_json"
-                )
+            kwargs = {
+                "model": self.model,
+                "file": open(audio_path, "rb"),
+                "response_format": "verbose_json"
+            }
+            if self.language:
+                kwargs["language"] = self.language
+
+            with kwargs["file"] as audio_file:
+                transcript = await self.client.audio.transcriptions.create(**kwargs)
             
             segments = []
             if hasattr(transcript, "segments") and transcript.segments:

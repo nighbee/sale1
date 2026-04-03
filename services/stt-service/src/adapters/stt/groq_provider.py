@@ -7,7 +7,7 @@ from src.core.ports.stt_provider import STTProvider
 logger = logging.getLogger(__name__)
 
 class GroqSTTProvider(STTProvider):
-    def __init__(self, api_key: str = None, model: str = None):
+    def __init__(self, api_key: str = None, model: str = None, language: str = None):
         self.api_key = api_key or os.getenv("GROQ_API_KEY")
         if not self.api_key:
              logger.warning("GROQ_API_KEY is not set")
@@ -16,22 +16,27 @@ class GroqSTTProvider(STTProvider):
             base_url="https://api.groq.com/openai/v1",
         )
         self.model = model or os.getenv("GROQ_STT_MODEL", "whisper-large-v3-turbo")
+        self.language = language
 
     async def transcribe(self, audio_path: str) -> dict:
         if not self.api_key:
             raise RuntimeError("Groq API key missing")
 
         try:
-            logger.info(f"Transcribing with Groq: {audio_path}")
+            logger.info(f"Transcribing with Groq: {audio_path}", extra={"model": self.model, "language": self.language})
 
             audio_buffer = await asyncio.to_thread(self._read_file, audio_path)
 
-            transcript = await self.client.audio.transcriptions.create(
-                model=self.model,
-                file=("audio.mp3", audio_buffer),
-                response_format="verbose_json",
-                timestamp_granularities=["segment"],
-            )
+            kwargs = {
+                "model": self.model,
+                "file": ("audio.mp3", audio_buffer),
+                "response_format": "verbose_json",
+                "timestamp_granularities": ["segment"],
+            }
+            if self.language:
+                kwargs["language"] = self.language
+
+            transcript = await self.client.audio.transcriptions.create(**kwargs)
 
             segments = []
             if hasattr(transcript, "segments") and transcript.segments:

@@ -6,11 +6,11 @@ export const useCheckModel = (type: string) => {
   const [isChecking, setIsChecking] = useState(false);
   const [checkResult, setCheckResult] = useState<{ success: boolean; transcript?: string; error?: string } | null>(null);
 
-  const checkModel = async (credentials?: any, model?: string) => {
+  const checkModel = async (credentials?: any, model?: string, language?: string) => {
     setIsChecking(true);
     setCheckResult(null);
     try {
-      const res = await integrationApi.checkModel(type, { credentials, model });
+      const res = await integrationApi.checkModel(type, { credentials, model, language } as any);
       if (res.data.success) {
         setCheckResult({ success: true, transcript: res.data.transcript });
         toast.success('Model check successful');

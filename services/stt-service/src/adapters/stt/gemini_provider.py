@@ -8,7 +8,7 @@ from src.core.ports.stt_provider import STTProvider
 logger = logging.getLogger(__name__)
 
 class GeminiSTTProvider(STTProvider):
-    def __init__(self, api_key: str = None, model: str = None):
+    def __init__(self, api_key: str = None, model: str = None, language: str = None):
         self.api_key = api_key or os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
         if not self.api_key:
             logger.warning("GEMINI/GOOGLE_API_KEY is not set")
@@ -17,13 +17,14 @@ class GeminiSTTProvider(STTProvider):
         
         self.model_name = model or os.getenv("GOOGLE_AI_MODEL", "gemini-1.5-flash")
         self.model = genai.GenerativeModel(self.model_name)
+        self.language = language
 
     async def transcribe(self, audio_path: str) -> dict:
         if not self.api_key:
             raise RuntimeError("Gemini API key missing")
 
         try:
-            logger.info(f"Transcribing with Gemini: {audio_path}")
+            logger.info(f"Transcribing with Gemini: {audio_path}", extra={"model": self.model_name, "language": self.language})
 
             # Upload file to Gemini File API using a thread to avoid blocking
             sample_file = await asyncio.to_thread(
@@ -31,8 +32,9 @@ class GeminiSTTProvider(STTProvider):
             )
 
             # Prompt for transcription using the async method
+            lang_hint = f" The audio is in {self.language} language." if self.language else ""
             prompt = (
-                "Transcribe this audio file. "
+                f"Transcribe this audio file.{lang_hint} "
                 "Output strictly valid JSON with the following structure:\n"
                 "{\n"
                 "  \"text\": \"full transcript text\",\n"

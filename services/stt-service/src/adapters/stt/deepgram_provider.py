@@ -6,30 +6,36 @@ from src.core.ports.stt_provider import STTProvider
 logger = logging.getLogger(__name__)
 
 class DeepgramSTTProvider(STTProvider):
-    def __init__(self, api_key: str = None, model: str = None):
+    def __init__(self, api_key: str = None, model: str = None, language: str = None):
         self.api_key = api_key or os.getenv("DEEPGRAM_API_KEY")
         if not self.api_key:
             logger.warning("DEEPGRAM_API_KEY is not set")
         self.client = DeepgramClient(self.api_key)
         self.model = model or os.getenv("DEEPGRAM_MODEL", "nova-2")
+        self.language = language
 
     async def transcribe(self, audio_path: str) -> dict:
         if not self.api_key:
             raise RuntimeError("Deepgram API key missing")
 
         try:
-            logger.info(f"Transcribing with Deepgram: {audio_path}")
+            logger.info(f"Transcribing with Deepgram: {audio_path}", extra={"model": self.model, "language": self.language})
 
             with open(audio_path, "rb") as f:
                 buffer = f.read()
 
-            options = PrerecordedOptions(
-                model=self.model,
-                smart_format=True,
-                punctuate=True,
-                utterances=True,
-                language="ru",
-            )
+            options_dict = {
+                "model": self.model,
+                "smart_format": True,
+                "punctuate": True,
+                "utterances": True,
+            }
+            if self.language:
+                options_dict["language"] = self.language
+            else:
+                options_dict["detect_language"] = True
+
+            options = PrerecordedOptions(**options_dict)
 
             response = await self.client.listen.asyncprerecorded.v("1").transcribe_file(
                 {"buffer": buffer}, options
@@ -84,6 +90,7 @@ class DeepgramSTTProvider(STTProvider):
                     "audio_path": audio_path,
                     "segments": len(segments),
                     "chars": len(full_text),
+                    "detected_language": results.get("channels", [{}])[0].get("detected_language")
                 },
             )
             return {"text": full_text, "segments": segments}

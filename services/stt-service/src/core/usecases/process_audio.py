@@ -99,10 +99,12 @@ class ProcessAudioUseCase:
             # Priority: 1. Job metadata 2. integrations (DB) 3. .env
             stt_provider_name = job.get("stt_provider")
             stt_model_name = job.get("stt_model")
+            stt_language = job.get("stt_language")
 
             if ai_settings:
                 stt_provider_name = stt_provider_name or ai_settings.get("stt_provider")
                 stt_model_name = stt_model_name or ai_settings.get("stt_model")
+                # ai_settings doesn't have stt_language currently, but let's be prepared
 
             # Fallback to .env
             stt_provider_name = stt_provider_name or self.stt_provider_name
@@ -110,10 +112,16 @@ class ProcessAudioUseCase:
             logger.info("[4/6] sending to STT provider",
                         extra={"call_id": call_id, "stt_provider": stt_provider_name,
                                "stt_model": stt_model_name,
+                               "stt_language": stt_language,
                                "file_size_kb": file_size_kb})
 
             integrations = await self.api_client.get_active_integrations()
-            stt_provider = STTProviderFactory.create(stt_provider_name, integrations, default_model=stt_model_name)
+            stt_provider = STTProviderFactory.create(
+                stt_provider_name,
+                integrations,
+                default_model=stt_model_name,
+                default_language=stt_language
+            )
 
             t_stt = time.monotonic()
             try:

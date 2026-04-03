@@ -71,22 +71,40 @@ func (uc *IntegrationUseCase) CheckModel(ctx context.Context, it domain.Integrat
 	}
 	url := sttServiceURL + "/api/v1/check-model"
 
+	var input struct {
+		Model    string `json:"model"`
+		Language string `json:"language"`
+	}
+	json.Unmarshal(credentials, &input)
+
+	if model == "" {
+		model = input.Model
+	}
+	language := input.Language
+
 	payload := map[string]interface{}{
 		"provider_name": string(it),
 		"credentials":   nil,
 		"model":         model,
+		"language":      language,
 	}
 
 	if len(credentials) == 0 || string(credentials) == "null" {
 		existing, err := uc.repo.GetByType(ctx, it)
 		if err == nil {
 			credentials = existing.Credentials
-			if model == "" {
+			if model == "" || language == "" {
 				var cfg struct {
-					Model string `json:"model"`
+					Model    string `json:"model"`
+					Language string `json:"language"`
 				}
 				if err := json.Unmarshal(existing.Config, &cfg); err == nil {
-					model = cfg.Model
+					if model == "" {
+						model = cfg.Model
+					}
+					if language == "" {
+						language = cfg.Language
+					}
 				}
 			}
 		}
@@ -99,6 +117,7 @@ func (uc *IntegrationUseCase) CheckModel(ctx context.Context, it domain.Integrat
 		}
 	}
 	payload["model"] = model
+	payload["language"] = language
 
 	body, _ := json.Marshal(payload)
 	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(body))

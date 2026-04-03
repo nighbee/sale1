@@ -14,6 +14,42 @@ interface IntegrationModalProps {
   onSuccess: () => void;
 }
 
+const STT_MODELS: Record<string, { id: string; name: string }[]> = {
+  openai: [
+    { id: 'whisper-1', name: 'Whisper 1 (General)' },
+  ],
+  groq: [
+    { id: 'whisper-large-v3-turbo', name: 'Whisper Large v3 Turbo (Fast)' },
+    { id: 'whisper-large-v3', name: 'Whisper Large v3' },
+    { id: 'distil-whisper-large-v3-en', name: 'Distil-Whisper Large v3 (English Only)' },
+  ],
+  deepgram: [
+    { id: 'nova-2', name: 'Nova-2 (Best Performance)' },
+    { id: 'nova-2-phonecall', name: 'Nova-2 Phonecall' },
+    { id: 'base', name: 'Base' },
+  ],
+  gemini: [
+    { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash' },
+    { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro' },
+    { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash' },
+  ],
+  elevenlabs: [
+    { id: 'scribe_v2', name: 'Scribe v2' },
+    { id: 'scribe_v1', name: 'Scribe v1' },
+  ],
+  soniox: [
+    { id: 'en_v2', name: 'English v2' },
+    { id: 'ru_v1', name: 'Russian v1' },
+  ]
+};
+
+const LANGUAGES = [
+  { id: '', name: 'Auto-detect' },
+  { id: 'en', name: 'English' },
+  { id: 'ru', name: 'Russian' },
+  { id: 'kk', name: 'Kazakh' },
+];
+
 const IntegrationModal: React.FC<IntegrationModalProps> = ({ isOpen, onClose, type, onSuccess }) => {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
@@ -63,7 +99,7 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ isOpen, onClose, ty
   };
 
   const handleCheckModel = () => {
-    checkModel(credentials, config.model);
+    checkModel(credentials, config.model, config.language);
   };
 
   const handleSave = async () => {
@@ -134,18 +170,37 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ isOpen, onClose, ty
                               onChange={e => setCredentials({...credentials, base_url: e.target.value})}
                           />
                       )}
-                      <Input
-                          label="Model"
-                          placeholder={
-                              type === 'openai' ? 'whisper-1' :
-                              type === 'groq' ? 'whisper-large-v3-turbo' :
-                              type === 'deepgram' ? 'nova-2' :
-                              type === 'gemini' ? 'gemini-1.5-flash' :
-                              type === 'elevenlabs' ? 'scribe_v1' : 'en_v2'
-                          }
-                          value={config.model || ''}
-                          onChange={e => setConfig({...config, model: e.target.value})}
-                      />
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Model</label>
+                          <select
+                            className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 text-sm text-slate-900 dark:text-white"
+                            value={config.model || ''}
+                            onChange={e => setConfig({...config, model: e.target.value})}
+                          >
+                            <option value="">Select a model</option>
+                            {STT_MODELS[type]?.map(m => (
+                              <option key={m.id} value={m.id}>{m.name}</option>
+                            ))}
+                            {!STT_MODELS[type]?.find(m => m.id === config.model) && config.model && (
+                              <option value={config.model}>{config.model} (Custom)</option>
+                            )}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Language</label>
+                          <select
+                            className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 text-sm text-slate-900 dark:text-white"
+                            value={config.language || ''}
+                            onChange={e => setConfig({...config, language: e.target.value})}
+                          >
+                            {LANGUAGES.map(l => (
+                              <option key={l.id} value={l.id}>{l.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
                   </div>
               );
           case 'slack':
