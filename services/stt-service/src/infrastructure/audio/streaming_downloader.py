@@ -29,13 +29,15 @@ class StreamingDownloader(AudioDownloader):
         self,
         chunk_size: int = 16384,
         min_file_size: int = 5 * 1024,
-        max_attempts: int = 10,
-        base_backoff: float = 2.0,
+        max_attempts: int = 15,
+        base_backoff: float = 1.0,
+        stall_timeout: float = 10.0,
     ):
         self.chunk_size = chunk_size
         self.min_file_size = min_file_size
         self.max_attempts = max_attempts
         self.base_backoff = base_backoff
+        self.stall_timeout = stall_timeout
 
         # Browser-like headers to avoid being blocked or throttled
         self.headers = {
@@ -75,8 +77,8 @@ class StreamingDownloader(AudioDownloader):
         attempt = 0
         total_size = None
 
-        # sock_read is generous to allow the server to "think" while generating audio
-        timeout = aiohttp.ClientTimeout(total=None, sock_read=300, connect=30)
+        # sock_read is generous, but we'll use manual per-chunk timeout for stall detection
+        timeout = aiohttp.ClientTimeout(total=None, sock_read=600, connect=30)
 
         while attempt < self.max_attempts:
             attempt += 1
@@ -142,22 +144,40 @@ class StreamingDownloader(AudioDownloader):
                         logger.info(f"Stream established. Total expected size: {total_size}", extra={"url": url})
 
                         with open(temp_path, mode) as f:
-                            # The heart of the downloader: incremental streaming
-                            async for chunk in response.content.iter_chunked(self.chunk_size):
-                                if chunk:
-                                    # Anti-HTML guard for the beginning of the file
-                                    if start_byte == 0 and chunk.startswith((b"<!DOCTYPE", b"<html>", b"<html")):
-                                        raise DownloadError("First chunk indicates HTML content instead of audio")
+                            # The heart of the downloader: incremental streaming with stall detection
+                            while True:
+                                try:
+                                    # Use wait_for to detect stalled connections that don't send data
+                                    chunk = await asyncio.wait_for(
+                                        response.content.read(self.chunk_size),
+                                        timeout=self.stall_timeout
+                                    )
+                                except asyncio.TimeoutError:
+                                    logger.warning(f"Stream stalled: no data for {self.stall_timeout}s", extra={"url": url})
+                                    raise DownloadError(f"Stream stalled after {start_byte} bytes")
 
-                                    await asyncio.to_thread(f.write, chunk)
-                                    start_byte += len(chunk)
+                                if not chunk:
+                                    logger.info("End of stream reached", extra={"url": url})
+                                    break
 
-                                    # Progress reporting
-                                    if total_size:
-                                        percent = (start_byte / total_size) * 100
-                                        logger.info(f"Progress: {start_byte}/{total_size} bytes ({percent:.1f}%)", extra={"url": url})
-                                    else:
-                                        logger.info(f"Progress: {start_byte} bytes", extra={"url": url})
+                                # Anti-HTML guard for the beginning of the file
+                                if start_byte == 0 and chunk.startswith((b"<!DOCTYPE", b"<html>", b"<html")):
+                                    raise DownloadError("First chunk indicates HTML content instead of audio")
+
+                                await asyncio.to_thread(f.write, chunk)
+                                start_byte += len(chunk)
+
+                                # Progress reporting
+                                if total_size:
+                                    percent = (start_byte / total_size) * 100
+                                    logger.info(f"Progress: {start_byte}/{total_size} bytes ({percent:.1f}%)", extra={"url": url})
+                                else:
+                                    logger.info(f"Progress: {start_byte} bytes", extra={"url": url})
+
+                                # If we know the total size and we've reached it, we're done
+                                if total_size and start_byte >= total_size:
+                                    logger.info("Download completed (reached total size)", extra={"url": url})
+                                    break
 
                 # Check if we finished the entire file
                 if total_size and start_byte < total_size:
@@ -176,9 +196,9 @@ class StreamingDownloader(AudioDownloader):
                 if attempt >= self.max_attempts:
                     raise DownloadError(f"Download failed after {attempt} attempts: {str(e)}")
 
-                # Wait before retrying with exponential backoff
-                delay = self.base_backoff * (2 ** (attempt - 1)) + random.uniform(0, 1)
-                logger.info(f"Retrying in {delay:.2f}s...", extra={"url": url})
+                # Fast retry: 1-3 seconds
+                delay = random.uniform(1.0, 3.0)
+                logger.info(f"Retrying in {delay:.2f}s (Attempt {attempt+1}/{self.max_attempts})...", extra={"url": url})
                 await asyncio.sleep(delay)
 
         # Final verification of the downloaded file
