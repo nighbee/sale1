@@ -1,14 +1,11 @@
 import os
 import asyncio
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from src.core.ports.stt_provider import STTProvider
 
-# Note: In a real scenario, we would use 'soniox' library
-# For this task, we assume the library and its usage.
 try:
-    from soniox.transcribe_file import transcribe_file_short
-    from soniox.speech_client import SpeechClient
+    from soniox import SonioxClient
     SONIOX_AVAILABLE = True
 except ImportError:
     SONIOX_AVAILABLE = False
@@ -20,48 +17,73 @@ class SonioxSTTProvider(STTProvider):
         self.api_key = api_key or os.getenv("SONIOX_API_KEY")
         if not self.api_key:
              logger.warning("SONIOX_API_KEY is not set")
-        self.model = model or "en_v2" # Default soniox model
+        self.model = model or "stt-async-v4"
 
-    async def transcribe(self, audio_path: str) -> dict:
+    async def transcribe(self, audio_path: str, audio_url: Optional[str] = None, language: Optional[str] = None) -> dict:
         if not SONIOX_AVAILABLE:
-            raise RuntimeError("Soniox SDK not installed")
+            raise RuntimeError("Soniox SDK not installed. Please run 'pip install soniox'")
         if not self.api_key:
             raise RuntimeError("Soniox API key missing")
 
         try:
-            logger.info(f"Transcribing with Soniox: {audio_path}")
-
-            # Using asyncio.to_thread for blocking SDK calls
             def sync_transcribe():
-                with SpeechClient(api_key=self.api_key) as client:
-                    return transcribe_file_short(client, audio_path)
+                client = SonioxClient(api_key=self.api_key)
+
+                # Use audio_url if provided, otherwise use local file
+                if audio_url:
+                    logger.info(f"Transcribing with Soniox from URL: {audio_url}", extra={"model": self.model, "language": language})
+                    transcription = client.stt.transcribe(
+                        audio_url=audio_url,
+                        model=self.model,
+                        language=language
+                    )
+                else:
+                    logger.info(f"Transcribing with Soniox from file: {audio_path}", extra={"model": self.model, "language": language})
+                    with open(audio_path, "rb") as f:
+                        transcription = client.stt.transcribe(
+                            file=f,
+                            model=self.model,
+                            language=language
+                        )
+
+                # Wait until transcription processing is finished
+                client.stt.wait(transcription.id)
+
+                # Get transcription transcript
+                return client.stt.get_transcript(transcription.id)
 
             result = await asyncio.to_thread(sync_transcribe)
 
             segments = []
-            full_text = ""
+            # Soniox result has text and can have channels/segments/words
+            # We'll try to extract segments if available
+            if hasattr(result, "channels"):
+                for channel in result.channels:
+                    if hasattr(channel, "segments"):
+                        for seg in channel.segments:
+                            segments.append({
+                                "start": getattr(seg, "start_ms", 0) / 1000.0,
+                                "end": getattr(seg, "end_ms", 0) / 1000.0,
+                                "text": getattr(seg, "text", ""),
+                                "speaker": f"SPEAKER_{getattr(seg, 'speaker', 'UNKNOWN')}"
+                            })
 
-            for word in result.words:
-                # Soniox returns word-level info. We can aggregate or keep as is.
-                # Simplified for demonstration:
-                full_text += word.text + " "
+            # Fallback if no segments found but we have text
+            if not segments and result.text:
+                segments.append({
+                    "start": 0.0,
+                    "end": 0.0, # Unknown duration here
+                    "text": result.text,
+                    "speaker": "UNKNOWN"
+                })
 
-            # Assuming Soniox has a way to get segments or we construct them
-            # Here we just put the whole text as one segment for simplicity if no segments returned
-            segments = [{
-                "start": 0.0,
-                "end": 0.0, # Would need real duration
-                "text": full_text.strip(),
-                "speaker": "UNKNOWN"
-            }]
-
-            logger.info(f"Soniox transcription completed", extra={"text_length": len(full_text)})
+            logger.info("Soniox transcription completed", extra={"text_length": len(result.text), "segments": len(segments)})
 
             return {
-                "text": full_text.strip(),
+                "text": result.text,
                 "segments": segments,
-                "is_diarized": False
+                "is_diarized": any(s.get("speaker") != "SPEAKER_UNKNOWN" for s in segments)
             }
         except Exception as e:
-            logger.error("Soniox STT failed", extra={"error": str(e), "audio_path": audio_path})
+            logger.error("Soniox STT failed", extra={"error": str(e), "audio_path": audio_path, "audio_url": audio_url})
             raise RuntimeError(f"Soniox STT failed: {str(e)}") from e

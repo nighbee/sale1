@@ -1,5 +1,6 @@
 import os
 import logging
+from typing import Optional
 from deepgram import DeepgramClient, PrerecordedOptions
 from src.core.ports.stt_provider import STTProvider
 
@@ -13,23 +14,28 @@ class DeepgramSTTProvider(STTProvider):
         self.client = DeepgramClient(self.api_key)
         self.model = model or os.getenv("DEEPGRAM_MODEL", "nova-2")
 
-    async def transcribe(self, audio_path: str) -> dict:
+    async def transcribe(self, audio_path: str, audio_url: Optional[str] = None, language: Optional[str] = None) -> dict:
         if not self.api_key:
             raise RuntimeError("Deepgram API key missing")
 
         try:
-            logger.info(f"Transcribing with Deepgram: {audio_path}")
+            logger.info(f"Transcribing with Deepgram: {audio_path}", extra={"language": language})
 
             with open(audio_path, "rb") as f:
                 buffer = f.read()
 
-            options = PrerecordedOptions(
-                model=self.model,
-                smart_format=True,
-                punctuate=True,
-                utterances=True,
-                language="ru",
-            )
+            options_kwargs = {
+                "model": self.model,
+                "smart_format": True,
+                "punctuate": True,
+                "utterances": True,
+            }
+            if language:
+                options_kwargs["language"] = language
+            else:
+                options_kwargs["language"] = "ru" # Defaulting to RU as it was before
+
+            options = PrerecordedOptions(**options_kwargs)
 
             response = await self.client.listen.asyncprerecorded.v("1").transcribe_file(
                 {"buffer": buffer}, options
