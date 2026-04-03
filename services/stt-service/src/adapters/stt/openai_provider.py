@@ -1,6 +1,7 @@
 import os
 import logging
 import asyncio
+from typing import Optional
 from openai import AsyncOpenAI
 from src.core.ports.stt_provider import STTProvider
 
@@ -19,19 +20,23 @@ class OpenAISTTProvider(STTProvider):
         self.client = AsyncOpenAI(**client_kwargs)
         self.model = model
 
-    async def transcribe(self, audio_path: str) -> dict:
+    async def transcribe(self, audio_path: str, audio_url: Optional[str] = None, language: Optional[str] = None) -> dict:
         if not self.api_key:
             raise RuntimeError("OpenAI API key missing")
 
         try:
-            logger.info(f"Transcribing with OpenAI: {audio_path}")
+            logger.info(f"Transcribing with OpenAI: {audio_path}", extra={"language": language})
 
             with open(audio_path, "rb") as audio_file:
-                transcript = await self.client.audio.transcriptions.create(
-                    model=self.model,
-                    file=audio_file,
-                    response_format="verbose_json"
-                )
+                kwargs = {
+                    "model": self.model,
+                    "file": audio_file,
+                    "response_format": "verbose_json"
+                }
+                if language:
+                    kwargs["language"] = language
+
+                transcript = await self.client.audio.transcriptions.create(**kwargs)
             
             segments = []
             if hasattr(transcript, "segments") and transcript.segments:

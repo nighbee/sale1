@@ -14,6 +14,7 @@ from src.infrastructure.audio.converter import AudioConverter
 from src.adapters.stt.factory import STTProviderFactory
 from src.infrastructure.api.main_api_client import MainAPIClient
 from src.core.ports.downloader_factory import DownloaderFactory
+from src.infrastructure.monitoring.circuit_breaker import CircuitBreaker
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,7 @@ class ProcessAudioUseCase:
         self.minio = MinioClient()
         self.diarization_service = DiarizationService()
         self.api_client = MainAPIClient()
+        self.circuit_breaker = CircuitBreaker("stt_workflow")
         
         # We will initialize provider on each execute to handle dynamic credentials
         self.stt_provider_name = os.getenv("STT_PROVIDER", "openai")
@@ -36,6 +38,17 @@ class ProcessAudioUseCase:
         if not audio_url:
             raise ValueError(f"Missing audio URL for call_id={call_id}: job has no 'audio_url' or 'call_link' field")
 
+        # 0. Circuit Breaker Check
+        # Update manual status from main-api settings
+        ai_settings = await self.api_client.get_ai_settings()
+        if ai_settings:
+            cb_enabled = ai_settings.get("circuit_breaker_enabled", True)
+            await self.circuit_breaker.set_manual_status(not cb_enabled)
+
+        if await self.circuit_breaker.is_open():
+            logger.warning("STT workflow is HALTED by Circuit Breaker", extra={"call_id": call_id})
+            raise RuntimeError("STT workflow is currently halted (Circuit Breaker open or manually disabled)")
+
         logger.info(
             "processing audio job",
             extra={"call_id": call_id,
@@ -46,8 +59,19 @@ class ProcessAudioUseCase:
         wav_path = None
         t_total = time.monotonic()
         try:
-            # 1. Download audio
-            logger.info("[1/6] downloading audio", extra={"call_id": call_id, "audio_url": audio_url})
+            # 1. Setup provider and check if it supports direct URL transcription
+            stt_provider_name = job.get("stt_provider")
+            stt_model_name = job.get("stt_model")
+            stt_language = job.get("stt_language")
+
+            if ai_settings:
+                stt_provider_name = stt_provider_name or ai_settings.get("stt_provider")
+                stt_model_name = stt_model_name or ai_settings.get("stt_model")
+                stt_language = stt_language or ai_settings.get("stt_language")
+
+            stt_provider_name = stt_provider_name or self.stt_provider_name
+            integrations = await self.api_client.get_active_integrations()
+            stt_provider = STTProviderFactory.create(stt_provider_name, integrations, default_model=stt_model_name)
 
             # Check if MinIO link already exists in the database
             db_call_link = await asyncio.to_thread(get_call_link, call_id)
@@ -55,69 +79,60 @@ class ProcessAudioUseCase:
                 logger.info("MinIO link found in database, prioritizing it", extra={"call_id": call_id, "minio_link": db_call_link})
                 audio_url = db_call_link
 
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
-                tmp_path = tmp.name
+            # Decide if we can skip download/conversion
+            # Currently only Soniox supports direct transcription from URL
+            # and it should not be a MinIO internal link if we want to skip download
+            can_skip_download = stt_provider_name == "soniox" and not audio_url.startswith("minio://")
 
-            downloader = DownloaderFactory.create(audio_url, self.minio)
-            await downloader.download(audio_url, tmp_path)
+            if not can_skip_download:
+                # 2. Download audio
+                logger.info("[1/6] downloading audio", extra={"call_id": call_id, "audio_url": audio_url})
 
-            # Safety validation after download
-            file_size = os.path.getsize(tmp_path)
-            if file_size < 5 * 1024:  # 5KB sanity check (reduced from 50KB to allow short valid calls)
-                raise RuntimeError(f"Downloaded file too small: {file_size} bytes")
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
+                    tmp_path = tmp.name
 
-            file_size_kb = round(file_size / 1024, 1)
-            logger.info("[1/6] audio downloaded", extra={"call_id": call_id, "file_size_kb": file_size_kb, "tmp_path": tmp_path})
+                downloader = DownloaderFactory.create(audio_url, self.minio)
+                await downloader.download(audio_url, tmp_path)
 
-            # 2. Convert to 16kHz WAV
-            logger.info("[2/6] converting to 16kHz WAV", extra={"call_id": call_id})
-            duration_s = await AudioConverter.get_duration_seconds(tmp_path)
-            wav_path = await AudioConverter.to_stt_wav(tmp_path)
-            wav_size_kb = round(os.path.getsize(wav_path) / 1024, 1)
-            logger.info("[2/6] WAV conversion done",
-                        extra={"call_id": call_id, "duration_s": duration_s,
-                               "wav_size_kb": wav_size_kb, "wav_path": wav_path})
+                # Safety validation after download
+                file_size = os.path.getsize(tmp_path)
+                if file_size < 5 * 1024:  # 5KB sanity check (reduced from 50KB to allow short valid calls)
+                    raise RuntimeError(f"Downloaded file too small: {file_size} bytes")
 
-            # 3. Archive to MinIO
-            logger.info("[3/6] uploading to MinIO", extra={"call_id": call_id, "object_name": f"{call_id}.wav"})
-            object_name = f"{call_id}.wav"
-            await asyncio.to_thread(self.minio.upload_file, object_name, wav_path)
-            logger.info("[3/6] MinIO upload done", extra={"call_id": call_id, "object_name": object_name})
+                file_size_kb = round(file_size / 1024, 1)
+                logger.info("[1/6] audio downloaded", extra={"call_id": call_id, "file_size_kb": file_size_kb, "tmp_path": tmp_path})
 
-            # Update call record with MinIO reference
-            await asyncio.to_thread(update_call_link, call_id, f"minio://audio/{object_name}")
+                # 3. Convert to 16kHz WAV
+                logger.info("[2/6] converting to 16kHz WAV", extra={"call_id": call_id})
+                duration_s = await AudioConverter.get_duration_seconds(tmp_path)
+                wav_path = await AudioConverter.to_stt_wav(tmp_path)
+                wav_size_kb = round(os.path.getsize(wav_path) / 1024, 1)
+                logger.info("[2/6] WAV conversion done",
+                            extra={"call_id": call_id, "duration_s": duration_s,
+                                   "wav_size_kb": wav_size_kb, "wav_path": wav_path})
 
-            # 4. Transcribe (using API provider)
-            # Send the original compressed MP3 to the STT API — WAV is uncompressed
-            # and can exceed provider size limits (e.g. Groq 25 MB free tier).
-            # All API providers (OpenAI, Groq, Gemini) handle MP3 natively and
-            # do their own 16 kHz downsampling server-side.
+                # 4. Archive to MinIO
+                logger.info("[3/6] uploading to MinIO", extra={"call_id": call_id, "object_name": f"{call_id}.wav"})
+                object_name = f"{call_id}.wav"
+                await asyncio.to_thread(self.minio.upload_file, object_name, wav_path)
+                logger.info("[3/6] MinIO upload done", extra={"call_id": call_id, "object_name": object_name})
 
-            # Fetch default settings from main-api
-            ai_settings = await self.api_client.get_ai_settings()
+                # Update call record with MinIO reference
+                await asyncio.to_thread(update_call_link, call_id, f"minio://audio/{object_name}")
+            else:
+                logger.info("[SKIP] Skipping download/conversion for provider that supports direct URL transcription",
+                            extra={"call_id": call_id, "provider": stt_provider_name})
+                duration_s = 0.0 # Unknown duration if skipped
 
-            # Priority: 1. Job metadata 2. integrations (DB) 3. .env
-            stt_provider_name = job.get("stt_provider")
-            stt_model_name = job.get("stt_model")
-
-            if ai_settings:
-                stt_provider_name = stt_provider_name or ai_settings.get("stt_provider")
-                stt_model_name = stt_model_name or ai_settings.get("stt_model")
-
-            # Fallback to .env
-            stt_provider_name = stt_provider_name or self.stt_provider_name
-
+            # 5. Transcribe
             logger.info("[4/6] sending to STT provider",
                         extra={"call_id": call_id, "stt_provider": stt_provider_name,
-                               "stt_model": stt_model_name,
-                               "file_size_kb": file_size_kb})
-
-            integrations = await self.api_client.get_active_integrations()
-            stt_provider = STTProviderFactory.create(stt_provider_name, integrations, default_model=stt_model_name)
+                               "stt_model": stt_model_name, "stt_language": stt_language})
 
             t_stt = time.monotonic()
             try:
-                transcript_data = await stt_provider.transcribe(tmp_path)
+                transcript_data = await stt_provider.transcribe(tmp_path if tmp_path else "", audio_url if can_skip_download else None, language=stt_language)
+                await self.circuit_breaker.record_success()
             except Exception as e:
                 logger.error(
                     "STT provider transcription failed",
@@ -127,6 +142,7 @@ class ProcessAudioUseCase:
                         "error": str(e)
                     }
                 )
+                await self.circuit_breaker.record_failure(str(e))
                 raise
             stt_elapsed = round(time.monotonic() - t_stt, 2)
             stt_text = transcript_data.get("text", "")
@@ -150,19 +166,19 @@ class ProcessAudioUseCase:
                                "text_length": len(stt_text),
                                "text_preview": stt_text[:200] if stt_text else ""})
 
-            # 5. Diarization (only if not already diarized by provider)
+            # 6. Diarization (only if not already diarized by provider and we have the WAV)
             is_diarized = transcript_data.get("is_diarized", False)
-            if not is_diarized:
+            if not is_diarized and wav_path:
                 logger.info("[5/6] running local diarization", extra={"call_id": call_id, "wav_path": wav_path})
                 diarization_segments = await self.diarization_service.process(wav_path)
                 logger.info("[5/6] diarization done",
                             extra={"call_id": call_id,
                                    "diarization_segments": len(diarization_segments) if diarization_segments else 0})
             else:
-                logger.info("[5/6] skipping local diarization (already diarized by provider)", extra={"call_id": call_id})
+                logger.info("[5/6] skipping local diarization", extra={"call_id": call_id, "already_diarized": is_diarized, "has_wav": bool(wav_path)})
                 diarization_segments = []
 
-            # 6. Transform and Merge
+            # 7. Transform and Merge
             logger.info("[6/6] merging transcript with diarization", extra={"call_id": call_id})
             transcript_segments = []
             for seg in transcript_data.get("segments", []):
@@ -173,10 +189,10 @@ class ProcessAudioUseCase:
                     "speaker": seg.get("speaker") # Preserving speaker if present
                 })
 
-            if not is_diarized:
+            if not is_diarized and diarization_segments:
                 segments = merge_transcript_with_diarization(transcript_segments, diarization_segments)
             else:
-                # If already diarized, we just use the transcript segments directly
+                # If already diarized or no local diarization possible, we just use the transcript segments directly
                 segments = transcript_segments
 
             final_transcript = {

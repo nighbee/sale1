@@ -2,6 +2,7 @@ import os
 import json
 import asyncio
 import logging
+from typing import Optional
 import google.generativeai as genai
 from src.core.ports.stt_provider import STTProvider
 
@@ -18,12 +19,12 @@ class GeminiSTTProvider(STTProvider):
         self.model_name = model or os.getenv("GOOGLE_AI_MODEL", "gemini-1.5-flash")
         self.model = genai.GenerativeModel(self.model_name)
 
-    async def transcribe(self, audio_path: str) -> dict:
+    async def transcribe(self, audio_path: str, audio_url: Optional[str] = None, language: Optional[str] = None) -> dict:
         if not self.api_key:
             raise RuntimeError("Gemini API key missing")
 
         try:
-            logger.info(f"Transcribing with Gemini: {audio_path}")
+            logger.info(f"Transcribing with Gemini: {audio_path}", extra={"language": language})
 
             # Upload file to Gemini File API using a thread to avoid blocking
             sample_file = await asyncio.to_thread(
@@ -32,7 +33,7 @@ class GeminiSTTProvider(STTProvider):
 
             # Prompt for transcription using the async method
             prompt = (
-                "Transcribe this audio file. "
+                f"Transcribe this audio file. Language hint: {language or 'auto'}. "
                 "Output strictly valid JSON with the following structure:\n"
                 "{\n"
                 "  \"text\": \"full transcript text\",\n"

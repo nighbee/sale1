@@ -134,18 +134,26 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ isOpen, onClose, ty
                               onChange={e => setCredentials({...credentials, base_url: e.target.value})}
                           />
                       )}
-                      <Input
-                          label="Model"
-                          placeholder={
-                              type === 'openai' ? 'whisper-1' :
-                              type === 'groq' ? 'whisper-large-v3-turbo' :
-                              type === 'deepgram' ? 'nova-2' :
-                              type === 'gemini' ? 'gemini-1.5-flash' :
-                              type === 'elevenlabs' ? 'scribe_v1' : 'en_v2'
-                          }
-                          value={config.model || ''}
-                          onChange={e => setConfig({...config, model: e.target.value})}
-                      />
+                      <div className="grid grid-cols-2 gap-4">
+                        <Input
+                            label="Model"
+                            placeholder={
+                                type === 'openai' ? 'whisper-1' :
+                                type === 'groq' ? 'whisper-large-v3-turbo' :
+                                type === 'deepgram' ? 'nova-2' :
+                                type === 'gemini' ? 'gemini-1.5-flash' :
+                                type === 'elevenlabs' ? 'scribe_v1' : 'stt-async-v4'
+                            }
+                            value={config.model || ''}
+                            onChange={e => setConfig({...config, model: e.target.value})}
+                        />
+                        <Input
+                            label="Language"
+                            placeholder="e.g. en, ru, auto"
+                            value={config.language || ''}
+                            onChange={e => setConfig({...config, language: e.target.value})}
+                        />
+                      </div>
                   </div>
               );
           case 'slack':

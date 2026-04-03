@@ -1,7 +1,7 @@
 import os
 import asyncio
 import logging
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from elevenlabs.client import ElevenLabs
 from src.core.ports.stt_provider import STTProvider
 
@@ -15,18 +15,19 @@ class ElevenLabsSTTProvider(STTProvider):
         self.client = ElevenLabs(api_key=self.api_key or "dummy")
         self.model = model or "scribe_v1"
 
-    async def transcribe(self, audio_path: str) -> dict:
+    async def transcribe(self, audio_path: str, audio_url: Optional[str] = None, language: Optional[str] = None) -> dict:
         if not self.api_key:
             raise RuntimeError("ElevenLabs API key missing")
 
         try:
-            logger.info(f"Transcribing with ElevenLabs: {audio_path}")
+            logger.info(f"Transcribing with ElevenLabs: {audio_path}", extra={"language": language})
             
             with open(audio_path, "rb") as audio_file:
                 transcript = await asyncio.to_thread(
                     self.client.scribe.transcribe,
                     file=audio_file,
                     model_id=self.model,
+                    language=language
                 )
 
             full_text = ""

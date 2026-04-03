@@ -106,10 +106,10 @@ const IntegrationsPage: React.FC = () => {
         <section className="mb-16">
           <div className="flex items-center gap-2 mb-6">
             <span className="material-symbols-outlined text-primary">psychology</span>
-            <h2 className="text-slate-900 dark:text-white text-2xl font-bold tracking-tight">AI Provider Settings</h2>
+            <h2 className="text-slate-900 dark:text-white text-2xl font-bold tracking-tight">Global AI Configuration</h2>
           </div>
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-8 shadow-sm">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-8">
               <div className="space-y-4">
                   <h3 className="font-bold text-lg text-slate-800 dark:text-slate-200">Transcription (STT)</h3>
                   <div>
@@ -133,6 +133,12 @@ const IntegrationsPage: React.FC = () => {
                     value={aiSettings?.stt_model || ''}
                     onChange={e => setAiSettings({...aiSettings, stt_model: e.target.value})}
                   />
+                  <Input
+                    label="Default STT Language"
+                    placeholder="en, ru, or auto"
+                    value={aiSettings?.stt_language || ''}
+                    onChange={e => setAiSettings({...aiSettings, stt_language: e.target.value})}
+                  />
               </div>
 
               <div className="space-y-4">
@@ -155,9 +161,28 @@ const IntegrationsPage: React.FC = () => {
                     onChange={e => setAiSettings({...aiSettings, llm_model: e.target.value})}
                   />
               </div>
+
+              <div className="space-y-4">
+                  <h3 className="font-bold text-lg text-slate-800 dark:text-slate-200">System Protection</h3>
+                  <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <div>
+                      <p className="font-bold text-slate-900 dark:text-white">Circuit Breaker</p>
+                      <p className="text-xs text-slate-500">Stop STT on repeated failures to save tokens.</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="sr-only peer"
+                        checked={aiSettings?.circuit_breaker_enabled}
+                        onChange={e => setAiSettings({...aiSettings, circuit_breaker_enabled: e.target.checked})}
+                      />
+                      <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 dark:peer-focus:ring-primary/80 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-primary"></div>
+                    </label>
+                  </div>
+              </div>
             </div>
             <div className="flex justify-end">
-                <Button onClick={handleSaveAISettings} isLoading={isSavingSettings}>Save AI Settings</Button>
+                <Button onClick={handleSaveAISettings} isLoading={isSavingSettings}>Save Configuration</Button>
             </div>
           </div>
         </section>
