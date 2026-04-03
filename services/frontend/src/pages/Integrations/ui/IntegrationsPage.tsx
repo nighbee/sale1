@@ -1,41 +1,44 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { toast } from 'sonner';
 import { PageLayout } from '../../../widgets/PageLayout';
-import { integrationApi } from '../../../entities/integration/api';
-import type { Integration } from '../../../entities/integration/types';
 import IntegrationModal from '../../../features/integrations/ui/IntegrationModal';
 import Button from '../../../shared/ui/Button';
-import Input from '../../../shared/ui/Input';
+import { useIntegrations } from '../../../features/integrations/hooks/useIntegrations';
+import { useGetModels } from '../../../features/integrations/hooks/useGetModels';
 
 const IntegrationsPage: React.FC = () => {
   const { t } = useTranslation();
-  const [integrations, setIntegrations] = useState<Integration[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const {
+    integrations,
+    loading,
+    actionLoading,
+    aiSettings,
+    isSavingSettings,
+    fetchIntegrations,
+    disconnect,
+    saveAISettings,
+    isConnected,
+    setAiSettings
+  } = useIntegrations();
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedType, setSelectedType] = useState<string | null>(null);
-  const [aiSettings, setAiSettings] = useState<any>(null);
-  const [isSavingSettings, setIsSavingSettings] = useState(false);
 
-  const fetchIntegrations = async () => {
-    try {
-      const [res, settingsRes] = await Promise.all([
-          integrationApi.list(),
-          integrationApi.getAISettings()
-      ]);
-      setIntegrations(res.data.integrations || []);
-      setAiSettings(settingsRes.data);
-    } catch {
-      console.error('Failed to fetch integrations');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Hooks for fetching models for settings
+  const { models: sttModels, fetchModels: fetchSTTModels, isLoading: loadingSTTModels } = useGetModels(aiSettings?.stt_provider || 'openai');
+  const { models: llmModels, fetchModels: fetchLLMModels, isLoading: loadingLLMModels } = useGetModels(aiSettings?.llm_provider || 'openai');
 
   useEffect(() => {
-    fetchIntegrations();
-  }, []);
+    if (aiSettings?.stt_provider) {
+        fetchSTTModels();
+    }
+  }, [aiSettings?.stt_provider, fetchSTTModels]);
+
+  useEffect(() => {
+    if (aiSettings?.llm_provider) {
+        fetchLLMModels();
+    }
+  }, [aiSettings?.llm_provider, fetchLLMModels]);
 
   const available = [
     { id: 'google_sheets', name: t('integrations.google_sheets_name'), type: t('integrations.reporting'), icon: 'table_chart', color: 'green', desc: t('integrations.google_sheets_desc') },
@@ -51,37 +54,13 @@ const IntegrationsPage: React.FC = () => {
     { id: 'slack', name: t('integrations.slack_name'), type: t('integrations.communication'), icon: 'chat_bubble', color: 'purple', desc: t('integrations.slack_desc') },
   ];
 
-  const isConnected = (type: string) => integrations.some(i => i.integration_type === type && i.is_active);
-
   const handleConnect = (type: string) => {
       setSelectedType(type);
       setIsModalOpen(true);
   };
 
-  const handleDisconnect = async (type: string) => {
-    setActionLoading(type);
-    try {
-      await integrationApi.delete(type);
-      const res = await integrationApi.list();
-      setIntegrations(res.data.integrations || []);
-      toast.success(t('integrations.disconnect_success', { type }));
-    } catch {
-      toast.error(t('integrations.disconnect_failed', { type }));
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handleSaveAISettings = async () => {
-      setIsSavingSettings(true);
-      try {
-          await integrationApi.updateAISettings(aiSettings);
-          toast.success('AI settings updated');
-      } catch {
-          toast.error('Failed to update AI settings');
-      } finally {
-          setIsSavingSettings(false);
-      }
+  const handleSaveAISettings = () => {
+    saveAISettings(aiSettings);
   };
 
   if (loading) return (
@@ -127,18 +106,46 @@ const IntegrationsPage: React.FC = () => {
                       <option value="soniox">Soniox</option>
                     </select>
                   </div>
-                  <Input
-                    label="Default STT Model"
-                    placeholder="whisper-1"
-                    value={aiSettings?.stt_model || ''}
-                    onChange={e => setAiSettings({...aiSettings, stt_model: e.target.value})}
-                  />
-                  <Input
-                    label="Default STT Language"
-                    placeholder="en, ru, or auto"
-                    value={aiSettings?.stt_language || ''}
-                    onChange={e => setAiSettings({...aiSettings, stt_language: e.target.value})}
-                  />
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Default STT Model</label>
+                    <div className="relative">
+                        <select
+                            className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 text-sm appearance-none"
+                            value={aiSettings?.stt_model || ''}
+                            onChange={e => setAiSettings({...aiSettings, stt_model: e.target.value})}
+                            disabled={loadingSTTModels}
+                        >
+                            <option value="">Select Model</option>
+                            {sttModels.map(m => (
+                                <option key={m} value={m}>{m}</option>
+                            ))}
+                            {aiSettings?.stt_model && !sttModels.includes(aiSettings.stt_model) && (
+                                <option value={aiSettings.stt_model}>{aiSettings.stt_model}</option>
+                            )}
+                        </select>
+                        {loadingSTTModels && (
+                            <div className="absolute right-8 top-1/2 -translate-y-1/2">
+                                <span className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full block"></span>
+                            </div>
+                        )}
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
+                            <span className="material-symbols-outlined text-base">expand_more</span>
+                        </div>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Default STT Language</label>
+                    <select
+                        className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 text-sm"
+                        value={aiSettings?.stt_language || 'auto'}
+                        onChange={e => setAiSettings({...aiSettings, stt_language: e.target.value})}
+                    >
+                        <option value="auto">Auto Detect</option>
+                        <option value="ru">Russian (ru)</option>
+                        <option value="en">English (en)</option>
+                        <option value="kk">Kazakh (kk)</option>
+                    </select>
+                  </div>
               </div>
 
               <div className="space-y-4">
@@ -154,12 +161,33 @@ const IntegrationsPage: React.FC = () => {
                       <option value="gemini">Google Gemini</option>
                     </select>
                   </div>
-                  <Input
-                    label="Default LLM Model"
-                    placeholder="gpt-4-turbo-preview"
-                    value={aiSettings?.llm_model || ''}
-                    onChange={e => setAiSettings({...aiSettings, llm_model: e.target.value})}
-                  />
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Default LLM Model</label>
+                    <div className="relative">
+                        <select
+                            className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 text-sm appearance-none"
+                            value={aiSettings?.llm_model || ''}
+                            onChange={e => setAiSettings({...aiSettings, llm_model: e.target.value})}
+                            disabled={loadingLLMModels}
+                        >
+                            <option value="">Select Model</option>
+                            {llmModels.map(m => (
+                                <option key={m} value={m}>{m}</option>
+                            ))}
+                            {aiSettings?.llm_model && !llmModels.includes(aiSettings.llm_model) && (
+                                <option value={aiSettings.llm_model}>{aiSettings.llm_model}</option>
+                            )}
+                        </select>
+                        {loadingLLMModels && (
+                            <div className="absolute right-8 top-1/2 -translate-y-1/2">
+                                <span className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full block"></span>
+                            </div>
+                        )}
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
+                            <span className="material-symbols-outlined text-base">expand_more</span>
+                        </div>
+                    </div>
+                  </div>
               </div>
 
               <div className="space-y-4">
@@ -224,7 +252,7 @@ const IntegrationsPage: React.FC = () => {
                     {t('integrations.configure')}
                   </button>
                   <button
-                    onClick={() => handleDisconnect(i.integration_type)}
+                    onClick={() => disconnect(i.integration_type)}
                     disabled={actionLoading === i.integration_type}
                     className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50"
                   >

@@ -22,7 +22,7 @@ class ResilientStreamingDownloader(AudioDownloader):
     """
     def __init__(
         self,
-        chunk_size: int = 65536,  # 64KB
+        chunk_size: int = 16384,  # 16KB
         min_file_size: int = 5120, # 5KB
         max_attempts_per_file: int = 20,
         max_attempts_per_chunk: int = 5,
@@ -84,9 +84,9 @@ class ResilientStreamingDownloader(AudioDownloader):
         # Hard Timeouts
         # We use a total timeout per request but also sock_read to detect stalls
         timeout = aiohttp.ClientTimeout(
-            total=300,      # Max 5 mins per request attempt
+            total=3600,     # Max 1 hour per request attempt
             connect=20,     # Connection timeout
-            sock_read=45    # Socket read timeout (wait for data chunks)
+            sock_read=300    # Socket read timeout (wait for data chunks)
         )
 
         try:
