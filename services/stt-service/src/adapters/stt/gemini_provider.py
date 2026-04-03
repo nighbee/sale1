@@ -71,3 +71,11 @@ class GeminiSTTProvider(STTProvider):
         except Exception as e:
             logger.error("Gemini STT failed", extra={"error": str(e), "audio_path": audio_path})
             raise RuntimeError(f"Gemini STT failed: {str(e)}") from e
+
+    async def get_models(self) -> list:
+        try:
+            models = await asyncio.to_thread(genai.list_models)
+            return [m.name.replace("models/", "") for m in models if "generateContent" in m.supported_generation_methods]
+        except Exception as e:
+            logger.error(f"Failed to fetch Gemini models: {e}")
+            return ["gemini-1.5-flash", "gemini-1.5-pro"]

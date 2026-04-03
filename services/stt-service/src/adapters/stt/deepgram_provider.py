@@ -97,3 +97,12 @@ class DeepgramSTTProvider(STTProvider):
         except Exception as e:
             logger.error("Deepgram STT failed", extra={"error": str(e), "audio_path": audio_path})
             raise RuntimeError(f"Deepgram STT failed: {str(e)}") from e
+
+    async def get_models(self) -> list:
+        try:
+            # Deepgram SDK doesn't have a simple list_models, usually you just know them
+            # or use the API to fetch them. For now, let's return common ones.
+            return ["nova-2", "nova-2-phonecall", "nova-2-video", "nova-2-medical", "nova-2-meeting"]
+        except Exception as e:
+            logger.error(f"Failed to fetch Deepgram models: {e}")
+            return ["nova-2"]

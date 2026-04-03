@@ -183,6 +183,39 @@ func (h *IntegrationHandler) CheckModel(c *fiber.Ctx) error {
 	return c.JSON(result)
 }
 
+// GetModels godoc
+// @Summary Get available STT models
+// @Description Fetch available models for a specific AI provider from stt-service
+// @Tags integrations
+// @Produce json
+// @Param type path string true "Integration Type"
+// @Param request body map[string]interface{} false "Credentials to fetch models for"
+// @Success 200 {object} fiber.Map
+// @Failure 400 {object} fiber.Map
+// @Failure 500 {object} fiber.Map
+// @Security BearerAuth
+// @Router /integrations/{type}/models [post]
+func (h *IntegrationHandler) GetModels(c *fiber.Ctx) error {
+	it := c.Params("type")
+	log := applogger.FromFiberCtx(c).With(zap.String("operation", "get_models"), zap.String("type", it))
+
+	var req struct {
+		Credentials json.RawMessage `json:"credentials"`
+	}
+	c.BodyParser(&req)
+
+	result, err := h.integrationUC.GetModels(c.Context(), domain.IntegrationType(it), req.Credentials)
+	if err != nil {
+		log.Warn("get models failed", zap.Error(err))
+		return c.Status(400).JSON(fiber.Map{
+			"success": false,
+			"error":   err.Error(),
+		})
+	}
+
+	return c.JSON(result)
+}
+
 // Delete godoc
 // @Summary Delete an integration
 // @Description Remove a third-party integration
