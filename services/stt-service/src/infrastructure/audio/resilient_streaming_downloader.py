@@ -194,19 +194,24 @@ class ResilientStreamingDownloader:
 
         with open(path, mode) as f:
             last_data_time = time.monotonic()
+            first_chunk = True
 
-            async for chunk in resp.content.iter_chunked(self.chunk_size):
+            async for chunk in resp.content.iter_any():
                 now = time.monotonic()
 
-                # 🔥 detect stall BEFORE processing chunk
-                if now - last_data_time > 1:
-                    raise DownloadError("Stream stalled (no data for 15s)")
+                if first_chunk:
+                    if b"<!doctype" in chunk.lower() or b"<html" in chunk.lower():
+                        raise DownloadError("Detected HTML instead of audio")
+                    first_chunk = False
+
+                # 🔥 detect stall
+                if now - last_data_time > 60:
+                    raise DownloadError("Stream stalled (no data for 60s)")
 
                 if not chunk:
                     continue
 
                 await asyncio.to_thread(f.write, chunk)
-
                 last_data_time = now
 
     def _validate(self, path, expected):

@@ -72,7 +72,8 @@ class SonioxSTTProvider(STTProvider):
                     if not token.text:
                         continue
 
-                    speaker_id = f"SPEAKER_{token.speaker_id}" if token.speaker_id is not None else "UNKNOWN"
+                    speaker_id_val = getattr(token, "speaker_id", None)
+                    speaker_id = f"SPEAKER_{speaker_id_val}" if speaker_id_val is not None else "UNKNOWN"
 
                     # New segment if speaker changed or too long gap (>1.5s)
                     is_new_speaker = speaker_id != current_speaker
