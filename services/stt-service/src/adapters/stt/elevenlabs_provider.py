@@ -4,6 +4,7 @@ import logging
 from typing import List, Dict, Any, Optional
 from elevenlabs.client import ElevenLabs
 from src.core.ports.stt_provider import STTProvider
+from src.core.utils.text_processor import format_transcript
 
 logger = logging.getLogger(__name__)
 
@@ -77,10 +78,13 @@ class ElevenLabsSTTProvider(STTProvider):
                     if current_segment:
                         segments.append(current_segment)
 
+            # Format transcript and apply text cleaning
+            final_text = format_transcript(segments, language=language)
+
             logger.info(f"ElevenLabs transcription complete", extra={"audio_path": audio_path, "segments": len(segments)})
 
             return {
-                "text": full_text.strip(),
+                "text": final_text,
                 "segments": segments,
                 "is_diarized": True
             }
@@ -107,7 +111,12 @@ class ElevenLabsSTTProvider(STTProvider):
         try:
             models = await asyncio.to_thread(self.client.models.list)
             # Filter for models that support STT (Scribe models)
-            return [m.model_id for m in models if m.model_id.startswith("scribe_")]
+            model_ids = [m.model_id for m in models if m.model_id.startswith("scribe_")]
+            if "scribe_v2" not in model_ids:
+                model_ids.insert(0, "scribe_v2")
+            if "scribe_v1" not in model_ids and "scribe_v1" not in model_ids:
+                model_ids.append("scribe_v1")
+            return model_ids
         except Exception as e:
             logger.error(f"Failed to fetch ElevenLabs models: {e}")
             return ["scribe_v2", "scribe_v1"]

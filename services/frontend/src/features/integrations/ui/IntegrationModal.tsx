@@ -191,9 +191,9 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ isOpen, onClose, ty
                                 onChange={e => setConfig({...config, language: e.target.value})}
                             >
                                 <option value="auto">Auto Detect</option>
+                                <option value="kk">Kazakh (kk)</option>
                                 <option value="ru">Russian (ru)</option>
                                 <option value="en">English (en)</option>
-                                <option value="kk">Kazakh (kk)</option>
                             </select>
                             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
                                 <span className="material-symbols-outlined text-base">expand_more</span>
