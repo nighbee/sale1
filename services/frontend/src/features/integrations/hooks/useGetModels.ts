@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { integrationApi } from '../../../entities/integration/api';
 
 export const useGetModels = (type: string) => {
@@ -6,7 +6,7 @@ export const useGetModels = (type: string) => {
   const [models, setModels] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchModels = async (credentials?: any) => {
+  const fetchModels = useCallback(async (credentials?: any) => {
     if (!['openai', 'groq', 'deepgram', 'gemini', 'elevenlabs', 'soniox'].includes(type)) {
       return;
     }
@@ -22,7 +22,7 @@ export const useGetModels = (type: string) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [type]);
 
   return { isLoading, models, error, fetchModels };
 };
