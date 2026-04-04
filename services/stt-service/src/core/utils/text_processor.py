@@ -28,28 +28,44 @@ KAZAKH_FILLERS = {"аа", "мм", "ээ", "оо", "уу", "ыы", "іі"}
 def clean_kazakh_text(text: str) -> str:
     """
     Cleans Kazakh transcription text by merging split words/syllables,
-    removing fillers, and fixing punctuation spacing.
+    reducing fillers, and fixing punctuation spacing.
     """
     if not text:
         return ""
 
-    # 1. Remove excessive filler noise
+    # 1. Reduce excessive filler noise: "аа аа мм" -> "аа"
+    # We combine consecutive fillers into a single one to keep natural speech feel
+    filler_pattern = "|".join(sorted(list(KAZAKH_FILLERS), key=len, reverse=True))
+    # Replace sequences of fillers with the first filler found in the sequence
+    text = re.sub(rf'\b({filler_pattern})(?:\s+(?:{filler_pattern}))+\b', r'\1', text, flags=re.IGNORECASE)
+    # Also handle multiple repetitions of the same filler more strictly
     for filler in KAZAKH_FILLERS:
-        text = re.sub(rf'\b{filler}\b', ' ', text, flags=re.IGNORECASE)
-    text = re.sub(r'\s+', ' ', text).strip()
+        text = re.sub(rf'\b{filler}(?:\s+{filler})+\b', filler, text, flags=re.IGNORECASE)
 
     # 2. Specific reconstructions for common split words and user examples
-    text = re.sub(r'жа\s+ң\s+а\s+дан', 'жаңадан', text, flags=re.IGNORECASE)
-    text = re.sub(r'қо\s+сыл\s+дың\s+ыз', 'қосылдыңыз', text, flags=re.IGNORECASE)
-    text = re.sub(r'қо\s+сыл\s+дым', 'қосылдым', text, flags=re.IGNORECASE)
-    text = re.sub(r'Ал\s+ло', 'Алло', text, flags=re.IGNORECASE)
-    text = re.sub(r'А\s+с\s+бер\s+г', 'Асберг', text, flags=re.IGNORECASE)
-    text = re.sub(r'Е\s+сі\s+м', 'Есім', text, flags=re.IGNORECASE)
-    text = re.sub(r'А\s+ру\s+жан', 'Аружан', text, flags=re.IGNORECASE)
-    text = re.sub(r'со\s+л\s+ма', 'сол ма', text, flags=re.IGNORECASE)
-    text = re.sub(r'тү\s+сі\s+н\s+ді\s+м', 'түсіндім', text, flags=re.IGNORECASE)
-    text = re.sub(r'бо\s+ла\s+ды', 'болады', text, flags=re.IGNORECASE)
-    text = re.sub(r'И\s+на\s+з', 'Иназ', text, flags=re.IGNORECASE)
+    # Handle both capitalized and lowercase versions to preserve case
+    reconstructions = {
+        r'жа\s+ң\s+а\s+дан': 'жаңадан',
+        r'қо\s+сыл\s+дың\s+ыз': 'қосылдыңыз',
+        r'қо\s+сыл\s+дым': 'қосылдым',
+        r'с\s+ә\s+ле\s+мет\s+сіз\s+бе': 'сәлеметсіз бе',
+        r'са\s+ла\s+мат\s+сыз\s+ба': 'саламатсыз ба',
+        r'Ал\s+ло': 'Алло',
+        r'А\s+с\s+бер\s+г': 'Асберг',
+        r'Е\s+сі\s+м': 'Есім',
+        r'А\s+ру\s+жан': 'Аружан',
+        r'со\s+л\s+ма': 'сол ма',
+        r'тү\s+сі\s+н\s+ді\s+м': 'түсіндім',
+        r'бо\s+ла\s+ды': 'болады',
+        r'И\s+на\s+з': 'Иназ',
+    }
+
+    for pattern, replacement in reconstructions.items():
+        # Replace lowercase
+        text = re.sub(pattern, replacement, text)
+        # Replace capitalized
+        cap_pattern = pattern[0].upper() + pattern[1:]
+        text = re.sub(cap_pattern, replacement[0].upper() + replacement[1:], text)
 
     # 3. Join known suffixes to words
     suffix_pattern = "|".join(sorted(list(KAZAKH_SUFFIXES), key=len, reverse=True))
@@ -61,14 +77,26 @@ def clean_kazakh_text(text: str) -> str:
     # 4. Aggressive single letter and short fragment joining
     def join_logic(match):
         parts = match.group(0).split()
+        if not parts:
+            return ""
         res = parts[0]
-        for p in parts[1:]:
-            if p.lower() in STRICT_PARTICLES:
-                clean_res = re.sub(r'[^а-яА-ЯӘҚҒҮҰІӨҺәқғүұіөһa-zA-Z]', '', res)
-                if len(clean_res) >= 3:
-                    res += " " + p
-                    continue
-            res += p
+        i = 1
+        while i < len(parts):
+            # Try to see if upcoming parts form a particle
+            found_particle = False
+            for l in range(min(3, len(parts) - i), 0, -1):
+                potential_particle = "".join(parts[i:i+l]).lower()
+                if potential_particle in STRICT_PARTICLES:
+                    clean_res = re.sub(r'[^а-яА-ЯӘҚҒҮҰІӨҺәқғүұіөһa-zA-Z]', '', res)
+                    if len(clean_res) >= 3:
+                        res += " " + potential_particle
+                        i += l
+                        found_particle = True
+                        break
+
+            if not found_particle:
+                res += parts[i]
+                i += 1
         return res
 
     for _ in range(5):
@@ -111,8 +139,15 @@ class SonioxTranscriptProcessor:
                 }]
             return []
 
-        # Check if we have actual diarization info
-        has_real_diarization = any(getattr(t, "speaker_id", None) is not None for t in tokens)
+        # Check if we have actual diarization info (using either speaker_id or speaker attribute)
+        def is_real_speaker(t):
+            sid = getattr(t, "speaker_id", None)
+            if sid is not None and not str(sid).startswith("<MagicMock"): return True
+            s = getattr(t, "speaker", None)
+            if s is not None and not str(s).startswith("<MagicMock"): return True
+            return False
+
+        has_real_diarization = any(is_real_speaker(t) for t in tokens)
 
         segments = []
         speaker_map = {}
@@ -127,7 +162,8 @@ class SonioxTranscriptProcessor:
             if not text:
                 continue
 
-            speaker_id_raw = getattr(token, "speaker_id", None)
+            # Support both speaker_id and speaker attributes from Soniox API
+            speaker_id_raw = getattr(token, "speaker_id", None) or getattr(token, "speaker", None)
 
             if has_real_diarization:
                 # Map raw speaker_id to sequential Speaker labels

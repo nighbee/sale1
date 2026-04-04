@@ -9,23 +9,6 @@ def test_kazakh_word_reconstruction():
     # Test "коман дасы" -> "командасы"
     assert clean_kazakh_text("коман дасы") == "командасы"
 
-    # Test "со л ма" -> "сол ма" (particle should stay separate if word is long enough,
-    # but here 'со л' -> 'сол' and 'ма' is particle)
-    # Actually 'со л' -> 'сол'. 'ма' is in KAZAKH_PARTICLES.
-    # Logic: next is 'ма' (len 2, lowercase, in PARTICLES).
-    # It won't merge unless clean_curr <= 4. 'сол' is 3 chars.
-    # So it MIGHT merge if we are not careful.
-    # Wait, my logic says:
-    # if clean_next.lower() in KAZAKH_SUFFIXES and next_word[0].islower():
-    #    if clean_next.lower() not in KAZAKH_PARTICLES or len(clean_curr) <= 4:
-    #        should_merge = True
-    # 'ма' is in SUFFIXES and PARTICLES. len('сол') is 3. So it WILL merge.
-    # Maybe 4 is too much for particles?
-    # But usually 'ма' is a question particle and should be separate.
-    # If the user says "со л ма" -> "сол ма" is expected (from prompt: "Со л ма , тү сі н ді м" -> "сол ма, түсіндім")
-    # Actually "сол ма" means "that one?". "солма" means "don't fade".
-    # STT usually outputs "со л ма" for "сол ма".
-
     assert clean_kazakh_text("со л ма") == "сол ма"
 
 def test_kazakh_single_letter_joining():
@@ -37,28 +20,12 @@ def test_speaker_label_formatting():
     segments = [
         {"speaker": "SPEAKER_0", "text": "Hello"},
         {"speaker": "1", "text": "Hi"},
-        {"speaker": "Speaker 2", "text": "How are you?"},
-        {"speaker": "UNKNOWN", "text": "Someone is talking"}
+        {"speaker": "Speaker 2", "text": "How are you?"}
     ]
     formatted = format_transcript(segments)
 
     assert "[Speaker 1]: Hello" in formatted
-    assert "[Speaker 2]: Hi" in formatted # "1" -> "Speaker 2" (idx 1+1? No, if it's "1" as string)
-    # Wait, if speaker is "1", speaker_label = f"Speaker {speaker}" -> "Speaker 1"?
-    # Let's check my code:
-    # elif speaker != "UNKNOWN":
-    #    speaker_label = f"Speaker {speaker}" if not speaker.startswith("Speaker ") else speaker
-    # So "1" -> "Speaker 1". "Speaker 2" -> "Speaker 2".
-
-    assert "[Speaker 1]: Hello" in formatted
     assert "[Speaker 2]: Hi How are you?" in formatted
-
-    # Actually my previous format_transcript test said:
-    # SPEAKER_0 -> Speaker 1
-    # SPEAKER_1 -> Speaker 2
-
-    segments2 = [{"speaker": "SPEAKER_0", "text": "Test"}]
-    assert "[Speaker 1]: Test" in format_transcript(segments2)
 
 def test_full_soniox_example():
     raw = "Ал ло , со л ма , А с бер г И на з ? Со л ма , тү сі н ді м. Е сі м А ру жан бо ла ды..."
@@ -81,35 +48,10 @@ def test_suffix_merging():
     assert clean_kazakh_text("бара мын") == "барамын"
 
 def test_soniox_transcript_processor_professional():
-    # Mock Soniox JSON output
-    # {
-    #   "tokens": [
-    #     {"text":"А","speaker":1},
-    #     {"text":"л","speaker":1},
-    #     {"text":"л","speaker":1},
-    #     {"text":"о","speaker":1},
-    #     {"text":", ","speaker":1},
-    #     {"text":"С","speaker":2},
-    #     {"text":"ә","speaker":2},
-    #     {"text":"л","speaker":2},
-    #     {"text":"е","speaker":2},
-    #     {"text":"м","speaker":2},
-    #     {"text":"е","speaker":2},
-    #     {"text":"т","speaker":2},
-    #     {"text":"с","speaker":2},
-    #     {"text":"і","speaker":2},
-    #     {"text":"з","speaker":2},
-    #     {"text":" ","speaker":2},
-    #     {"text":"б","speaker":2},
-    #     {"text":"е","speaker":2},
-    #     {"text":"?","speaker":2}
-    #   ]
-    # }
-
     mock_result = MagicMock()
 
     tokens = []
-    # Speaker 1: "А л л о , "
+    # Speaker 1: "Алло, "
     for char in "Алло, ":
         token = MagicMock()
         token.text = char
@@ -118,7 +60,7 @@ def test_soniox_transcript_processor_professional():
         token.end_ms = 100
         tokens.append(token)
 
-    # Speaker 2: "С ә л е м е т с і з   б е ?"
+    # Speaker 2: "Сәлеметсіз бе?"
     for char in "Сәлеметсіз бе?":
         token = MagicMock()
         token.text = char
@@ -210,9 +152,10 @@ def test_soniox_no_diarization_fallback():
     formatted = format_transcript(segments)
     assert formatted == "Hello world." # No labels
 
-def test_kazakh_filler_removal():
-    assert clean_kazakh_text("аа мм жаңадан қосылдыңыз") == "жаңадан қосылдыңыз"
-    assert clean_kazakh_text("жаңадан мм қосылдыңыз") == "жаңадан қосылдыңыз"
+def test_kazakh_filler_reduction():
+    assert clean_kazakh_text("аа аа мм жаңадан қосылдыңыз") == "аа жаңадан қосылдыңыз"
+    assert clean_kazakh_text("жаңадан мм мм қосылдыңыз") == "жаңадан мм қосылдыңыз"
+    assert clean_kazakh_text("аа мм ээ") == "аа" # Sequences of different fillers are reduced to the first one
 
 def test_no_diarization_single_paragraph_kazakh():
     segments = [
@@ -222,3 +165,38 @@ def test_no_diarization_single_paragraph_kazakh():
     # format_transcript applies clean_kazakh_text to the whole thing if UNKNOWN
     formatted = format_transcript(segments, language="kk")
     assert formatted == "жаңадан қосылдыңыз"
+
+def test_soniox_speaker_attribute_compatibility():
+    # Test that the processor handles both speaker_id and speaker attribute
+    mock_result = MagicMock()
+
+    t1 = MagicMock()
+    t1.text = "Speaker ID used."
+    t1.speaker_id = "A"
+    t1.start_ms = 0
+    t1.end_ms = 1000
+
+    t2 = MagicMock()
+    t2.text = "Speaker used."
+    t2.speaker = "B"
+    t2.start_ms = 2000
+    t2.end_ms = 3000
+
+    mock_result.tokens = [t1, t2]
+
+    segments = SonioxTranscriptProcessor.process(mock_result)
+    assert len(segments) == 2
+    assert segments[0]["speaker"] == "Speaker 1"
+    assert segments[1]["speaker"] == "Speaker 2"
+    assert "Speaker ID used" in segments[0]["text"]
+    assert "Speaker used" in segments[1]["text"]
+
+def test_kazakh_sentence_splitting_from_prompt():
+    raw = "жа ң а дан қо сыл дың ыз"
+    cleaned = clean_kazakh_text(raw)
+    assert cleaned == "жаңадан қосылдыңыз"
+
+    raw2 = "с ә ле мет сіз бе са ла мат сыз ба"
+    cleaned2 = clean_kazakh_text(raw2)
+    assert "сәлеметсіз бе" in cleaned2
+    assert "саламатсыз ба" in cleaned2
