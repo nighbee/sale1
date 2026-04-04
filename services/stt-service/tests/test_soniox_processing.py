@@ -209,3 +209,16 @@ def test_soniox_no_diarization_fallback():
 
     formatted = format_transcript(segments)
     assert formatted == "Hello world." # No labels
+
+def test_kazakh_filler_removal():
+    assert clean_kazakh_text("аа мм жаңадан қосылдыңыз") == "жаңадан қосылдыңыз"
+    assert clean_kazakh_text("жаңадан мм қосылдыңыз") == "жаңадан қосылдыңыз"
+
+def test_no_diarization_single_paragraph_kazakh():
+    segments = [
+        {"speaker": "UNKNOWN", "text": "жа ң а дан"},
+        {"speaker": "UNKNOWN", "text": "қо сыл дың ыз"}
+    ]
+    # format_transcript applies clean_kazakh_text to the whole thing if UNKNOWN
+    formatted = format_transcript(segments, language="kk")
+    assert formatted == "жаңадан қосылдыңыз"

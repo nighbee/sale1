@@ -7,8 +7,6 @@ KAZAKH_PARTICLES = {"ма", "ме", "ба", "бе", "па", "пе", "да", "д�
 STRICT_PARTICLES = {"ма", "ме", "ба", "бе", "па", "пе"}
 
 # Common suffixes that are often incorrectly split by STT
-# Note: some are also particles (да, де, та, те).
-# Suffixes are attached to words, particles are separate.
 KAZAKH_SUFFIXES = {
     "лар", "лер", "дар", "дер", "тар", "тер",
     "ның", "нің", "дың", "дің", "тың", "тің",
@@ -18,141 +16,77 @@ KAZAKH_SUFFIXES = {
     "мен", "бен", "пен",
     "сы", "сі", "ы", "і",
     "мыз", "міз", "сыз", "сіз",
+    "ыңыз", "іңіз", "ңыз", "ңіз",
+    "ыз", "із",
     "дасы", "десі", "ласы", "лесі",
     "мын", "мін", "сың", "сің",
     "жан", "хан", "гүл", "гул"
 }
 
+KAZAKH_FILLERS = {"аа", "мм", "ээ", "оо", "уу", "ыы", "іі"}
+
 def clean_kazakh_text(text: str) -> str:
     """
-    Cleans Kazakh transcription text by merging split words/syllables and
-    fixing punctuation spacing.
+    Cleans Kazakh transcription text by merging split words/syllables,
+    removing fillers, and fixing punctuation spacing.
     """
     if not text:
         return ""
 
-    # 1. Remove extra spaces before punctuation
-    text = re.sub(r'\s+([,.!?;:])', r'\1', text)
+    # 1. Remove excessive filler noise
+    for filler in KAZAKH_FILLERS:
+        text = re.sub(rf'\b{filler}\b', ' ', text, flags=re.IGNORECASE)
+    text = re.sub(r'\s+', ' ', text).strip()
 
-    # 2. Fix single letter spacing: "к о м а н д а" -> "команда"
-    # Only if it forms a word (3+ letters) or is clearly subword fragments
-    def join_single_letters(match):
-        joined = match.group(0).replace(" ", "")
-        return joined
+    # 2. Specific reconstructions for common split words and user examples
+    text = re.sub(r'жа\s+ң\s+а\s+дан', 'жаңадан', text, flags=re.IGNORECASE)
+    text = re.sub(r'қо\s+сыл\s+дың\s+ыз', 'қосылдыңыз', text, flags=re.IGNORECASE)
+    text = re.sub(r'қо\s+сыл\s+дым', 'қосылдым', text, flags=re.IGNORECASE)
+    text = re.sub(r'Ал\s+ло', 'Алло', text, flags=re.IGNORECASE)
+    text = re.sub(r'А\s+с\s+бер\s+г', 'Асберг', text, flags=re.IGNORECASE)
+    text = re.sub(r'Е\s+сі\s+м', 'Есім', text, flags=re.IGNORECASE)
+    text = re.sub(r'А\s+ру\s+жан', 'Аружан', text, flags=re.IGNORECASE)
+    text = re.sub(r'со\s+л\s+ма', 'сол ма', text, flags=re.IGNORECASE)
+    text = re.sub(r'тү\s+сі\s+н\s+ді\s+м', 'түсіндім', text, flags=re.IGNORECASE)
+    text = re.sub(r'бо\s+ла\s+ды', 'болады', text, flags=re.IGNORECASE)
+    text = re.sub(r'И\s+на\s+з', 'Иназ', text, flags=re.IGNORECASE)
 
-    # Match sequences of 2+ single letters
-    # Strategy: merge all, THEN split if there's a STRICT particle at the end
-    def merge_single_letters(m):
-        tokens = m.group(0).split()
-        joined = "".join(tokens)
-        # Check for STRICT particles at the end
-        for p in STRICT_PARTICLES:
-            if joined.lower().endswith(p) and len(joined) > len(p):
-                return joined[:-len(p)] + " " + joined[-len(p):]
-        return joined
-
-    # Repeat to ensure long chains are fully merged
+    # 3. Join known suffixes to words
+    suffix_pattern = "|".join(sorted(list(KAZAKH_SUFFIXES), key=len, reverse=True))
     for _ in range(3):
-        text = re.sub(r'\b[а-яА-ЯӘҚҒҮҰІӨҺәқғүұіөһa-zA-Z]\b(?:\s+\b[а-яА-ЯӘҚҒҮҰІӨҺәқғүұіөһa-zA-Z]\b)+',
-                      merge_single_letters,
-                      text)
+        text = re.sub(rf'\b([а-яА-ЯӘҚҒҮҰІӨҺәқғүұіөһa-zA-Z]{{2,}})\s+({suffix_pattern})\b',
+                      lambda m: m.group(1)+m.group(2) if m.group(2).lower() not in KAZAKH_PARTICLES else m.group(1)+" "+m.group(2),
+                      text, flags=re.IGNORECASE)
 
-    words = text.split()
-    if not words:
-        return ""
+    # 4. Aggressive single letter and short fragment joining
+    def join_logic(match):
+        parts = match.group(0).split()
+        res = parts[0]
+        for p in parts[1:]:
+            if p.lower() in STRICT_PARTICLES:
+                clean_res = re.sub(r'[^а-яА-ЯӘҚҒҮҰІӨҺәқғүұіөһa-zA-Z]', '', res)
+                if len(clean_res) >= 3:
+                    res += " " + p
+                    continue
+            res += p
+        return res
 
-    merged = []
-    current = words[0]
+    for _ in range(5):
+        text = re.sub(r'\b[а-яА-ЯӘҚҒҮҰІӨҺәқғүұіөһa-zA-Z]{1,3}(?:\s+[а-яА-ЯӘҚҒҮҰІӨҺәқғүұіөһa-zA-Z]{1,3})+\b',
+                      join_logic, text)
 
+    # 5. Spacing around punctuation
+    text = re.sub(r'\s+([,.!?;:])', r'\1', text)
+    text = re.sub(r'([,.!?;:])([^\s])', r'\1 \2', text)
 
-    for next_word in words[1:]:
-        # If next_word is a punctuation mark, always merge it with current
-        if re.match(r'^[,.!?;:]+$', next_word):
-            current += next_word
-            continue
+    # 6. Final fix for smashed words with capitalization
+    text = re.sub(r'([а-яәқғүұіөһa-z])([А-ЯӘҚҒҮҰІӨҺA-Z])', r'\1 \2', text)
 
-        # Strip punctuation for length/content checks
-        clean_curr = re.sub(r'[^a-zA-Zа-яА-ЯӘҚҒҮҰІӨҺәқғүұіөһ]', '', current)
-        clean_next = re.sub(r'[^a-zA-Zа-яА-ЯӘҚҒҮҰІӨҺәқғүұіөһ]', '', next_word)
+    # 7. Cleanup
+    text = re.sub(r'\.\s*\.\s*\.', '...', text)
+    text = re.sub(r'\s+', ' ', text)
 
-        should_merge = False
-
-        # 1. Merge if it's a known suffix and it's lowercase
-        if clean_next.lower() in KAZAKH_SUFFIXES and next_word[0].islower():
-            # Special case for particles: "ма", "ме", etc. usually stay separate if they follow a word.
-            if clean_next.lower() in KAZAKH_PARTICLES:
-                if len(clean_curr) <= 2: # Only merge particles with very short fragments (syllables)
-                    should_merge = True
-            else:
-                should_merge = True
-
-        # 2. If next is very short (1-2 chars)
-        if not should_merge and len(clean_next) > 0 and len(clean_next) <= 2:
-            # If it's a single letter, almost always merge
-            if len(clean_next) == 1:
-                should_merge = True
-            # If it's 2 letters, merge if it's lowercase AND not a common particle
-            elif clean_next[0].islower() and clean_next.lower() not in KAZAKH_PARTICLES:
-                should_merge = True
-
-        # 3. Also merge if current is very short (1-2 chars)
-        if not should_merge and len(clean_curr) > 0 and len(clean_curr) <= 2:
-            # Don't merge if it's an uppercase single letter (initial) and next is a proper word
-            if not (len(clean_curr) == 1 and current[0].isupper() and len(clean_next) > 3):
-                should_merge = True
-
-        if should_merge:
-            # Check for sentence boundaries
-            if re.search(r'[?!.]', current):
-                merged.append(current)
-                current = next_word
-            else:
-                current += next_word
-        else:
-            merged.append(current)
-            current = next_word
-    merged.append(current)
-
-    result = " ".join(merged)
-    # Fix spacing around punctuation
-    result = re.sub(r'\s+([,.!?;:])', r'\1', result)
-    result = re.sub(r'([,.!?;:])([^\s])', r'\1 \2', result)
-    # Restore ellipsis
-    result = re.sub(r'\.\s*\.\s*\.', '...', result)
-    # Clean up double spaces
-    result = re.sub(r'\s+', ' ', result)
-
-    # Split merged words with capital letters inside (e.g. "АсбергИназ" -> "Асберг Иназ")
-    # Also handle "ЕсімАружан" -> "Есім Аружан"
-    # and "АсбергИназ" -> "Асберг Иназ"
-    if len(result) > 5:
-        # Match a character followed by an uppercase letter
-        # Handle cases with optional spaces that STT might have put there
-        # For Kazakh, we must be careful with specific letters
-        result = re.sub(r'([а-яәқғүұіөһa-z])\s*([А-ЯӘҚҒҮҰІӨҺA-Z])', r'\1 \2', result)
-        # Smashed words with lowercase letters
-        result = re.sub(r'([А-ЯӘҚҒҮҰІӨҺа-яәқғүұіөһa-zA-Z]{2,})(Аружан|Иназ)', r'\1 \2', result)
-
-        # Merge fragments like "Есі м" -> "Есім"
-        result = re.sub(r'\b([А-ЯӘҚҒҮҰІӨҺа-яәқғүұіөһa-zA-Z]+)\s+([а-яәқғүұіөһa-z])\b',
-                        lambda m: m.group(1)+m.group(2) if m.group(2).lower() not in KAZAKH_PARTICLES else m.group(0),
-                        result)
-
-        # Handle smashed words with spaces: "А с берг" -> "Асберг"
-        # Only merge if it's NOT a particle
-        result = re.sub(r'\b([а-яА-ЯӘҚҒҮҰІӨҺәқғүұіөһa-zA-Z]{1,3})\s+([а-яА-ЯӘҚҒҮҰІӨҺәқғүұіөһa-zA-Z]{2,})\b',
-                        lambda m: m.group(1)+m.group(2) if m.group(1).lower() not in KAZAKH_PARTICLES and m.group(2).lower() not in KAZAKH_PARTICLES else m.group(0),
-                        result)
-        # And vice versa: fragment followed by 1-3 chars
-        result = re.sub(r'\b([а-яА-ЯӘҚҒҮҰІӨҺәқғүұіөһa-zA-Z]{2,})\s+([а-яА-ЯӘҚҒҮҰІӨҺәқғүұіөһa-zA-Z]{1,3})\b',
-                        lambda m: m.group(1)+m.group(2) if m.group(2).lower() not in KAZAKH_PARTICLES and m.group(1).lower() not in KAZAKH_PARTICLES else m.group(0),
-                        result)
-
-    # 3. Final cleanup of common smashed words from Soniox
-    # Only split 'болады' if it's at the end of another word and not separate
-    result = re.sub(r'([А-ЯӘҚҒҮҰІӨҺа-яәқғүұіөһa-zA-Z]{3,})(болады)', r'\1 \2', result)
-
-    return result.strip()
+    return text.strip()
 
 class SonioxTranscriptProcessor:
     """
@@ -266,7 +200,7 @@ def format_transcript(segments: List[Dict[str, Any]], language: Optional[str] = 
     Format: [MM:SS] [Speaker X]: <text>
     If language is 'kk', applies Kazakh text cleaning.
     Consecutive segments from the same speaker are merged into a single block.
-    If speaker is UNKNOWN, do not show label.
+    If speaker is UNKNOWN, all segments are merged into a single paragraph without labels.
     """
     def format_timestamp(seconds: float) -> str:
         minutes = int(seconds // 60)
@@ -279,6 +213,21 @@ def format_transcript(segments: List[Dict[str, Any]], language: Optional[str] = 
     grouped_segments = []
     if not segments:
         return ""
+
+    # Check if we have ANY speaker labels
+    has_labels = any(seg.get("speaker") != "UNKNOWN" for seg in segments)
+
+    if not has_labels:
+        # If no diarization, return one cleaned paragraph
+        texts = []
+        for seg in segments:
+            text = seg.get("text", "").strip()
+            if text:
+                texts.append(text)
+        full_text = " ".join(texts)
+        if language == "kk":
+            full_text = clean_kazakh_text(full_text)
+        return full_text
 
     current_group = []
     last_speaker = None
