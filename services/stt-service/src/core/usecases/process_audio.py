@@ -80,9 +80,9 @@ class ProcessAudioUseCase:
                 audio_url = db_call_link
 
             # Decide if we can skip download/conversion
-            # Currently only Soniox supports direct transcription from URL
+            # Check if provider supports direct transcription from URL
             # and it should not be a MinIO internal link if we want to skip download
-            can_skip_download = stt_provider_name == "soniox" and not audio_url.startswith("minio://")
+            can_skip_download = not audio_url.startswith("minio://") and stt_provider.supports_url_transcription(audio_url)
 
             if not can_skip_download:
                 # 2. Download audio

@@ -26,3 +26,15 @@ class STTProvider(ABC):
             list: List of model identifiers.
         """
         pass
+
+    def supports_url_transcription(self, url: str) -> bool:
+        """
+        Check if the provider supports direct transcription from the given URL.
+
+        Args:
+            url (str): Remote URL to the audio file.
+
+        Returns:
+            bool: True if provider can transcribe directly from this URL.
+        """
+        return False
