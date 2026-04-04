@@ -19,7 +19,8 @@ KAZAKH_SUFFIXES = {
     "сы", "сі", "ы", "і",
     "мыз", "міз", "сыз", "сіз",
     "дасы", "десі", "ласы", "лесі",
-    "мын", "мін", "сың", "сің"
+    "мын", "мін", "сың", "сің",
+    "жан", "хан", "гүл", "гул"
 }
 
 def clean_kazakh_text(text: str) -> str:
@@ -148,51 +149,174 @@ def clean_kazakh_text(text: str) -> str:
                         result)
 
     # 3. Final cleanup of common smashed words from Soniox
-    result = re.sub(r'([А-ЯӘҚҒҮҰІӨҺа-яәқғүұіөһ]+)\s*(жан|болады)', r'\1 \2', result)
+    # Only split 'болады' if it's at the end of another word and not separate
+    result = re.sub(r'([А-ЯӘҚҒҮҰІӨҺа-яәқғүұіөһ]{3,})(болады)', r'\1 \2', result)
 
     return result.strip()
+
+class SonioxTranscriptProcessor:
+    """
+    Professional processor for Soniox Speech-to-Text API output.
+    Recombines token fragments, fixes Kazakh spacing, handles sequential diarization,
+    and preserves timestamps.
+    """
+    @staticmethod
+    def process(result: Any, language: Optional[str] = None) -> List[Dict[str, Any]]:
+        tokens = getattr(result, "tokens", [])
+
+        # Fallback if no tokens but we have full text
+        if not tokens:
+            text = getattr(result, "text", "")
+            if text:
+                cleaned_text = clean_kazakh_text(text) if language == "kk" else text
+                return [{
+                    "start": 0.0,
+                    "end": 0.0,
+                    "text": cleaned_text,
+                    "speaker": "UNKNOWN"
+                }]
+            return []
+
+        # Check if we have actual diarization info
+        has_real_diarization = any(getattr(t, "speaker_id", None) is not None for t in tokens)
+
+        segments = []
+        speaker_map = {}
+        next_speaker_idx = 1
+
+        current_speaker_raw = None
+        current_segment = None
+
+        for token in tokens:
+            text = getattr(token, "text", "")
+            # Skip tokens without text
+            if not text:
+                continue
+
+            speaker_id_raw = getattr(token, "speaker_id", None)
+
+            if has_real_diarization:
+                # Map raw speaker_id to sequential Speaker labels
+                if speaker_id_raw not in speaker_map:
+                    speaker_map[speaker_id_raw] = f"Speaker {next_speaker_idx}"
+                    next_speaker_idx += 1
+                speaker_label = speaker_map[speaker_id_raw]
+            else:
+                speaker_label = "UNKNOWN"
+
+            # Soniox tokens have start_ms and end_ms
+            start_ms = getattr(token, "start_ms", 0)
+            end_ms = getattr(token, "end_ms", 0)
+
+            is_new_speaker = speaker_id_raw != current_speaker_raw
+            # Split if speaker changed or gap > 1.5s
+            is_gap = current_segment and (start_ms - current_segment["end_ms"]) > 1500
+
+            if current_segment is None or is_new_speaker or is_gap:
+                if current_segment:
+                    segments.append(SonioxTranscriptProcessor._finalize_segment(current_segment, language))
+
+                current_speaker_raw = speaker_id_raw
+                current_segment = {
+                    "start_ms": start_ms,
+                    "end_ms": end_ms,
+                    "text": text,
+                    "speaker": speaker_label
+                }
+            else:
+                current_segment["end_ms"] = end_ms
+                current_segment["text"] += text
+
+        if current_segment:
+            segments.append(SonioxTranscriptProcessor._finalize_segment(current_segment, language))
+
+        return segments
+
+    @staticmethod
+    def _finalize_segment(segment_data: Dict[str, Any], language: Optional[str]) -> Dict[str, Any]:
+        text = segment_data["text"]
+        if language == "kk":
+            text = clean_kazakh_text(text)
+        else:
+            # Fix spacing around punctuation for other languages
+            text = re.sub(r'\s+([,.!?;:])', r'\1', text)
+            text = re.sub(r'([,.!?;:])([^\s])', r'\1 \2', text)
+            text = re.sub(r'\s+', ' ', text).strip()
+
+        # Ensure first letter is capitalized
+        if text:
+            text = text.strip()
+            if text and text[0].islower():
+                text = text[0].upper() + text[1:]
+
+            # Add a period if it doesn't end with punctuation
+            if text and text[-1] not in ".,!?;:":
+                text += "."
+
+        return {
+            "start": segment_data["start_ms"] / 1000.0,
+            "end": segment_data["end_ms"] / 1000.0,
+            "text": text,
+            "speaker": segment_data["speaker"]
+        }
 
 def format_transcript(segments: List[Dict[str, Any]], language: Optional[str] = None) -> str:
     """
     Formats segments into a clean readable transcript with speaker labels.
     Format: [Speaker X]: <text>
     If language is 'kk', applies Kazakh text cleaning.
+    If multiple consecutive segments have the same speaker, only show speaker label for the first one.
+    If speaker is UNKNOWN, do not show label.
     """
     formatted_lines = []
+    last_speaker = None
+
+    # Check if we should even show speaker labels (only if we have known speakers)
+    unique_speakers = set(seg.get("speaker", "UNKNOWN") for seg in segments)
+    show_labels = any(s != "UNKNOWN" for s in unique_speakers)
+
     for seg in segments:
         speaker = seg.get("speaker", "UNKNOWN")
-        speaker_label = "Unknown"
 
-        if isinstance(speaker, str):
-            if speaker.startswith("SPEAKER_"):
-                try:
-                    idx_part = speaker.split("_")[1]
-                    if idx_part.isdigit():
-                        speaker_label = f"Speaker {int(idx_part) + 1}"
-                    else:
-                        speaker_label = f"Speaker {idx_part}"
-                except:
-                    speaker_label = f"Speaker {speaker}"
-            elif speaker != "UNKNOWN":
-                # If it's a numeric ID like "0", "1", increment it
-                if speaker.isdigit():
-                    speaker_label = f"Speaker {int(speaker) + 1}"
+        # Standardize speaker label
+        speaker_label = speaker
+        if isinstance(speaker, str) and speaker.startswith("SPEAKER_"):
+            try:
+                idx_part = speaker.split("_")[1]
+                if idx_part.isdigit():
+                    speaker_label = f"Speaker {int(idx_part) + 1}"
                 else:
-                    speaker_label = f"Speaker {speaker}" if not speaker.startswith("Speaker ") else speaker
+                    speaker_label = f"Speaker {idx_part}"
+            except:
+                speaker_label = f"Speaker {speaker}"
+        elif isinstance(speaker, str) and speaker.isdigit():
+            speaker_label = f"Speaker {int(speaker) + 1}"
 
         text = seg.get("text", "").strip()
-        if text:
-            # Only clean if it's explicitly Kazakh
+        if not text:
+            continue
+
+        # Already cleaned text if from SonioxTranscriptProcessor, otherwise clean
+        cleaned_text = text
+        if "Speaker" not in speaker_label and speaker_label != "UNKNOWN": # i.e. it came from raw segments not processed yet
             if language == "kk":
                 cleaned_text = clean_kazakh_text(text)
             else:
-                # Still fix punctuation for all languages
                 cleaned_text = re.sub(r'\s+([,.!?;:])', r'\1', text)
                 cleaned_text = re.sub(r'([,.!?;:])([^\s])', r'\1 \2', cleaned_text)
                 cleaned_text = re.sub(r'\s+', ' ', cleaned_text).strip()
 
-            formatted_lines.append(f"[{speaker_label}]: {cleaned_text}")
-            seg["text"] = cleaned_text
-            seg["speaker"] = speaker_label
+        # Determine if we should show the speaker label
+        if show_labels and speaker_label != "UNKNOWN":
+            if speaker_label != last_speaker:
+                formatted_lines.append(f"[{speaker_label}]: {cleaned_text}")
+                last_speaker = speaker_label
+            else:
+                # Just append text for the same speaker
+                # If the last line is from the same speaker, we can try to append it or just new line
+                # Let's use new line but without label for clarity
+                formatted_lines.append(f"            {cleaned_text}")
+        else:
+            formatted_lines.append(cleaned_text)
 
     return "\n".join(formatted_lines)

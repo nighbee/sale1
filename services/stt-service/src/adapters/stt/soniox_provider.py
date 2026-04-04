@@ -3,7 +3,7 @@ import asyncio
 import logging
 from typing import Dict, Any, Optional
 from src.core.ports.stt_provider import STTProvider
-from src.core.utils.text_processor import format_transcript
+from src.core.utils.text_processor import format_transcript, SonioxTranscriptProcessor
 
 try:
     from soniox import SonioxClient
@@ -61,52 +61,10 @@ class SonioxSTTProvider(STTProvider):
 
             result = await asyncio.to_thread(sync_transcribe)
 
-            segments = []
-            # Soniox result has text and tokens
-            # We'll reconstruct segments from tokens by speaker_id and gap
-            if hasattr(result, "tokens") and result.tokens:
-                current_speaker = None
-                current_segment = None
+            # Use the professional SonioxTranscriptProcessor
+            segments = SonioxTranscriptProcessor.process(result, language=language)
 
-                for token in result.tokens:
-                    # Some tokens might not have text (e.g. silence markers)
-                    if not token.text:
-                        continue
-
-                    speaker_id_val = getattr(token, "speaker_id", None)
-                    speaker_id = f"SPEAKER_{speaker_id_val}" if speaker_id_val is not None else "UNKNOWN"
-
-                    # New segment if speaker changed or too long gap (>1.5s)
-                    is_new_speaker = speaker_id != current_speaker
-                    is_gap = current_segment and (token.start_ms - current_segment["end"] * 1000) > 1500
-
-                    if is_new_speaker or is_gap:
-                        if current_segment:
-                            segments.append(current_segment)
-                        current_speaker = speaker_id
-                        current_segment = {
-                            "start": token.start_ms / 1000.0,
-                            "end": token.end_ms / 1000.0,
-                            "text": token.text,
-                            "speaker": speaker_id
-                        }
-                    else:
-                        current_segment["end"] = token.end_ms / 1000.0
-                        current_segment["text"] += token.text
-
-                if current_segment:
-                    segments.append(current_segment)
-
-            # Fallback if no segments found but we have text
-            if not segments and result.text:
-                segments.append({
-                    "start": 0.0,
-                    "end": 0.0,
-                    "text": result.text,
-                    "speaker": "UNKNOWN"
-                })
-
-            # Format transcript and apply text cleaning
+            # Format transcript for the final output using the refined utility
             final_text = format_transcript(segments, language=language)
 
             logger.info("Soniox transcription completed", extra={"text_length": len(final_text), "segments": len(segments)})
@@ -114,7 +72,7 @@ class SonioxSTTProvider(STTProvider):
             return {
                 "text": final_text,
                 "segments": segments,
-                "is_diarized": any(s.get("speaker") != "SPEAKER_UNKNOWN" and s.get("speaker") != "UNKNOWN" for s in segments)
+                "is_diarized": any("Speaker" in s.get("speaker", "UNKNOWN") for s in segments)
             }
         except Exception as e:
             logger.error("Soniox STT failed", extra={"error": str(e), "audio_path": audio_path, "audio_url": audio_url})
