@@ -3,6 +3,7 @@ import asyncio
 import logging
 from typing import Dict, Any, Optional
 from src.core.ports.stt_provider import STTProvider
+from src.core.utils.text_processor import format_transcript
 
 try:
     from soniox import SonioxClient
@@ -108,12 +109,15 @@ class SonioxSTTProvider(STTProvider):
                     "speaker": "UNKNOWN"
                 })
 
-            logger.info("Soniox transcription completed", extra={"text_length": len(result.text), "segments": len(segments)})
+            # Format transcript and apply text cleaning
+            final_text = format_transcript(segments, language=language)
+
+            logger.info("Soniox transcription completed", extra={"text_length": len(final_text), "segments": len(segments)})
 
             return {
-                "text": result.text,
+                "text": final_text,
                 "segments": segments,
-                "is_diarized": any(s.get("speaker") != "SPEAKER_UNKNOWN" for s in segments)
+                "is_diarized": any(s.get("speaker") != "SPEAKER_UNKNOWN" and s.get("speaker") != "UNKNOWN" for s in segments)
             }
         except Exception as e:
             logger.error("Soniox STT failed", extra={"error": str(e), "audio_path": audio_path, "audio_url": audio_url})
