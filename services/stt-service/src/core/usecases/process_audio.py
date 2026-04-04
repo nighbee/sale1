@@ -14,7 +14,7 @@ from src.infrastructure.audio.converter import AudioConverter
 from src.adapters.stt.factory import STTProviderFactory
 from src.infrastructure.api.main_api_client import MainAPIClient
 from src.core.ports.downloader_factory import DownloaderFactory
-from src.infrastructure.monitoring.circuit_breaker import CircuitBreaker
+from src.infrastructure.monitoring.circuit_breaker import CircuitBreaker, CircuitBreakerError
 
 logger = logging.getLogger(__name__)
 
@@ -39,15 +39,21 @@ class ProcessAudioUseCase:
             raise ValueError(f"Missing audio URL for call_id={call_id}: job has no 'audio_url' or 'call_link' field")
 
         # 0. Circuit Breaker Check
-        # Update manual status from main-api settings
         ai_settings = await self.api_client.get_ai_settings()
+        cb_enabled = True
         if ai_settings:
+            # Note: circuit_breaker_enabled toggle in UI ONLY controls if we automatically open on failures.
+            # It should NEVER set the circuit to KILLED state.
             cb_enabled = ai_settings.get("circuit_breaker_enabled", True)
-            await self.circuit_breaker.set_manual_status(not cb_enabled)
 
-        if await self.circuit_breaker.is_open():
-            logger.warning("STT workflow is HALTED by Circuit Breaker", extra={"call_id": call_id})
-            raise RuntimeError("STT workflow is currently halted (Circuit Breaker open or manually disabled)")
+        # check if we are blocked (OPEN or KILLED)
+        if await self.circuit_breaker.is_blocked():
+            state = await self.circuit_breaker.get_state()
+            logger.warning(
+                f"STT workflow is HALTED by Circuit Breaker (state={state.value})",
+                extra={"call_id": call_id, "state": state.value}
+            )
+            raise CircuitBreakerError("stt_workflow", state)
 
         logger.info(
             "processing audio job",
@@ -142,7 +148,8 @@ class ProcessAudioUseCase:
                         "error": str(e)
                     }
                 )
-                await self.circuit_breaker.record_failure(str(e))
+                # record_failure only moves to OPEN if cb_enabled is True
+                await self.circuit_breaker.record_failure(str(e), enabled=cb_enabled)
                 raise
             stt_elapsed = round(time.monotonic() - t_stt, 2)
             stt_text = transcript_data.get("text", "")
