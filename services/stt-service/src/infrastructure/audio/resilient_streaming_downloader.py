@@ -196,16 +196,18 @@ class ResilientStreamingDownloader:
             last_data_time = time.monotonic()
 
             async for chunk in resp.content.iter_chunked(self.chunk_size):
+                now = time.monotonic()
+
+                # 🔥 detect stall BEFORE processing chunk
+                if now - last_data_time > 15:
+                    raise DownloadError("Stream stalled (no data for 15s)")
+
                 if not chunk:
                     continue
 
                 await asyncio.to_thread(f.write, chunk)
 
-                last_data_time = time.monotonic()
-
-                # 🔥 stall detection
-                if time.monotonic() - last_data_time > 30:
-                    raise DownloadError("Stream stalled")
+                last_data_time = now
 
     def _validate(self, path, expected):
         if not os.path.exists(path):
