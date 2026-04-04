@@ -51,8 +51,7 @@ def test_speaker_label_formatting():
     # So "1" -> "Speaker 1". "Speaker 2" -> "Speaker 2".
 
     assert "[Speaker 1]: Hello" in formatted
-    assert "[Speaker 2]: Hi" in formatted
-    assert "            How are you?" in formatted
+    assert "[Speaker 2]: Hi How are you?" in formatted
 
     # Actually my previous format_transcript test said:
     # SPEAKER_0 -> Speaker 1
@@ -190,7 +189,7 @@ def test_soniox_gap_splitting():
 
     formatted = format_transcript(segments)
     assert "[Speaker 1]: Part one." in formatted
-    assert "            Part two." in formatted
+    assert "\n\n[Speaker 1]: Part two." in formatted
 
 def test_soniox_no_diarization_fallback():
     mock_result = MagicMock()

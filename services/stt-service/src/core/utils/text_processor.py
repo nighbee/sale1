@@ -53,7 +53,7 @@ def clean_kazakh_text(text: str) -> str:
 
     # Repeat to ensure long chains are fully merged
     for _ in range(3):
-        text = re.sub(r'\b[а-яА-ЯӘҚҒҮҰІӨҺәқғүұіөһ]\b(?:\s+\b[а-яА-ЯӘҚҒҮҰІӨҺәқғүұіөһ]\b)+',
+        text = re.sub(r'\b[а-яА-ЯӘҚҒҮҰІӨҺәқғүұіөһa-zA-Z]\b(?:\s+\b[а-яА-ЯӘҚҒҮҰІӨҺәқғүұіөһa-zA-Z]\b)+',
                       merge_single_letters,
                       text)
 
@@ -129,28 +129,28 @@ def clean_kazakh_text(text: str) -> str:
         # Match a character followed by an uppercase letter
         # Handle cases with optional spaces that STT might have put there
         # For Kazakh, we must be careful with specific letters
-        result = re.sub(r'([а-яәқғүұіөһ])\s*([А-ЯӘҚҒҮҰІӨҺ])', r'\1 \2', result)
+        result = re.sub(r'([а-яәқғүұіөһa-z])\s*([А-ЯӘҚҒҮҰІӨҺA-Z])', r'\1 \2', result)
         # Smashed words with lowercase letters
-        result = re.sub(r'([А-ЯӘҚҒҮҰІӨҺа-яәқғүұіөһ]{2,})(Аружан|Иназ)', r'\1 \2', result)
+        result = re.sub(r'([А-ЯӘҚҒҮҰІӨҺа-яәқғүұіөһa-zA-Z]{2,})(Аружан|Иназ)', r'\1 \2', result)
 
         # Merge fragments like "Есі м" -> "Есім"
-        result = re.sub(r'\b([А-ЯӘҚҒҮҰІӨҺа-яәқғүұіөһ]+)\s+([а-яәқғүұіөһ])\b',
+        result = re.sub(r'\b([А-ЯӘҚҒҮҰІӨҺа-яәқғүұіөһa-zA-Z]+)\s+([а-яәқғүұіөһa-z])\b',
                         lambda m: m.group(1)+m.group(2) if m.group(2).lower() not in KAZAKH_PARTICLES else m.group(0),
                         result)
 
         # Handle smashed words with spaces: "А с берг" -> "Асберг"
         # Only merge if it's NOT a particle
-        result = re.sub(r'\b([а-яА-ЯӘҚҒҮҰІӨҺәқғүұіөһ]{1,3})\s+([а-яА-ЯӘҚҒҮҰІӨҺәқғүұіөһ]{2,})\b',
+        result = re.sub(r'\b([а-яА-ЯӘҚҒҮҰІӨҺәқғүұіөһa-zA-Z]{1,3})\s+([а-яА-ЯӘҚҒҮҰІӨҺәқғүұіөһa-zA-Z]{2,})\b',
                         lambda m: m.group(1)+m.group(2) if m.group(1).lower() not in KAZAKH_PARTICLES and m.group(2).lower() not in KAZAKH_PARTICLES else m.group(0),
                         result)
         # And vice versa: fragment followed by 1-3 chars
-        result = re.sub(r'\b([а-яА-ЯӘҚҒҮҰІӨҺәқғүұіөһ]{2,})\s+([а-яА-ЯӘҚҒҮҰІӨҺәқғүұіөһ]{1,3})\b',
+        result = re.sub(r'\b([а-яА-ЯӘҚҒҮҰІӨҺәқғүұіөһa-zA-Z]{2,})\s+([а-яА-ЯӘҚҒҮҰІӨҺәқғүұіөһa-zA-Z]{1,3})\b',
                         lambda m: m.group(1)+m.group(2) if m.group(2).lower() not in KAZAKH_PARTICLES and m.group(1).lower() not in KAZAKH_PARTICLES else m.group(0),
                         result)
 
     # 3. Final cleanup of common smashed words from Soniox
     # Only split 'болады' if it's at the end of another word and not separate
-    result = re.sub(r'([А-ЯӘҚҒҮҰІӨҺа-яәқғүұіөһ]{3,})(болады)', r'\1 \2', result)
+    result = re.sub(r'([А-ЯӘҚҒҮҰІӨҺа-яәқғүұіөһa-zA-Z]{3,})(болады)', r'\1 \2', result)
 
     return result.strip()
 
@@ -260,20 +260,28 @@ class SonioxTranscriptProcessor:
             "speaker": segment_data["speaker"]
         }
 
-def format_transcript(segments: List[Dict[str, Any]], language: Optional[str] = None) -> str:
+def format_transcript(segments: List[Dict[str, Any]], language: Optional[str] = None, include_timestamps: bool = False) -> str:
     """
-    Formats segments into a clean readable transcript with speaker labels.
-    Format: [Speaker X]: <text>
+    Formats segments into a clean readable transcript with speaker labels and grouping.
+    Format: [MM:SS] [Speaker X]: <text>
     If language is 'kk', applies Kazakh text cleaning.
-    If multiple consecutive segments have the same speaker, only show speaker label for the first one.
+    Consecutive segments from the same speaker are merged into a single block.
     If speaker is UNKNOWN, do not show label.
     """
-    formatted_lines = []
-    last_speaker = None
+    def format_timestamp(seconds: float) -> str:
+        minutes = int(seconds // 60)
+        seconds = int(seconds % 60)
+        return f"[{minutes:02d}:{seconds:02d}]"
 
-    # Check if we should even show speaker labels (only if we have known speakers)
-    unique_speakers = set(seg.get("speaker", "UNKNOWN") for seg in segments)
-    show_labels = any(s != "UNKNOWN" for s in unique_speakers)
+    formatted_lines = []
+
+    # 1. Group segments by speaker
+    grouped_segments = []
+    if not segments:
+        return ""
+
+    current_group = []
+    last_speaker = None
 
     for seg in segments:
         speaker = seg.get("speaker", "UNKNOWN")
@@ -292,31 +300,73 @@ def format_transcript(segments: List[Dict[str, Any]], language: Optional[str] = 
         elif isinstance(speaker, str) and speaker.isdigit():
             speaker_label = f"Speaker {int(speaker) + 1}"
 
-        text = seg.get("text", "").strip()
-        if not text:
+        seg["speaker_label"] = speaker_label
+
+        if last_speaker is None or speaker_label == last_speaker:
+            current_group.append(seg)
+        else:
+            grouped_segments.append(current_group)
+            current_group = [seg]
+        last_speaker = speaker_label
+
+    if current_group:
+        grouped_segments.append(current_group)
+
+    # 2. Format each group
+    for group in grouped_segments:
+        speaker_label = group[0]["speaker_label"]
+        start_time = group[0].get("start", 0.0)
+
+        texts = []
+        for i, seg in enumerate(group):
+            text = seg.get("text", "").strip()
+            if not text:
+                continue
+
+            # Clean text if it hasn't been cleaned yet
+            # We consider it cleaned if the original speaker already started with "Speaker "
+            original_speaker = seg.get("speaker", "UNKNOWN")
+            is_cleaned = isinstance(original_speaker, str) and original_speaker.startswith("Speaker ")
+
+            if not is_cleaned:
+                if language == "kk":
+                    text = clean_kazakh_text(text)
+                else:
+                    text = re.sub(r'\s+([,.!?;:])', r'\1', text)
+                    text = re.sub(r'([,.!?;:])([^\s])', r'\1 \2', text)
+                    text = re.sub(r'\s+', ' ', text).strip()
+                # Update the segment text and speaker for compatibility with some tests
+                seg["text"] = text
+                seg["speaker"] = speaker_label
+
+            # Handle "natural pauses" within the same speaker group
+            if i > 0:
+                gap = seg.get("start", 0.0) - group[i-1].get("end", 0.0)
+                if gap > 1.5:
+                    # In professional transcripts, we might want a new line or just space
+                    # User asked to "merge consecutive sentences... but keep paragraphs separate for natural pauses"
+                    # Let's use a double newline for paragraphs
+                    texts.append("\n\n")
+                    if include_timestamps:
+                        texts.append(f"{format_timestamp(seg.get('start', 0.0))} [{speaker_label}]: ")
+                    else:
+                        texts.append(f"[{speaker_label}]: ")
+                else:
+                    texts.append(" ")
+
+            texts.append(text)
+
+        combined_text = "".join(texts)
+        if not combined_text.strip():
             continue
 
-        # Already cleaned text if from SonioxTranscriptProcessor, otherwise clean
-        cleaned_text = text
-        if "Speaker" not in speaker_label and speaker_label != "UNKNOWN": # i.e. it came from raw segments not processed yet
-            if language == "kk":
-                cleaned_text = clean_kazakh_text(text)
+        prefix = ""
+        if speaker_label != "UNKNOWN":
+            if include_timestamps:
+                prefix = f"{format_timestamp(start_time)} [{speaker_label}]: "
             else:
-                cleaned_text = re.sub(r'\s+([,.!?;:])', r'\1', text)
-                cleaned_text = re.sub(r'([,.!?;:])([^\s])', r'\1 \2', cleaned_text)
-                cleaned_text = re.sub(r'\s+', ' ', cleaned_text).strip()
+                prefix = f"[{speaker_label}]: "
 
-        # Determine if we should show the speaker label
-        if show_labels and speaker_label != "UNKNOWN":
-            if speaker_label != last_speaker:
-                formatted_lines.append(f"[{speaker_label}]: {cleaned_text}")
-                last_speaker = speaker_label
-            else:
-                # Just append text for the same speaker
-                # If the last line is from the same speaker, we can try to append it or just new line
-                # Let's use new line but without label for clarity
-                formatted_lines.append(f"            {cleaned_text}")
-        else:
-            formatted_lines.append(cleaned_text)
+        formatted_lines.append(f"{prefix}{combined_text}")
 
     return "\n".join(formatted_lines)
