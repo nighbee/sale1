@@ -102,7 +102,15 @@ class DeepgramSTTProvider(STTProvider):
         try:
             # Deepgram SDK doesn't have a simple list_models, usually you just know them
             # or use the API to fetch them. For now, let's return common ones.
-            return ["nova-2", "nova-2-phonecall", "nova-2-video", "nova-2-medical", "nova-2-meeting"]
+            return [
+                "nova-3",
+                "nova-2",
+                "flux-general-en",
+                "nova-2-phonecall",
+                "nova-2-video",
+                "nova-2-medical",
+                "nova-2-meeting"
+            ]
         except Exception as e:
             logger.error(f"Failed to fetch Deepgram models: {e}")
-            return ["nova-2"]
+            return ["nova-3", "nova-2"]

@@ -40,10 +40,17 @@ class ProcessAudioUseCase:
 
         # 0. Circuit Breaker Check
         # Update manual status from main-api settings
+        # circuit_breaker_enabled in UI means we WANT the protection ON (HALTED if failures occur or manually killed)
         ai_settings = await self.api_client.get_ai_settings()
         if ai_settings:
             cb_enabled = ai_settings.get("circuit_breaker_enabled", True)
-            await self.circuit_breaker.set_manual_status(not cb_enabled)
+            # If CB is enabled (True), it should be able to kill the workflow if needed.
+            # set_manual_status(True) means it IS killed.
+            # The user says: "It must be switch if off is turn off and ai model process correctly,
+            # when on the breaker work and it doesn't process any files."
+            # So if cb_enabled is ON (True), we should check if it should be killed.
+            # Actually, the set_manual_status(True) explicitly KILLS it regardless of failures.
+            await self.circuit_breaker.set_manual_status(cb_enabled)
 
         if await self.circuit_breaker.is_open():
             logger.warning("STT workflow is HALTED by Circuit Breaker", extra={"call_id": call_id})

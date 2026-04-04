@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import Modal from '../../../shared/ui/Modal';
 import Button from '../../../shared/ui/Button';
 import Input from '../../../shared/ui/Input';
+import Select from '../../../shared/ui/Select';
 import { integrationApi } from '../../../entities/integration/api';
 import { useCheckModel } from '../hooks/useCheckModel';
 import { useGetModels } from '../hooks/useGetModels';
@@ -153,53 +154,26 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ isOpen, onClose, ty
                               onChange={e => setCredentials({...credentials, base_url: e.target.value})}
                           />
                       )}
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="w-full">
-                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Model</label>
-                          <div className="relative">
-                            <select
-                                className="appearance-none block w-full px-3 py-2.5 border border-slate-300 dark:border-slate-700 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary sm:text-sm bg-white dark:bg-slate-800 dark:text-white transition-all duration-200"
-                                value={config.model || ''}
-                                onChange={e => setConfig({...config, model: e.target.value})}
-                                disabled={isFetchingModels}
-                            >
-                                <option value="">Select Model</option>
-                                {models.map(m => (
-                                    <option key={m} value={m}>{m}</option>
-                                ))}
-                                {!models.includes(config.model) && config.model && (
-                                    <option value={config.model}>{config.model}</option>
-                                )}
-                            </select>
-                            {isFetchingModels && (
-                              <div className="absolute right-8 top-1/2 -translate-y-1/2">
-                                <span className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full block"></span>
-                              </div>
-                            )}
-                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
-                                <span className="material-symbols-outlined text-base">expand_more</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="w-full">
-                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Language</label>
-                          <div className="relative">
-                            <select
-                                className="appearance-none block w-full px-3 py-2.5 border border-slate-300 dark:border-slate-700 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary sm:text-sm bg-white dark:bg-slate-800 dark:text-white transition-all duration-200"
-                                value={config.language || ''}
-                                onChange={e => setConfig({...config, language: e.target.value})}
-                            >
-                                <option value="auto">Auto Detect</option>
-                                <option value="ru">Russian (ru)</option>
-                                <option value="en">English (en)</option>
-                                <option value="kk">Kazakh (kk)</option>
-                            </select>
-                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
-                                <span className="material-symbols-outlined text-base">expand_more</span>
-                            </div>
-                          </div>
-                        </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                        <Select
+                            label="Model"
+                            value={config.model || ''}
+                            onChange={v => setConfig({...config, model: v})}
+                            options={models}
+                            isLoading={isFetchingModels}
+                            placeholder="Select AI Model"
+                        />
+                        <Select
+                            label="Language"
+                            value={config.language || 'auto'}
+                            onChange={v => setConfig({...config, language: v})}
+                            options={[
+                                { value: 'auto', label: 'Auto Detect' },
+                                { value: 'ru', label: 'Russian (ru)' },
+                                { value: 'en', label: 'English (en)' },
+                                { value: 'kk', label: 'Kazakh (kk)' }
+                            ]}
+                        />
                       </div>
 
                       <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800/30">

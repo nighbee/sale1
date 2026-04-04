@@ -106,9 +106,17 @@ class ElevenLabsSTTProvider(STTProvider):
     async def get_models(self) -> list:
         try:
             models = await asyncio.to_thread(self.client.models.list)
-            # Filter for models that likely support STT if possible, or return all
-            # For ElevenLabs, scribe_v1 is the main one currently.
-            return [m.model_id for m in models]
+            # Scribe models might not always be in the list yet as it's a separate API
+            # but we should include them if found, or provide them as default.
+            model_ids = [m.model_id for m in models]
+
+            # Ensure Scribe models are present in the suggestions
+            scribe_models = ["scribe_v2", "scribe_v1", "scribe_v1_experimental"]
+            for sm in scribe_models:
+                if sm not in model_ids:
+                    model_ids.insert(0, sm)
+
+            return model_ids
         except Exception as e:
             logger.error(f"Failed to fetch ElevenLabs models: {e}")
-            return ["scribe_v1"]
+            return ["scribe_v2", "scribe_v1", "scribe_v1_experimental"]

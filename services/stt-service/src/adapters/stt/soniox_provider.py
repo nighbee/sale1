@@ -91,7 +91,8 @@ class SonioxSTTProvider(STTProvider):
     async def get_models(self) -> list:
         try:
             # Common Soniox models
-            return ["stt-async-v4", "stt-async-v3", "stt-realtime-v4", "stt-realtime-v3"]
+            # v4 is the current active generation
+            return ["stt-async-v4", "stt-async-v3", "stt-rt-v4", "stt-rt-v3"]
         except Exception as e:
             logger.error(f"Failed to fetch Soniox models: {e}")
             return ["stt-async-v4"]

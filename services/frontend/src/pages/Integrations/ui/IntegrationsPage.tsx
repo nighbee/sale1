@@ -4,6 +4,7 @@ import type { AISettings } from "../../../features/integrations/hooks/useIntegra
 import { PageLayout } from "../../../widgets/PageLayout";
 import IntegrationModal from "../../../features/integrations/ui/IntegrationModal";
 import Button from "../../../shared/ui/Button";
+import Select from "../../../shared/ui/Select";
 import { useIntegrations } from "../../../features/integrations/hooks/useIntegrations";
 import { useGetModels } from "../../../features/integrations/hooks/useGetModels";
 
@@ -196,154 +197,86 @@ const IntegrationsPage: React.FC = () => {
                 <h3 className="font-bold text-lg text-slate-800 dark:text-slate-200">
                   Transcription (STT)
                 </h3>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Default STT Provider
-                  </label>
-                  <select
-                    className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 text-sm"
-                    value={aiSettings?.stt_provider || "openai"}
-                    onChange={(e) =>
-                      setAiSettings((prev) => ({
-                        ...(prev ?? defaultAISettings),
-                        stt_provider: e.target.value,
-                      }))
-                    }
-                  >
-                    <option value="openai">OpenAI (Whisper)</option>
-                    <option value="groq">Groq (Whisper)</option>
-                    <option value="deepgram">Deepgram</option>
-                    <option value="gemini">Google Gemini</option>
-                    <option value="elevenlabs">ElevenLabs</option>
-                    <option value="soniox">Soniox</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Default STT Model
-                  </label>
-                  <div className="relative">
-                    <select
-                      className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 text-sm appearance-none"
-                      value={aiSettings?.stt_model || ""}
-                      onChange={(e) =>
-                        setAiSettings((prev) => ({
-                          ...(prev ?? defaultAISettings),
-                          stt_model: e.target.value,
-                        }))
-                      }
-                      disabled={loadingSTTModels}
-                    >
-                      <option value="">Select Model</option>
-                      {sttModels.map((m) => (
-                        <option key={m} value={m}>
-                          {m}
-                        </option>
-                      ))}
-                      {aiSettings?.stt_model &&
-                        !sttModels.includes(aiSettings.stt_model) && (
-                          <option value={aiSettings.stt_model}>
-                            {aiSettings.stt_model}
-                          </option>
-                        )}
-                    </select>
-                    {loadingSTTModels && (
-                      <div className="absolute right-8 top-1/2 -translate-y-1/2">
-                        <span className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full block"></span>
-                      </div>
-                    )}
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
-                      <span className="material-symbols-outlined text-base">
-                        expand_more
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Default STT Language
-                  </label>
-                  <select
-                    className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 text-sm"
-                    value={aiSettings?.stt_language || "auto"}
-                    onChange={(e) =>
-                      setAiSettings((prev) => ({
-                        ...(prev ?? defaultAISettings),
-                        stt_language: e.target.value,
-                      }))
-                    }
-                  >
-                    <option value="auto">Auto Detect</option>
-                    <option value="ru">Russian (ru)</option>
-                    <option value="en">English (en)</option>
-                    <option value="kk">Kazakh (kk)</option>
-                  </select>
-                </div>
+                <Select
+                  label="Default STT Provider"
+                  value={aiSettings?.stt_provider || "openai"}
+                  onChange={(v) =>
+                    setAiSettings((prev) => ({
+                      ...(prev ?? defaultAISettings),
+                      stt_provider: v,
+                    }))
+                  }
+                  options={[
+                    { value: "openai", label: "OpenAI (Whisper)" },
+                    { value: "groq", label: "Groq (Whisper)" },
+                    { value: "deepgram", label: "Deepgram" },
+                    { value: "gemini", label: "Google Gemini" },
+                    { value: "elevenlabs", label: "ElevenLabs" },
+                    { value: "soniox", label: "Soniox" },
+                  ]}
+                />
+                <Select
+                  label="Default STT Model"
+                  value={aiSettings?.stt_model || ""}
+                  onChange={(v) =>
+                    setAiSettings((prev) => ({
+                      ...(prev ?? defaultAISettings),
+                      stt_model: v,
+                    }))
+                  }
+                  options={sttModels}
+                  isLoading={loadingSTTModels}
+                  placeholder="Select STT Model"
+                />
+                <Select
+                  label="Default STT Language"
+                  value={aiSettings?.stt_language || "auto"}
+                  onChange={(v) =>
+                    setAiSettings((prev) => ({
+                      ...(prev ?? defaultAISettings),
+                      stt_language: v,
+                    }))
+                  }
+                  options={[
+                    { value: "auto", label: "Auto Detect" },
+                    { value: "ru", label: "Russian (ru)" },
+                    { value: "en", label: "English (en)" },
+                    { value: "kk", label: "Kazakh (kk)" },
+                  ]}
+                />
               </div>
 
               <div className="space-y-4">
                 <h3 className="font-bold text-lg text-slate-800 dark:text-slate-200">
                   Analysis (LLM)
                 </h3>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Default LLM Provider
-                  </label>
-                  <select
-                    className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 text-sm"
-                    value={aiSettings?.llm_provider || "openai"}
-                    onChange={(e) =>
-                      setAiSettings((prev) => ({
-                        ...(prev ?? defaultAISettings),
-                        llm_provider: e.target.value,
-                      }))
-                    }
-                  >
-                    <option value="openai">OpenAI (GPT)</option>
-                    <option value="gemini">Google Gemini</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Default LLM Model
-                  </label>
-                  <div className="relative">
-                    <select
-                      className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 text-sm appearance-none"
-                      value={aiSettings?.llm_model || ""}
-                      onChange={(e) =>
-                        setAiSettings((prev) => ({
-                          ...(prev ?? defaultAISettings),
-                          llm_model: e.target.value,
-                        }))
-                      }
-                      disabled={loadingLLMModels}
-                    >
-                      <option value="">Select Model</option>
-                      {llmModels.map((m) => (
-                        <option key={m} value={m}>
-                          {m}
-                        </option>
-                      ))}
-                      {aiSettings?.llm_model &&
-                        !llmModels.includes(aiSettings.llm_model) && (
-                          <option value={aiSettings.llm_model}>
-                            {aiSettings.llm_model}
-                          </option>
-                        )}
-                    </select>
-                    {loadingLLMModels && (
-                      <div className="absolute right-8 top-1/2 -translate-y-1/2">
-                        <span className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full block"></span>
-                      </div>
-                    )}
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
-                      <span className="material-symbols-outlined text-base">
-                        expand_more
-                      </span>
-                    </div>
-                  </div>
-                </div>
+                <Select
+                  label="Default LLM Provider"
+                  value={aiSettings?.llm_provider || "openai"}
+                  onChange={(v) =>
+                    setAiSettings((prev) => ({
+                      ...(prev ?? defaultAISettings),
+                      llm_provider: v,
+                    }))
+                  }
+                  options={[
+                    { value: "openai", label: "OpenAI (GPT)" },
+                    { value: "gemini", label: "Google Gemini" },
+                  ]}
+                />
+                <Select
+                  label="Default LLM Model"
+                  value={aiSettings?.llm_model || ""}
+                  onChange={(v) =>
+                    setAiSettings((prev) => ({
+                      ...(prev ?? defaultAISettings),
+                      llm_model: v,
+                    }))
+                  }
+                  options={llmModels}
+                  isLoading={loadingLLMModels}
+                  placeholder="Select LLM Model"
+                />
               </div>
 
               <div className="space-y-4">
