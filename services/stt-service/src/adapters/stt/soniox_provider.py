@@ -6,6 +6,7 @@ from src.core.ports.stt_provider import STTProvider
 
 try:
     from soniox import SonioxClient
+    from soniox.types import CreateTranscriptionConfig
     SONIOX_AVAILABLE = True
 except ImportError:
     SONIOX_AVAILABLE = False
@@ -29,22 +30,27 @@ class SonioxSTTProvider(STTProvider):
             def sync_transcribe():
                 client = SonioxClient(api_key=self.api_key)
 
+                config = CreateTranscriptionConfig(
+                    enable_speaker_diarization=True
+                )
+                if language:
+                    config.language_hints = [language]
+
                 # Use audio_url if provided, otherwise use local file
                 if audio_url:
                     logger.info(f"Transcribing with Soniox from URL: {audio_url}", extra={"model": self.model, "language": language})
                     transcription = client.stt.transcribe(
                         audio_url=audio_url,
                         model=self.model,
-                        language=language
+                        config=config
                     )
                 else:
                     logger.info(f"Transcribing with Soniox from file: {audio_path}", extra={"model": self.model, "language": language})
-                    with open(audio_path, "rb") as f:
-                        transcription = client.stt.transcribe(
-                            file=f,
-                            model=self.model,
-                            language=language
-                        )
+                    transcription = client.stt.transcribe(
+                        file=audio_path,
+                        model=self.model,
+                        config=config
+                    )
 
                 # Wait until transcription processing is finished
                 client.stt.wait(transcription.id)
@@ -55,24 +61,48 @@ class SonioxSTTProvider(STTProvider):
             result = await asyncio.to_thread(sync_transcribe)
 
             segments = []
-            # Soniox result has text and can have channels/segments/words
-            # We'll try to extract segments if available
-            if hasattr(result, "channels"):
-                for channel in result.channels:
-                    if hasattr(channel, "segments"):
-                        for seg in channel.segments:
-                            segments.append({
-                                "start": getattr(seg, "start_ms", 0) / 1000.0,
-                                "end": getattr(seg, "end_ms", 0) / 1000.0,
-                                "text": getattr(seg, "text", ""),
-                                "speaker": f"SPEAKER_{getattr(seg, 'speaker', 'UNKNOWN')}"
-                            })
+            # Soniox result has text and tokens
+            # We'll reconstruct segments from tokens by speaker_id and gap
+            if hasattr(result, "tokens") and result.tokens:
+                current_speaker = None
+                current_segment = None
+
+                for token in result.tokens:
+                    # Some tokens might not have text (e.g. silence markers)
+                    if not token.text:
+                        continue
+
+                    speaker_id = f"SPEAKER_{token.speaker_id}" if token.speaker_id is not None else "UNKNOWN"
+
+                    # New segment if speaker changed or too long gap (>1.5s)
+                    is_new_speaker = speaker_id != current_speaker
+                    is_gap = current_segment and (token.start_ms - current_segment["end"] * 1000) > 1500
+
+                    if is_new_speaker or is_gap:
+                        if current_segment:
+                            segments.append(current_segment)
+                        current_speaker = speaker_id
+                        current_segment = {
+                            "start": token.start_ms / 1000.0,
+                            "end": token.end_ms / 1000.0,
+                            "text": token.text,
+                            "speaker": speaker_id
+                        }
+                    else:
+                        current_segment["end"] = token.end_ms / 1000.0
+                        # Add space if not already there and if token doesn't start with space
+                        if current_segment["text"] and not current_segment["text"].endswith(" ") and not token.text.startswith(" "):
+                            current_segment["text"] += " "
+                        current_segment["text"] += token.text
+
+                if current_segment:
+                    segments.append(current_segment)
 
             # Fallback if no segments found but we have text
             if not segments and result.text:
                 segments.append({
                     "start": 0.0,
-                    "end": 0.0, # Unknown duration here
+                    "end": 0.0,
                     "text": result.text,
                     "speaker": "UNKNOWN"
                 })
@@ -89,9 +119,16 @@ class SonioxSTTProvider(STTProvider):
             raise RuntimeError(f"Soniox STT failed: {str(e)}") from e
 
     async def get_models(self) -> list:
+        if not SONIOX_AVAILABLE or not self.api_key:
+             return ["stt-async-v4", "stt-async-v3", "stt-realtime-v4", "stt-realtime-v3"]
+
         try:
-            # Common Soniox models
-            return ["stt-async-v4", "stt-async-v3", "stt-realtime-v4", "stt-realtime-v3"]
+            def sync_get_models():
+                client = SonioxClient(api_key=self.api_key)
+                return client.models.list().models
+
+            models = await asyncio.to_thread(sync_get_models)
+            return [m.id for m in models if m.transcription_mode == "async"]
         except Exception as e:
             logger.error(f"Failed to fetch Soniox models: {e}")
             return ["stt-async-v4"]

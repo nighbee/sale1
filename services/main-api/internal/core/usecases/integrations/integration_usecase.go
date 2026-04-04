@@ -256,7 +256,7 @@ func (uc *IntegrationUseCase) testAIProvider(ctx context.Context, it domain.Inte
 	case domain.IntegrationSoniox:
 		url = "https://api.soniox.com/v1/transcriptions"
 		authHeader = "Authorization"
-		authValue = creds.APIKey
+		authValue = "Bearer " + creds.APIKey
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
