@@ -1,5 +1,6 @@
 import pytest
-from src.core.utils.text_processor import clean_kazakh_text, format_transcript
+from src.core.utils.text_processor import clean_kazakh_text, format_transcript, SonioxTranscriptProcessor
+from unittest.mock import MagicMock
 
 def test_kazakh_word_reconstruction():
     # Test "Ал ло" -> "Алло"
@@ -51,7 +52,7 @@ def test_speaker_label_formatting():
 
     assert "[Speaker 1]: Hello" in formatted
     assert "[Speaker 2]: Hi" in formatted
-    assert "[Speaker 2]: How are you?" in formatted
+    assert "            How are you?" in formatted
 
     # Actually my previous format_transcript test said:
     # SPEAKER_0 -> Speaker 1
@@ -79,3 +80,133 @@ def test_suffix_merging():
     assert clean_kazakh_text("мектеп ке") == "мектепке"
     # "бара мын" -> "барамын"
     assert clean_kazakh_text("бара мын") == "барамын"
+
+def test_soniox_transcript_processor_professional():
+    # Mock Soniox JSON output
+    # {
+    #   "tokens": [
+    #     {"text":"А","speaker":1},
+    #     {"text":"л","speaker":1},
+    #     {"text":"л","speaker":1},
+    #     {"text":"о","speaker":1},
+    #     {"text":", ","speaker":1},
+    #     {"text":"С","speaker":2},
+    #     {"text":"ә","speaker":2},
+    #     {"text":"л","speaker":2},
+    #     {"text":"е","speaker":2},
+    #     {"text":"м","speaker":2},
+    #     {"text":"е","speaker":2},
+    #     {"text":"т","speaker":2},
+    #     {"text":"с","speaker":2},
+    #     {"text":"і","speaker":2},
+    #     {"text":"з","speaker":2},
+    #     {"text":" ","speaker":2},
+    #     {"text":"б","speaker":2},
+    #     {"text":"е","speaker":2},
+    #     {"text":"?","speaker":2}
+    #   ]
+    # }
+
+    mock_result = MagicMock()
+
+    tokens = []
+    # Speaker 1: "А л л о , "
+    for char in "Алло, ":
+        token = MagicMock()
+        token.text = char
+        token.speaker_id = 1
+        token.start_ms = 0
+        token.end_ms = 100
+        tokens.append(token)
+
+    # Speaker 2: "С ә л е м е т с і з   б е ?"
+    for char in "Сәлеметсіз бе?":
+        token = MagicMock()
+        token.text = char
+        token.speaker_id = 2
+        token.start_ms = 2000 # Gap of 1.9s
+        token.end_ms = 2100
+        tokens.append(token)
+
+    mock_result.tokens = tokens
+
+    segments = SonioxTranscriptProcessor.process(mock_result, language="kk")
+
+    assert len(segments) == 2
+    assert segments[0]["speaker"] == "Speaker 1"
+    assert segments[0]["text"] == "Алло,"
+
+    assert segments[1]["speaker"] == "Speaker 2"
+    assert segments[1]["text"] == "Сәлеметсіз бе?"
+
+    formatted = format_transcript(segments, language="kk")
+    assert "[Speaker 1]: Алло," in formatted
+    assert "[Speaker 2]: Сәлеметсіз бе?" in formatted
+
+def test_soniox_sequential_numbering():
+    mock_result = MagicMock()
+
+    t1 = MagicMock()
+    t1.text = "Hello"
+    t1.speaker_id = 105 # High ID
+    t1.start_ms = 0
+    t1.end_ms = 500
+
+    t2 = MagicMock()
+    t2.text = "Hi"
+    t2.speaker_id = 42 # Different ID
+    t2.start_ms = 1000
+    t2.end_ms = 1500
+
+    mock_result.tokens = [t1, t2]
+
+    segments = SonioxTranscriptProcessor.process(mock_result)
+
+    assert segments[0]["speaker"] == "Speaker 1" # 105 -> Speaker 1
+    assert segments[1]["speaker"] == "Speaker 2" # 42 -> Speaker 2
+
+def test_soniox_gap_splitting():
+    mock_result = MagicMock()
+
+    t1 = MagicMock()
+    t1.text = "Part one."
+    t1.speaker_id = 1
+    t1.start_ms = 0
+    t1.end_ms = 1000
+
+    t2 = MagicMock()
+    t2.text = "Part two."
+    t2.speaker_id = 1
+    t2.start_ms = 3000 # 2s gap
+    t2.end_ms = 4000
+
+    mock_result.tokens = [t1, t2]
+
+    segments = SonioxTranscriptProcessor.process(mock_result)
+
+    assert len(segments) == 2
+    assert segments[0]["text"] == "Part one."
+    assert segments[1]["text"] == "Part two."
+
+    formatted = format_transcript(segments)
+    assert "[Speaker 1]: Part one." in formatted
+    assert "            Part two." in formatted
+
+def test_soniox_no_diarization_fallback():
+    mock_result = MagicMock()
+
+    t1 = MagicMock()
+    t1.text = "Hello world."
+    t1.speaker_id = None # No diarization
+    t1.start_ms = 0
+    t1.end_ms = 1000
+
+    mock_result.tokens = [t1]
+
+    segments = SonioxTranscriptProcessor.process(mock_result)
+
+    assert len(segments) == 1
+    assert segments[0]["speaker"] == "UNKNOWN"
+
+    formatted = format_transcript(segments)
+    assert formatted == "Hello world." # No labels
