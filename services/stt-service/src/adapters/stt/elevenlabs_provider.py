@@ -13,7 +13,7 @@ class ElevenLabsSTTProvider(STTProvider):
         if not self.api_key:
             logger.warning("ELEVENLABS_API_KEY is not set")
         self.client = ElevenLabs(api_key=self.api_key or "dummy")
-        self.model = model or "scribe_v1"
+        self.model = model or "scribe_v2"
 
     async def transcribe(self, audio_path: str, audio_url: Optional[str] = None, language: Optional[str] = None) -> dict:
         if not self.api_key:
@@ -106,9 +106,8 @@ class ElevenLabsSTTProvider(STTProvider):
     async def get_models(self) -> list:
         try:
             models = await asyncio.to_thread(self.client.models.list)
-            # Filter for models that likely support STT if possible, or return all
-            # For ElevenLabs, scribe_v1 is the main one currently.
-            return [m.model_id for m in models]
+            # Filter for models that support STT (Scribe models)
+            return [m.model_id for m in models if m.model_id.startswith("scribe_")]
         except Exception as e:
             logger.error(f"Failed to fetch ElevenLabs models: {e}")
-            return ["scribe_v1"]
+            return ["scribe_v2", "scribe_v1"]
