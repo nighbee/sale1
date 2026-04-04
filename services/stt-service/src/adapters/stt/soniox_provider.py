@@ -95,3 +95,9 @@ class SonioxSTTProvider(STTProvider):
         except Exception as e:
             logger.error(f"Failed to fetch Soniox models: {e}")
             return ["stt-async-v4"]
+
+    def supports_url_transcription(self, url: str) -> bool:
+        """Soniox supports direct transcription from HTTP/HTTPS URLs."""
+        if not url:
+            return False
+        return url.startswith("http://") or url.startswith("https://")

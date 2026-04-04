@@ -19,11 +19,6 @@ class DeepgramSTTProvider(STTProvider):
             raise RuntimeError("Deepgram API key missing")
 
         try:
-            logger.info(f"Transcribing with Deepgram: {audio_path}", extra={"language": language})
-
-            with open(audio_path, "rb") as f:
-                buffer = f.read()
-
             options_kwargs = {
                 "model": self.model,
                 "smart_format": True,
@@ -37,9 +32,18 @@ class DeepgramSTTProvider(STTProvider):
 
             options = PrerecordedOptions(**options_kwargs)
 
-            response = await self.client.listen.asyncprerecorded.v("1").transcribe_file(
-                {"buffer": buffer}, options
-            )
+            if audio_url:
+                logger.info(f"Transcribing with Deepgram from URL: {audio_url}", extra={"language": language, "model": self.model})
+                response = await self.client.listen.asyncprerecorded.v("1").transcribe_url(
+                    {"url": audio_url}, options
+                )
+            else:
+                logger.info(f"Transcribing with Deepgram from file: {audio_path}", extra={"language": language, "model": self.model})
+                with open(audio_path, "rb") as f:
+                    buffer = f.read()
+                response = await self.client.listen.asyncprerecorded.v("1").transcribe_file(
+                    {"buffer": buffer}, options
+                )
 
             res_dict = {}
             if hasattr(response, "to_dict"):
@@ -106,3 +110,9 @@ class DeepgramSTTProvider(STTProvider):
         except Exception as e:
             logger.error(f"Failed to fetch Deepgram models: {e}")
             return ["nova-2"]
+
+    def supports_url_transcription(self, url: str) -> bool:
+        """Deepgram supports direct transcription from HTTP/HTTPS URLs."""
+        if not url:
+            return False
+        return url.startswith("http://") or url.startswith("https://")
