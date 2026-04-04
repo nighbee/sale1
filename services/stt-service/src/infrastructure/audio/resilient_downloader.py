@@ -4,7 +4,7 @@ import os
 import time
 from typing import List, Optional
 from src.core.ports.audio_downloader import AudioDownloader
-from src.infrastructure.audio.http_downloader import HTTPDownloader, DownloadError
+from src.infrastructure.audio.resilient_streaming_downloader import ResilientStreamingDownloader
 from src.infrastructure.audio.curl_downloader import CurlDownloader
 
 logger = logging.getLogger(__name__)
@@ -23,13 +23,13 @@ class ResilientDownloader(AudioDownloader):
         self.max_total_attempts = max_total_attempts
         self.initial_delay = initial_delay
         self.max_duration_s = max_duration_s
-        self.http = HTTPDownloader(max_attempts=1) # One attempt per internal retry
+        self.streaming = ResilientStreamingDownloader(max_attempts_per_file=1) # One attempt per internal retry
         self.curl = CurlDownloader(timeout_s=max_duration_s)
 
     async def download(self, url: str, target_path: str) -> None:
         """
         Executes the resilient pipeline:
-        1. HTTP with Range/Resume (Smart)
+        1. Streaming with Range/Resume (Smart)
         2. Fallback to Curl (Resilient) with local resume
         3. Adaptive delays to handle 'Eventually Ready' files
         """
@@ -41,10 +41,10 @@ class ResilientDownloader(AudioDownloader):
             start_time = time.monotonic()
             
             # 1. Decide which downloader to use
-            # Prefer HTTP for the first couple of tries, then switch to Curl
+            # Prefer ResilientStreamingDownloader for the first couple of tries, then switch to Curl
             if attempt <= 2:
-                downloader = self.http
-                name = "HTTP_SMART"
+                downloader = self.streaming
+                name = "STREAMING_SMART"
             else:
                 downloader = self.curl
                 name = "CURL_RESILIENT"
