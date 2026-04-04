@@ -3,6 +3,8 @@ import time
 import asyncio
 import logging
 import aiohttp
+from pathlib import Path
+import httpx
 import random
 import json
 from typing import Optional, Dict, Any
@@ -83,114 +85,236 @@ class ResilientStreamingDownloader:
             connector=aiohttp.TCPConnector(ssl=self.verify_ssl)
         )
 
-    async def download(self, url: str, target_path: str):
-        """Download a file using parallel ranged requests and reassemble it.
-
-        Falls back to single-stream download if server doesn't support ranges or total size is unknown.
+    async def download(self, url: str, path: Path):
+        """Download `url` to `path` using ranged chunk downloads with per-chunk retries,
+        exponential backoff + jitter, smaller chunk sizes (16-32KB), optional prewarm,
+        and per-request timeouts. Raises DownloadError on terminal failure.
         """
-        temp_path = f"{target_path}.tmp"
-        parts_dir = f"{target_path}.parts"
-        os.makedirs(parts_dir, exist_ok=True)
-        meta_path = os.path.join(parts_dir, "meta.json")
+        # accept str or Path
+        path = Path(path)
+        temp_path = path.with_suffix(path.suffix + ".tmp")
 
-        cookies = self._extract_cookies(url)
+        # clamp chunk size between 16KB and 32KB to avoid throttling
+        chunk_size = max(16 * 1024, min(self.chunk_size, 32 * 1024))
 
-        session_timeout = aiohttp.ClientTimeout(total=None)
-        session = aiohttp.ClientSession(headers=self.headers, timeout=session_timeout, cookies=cookies,
-                                        connector=aiohttp.TCPConnector(ssl=self.verify_ssl))
+        max_retries = max(1, getattr(self, "max_retries_per_chunk", 3))
+        per_request_timeout = getattr(self, "per_request_timeout", 30)
+        connect_timeout = getattr(self, "session_connect_timeout", 15)
+        base_backoff = float(getattr(self, "base_backoff", 0.5))
 
-        try:
-            logger.info("Probing server for size and range support", extra={"url": url})
-            total_size, accept_ranges = await self._probe_server(session, url)
-            logger.info("Probe result", extra={"total_size": total_size, "accept_ranges": accept_ranges})
+        headers_base = dict(self.headers) if getattr(self, "headers", None) else {}
+        cookies = self._extract_cookies(url) if hasattr(self, "_extract_cookies") else None
 
-            if total_size is None or not accept_ranges:
-                logger.info("Server does not support ranged downloads or size unknown, falling back to single-stream", extra={"url": url})
-                await self._single_stream_download(session, url, temp_path)
-                # validate and move
-                self._validate(temp_path, None)
-                os.replace(temp_path, target_path)
-                logger.info("Download success (single-stream)", extra={"target": target_path})
-                return
+        logger.info("Starting download", extra={"url": url, "target": str(path), "chunk_size": chunk_size})
 
-            # build chunk ranges
-            chunks = []  # list of (start, end, idx)
-            idx = 0
-            for start in range(0, total_size, self.chunk_size):
-                end = min(start + self.chunk_size - 1, total_size - 1)
-                chunks.append((start, end, idx))
-                idx += 1
+        timeout = httpx.Timeout(None, connect=connect_timeout, read=per_request_timeout)
 
-            total_chunks = len(chunks)
-            logger.info(f"Downloading {total_size} bytes in {total_chunks} chunks (chunk_size={self.chunk_size})", extra={"url": url})
+        async with httpx.AsyncClient(headers=headers_base, timeout=timeout, verify=self.verify_ssl, follow_redirects=True, cookies=cookies) as client:
+            # Probe server for accept-ranges and total size
+            total_size = None
+            accept_ranges = False
 
-            # load meta if exists
-            completed = set()
-            if os.path.exists(meta_path):
-                try:
-                    with open(meta_path, 'r', encoding='utf-8') as mf:
-                        meta = json.load(mf)
-                        if meta.get('total_size') == total_size and meta.get('chunk_size') == self.chunk_size:
-                            completed = set(meta.get('completed', []))
-                except Exception:
-                    logger.debug("Failed to load meta, starting fresh")
-
-            semaphore = asyncio.Semaphore(self.max_concurrency)
-            chunk_tasks = []
-
-            async def schedule_chunk(start, end, idx):
-                if idx in completed:
-                    logger.debug(f"Skipping already completed chunk {idx}")
-                    return True
-                await semaphore.acquire()
-                try:
-                    ok = await self._download_chunk_with_retries(session, url, start, end, idx, parts_dir)
-                    if ok:
-                        completed.add(idx)
-                        # update meta
-                        try:
-                            with open(meta_path, 'w', encoding='utf-8') as mf:
-                                json.dump({
-                                    'total_size': total_size,
-                                    'chunk_size': self.chunk_size,
-                                    'completed': sorted(list(completed))
-                                }, mf)
-                        except Exception:
-                            logger.debug("Failed to write meta file")
-                    return ok
-                finally:
-                    semaphore.release()
-
-            for start, end, i in chunks:
-                task = asyncio.create_task(schedule_chunk(start, end, i))
-                chunk_tasks.append(task)
-
-            # await all scheduled tasks and fail if any chunk failed
-            results = await asyncio.gather(*chunk_tasks, return_exceptions=True)
-            failed = [r for r in results if r is not True]
-            if failed:
-                raise DownloadError(f"Some chunks failed: {failed}")
-
-            # reassemble
-            logger.info("All chunks downloaded, reassembling file", extra={"target": target_path})
-            await asyncio.to_thread(self._assemble_file, parts_dir, temp_path, total_chunks)
-
-            # validate
-            self._validate(temp_path, total_size)
-
-            os.replace(temp_path, target_path)
-            # cleanup
             try:
-                for fn in os.listdir(parts_dir):
-                    os.remove(os.path.join(parts_dir, fn))
-                os.rmdir(parts_dir)
-            except Exception:
-                pass
+                resp = await client.head(url, follow_redirects=True)
+                if resp.status_code in (200, 206):
+                    cl = resp.headers.get("Content-Length")
+                    if cl and cl.isdigit():
+                        total_size = int(cl)
+                    accept_ranges = resp.headers.get("Accept-Ranges", "").lower() == "bytes"
+                    logger.debug("HEAD probe", extra={"status": resp.status_code, "content-length": cl, "accept_ranges": accept_ranges})
+            except Exception as e:
+                logger.debug("HEAD probe failed", extra={"error": str(e)})
 
-            logger.info("Download success", extra={"target": target_path, "bytes": total_size})
+            # If HEAD didn't give size, try a ranged GET (0-0)
+            if total_size is None:
+                try:
+                    probe_headers = dict(headers_base)
+                    probe_headers["Range"] = "bytes=0-0"
+                    probe = await client.get(url, headers=probe_headers, follow_redirects=True)
+                    if probe.status_code in (200, 206):
+                        cr = probe.headers.get("Content-Range")
+                        if cr and "/" in cr:
+                            try:
+                                total_size = int(cr.split("/")[-1])
+                            except Exception:
+                                total_size = None
+                        else:
+                            cl = probe.headers.get("Content-Length")
+                            if cl and cl.isdigit():
+                                total_size = int(cl)
+                        accept_ranges = probe.headers.get("Accept-Ranges", "").lower() == "bytes" or probe.status_code == 206
+                        logger.debug("Ranged probe", extra={"status": probe.status_code, "content-range": cr, "total": total_size, "accept_ranges": accept_ranges})
+                except Exception as e:
+                    logger.debug("Ranged probe failed", extra={"error": str(e)})
 
-        finally:
-            await session.close()
+            # If no total_size or ranges not supported => fallback to single-stream with retry logic
+            if not accept_ranges or total_size is None:
+                logger.info("Server does not support ranges or size unknown - falling back to single-stream", extra={"url": url})
+                # Implement retry loop for single-stream as well
+                single_retries = 0
+                while single_retries <= max_retries:
+                    try:
+                        headers = dict(headers_base)
+                        headers["Referer"] = url
+                        logger.info("Single-stream attempt", extra={"attempt": single_retries + 1})
+                        downloaded = 0
+                        async with client.stream("GET", url, headers=headers) as resp:
+                            if resp.status_code != 200:
+                                if resp.status_code == 429 and single_retries < max_retries:
+                                    raise httpx.HTTPStatusError("429 Too Many Requests", request=resp.request, response=resp)
+                                raise DownloadError(f"Single-stream HTTP {resp.status_code}")
+                            if "text/html" in (resp.headers.get("Content-Type") or "").lower():
+                                raise DownloadError("Single-stream returned HTML")
+                            # write to temp
+                            temp_path.parent.mkdir(parents=True, exist_ok=True)
+                            with open(temp_path, "wb") as f:
+                                async for chunk in resp.aiter_bytes(chunk_size):
+                                    if not chunk:
+                                        continue
+                                    await asyncio.to_thread(f.write, chunk)
+                                    downloaded += len(chunk)
+                        logger.info("Single-stream download completed", extra={"bytes": downloaded})
+                        # validate
+                        if downloaded < getattr(self, "min_file_size", 1):
+                            raise DownloadError(f"Downloaded too small: {downloaded}")
+                        temp_path.replace(path)
+                        return
+                    except (httpx.ReadTimeout, httpx.ConnectError, httpx.HTTPStatusError, DownloadError) as e:
+                        single_retries += 1
+                        if single_retries > max_retries:
+                            logger.error("Single-stream download failed after retries", extra={"error": str(e)})
+                            raise DownloadError(f"Single-stream failed: {e}") from e
+                        # backoff with jitter
+                        backoff = base_backoff * (2 ** (single_retries - 1))
+                        jitter = random.uniform(0, backoff)
+                        delay = backoff + jitter
+                        logger.warning("Single-stream retry", extra={"attempt": single_retries + 1, "delay": delay, "error": str(e)})
+                        await asyncio.sleep(delay)
+
+            # At this point we have total_size and accept_ranges True
+            logger.info("Proceeding with ranged download", extra={"total_size": total_size, "chunk_size": chunk_size})
+
+            # Optional prewarm: fetch a small first-range to warm connection (helps some throttlers)
+            prewarm_bytes = min(4096, chunk_size)
+            try_prewarms = 0
+            prewarm_done = False
+            if prewarm_bytes > 0:
+                while try_prewarms < 1 and not prewarm_done:
+                    try:
+                        ph = dict(headers_base)
+                        ph["Range"] = f"bytes=0-{prewarm_bytes - 1}"
+                        logger.debug("Prewarm request", extra={"range": ph["Range"]})
+                        pre = await client.get(url, headers=ph)
+                        if pre.status_code in (200, 206):
+                            data = pre.content  # small, safe to access .content
+                            temp_path.parent.mkdir(parents=True, exist_ok=True)
+                            mode = "r+b" if temp_path.exists() else "wb"
+                            if mode == "r+b":
+                                f = open(temp_path, "r+b")
+                            else:
+                                f = open(temp_path, "wb")
+                            try:
+                                await asyncio.to_thread(f.seek, 0)
+                                await asyncio.to_thread(f.write, data)
+                                prewarm_done = True
+                                logger.debug("Prewarm successful", extra={"bytes": len(data)})
+                            finally:
+                                await asyncio.to_thread(f.close)
+                        else:
+                            logger.debug("Prewarm returned non-2xx", extra={"status": pre.status_code})
+                    except Exception as e:
+                        logger.debug("Prewarm failed", extra={"error": str(e)})
+                    finally:
+                        try_prewarms += 1
+
+            # Ensure temp file exists and is the right size (we will write at offsets)
+            if not temp_path.exists():
+                temp_path.parent.mkdir(parents=True, exist_ok=True)
+                temp_path.write_bytes(b"")
+
+            # Download chunks sequentially (per-chunk retries with exponential backoff + jitter)
+            offset = 0
+            while offset < total_size:
+                start = offset
+                end = min(offset + chunk_size - 1, total_size - 1)
+                chunk_idx = start // chunk_size
+
+                attempt = 0
+                success = False
+                last_exception = None
+
+                while attempt <= max_retries and not success:
+                    attempt += 1
+                    try:
+                        ch_headers = dict(headers_base)
+                        ch_headers["Range"] = f"bytes={start}-{end}"
+                        ch_headers["Referer"] = url
+                        logger.info("Chunk attempt", extra={"chunk_idx": chunk_idx, "range": f"{start}-{end}", "attempt": attempt})
+
+                        # use a fresh small timeout for this chunk
+                        chunk_timeout = httpx.Timeout(None, connect=connect_timeout, read=per_request_timeout)
+                        async with httpx.AsyncClient(headers=ch_headers, timeout=chunk_timeout, verify=self.verify_ssl, follow_redirects=True, cookies=cookies) as chunk_client:
+                            resp = await chunk_client.get(url)
+                            if resp.status_code == 429:
+                                # throttle - treat as retryable
+                                raise httpx.HTTPStatusError("429 Too Many Requests", request=resp.request, response=resp)
+                            if resp.status_code not in (200, 206):
+                                raise DownloadError(f"Chunk {chunk_idx} HTTP {resp.status_code}")
+
+                            # read chunk body
+                            body = await resp.aread()
+                            if not body:
+                                raise DownloadError(f"Chunk {chunk_idx} returned empty body")
+
+                            # write body at correct offset
+                            def write_at(path_obj: Path, pos: int, data: bytes):
+                                with open(path_obj, "r+b") as fh:
+                                    fh.seek(pos)
+                                    fh.write(data)
+
+                            # create file if missing
+                            if not temp_path.exists():
+                                temp_path.write_bytes(b"")
+
+                            # ensure file large enough to seek and write
+                            await asyncio.to_thread(write_at, temp_path, start, body)
+
+                            logger.info("Chunk downloaded", extra={"chunk_idx": chunk_idx, "bytes": len(body)})
+                            success = True
+                            break
+
+                    except (httpx.ReadTimeout, httpx.ConnectError, httpx.RemoteProtocolError, httpx.ProtocolError, httpx.HTTPStatusError, DownloadError) as exc:
+                        last_exception = exc
+                        # if exhausted
+                        if attempt > max_retries:
+                            logger.error("Chunk failed after retries", extra={"chunk_idx": chunk_idx, "error": str(exc)})
+                            break
+                        # compute backoff + jitter
+                        backoff = base_backoff * (2 ** (attempt - 1))
+                        jitter = random.uniform(0, backoff)
+                        delay = backoff + jitter
+                        logger.warning("Chunk retry scheduled", extra={"chunk_idx": chunk_idx, "attempt": attempt, "delay": delay, "error": str(exc)})
+                        await asyncio.sleep(delay)
+                    except Exception as exc:
+                        last_exception = exc
+                        logger.exception("Unexpected chunk error", extra={"chunk_idx": chunk_idx})
+                        # break out to fail
+                        break
+
+                if not success:
+                    raise DownloadError(f"Chunk {chunk_idx} failed after {max_retries} retries: {last_exception}")
+
+                # advance offset
+                offset = end + 1
+
+            # finished all chunks; final validation
+            final_size = temp_path.stat().st_size
+            if final_size != total_size:
+                raise DownloadError(f"Final size mismatch {final_size} != {total_size}")
+
+            # move temp to final path atomically
+            temp_path.replace(path)
+            logger.info("Download complete", extra={"target": str(path), "bytes": final_size})
 
     async def _probe_server(self, session: aiohttp.ClientSession, url: str):
         """Try to determine total size and whether server accepts Range requests."""
