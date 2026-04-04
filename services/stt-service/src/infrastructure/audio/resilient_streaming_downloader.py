@@ -24,16 +24,15 @@ class ResilientStreamingDownloader(AudioDownloader):
         self,
         chunk_size: int = 16384,  # 16KB
         min_file_size: int = 5120, # 5KB
-        max_attempts_per_file: int = 20,
-        max_attempts_per_chunk: int = 5,
+        max_attempts_per_file: int = 50,
         base_backoff: float = 1.0,
         circuit_breaker_threshold: int = 3,
         verify_ssl: bool = True,
+        **kwargs
     ):
         self.chunk_size = chunk_size
         self.min_file_size = min_file_size
         self.max_attempts_per_file = max_attempts_per_file
-        self.max_attempts_per_chunk = max_attempts_per_chunk
         self.base_backoff = base_backoff
         self.circuit_breaker_threshold = circuit_breaker_threshold
         self.verify_ssl = verify_ssl
@@ -142,6 +141,11 @@ class ResilientStreamingDownloader(AudioDownloader):
                             text = await response.text()
                             raise DownloadError(f"HTTP {response.status}: {text[:200]}")
 
+                        # Ensure we aren't downloading an HTML error page
+                        content_type = response.headers.get("Content-Type", "").lower()
+                        if "text/html" in content_type:
+                            raise DownloadError(f"Expected audio, got {content_type}")
+
                         # Validate Metadata (ETag / Last-Modified)
                         current_etag = response.headers.get("ETag")
                         current_modified = response.headers.get("Last-Modified")
@@ -161,7 +165,9 @@ class ResilientStreamingDownloader(AudioDownloader):
                                 if etag_mismatch or mod_mismatch:
                                     logger.warning(f"Resource changed (ETag: {etag_mismatch}, Mod: {mod_mismatch}), restarting.")
                                     start_byte = 0
+                                    use_range = False
                                     if os.path.exists(temp_path): os.remove(temp_path)
+                                    raise DownloadError("Resource changed (ETag/Last-Modified mismatch)")
 
                         # Save metadata for next time
                         self._save_meta(metadata_path, {"etag": current_etag, "last_modified": current_modified})
@@ -180,9 +186,10 @@ class ResilientStreamingDownloader(AudioDownloader):
                                         logger.error(f"Range mismatch: Server started at {actual_start}, we expected {start_byte}")
                                         use_range = False # Switch to full download
                                         raise DownloadError("Server returned incorrect Range offset")
+                            except DownloadError:
+                                raise
                             except Exception as e:
-                                if not isinstance(e, DownloadError):
-                                    logger.warning(f"Failed to parse Content-Range: {e}")
+                                logger.warning(f"Failed to parse Content-Range: {e}")
 
                         if server_total_size is None:
                             content_length = response.headers.get("Content-Length")
@@ -204,29 +211,25 @@ class ResilientStreamingDownloader(AudioDownloader):
                         mode = "ab" if start_byte > 0 and response.status == 206 else "wb"
 
                         # TRUE Streaming Consumption
+                        # Using iter_any() to ensure we don't stall waiting for a full chunk
+                        bytes_in_this_attempt = 0
                         with open(temp_path, mode) as f:
-                            # Inner chunk loop with its own retry logic
-                            chunk_attempt = 0
-                            while chunk_attempt < self.max_attempts_per_chunk:
-                                try:
-                                    async for chunk in response.content.iter_chunked(self.chunk_size):
-                                        if chunk:
-                                            # Anti-HTML guard (especially for Sipuni redirects/errors)
-                                            if start_byte == 0 and chunk.strip().lower().startswith((b"<!doctype", b"<html")):
-                                                raise DownloadError("Detected HTML content instead of audio")
+                            try:
+                                async for chunk in response.content.iter_any():
+                                    if chunk:
+                                        # Anti-HTML guard (especially for Sipuni redirects/errors)
+                                        if start_byte == 0 and chunk.strip().lower().startswith((b"<!doctype", b"<html")):
+                                            raise DownloadError("Detected HTML content instead of audio")
 
-                                            await asyncio.to_thread(f.write, chunk)
-                                            start_byte += len(chunk)
-                                            consecutive_failures = 0 # Reset on successful chunk
-                                            chunk_attempt = 0 # Reset on successful chunk
-                                    break # Stream finished successfully
-                                except (aiohttp.ClientError, asyncio.TimeoutError, IOError) as e:
-                                    chunk_attempt += 1
-                                    logger.warning(f"Chunk read failed ({chunk_attempt}/{self.max_attempts_per_chunk}): {e}")
-                                    if chunk_attempt >= self.max_attempts_per_chunk:
-                                        raise DownloadError(f"Chunk read failed after {chunk_attempt} attempts: {e}")
-                                    # We need to resume the entire request because response.content is exhausted/broken
-                                    raise # Re-throw to the outer loop to perform a Range request resume
+                                        await asyncio.to_thread(f.write, chunk)
+                                        start_byte += len(chunk)
+                                        bytes_in_this_attempt += len(chunk)
+                                        consecutive_failures = 0 # Reset on successful chunk
+                                break # Stream finished successfully
+                            except (aiohttp.ClientError, asyncio.TimeoutError, IOError) as e:
+                                # We need to resume the entire request because response.content is exhausted/broken
+                                # Re-throw to the outer loop to perform a Range request resume
+                                raise
 
                         # Verify if we received everything expected
                         if expected_total_size and start_byte < expected_total_size:
@@ -238,9 +241,14 @@ class ResilientStreamingDownloader(AudioDownloader):
                 except (aiohttp.ClientError, asyncio.TimeoutError, DownloadError, IOError) as e:
                     consecutive_failures += 1
                     duration = time.monotonic() - start_total_time
-                    logger.warning(f"Attempt {attempt} failed after {duration:.1f}s: {e}. Failures: {consecutive_failures}", extra={"url": url})
+                    logger.warning(
+                        f"Attempt {attempt} failed after {duration:.1f}s: {e}. "
+                        f"Bytes received in this attempt: {bytes_in_this_attempt if 'bytes_in_this_attempt' in locals() else 0}. "
+                        f"Total bytes: {start_byte}. Failures: {consecutive_failures}",
+                        extra={"url": url}
+                    )
 
-                    if attempt >= self.max_attempts_per_file:
+                    if attempt >= self.max_attempts_per_file or "HTML" in str(e):
                         raise DownloadError(f"Download failed after {attempt} attempts: {e}")
 
                     # Exponential backoff with jitter
