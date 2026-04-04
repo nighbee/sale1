@@ -92,9 +92,6 @@ class SonioxSTTProvider(STTProvider):
                         }
                     else:
                         current_segment["end"] = token.end_ms / 1000.0
-                        # Add space if not already there and if token doesn't start with space
-                        if current_segment["text"] and not current_segment["text"].endswith(" ") and not token.text.startswith(" "):
-                            current_segment["text"] += " "
                         current_segment["text"] += token.text
 
                 if current_segment:
