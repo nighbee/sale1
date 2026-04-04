@@ -5,6 +5,7 @@ import logging
 import os
 import time
 from src.core.usecases.process_audio import ProcessAudioUseCase
+from src.infrastructure.monitoring.circuit_breaker import CircuitBreakerError
 from src.adapters.storage.postgres_repo import log_processing_event, update_call_status
 from src.infrastructure.monitoring.metrics import JOBS_PROCESSED
 
@@ -66,6 +67,19 @@ async def start_consumer():
                         extra={"call_id": call_id,
                                "attempt": retry_count + 1, "elapsed_s": elapsed},
                     )
+                except CircuitBreakerError as e:
+                    # Circuit Breaker state machine has halted the workflow.
+                    # We MUST NOT allow retry loops for blocked workflows.
+                    JOBS_PROCESSED.labels(status='halted').inc()
+                    logger.error(
+                        f"HALTED by Circuit Breaker: {e}",
+                        extra={"call_id": call_id, "state": e.state.value}
+                    )
+                    await asyncio.to_thread(log_processing_event, call_id, "stt-service", "halted", error_message=str(e), retry_count=retry_count)
+                    await asyncio.to_thread(update_call_status, call_id, "halted")
+                    # ABORT further processing of this job
+                    continue
+
                 except Exception as e:
                     # mark metric
                     JOBS_PROCESSED.labels(status='error').inc()
