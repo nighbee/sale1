@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { integrationApi } from '../../../entities/integration/api';
 import { toast } from 'sonner';
 
@@ -6,7 +6,7 @@ export const useCheckModel = (type: string) => {
   const [isChecking, setIsChecking] = useState(false);
   const [checkResult, setCheckResult] = useState<{ success: boolean; transcript?: string; error?: string } | null>(null);
 
-  const checkModel = async (credentials?: any, model?: string) => {
+  const checkModel = useCallback(async (credentials?: any, model?: string) => {
     setIsChecking(true);
     setCheckResult(null);
     try {
@@ -25,7 +25,7 @@ export const useCheckModel = (type: string) => {
     } finally {
       setIsChecking(false);
     }
-  };
+  }, [type]);
 
   return { isChecking, checkResult, checkModel, setCheckResult };
 };
