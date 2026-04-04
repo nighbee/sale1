@@ -67,7 +67,10 @@ class GroqSTTProvider(STTProvider):
     async def get_models(self) -> list:
         try:
             models = await self.client.models.list()
-            return [m.id for m in models.data if "whisper" in m.id or "stt" in m.id]
+            res = [m.id for m in models.data if "whisper" in m.id or "stt" in m.id]
+            if not res:
+                return ["whisper-large-v3-turbo", "whisper-large-v3", "distil-whisper-large-v3-en"]
+            return res
         except Exception as e:
             logger.error(f"Failed to fetch Groq models: {e}")
             return ["whisper-large-v3-turbo", "whisper-large-v3", "distil-whisper-large-v3-en"]
