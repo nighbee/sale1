@@ -18,7 +18,7 @@ class DownloadError(Exception):
 class ResilientStreamingDownloader:
     def __init__(
         self,
-        chunk_size: int = 16384,
+        chunk_size: int = 8192,
         min_file_size: int = 5120,
         max_attempts_per_file: int = 50,
         base_backoff: float = 1.0,
@@ -199,7 +199,7 @@ class ResilientStreamingDownloader:
                 now = time.monotonic()
 
                 # 🔥 detect stall BEFORE processing chunk
-                if now - last_data_time > 15:
+                if now - last_data_time > 1:
                     raise DownloadError("Stream stalled (no data for 15s)")
 
                 if not chunk:
