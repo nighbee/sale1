@@ -6,7 +6,7 @@ import logging
 import tempfile
 import time
 from urllib.parse import urlparse
-from src.adapters.storage.postgres_repo import save_transcript, update_call_link, get_call_link, update_storage_link
+from src.adapters.storage.postgres_repo import save_transcript, update_call_link, get_call_links, update_storage_link
 from src.adapters.events.redis_publisher import publish_transcript_ready
 from src.adapters.storage.minio_client import MinioClient
 from src.infrastructure.audio.diarization import DiarizationService, merge_transcript_with_diarization
@@ -79,10 +79,22 @@ class ProcessAudioUseCase:
             integrations = await self.api_client.get_active_integrations()
             stt_provider = STTProviderFactory.create(stt_provider_name, integrations, default_model=stt_model_name)
 
-            # Check if MinIO link already exists in the database
-            db_call_link = await asyncio.to_thread(get_call_link, call_id)
-            if db_call_link and db_call_link.startswith("minio://"):
-                logger.info("MinIO link found in database, prioritizing it", extra={"call_id": call_id, "minio_link": db_call_link})
+            # Check for existing links in DB to see if we should override the job's URL
+            # We prefer the original Sipuni link if available for providers that support it.
+            db_call_link, db_storage_link = await asyncio.to_thread(get_call_links, call_id)
+
+            # Transcription Strategy:
+            # 1. If provider supports URL transcription, prefer original HTTP(S) link (Sipuni)
+            # 2. Otherwise, if MinIO storage_link exists, use it to avoid re-downloading from external source
+            # 3. Fallback to whatever was in the job
+
+            if db_call_link and db_call_link.startswith("http") and stt_provider.supports_url_transcription(db_call_link):
+                logger.info("Using original HTTP link for direct transcription", extra={"call_id": call_id, "url": db_call_link})
+                audio_url = db_call_link
+            elif db_storage_link and db_storage_link.startswith("minio://"):
+                logger.info("Using existing MinIO storage link", extra={"call_id": call_id, "url": db_storage_link})
+                audio_url = db_storage_link
+            elif db_call_link:
                 audio_url = db_call_link
 
             # Decide if we can skip download/conversion

@@ -53,7 +53,7 @@ func (r *callRepository) GetByID(ctx context.Context, id string) (*domain.Call, 
 	query := `
 		SELECT id, manager_id, manager_name, client_phone, client_id, duration, call_link, storage_link, chat_link, call_date, call_time, status, source, external_id, created_at, updated_at
 		FROM calls_schema.calls
-		WHERE id = $1 OR external_id = $1
+		WHERE id::text = $1 OR external_id = $1
 	`
 
 	call := &domain.Call{}
