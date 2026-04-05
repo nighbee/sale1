@@ -309,13 +309,22 @@ func (h *CallHandler) GetAudio(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Call not found"})
 	}
 	var bucketName, objectName string
-	// Prefer redirecting to HTTP-based links early
+
+	// Prefer redirecting to original HTTP-based links early (e.g. Sipuni)
 	if strings.HasPrefix(call.CallLink, "http") {
 		return c.Redirect(call.CallLink)
 	}
 
-	if strings.HasPrefix(call.CallLink, "minio://") {
-		parts := strings.Split(strings.TrimPrefix(call.CallLink, "minio://"), "/")
+	// Determine storage path: prefer storage_link, fallback to call_link if it contains minio://
+	storageLink := ""
+	if call.StorageLink != nil && *call.StorageLink != "" {
+		storageLink = *call.StorageLink
+	} else if strings.HasPrefix(call.CallLink, "minio://") {
+		storageLink = call.CallLink
+	}
+
+	if strings.HasPrefix(storageLink, "minio://") {
+		parts := strings.Split(strings.TrimPrefix(storageLink, "minio://"), "/")
 		if len(parts) >= 2 {
 			bucketName = parts[0]
 			objectName = strings.Join(parts[1:], "/")
@@ -323,9 +332,9 @@ func (h *CallHandler) GetAudio(c *fiber.Ctx) error {
 	}
 
 	if bucketName == "" {
-		// Fallback to older convention: bucket 'audio' and id.mp3
+		// Final fallback to older convention: bucket 'audio' and id.wav (legacy)
 		bucketName = "audio"
-		objectName = fmt.Sprintf("%s.mp3", id)
+		objectName = fmt.Sprintf("%s.wav", id)
 	}
 
 	// Use a short context timeout to avoid hanging requests

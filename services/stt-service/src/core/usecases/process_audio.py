@@ -6,7 +6,7 @@ import logging
 import tempfile
 import time
 from urllib.parse import urlparse
-from src.adapters.storage.postgres_repo import save_transcript, update_call_link, get_call_link
+from src.adapters.storage.postgres_repo import save_transcript, update_call_link, get_call_link, update_storage_link
 from src.adapters.events.redis_publisher import publish_transcript_ready
 from src.adapters.storage.minio_client import MinioClient
 from src.infrastructure.audio.diarization import DiarizationService, merge_transcript_with_diarization
@@ -123,8 +123,8 @@ class ProcessAudioUseCase:
                 await asyncio.to_thread(self.minio.upload_file, object_name, wav_path)
                 logger.info("[3/6] MinIO upload done", extra={"call_id": call_id, "object_name": object_name})
 
-                # Update call record with MinIO reference
-                await asyncio.to_thread(update_call_link, call_id, f"minio://audio/{object_name}")
+                # Update call record with MinIO reference in storage_link to preserve original call_link
+                await asyncio.to_thread(update_storage_link, call_id, f"minio://audio/{object_name}")
             else:
                 logger.info("[SKIP] Skipping download/conversion for provider that supports direct URL transcription",
                             extra={"call_id": call_id, "provider": stt_provider_name})

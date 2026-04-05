@@ -41,10 +41,13 @@ def get_call_link(call_id):
     cur = None
     try:
         cur = conn.cursor()
-        query = "SELECT call_link FROM calls_schema.calls WHERE id = %s"
+        query = "SELECT call_link, storage_link FROM calls_schema.calls WHERE id = %s"
         cur.execute(query, (call_id,))
         row = cur.fetchone()
-        return row[0] if row else None
+        if row:
+            # Prefer storage_link if it exists
+            return row[1] if row[1] else row[0]
+        return None
     finally:
         if cur:
             cur.close()
@@ -89,6 +92,20 @@ def log_processing_event(call_id, service_name, status, error_message=None, retr
             VALUES (gen_random_uuid(), %s, %s, %s, %s, %s)
         """
         cur.execute(query, (call_id, service_name, status, error_message, retry_count))
+        conn.commit()
+    finally:
+        if cur:
+            cur.close()
+        conn.rollback()  # Ensure clean state
+        get_pool().putconn(conn)
+
+def update_storage_link(call_id, storage_link):
+    conn = get_pool().getconn()
+    cur = None
+    try:
+        cur = conn.cursor()
+        query = "UPDATE calls_schema.calls SET storage_link = %s, updated_at = NOW() WHERE id = %s"
+        cur.execute(query, (storage_link, call_id))
         conn.commit()
     finally:
         if cur:
