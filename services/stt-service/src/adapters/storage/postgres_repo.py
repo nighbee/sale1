@@ -36,7 +36,8 @@ def save_transcript(call_id, transcript_json, stt_provider):
         conn.rollback()  # Ensure clean state
         get_pool().putconn(conn)
 
-def get_call_link(call_id):
+def get_call_links(call_id):
+    """Returns (call_link, storage_link) for a call."""
     conn = get_pool().getconn()
     cur = None
     try:
@@ -45,9 +46,8 @@ def get_call_link(call_id):
         cur.execute(query, (call_id,))
         row = cur.fetchone()
         if row:
-            # Prefer storage_link if it exists
-            return row[1] if row[1] else row[0]
-        return None
+            return row[0], row[1]
+        return None, None
     finally:
         if cur:
             cur.close()

@@ -139,11 +139,11 @@ func (h *CallHandler) GetCall(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Call not found"})
 	}
 
-	transcript, _ := h.transcriptRepo.GetByCallID(c.Context(), id)
+	transcript, _ := h.transcriptRepo.GetByCallID(c.Context(), call.ID)
 	if transcript != nil {
 		transcript.Transcript = h.formatTranscript(transcript.SpeakerDiarizedJSON)
 	}
-	analysis, _ := h.analysisRepo.GetByCallID(c.Context(), id)
+	analysis, _ := h.analysisRepo.GetByCallID(c.Context(), call.ID)
 
 	log.Info("call fetched", zap.String("call_id", id), zap.String("status", string(call.Status)))
 	return c.JSON(fiber.Map{
@@ -169,9 +169,17 @@ func (h *CallHandler) GetTranscript(c *fiber.Ctx) error {
 	id := c.Params("id")
 	log.Debug("fetching transcript", zap.String("call_id", id))
 
+	// Resolve the internal UUID first
+	call, err := h.callRepo.GetByID(c.Context(), id)
+	if err != nil {
+		log.Warn("call not found for transcript", zap.String("call_id", id), zap.Error(err))
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Call not found"})
+	}
+	internalID := call.ID
+
 	// Try gRPC first if client is available
 	if h.grpcClient != nil {
-		resp, err := h.grpcClient.GetTranscript(c.Context(), id)
+		resp, err := h.grpcClient.GetTranscript(c.Context(), internalID)
 		if err == nil {
 			log.Debug("transcript fetched via gRPC", zap.String("call_id", id))
 			// Map to domain-like structure for frontend compatibility
@@ -185,15 +193,15 @@ func (h *CallHandler) GetTranscript(c *fiber.Ctx) error {
 		log.Debug("gRPC transcript fetch failed, falling back to DB", zap.String("call_id", id), zap.Error(err))
 	}
 
-	transcript, err := h.transcriptRepo.GetByCallID(c.Context(), id)
+	transcript, err := h.transcriptRepo.GetByCallID(c.Context(), internalID)
 	if err != nil {
-		log.Warn("transcript not found", zap.String("call_id", id), zap.Error(err))
+		log.Warn("transcript not found", zap.String("call_id", internalID), zap.Error(err))
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Transcript not found"})
 	}
 
 	transcript.Transcript = h.formatTranscript(transcript.SpeakerDiarizedJSON)
 
-	log.Info("transcript fetched from DB", zap.String("call_id", id))
+	log.Info("transcript fetched from DB", zap.String("call_id", internalID))
 	return c.JSON(transcript)
 }
 
@@ -213,9 +221,17 @@ func (h *CallHandler) GetAnalysis(c *fiber.Ctx) error {
 	id := c.Params("id")
 	log.Debug("fetching analysis", zap.String("call_id", id))
 
+	// Resolve the internal UUID first
+	call, err := h.callRepo.GetByID(c.Context(), id)
+	if err != nil {
+		log.Warn("call not found for analysis", zap.String("call_id", id), zap.Error(err))
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Call not found"})
+	}
+	internalID := call.ID
+
 	// Try gRPC first if client is available
 	if h.grpcClient != nil {
-		resp, err := h.grpcClient.GetAnalysis(c.Context(), id)
+		resp, err := h.grpcClient.GetAnalysis(c.Context(), internalID)
 		if err == nil {
 			log.Debug("analysis fetched via gRPC", zap.String("call_id", id))
 			// Map to domain-like structure for frontend compatibility
@@ -239,25 +255,25 @@ func (h *CallHandler) GetAnalysis(c *fiber.Ctx) error {
 		log.Debug("gRPC analysis fetch failed, falling back to DB", zap.String("call_id", id), zap.Error(err))
 	}
 
-	analysis, err := h.analysisRepo.GetByCallID(c.Context(), id)
+	analysis, err := h.analysisRepo.GetByCallID(c.Context(), internalID)
 	if err != nil {
 		// If analysis is not found, return a 200 with an explicit empty response so
 		// frontend can render a friendly 'not yet processed' state instead of an error.
 		if err.Error() == "analysis report not found" {
-			log.Warn("analysis not found", zap.String("call_id", id), zap.Error(err))
+			log.Warn("analysis not found", zap.String("call_id", internalID), zap.Error(err))
 			return c.JSON(fiber.Map{
-				"call_id":  id,
+				"call_id":  internalID,
 				"analysis": nil,
 				"message":  "Analysis not found",
 			})
 		}
 
 		// Other errors are treated as internal errors
-		log.Error("failed to fetch analysis", zap.String("call_id", id), zap.Error(err))
+		log.Error("failed to fetch analysis", zap.String("call_id", internalID), zap.Error(err))
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	log.Info("analysis fetched from DB", zap.String("call_id", id))
+	log.Info("analysis fetched from DB", zap.String("call_id", internalID))
 	return c.JSON(analysis)
 }
 
@@ -336,7 +352,7 @@ func (h *CallHandler) GetAudio(c *fiber.Ctx) error {
 	if bucketName == "" {
 		// Final fallback to older convention: bucket 'audio' and id.wav (legacy)
 		bucketName = "audio"
-		objectName = fmt.Sprintf("%s.wav", id)
+		objectName = fmt.Sprintf("%s.wav", call.ID)
 	}
 
 	// Use a short context timeout to avoid hanging requests
