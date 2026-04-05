@@ -132,7 +132,11 @@ func (uc *HandleEventUseCase) Execute(ctx context.Context, request json.RawMessa
 		managerName = user.ManagerName
 	}
 
-	callID := uuid.New().String()
+	// Generate deterministic UUID for the call based on Sipuni CallID
+	// This ensures we don't create duplicate records if we receive the same event multiple times
+	// and makes it easier to link data across systems.
+	namespace := uuid.MustParse("6ba7b810-9dad-11d1-80b4-00c04fd430c8") // DNS namespace as a base
+	callID := uuid.NewMD5(namespace, []byte(notify.CallID)).String()
 
 	// Parse timestamps.
 	// Talk duration = hang-up timestamp − answer timestamp (not start timestamp,

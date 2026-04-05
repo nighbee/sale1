@@ -19,6 +19,7 @@ type Call struct {
 	ClientID     *string    `json:"client_id,omitempty"`
 	Duration     int        `json:"duration"`
 	CallLink     string     `json:"call_link"`
+	StorageLink  *string    `json:"storage_link,omitempty"`
 	ChatLink     *string    `json:"chat_link,omitempty"`
 	CallDate     time.Time  `json:"call_date"`
 	CallTime     time.Time  `json:"call_time"`

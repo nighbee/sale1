@@ -155,12 +155,13 @@ const CallDetailPage: React.FC = () => {
   useEffect(() => {
     if (!call) return;
     const callData = call;
-    // Determine audio source: prefer audio_url, otherwise fetch via API (/calls/:id/audio)
+    // Determine audio source: prefer audio_url or call_link (if http), otherwise fetch via API (/calls/:id/audio)
     (async () => {
       try {
-        if (callData.audio_url) {
-          setAudioSrc(callData.audio_url);
-          const wf = await generateWaveformFromUrl(callData.audio_url);
+        const directUrl = callData.audio_url || (callData.call_link?.startsWith('http') ? callData.call_link : null);
+        if (directUrl) {
+          setAudioSrc(directUrl);
+          const wf = await generateWaveformFromUrl(directUrl);
           waveformData.current = wf;
         } else {
           // The backend may return either a JSON { presigned_url } (when presign is enabled)
