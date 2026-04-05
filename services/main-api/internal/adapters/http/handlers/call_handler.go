@@ -311,7 +311,9 @@ func (h *CallHandler) GetAudio(c *fiber.Ctx) error {
 	var bucketName, objectName string
 
 	// Prefer redirecting to original HTTP-based links early (e.g. Sipuni)
-	if strings.HasPrefix(call.CallLink, "http") {
+	// Only redirect if force_storage is not set to true
+	forceStorage := c.Query("force_storage") == "true"
+	if strings.HasPrefix(call.CallLink, "http") && !forceStorage {
 		return c.Redirect(call.CallLink)
 	}
 

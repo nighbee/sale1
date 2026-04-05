@@ -12,6 +12,7 @@ export interface Call {
   client_phone?: string;
   call_date: string;
   call_link?: string;
+  storage_link?: string;
   source?: string;
   audio_url?: string;
   // Analysis scores – joined from analysis_reports in list query

@@ -18,6 +18,7 @@ const CallDetailPage: React.FC = () => {
   const [duration, setDuration] = useState(0);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [showAnalysis, setShowAnalysis] = useState(false);
+  const [audioSourceType, setAudioSourceType] = useState<'source' | 'storage'>('source');
   const [audioSrc, setAudioSrc] = useState<string | null>(null);
   const blobUrlRef = useRef<string | null>(null);
 
@@ -155,100 +156,64 @@ const CallDetailPage: React.FC = () => {
   useEffect(() => {
     if (!call) return;
     const callData = call;
-    // Determine audio source: prefer audio_url or call_link (if http), otherwise fetch via API (/calls/:id/audio)
-    (async () => {
+
+    const fetchAudio = async () => {
       try {
-        const directUrl = callData.audio_url || (callData.call_link?.startsWith('http') ? callData.call_link : null);
+        let directUrl = null;
+        if (audioSourceType === 'source') {
+          directUrl = callData.audio_url || (callData.call_link?.startsWith('http') ? callData.call_link : null);
+        }
+
         if (directUrl) {
           setAudioSrc(directUrl);
           const wf = await generateWaveformFromUrl(directUrl);
           waveformData.current = wf;
-        } else {
-          // The backend may return either a JSON { presigned_url } (when presign is enabled)
-          // or stream binary audio. Try to detect presigned URL first; if that fails,
-          // fallback to fetching the audio blob.
-          try {
-            const presignResp = await api.get(
-              `/calls/${callData.id}/audio`,
-            );
-            const presignData = presignResp?.data as
-              | Record<string, unknown>
-              | undefined;
-            if (
-              presignData &&
-              typeof presignData.presigned_url === "string"
-            ) {
-              const presigned = presignData.presigned_url as string;
-              setAudioSrc(presigned);
-              const wf = await generateWaveformFromUrl(presigned);
-              waveformData.current = wf;
-            } else {
-              // Not JSON with presigned_url; request blob explicitly
-              const resp = await api.get<Blob>(
-                `/calls/${callData.id}/audio`,
-                {
-                  responseType: "blob" as const,
-                },
-              );
-              const blob = resp.data as unknown as Blob;
-              const url = URL.createObjectURL(blob);
-              // revoke previous blob URL if any
-              if (blobUrlRef.current) {
-                try {
-                  URL.revokeObjectURL(blobUrlRef.current);
-                } catch (e) {
-                  console.warn("failed to revoke previous blob url", e);
-                }
-              }
-              blobUrlRef.current = url;
-              setAudioSrc(url);
-              const wf = await generateWaveformFromUrl(url);
-              waveformData.current = wf;
-            }
-          } catch (e) {
-            // If the first request failed (e.g. because response wasn't JSON), try blob
-            console.debug("presign check failed", e);
-            try {
-              const resp = await api.get<Blob>(
-                `/calls/${callData.id}/audio`,
-                {
-                  responseType: "blob" as const,
-                },
-              );
-              const blob = resp.data as unknown as Blob;
-              const url = URL.createObjectURL(blob);
-              if (blobUrlRef.current) {
-                try {
-                  URL.revokeObjectURL(blobUrlRef.current);
-                } catch (e) {
-                  console.warn("failed to revoke previous blob url", e);
-                }
-              }
-              blobUrlRef.current = url;
-              setAudioSrc(url);
-              const wf = await generateWaveformFromUrl(url);
-              waveformData.current = wf;
-            } catch (err2) {
-              console.warn(
-                "failed to fetch audio for waveform, falling back",
-                err2,
-              );
-              waveformData.current = generateWaveform(callData.id);
-              setAudioSrc(null);
-            }
+          return;
+        }
+
+        // Fallback to proxy endpoint
+        const endpoint = `/calls/${callData.id}/audio${audioSourceType === 'storage' ? '?force_storage=true' : ''}`;
+
+        let finalUrl: string | null = null;
+        try {
+          // Try to get JSON first (for presigned URLs)
+          const resp = await api.get(endpoint, {
+            headers: { 'Accept': 'application/json' }
+          });
+          if (resp.data && typeof (resp.data as any).presigned_url === 'string') {
+            finalUrl = (resp.data as any).presigned_url;
           }
+        } catch (e) {
+          console.debug("Presigned URL check failed or not JSON, falling back to blob", e);
+        }
+
+        if (!finalUrl) {
+          // Fetch as blob for direct streaming
+          const blobResp = await api.get<Blob>(endpoint, {
+            responseType: 'blob',
+            headers: { 'Accept': 'audio/*, application/octet-stream' }
+          });
+          const url = URL.createObjectURL(blobResp.data as unknown as Blob);
+          if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
+          blobUrlRef.current = url;
+          finalUrl = url;
+        }
+
+        if (finalUrl) {
+          setAudioSrc(finalUrl);
+          const wf = await generateWaveformFromUrl(finalUrl);
+          waveformData.current = wf;
         }
       } catch (err) {
-        console.warn(
-          "failed to fetch audio for waveform, falling back",
-          err,
-        );
+        console.warn("failed to fetch audio, falling back to placeholder waveform", err);
         waveformData.current = generateWaveform(callData.id);
         setAudioSrc(null);
       }
-    })();
+    };
+
+    fetchAudio();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [call]);
+  }, [call, audioSourceType]);
 
   // Cleanup blob URL on unmount
   useEffect(() => {
@@ -488,6 +453,28 @@ const CallDetailPage: React.FC = () => {
                 </div>
               </div>
               <div className="flex items-center gap-2 order-1 sm:order-2 ml-auto">
+                <div className="flex bg-neutral-100 dark:bg-neutral-800 rounded-lg p-0.5 mr-2">
+                  <button
+                    onClick={() => setAudioSourceType('source')}
+                    className={`px-2 py-1 text-[10px] sm:text-xs font-medium rounded-md transition-all ${
+                      audioSourceType === 'source'
+                        ? 'bg-white dark:bg-neutral-700 shadow-sm text-primary'
+                        : 'text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'
+                    }`}
+                  >
+                    {t('calls.source_original', 'Original')}
+                  </button>
+                  <button
+                    onClick={() => setAudioSourceType('storage')}
+                    className={`px-2 py-1 text-[10px] sm:text-xs font-medium rounded-md transition-all ${
+                      audioSourceType === 'storage'
+                        ? 'bg-white dark:bg-neutral-700 shadow-sm text-primary'
+                        : 'text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'
+                    }`}
+                  >
+                    {t('calls.source_storage', 'Storage')}
+                  </button>
+                </div>
                 <select
                   value={playbackRate}
                   onChange={(e) => handlePlaybackRateChange(parseFloat(e.target.value))}
