@@ -78,9 +78,14 @@ ALTER TABLE calls_schema.ai_settings ALTER COLUMN company_id SET NOT NULL;
 ALTER TABLE auth_schema.billing_info ADD COLUMN IF NOT EXISTS company_id UUID;
 UPDATE auth_schema.billing_info SET company_id = '00000000-0000-0000-0000-000000000000' WHERE company_id IS NULL;
 -- Handle the temporary 'id' column added in migration 017
-ALTER TABLE auth_schema.billing_info DROP CONSTRAINT IF EXISTS billing_info_pkey CASCADE;
-ALTER TABLE auth_schema.billing_info DROP COLUMN IF EXISTS id;
-ALTER TABLE auth_schema.billing_info ADD PRIMARY KEY (company_id);
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'auth_schema' AND table_name = 'billing_info' AND column_name = 'id') THEN
+        ALTER TABLE auth_schema.billing_info DROP CONSTRAINT IF EXISTS billing_info_pkey CASCADE;
+        ALTER TABLE auth_schema.billing_info DROP COLUMN IF EXISTS id;
+        ALTER TABLE auth_schema.billing_info ADD PRIMARY KEY (company_id);
+    END IF;
+END $$;
 
 
 -- Step D: Restore constraints and indexes
@@ -103,9 +108,12 @@ CREATE INDEX IF NOT EXISTS idx_users_company ON auth_schema.users(company_id);
 
 
 -- Step E: Restore views
+-- First drop existing views to allow column changes
+DROP VIEW IF EXISTS calls_schema.v_manager_performance CASCADE;
+DROP VIEW IF EXISTS calls_schema.v_calls_with_analysis CASCADE;
 
 -- 1. v_calls_with_analysis
-CREATE OR REPLACE VIEW calls_schema.v_calls_with_analysis AS
+CREATE VIEW calls_schema.v_calls_with_analysis AS
 SELECT
     c.id,
     c.company_id,
@@ -131,7 +139,7 @@ FROM calls_schema.calls c
 LEFT JOIN calls_schema.analysis_reports ar ON c.id = ar.call_id;
 
 -- 2. v_manager_performance
-CREATE OR REPLACE VIEW calls_schema.v_manager_performance AS
+CREATE VIEW calls_schema.v_manager_performance AS
 SELECT
     company_id,
     manager_id,
