@@ -171,7 +171,7 @@ class AnalyzeCallUseCase:
         )
 
         # Publish event for real-time notifications
-        await publish_analysis_completed(call_id, overall_rating)
+        await publish_analysis_completed(call_id, overall_rating, call.get('company_id'))
 
         # 5.5 Write back to CRM
         if call.get('external_id'):
@@ -268,8 +268,11 @@ class AnalyzeCallUseCase:
                     message=message
                 )
 
+            # Fetch call to get company_id
+            call = get_call(call_id)
+            company_id = call.get('company_id') if call else None
             # Real-time notification
-            await publish_critical_error(call_id, "litigation_threat", message)
+            await publish_critical_error(call_id, "litigation_threat", message, company_id)
 
     def _format_transcript(self, segments):
         if not segments:

@@ -33,7 +33,7 @@ func (uc *ReprocessCallUseCase) Execute(ctx context.Context, callID string) erro
 	}
 
 	// Enqueue job - use resolved internal ID
-	err = uc.publisher.EnqueueAudioProcessing(ctx, call.ID, call.CallLink, call.ManagerID)
+	err = uc.publisher.EnqueueAudioProcessing(ctx, call.ID, call.CallLink, call.ManagerID, call.CompanyID)
 	if err != nil {
 		return fmt.Errorf("failed to enqueue audio processing: %w", err)
 	}

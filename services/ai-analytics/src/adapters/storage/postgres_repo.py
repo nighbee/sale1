@@ -87,7 +87,7 @@ def get_call(call_id):
     cur = None
     try:
         cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("SELECT id, manager_id, duration, external_id FROM calls_schema.calls WHERE id = %s", (call_id,))
+        cur.execute("SELECT id, company_id, manager_id, duration, external_id FROM calls_schema.calls WHERE id = %s", (call_id,))
         return cur.fetchone()
     finally:
         if cur:
