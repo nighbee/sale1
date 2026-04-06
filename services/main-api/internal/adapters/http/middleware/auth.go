@@ -34,6 +34,7 @@ func JWTAuth(jwtService ports.JWTService) fiber.Handler {
 
 		// Store claims in context
 		c.Locals("user_id", claims["user_id"])
+		c.Locals("company_id", claims["company_id"])
 		c.Locals("role", claims["role"])
 		c.Locals("email", claims["email"])
 
