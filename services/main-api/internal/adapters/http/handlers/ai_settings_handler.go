@@ -17,7 +17,8 @@ func NewAISettingsHandler(repo ports.AISettingsRepository) *AISettingsHandler {
 }
 
 func (h *AISettingsHandler) Get(c *fiber.Ctx) error {
-	settings, err := h.repo.Get(c.Context())
+	companyID := c.Locals("company_id").(string)
+	settings, err := h.repo.Get(c.Context(), companyID)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -25,7 +26,11 @@ func (h *AISettingsHandler) Get(c *fiber.Ctx) error {
 }
 
 func (h *AISettingsHandler) GetInternal(c *fiber.Ctx) error {
-	settings, err := h.repo.Get(c.Context())
+	companyID := c.Query("company_id")
+	if companyID == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "company_id query parameter is required"})
+	}
+	settings, err := h.repo.Get(c.Context(), companyID)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -39,11 +44,14 @@ func (h *AISettingsHandler) Update(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid body"})
 	}
 
+	companyID := c.Locals("company_id").(string)
+	req.CompanyID = companyID
+
 	if err := h.repo.Update(c.Context(), &req); err != nil {
 		log.Error("update ai settings failed", zap.Error(err))
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	settings, _ := h.repo.Get(c.Context())
+	settings, _ := h.repo.Get(c.Context(), companyID)
 	return c.JSON(settings)
 }

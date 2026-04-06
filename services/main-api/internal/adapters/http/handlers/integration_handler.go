@@ -47,7 +47,8 @@ func (h *IntegrationHandler) Save(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid body"})
 	}
 	log.Info("saving integration", zap.String("type", req.IntegrationType), zap.Bool("active", req.IsActive))
-	integration, err := h.integrationUC.Save(c.Context(), domain.IntegrationType(req.IntegrationType), req.Credentials, req.Config, req.IsActive)
+	companyID := c.Locals("company_id").(string)
+	integration, err := h.integrationUC.Save(c.Context(), companyID, domain.IntegrationType(req.IntegrationType), req.Credentials, req.Config, req.IsActive)
 	if err != nil {
 		log.Error("save integration failed", zap.String("type", req.IntegrationType), zap.Error(err))
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
@@ -67,7 +68,8 @@ func (h *IntegrationHandler) Save(c *fiber.Ctx) error {
 // @Security BearerAuth
 // @Router /integrations [get]
 func (h *IntegrationHandler) List(c *fiber.Ctx) error {
-	integrations, err := h.integrationUC.List(c.Context())
+	companyID := c.Locals("company_id").(string)
+	integrations, err := h.integrationUC.List(c.Context(), companyID)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -104,7 +106,8 @@ func (h *IntegrationHandler) ListInternal(c *fiber.Ctx) error {
 // @Router /integrations/{type} [get]
 func (h *IntegrationHandler) Get(c *fiber.Ctx) error {
 	it := c.Params("type")
-	integration, err := h.integrationUC.GetByType(c.Context(), domain.IntegrationType(it))
+	companyID := c.Locals("company_id").(string)
+	integration, err := h.integrationUC.GetByType(c.Context(), companyID, domain.IntegrationType(it))
 	if err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Integration not found"})
 	}
@@ -133,7 +136,8 @@ func (h *IntegrationHandler) TestConnection(c *fiber.Ctx) error {
 	}
 	c.BodyParser(&req)
 
-	err := h.integrationUC.TestConnection(c.Context(), domain.IntegrationType(it), req.Credentials, req.Config)
+	companyID := c.Locals("company_id").(string)
+	err := h.integrationUC.TestConnection(c.Context(), companyID, domain.IntegrationType(it), req.Credentials, req.Config)
 	if err != nil {
 		log.Warn("test connection failed", zap.Error(err))
 		return c.Status(200).JSON(fiber.Map{
@@ -171,7 +175,8 @@ func (h *IntegrationHandler) CheckModel(c *fiber.Ctx) error {
 	}
 	c.BodyParser(&req)
 
-	result, err := h.integrationUC.CheckModel(c.Context(), domain.IntegrationType(it), req.Credentials, req.Model)
+	companyID := c.Locals("company_id").(string)
+	result, err := h.integrationUC.CheckModel(c.Context(), companyID, domain.IntegrationType(it), req.Credentials, req.Model)
 	if err != nil {
 		log.Warn("check model failed", zap.Error(err))
 		return c.Status(400).JSON(fiber.Map{
@@ -204,7 +209,8 @@ func (h *IntegrationHandler) GetModels(c *fiber.Ctx) error {
 	}
 	c.BodyParser(&req)
 
-	result, err := h.integrationUC.GetModels(c.Context(), domain.IntegrationType(it), req.Credentials)
+	companyID := c.Locals("company_id").(string)
+	result, err := h.integrationUC.GetModels(c.Context(), companyID, domain.IntegrationType(it), req.Credentials)
 	if err != nil {
 		log.Warn("get models failed", zap.Error(err))
 		return c.Status(400).JSON(fiber.Map{
@@ -229,7 +235,8 @@ func (h *IntegrationHandler) GetModels(c *fiber.Ctx) error {
 // @Router /integrations/{type} [delete]
 func (h *IntegrationHandler) Delete(c *fiber.Ctx) error {
 	it := c.Params("type")
-	if err := h.integrationUC.Delete(c.Context(), domain.IntegrationType(it)); err != nil {
+	companyID := c.Locals("company_id").(string)
+	if err := h.integrationUC.Delete(c.Context(), companyID, domain.IntegrationType(it)); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.SendStatus(204)

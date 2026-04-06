@@ -39,7 +39,8 @@ func (h *TeamHandler) Create(c *fiber.Ctx) error {
 		log.Warn("body parse error", zap.Error(err))
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid body"})
 	}
-	team, err := h.teamUC.Create(c.Context(), req.Name, req.Description, req.AutoAssign)
+	companyID := c.Locals("company_id").(string)
+	team, err := h.teamUC.Create(c.Context(), companyID, req.Name, req.Description, req.AutoAssign)
 	if err != nil {
 		log.Error("team creation failed", zap.String("name", req.Name), zap.Error(err))
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
@@ -59,7 +60,8 @@ func (h *TeamHandler) Create(c *fiber.Ctx) error {
 // @Security BearerAuth
 // @Router /teams [get]
 func (h *TeamHandler) List(c *fiber.Ctx) error {
-	teams, err := h.teamUC.List(c.Context())
+	companyID := c.Locals("company_id").(string)
+	teams, err := h.teamUC.List(c.Context(), companyID)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -79,7 +81,8 @@ func (h *TeamHandler) List(c *fiber.Ctx) error {
 // @Router /teams/{id} [get]
 func (h *TeamHandler) Get(c *fiber.Ctx) error {
 	id := c.Params("id")
-	team, err := h.teamUC.GetByID(c.Context(), id)
+	companyID := c.Locals("company_id").(string)
+	team, err := h.teamUC.GetByID(c.Context(), id, companyID)
 	if err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Team not found"})
 	}
@@ -173,7 +176,8 @@ func (h *TeamHandler) Update(c *fiber.Ctx) error {
 // @Router /teams/{id} [delete]
 func (h *TeamHandler) Delete(c *fiber.Ctx) error {
 	id := c.Params("id")
-	if err := h.teamUC.Delete(c.Context(), id); err != nil {
+	companyID := c.Locals("company_id").(string)
+	if err := h.teamUC.Delete(c.Context(), id, companyID); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.SendStatus(204)
@@ -208,7 +212,8 @@ func (h *TeamHandler) Ensure(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "team_name is required"})
 	}
 
-	team, err := h.teamUC.EnsureTeamExists(c.Context(), req.TeamName, "")
+	companyID := c.Locals("company_id").(string)
+	team, err := h.teamUC.EnsureTeamExists(c.Context(), companyID, req.TeamName, "")
 	if err != nil {
 		log.Error("ensure team failed", zap.String("team_name", req.TeamName), zap.Error(err))
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})

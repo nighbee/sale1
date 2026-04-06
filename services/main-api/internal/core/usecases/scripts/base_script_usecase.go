@@ -27,8 +27,8 @@ func (uc *BaseScriptUseCase) GetAllBases(ctx context.Context) ([]*domain.Script,
 	return uc.scriptRepo.GetAllBaseScripts(ctx)
 }
 
-func (uc *BaseScriptUseCase) ActivateAsBase(ctx context.Context, scriptID string) (*domain.Script, error) {
-	script, err := uc.scriptRepo.GetByID(ctx, scriptID)
+func (uc *BaseScriptUseCase) ActivateAsBase(ctx context.Context, scriptID, companyID string) (*domain.Script, error) {
+	script, err := uc.scriptRepo.GetByID(ctx, scriptID, companyID)
 	if err != nil {
 		return nil, errors.New("script not found")
 	}

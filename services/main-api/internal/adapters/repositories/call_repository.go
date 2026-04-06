@@ -123,6 +123,14 @@ func (r *callRepository) List(ctx context.Context, filters map[string]interface{
 	args := []interface{}{}
 	argIdx := 1
 
+	if companyID, ok := filters["company_id"].(string); ok && companyID != "" {
+		condition := fmt.Sprintf("c.company_id = $%d", argIdx)
+		where = append(where, condition)
+		countsWhere = append(countsWhere, condition)
+		args = append(args, companyID)
+		argIdx++
+	}
+
 	if managerID, ok := filters["manager_id"].(string); ok && managerID != "" {
 		condition := fmt.Sprintf("c.manager_id = $%d", argIdx)
 		where = append(where, condition)

@@ -14,13 +14,15 @@ type UserRepository interface {
 	GetByPhone(ctx context.Context, phone string) (*domain.User, error)
 	Update(ctx context.Context, user *domain.User) error
 	Delete(ctx context.Context, id string) error
-	List(ctx context.Context) ([]*domain.User, error)
-	GetByManagerID(ctx context.Context, managerID string) (*domain.User, error)
+	List(ctx context.Context, companyID string) ([]*domain.User, error)
+	GetByManagerID(ctx context.Context, managerID string, companyID string) (*domain.User, error)
 }
 
 // CompanyRepository defines the contract for company-related data operations.
 type CompanyRepository interface {
-	GetBillingInfo(ctx context.Context) (*domain.BillingInfo, error)
+	Create(ctx context.Context, company *domain.Company) error
+	GetByID(ctx context.Context, id string) (*domain.Company, error)
+	GetBillingInfo(ctx context.Context, companyID string) (*domain.BillingInfo, error)
 	UpdateBillingInfo(ctx context.Context, billing *domain.BillingInfo) error
 }
 
@@ -49,11 +51,11 @@ type AnalysisRepository interface {
 // ScriptRepository defines the contract for sales script operations.
 type ScriptRepository interface {
 	Create(ctx context.Context, script *domain.Script) error
-	GetByID(ctx context.Context, id string) (*domain.Script, error)
-	List(ctx context.Context) ([]*domain.Script, error)
+	GetByID(ctx context.Context, id string, companyID string) (*domain.Script, error)
+	List(ctx context.Context, companyID string) ([]*domain.Script, error)
 	Update(ctx context.Context, script *domain.Script) error
-	Delete(ctx context.Context, id string) error
-	GetActive(ctx context.Context) (*domain.Script, error)
+	Delete(ctx context.Context, id string, companyID string) error
+	GetActive(ctx context.Context, companyID string) (*domain.Script, error)
 	GetActiveBaseScript(ctx context.Context) (*domain.Script, error)
 	GetAllBaseScripts(ctx context.Context) ([]*domain.Script, error)
 	SetActiveBaseScript(ctx context.Context, scriptID string) error
@@ -70,25 +72,25 @@ type NotificationRepository interface {
 // TeamRepository defines the contract for sales team/group operations.
 type TeamRepository interface {
 	Create(ctx context.Context, team *domain.Team) error
-	GetByID(ctx context.Context, id string) (*domain.Team, error)
-	GetByName(ctx context.Context, name string) (*domain.Team, error)
-	List(ctx context.Context) ([]*domain.Team, error)
+	GetByID(ctx context.Context, id string, companyID string) (*domain.Team, error)
+	GetByName(ctx context.Context, name string, companyID string) (*domain.Team, error)
+	List(ctx context.Context, companyID string) ([]*domain.Team, error)
 	Update(ctx context.Context, team *domain.Team) error
-	Delete(ctx context.Context, id string) error
+	Delete(ctx context.Context, id string, companyID string) error
 }
 
 // IntegrationRepository defines the contract for third-party integration settings.
 type IntegrationRepository interface {
 	Create(ctx context.Context, integration *domain.Integration) error
-	GetByType(ctx context.Context, integrationType domain.IntegrationType) (*domain.Integration, error)
-	List(ctx context.Context) ([]*domain.Integration, error)
+	GetByType(ctx context.Context, integrationType domain.IntegrationType, companyID string) (*domain.Integration, error)
+	List(ctx context.Context, companyID string) ([]*domain.Integration, error)
 	ListAllActive(ctx context.Context) ([]*domain.Integration, error)
 	Update(ctx context.Context, integration *domain.Integration) error
-	Delete(ctx context.Context, integrationType domain.IntegrationType) error
+	Delete(ctx context.Context, integrationType domain.IntegrationType, companyID string) error
 }
 
 // AISettingsRepository defines the contract for AI configuration settings.
 type AISettingsRepository interface {
-	Get(ctx context.Context) (*domain.AISettings, error)
+	Get(ctx context.Context, companyID string) (*domain.AISettings, error)
 	Update(ctx context.Context, settings *domain.AISettings) error
 }

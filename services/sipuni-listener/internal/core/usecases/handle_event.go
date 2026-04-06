@@ -2,8 +2,10 @@ package usecases
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"strings"
 	"time"
 
@@ -46,8 +48,18 @@ func NewHandleEventUseCase(callRepo ports.CallRepository, userRepo ports.UserRep
 	}
 }
 
-func (uc *HandleEventUseCase) Execute(ctx context.Context, request json.RawMessage) {
-	log := applogger.L.With(zap.String("operation", "HandleEventUseCase.Execute"))
+func generateRandomPassword(length int) string {
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*"
+	ret := make([]byte, length)
+	for i := 0; i < length; i++ {
+		num, _ := rand.Int(rand.Reader, big.NewInt(int64(len(charset))))
+		ret[i] = charset[num.Int64()]
+	}
+	return string(ret)
+}
+
+func (uc *HandleEventUseCase) Execute(ctx context.Context, companyID string, request json.RawMessage) {
+	log := applogger.L.With(zap.String("operation", "HandleEventUseCase.Execute"), zap.String("company_id", companyID))
 	var notify SipuniNotifyRequest
 	if err := json.Unmarshal(request, &notify); err != nil {
 		log.Error("unmarshal notify error", zap.Error(err))
@@ -85,7 +97,7 @@ func (uc *HandleEventUseCase) Execute(ctx context.Context, request json.RawMessa
 	}
 
 	// Ensure manager exists in auth_schema.users
-	user, err := uc.userRepo.FindByManagerID(ctx, managerID)
+	user, err := uc.userRepo.FindByManagerID(ctx, managerID, companyID)
 	if err != nil {
 		log.Error("error checking for manager existence", zap.String("manager_id", managerID), zap.Error(err))
 		return
@@ -103,24 +115,26 @@ func (uc *HandleEventUseCase) Execute(ctx context.Context, request json.RawMessa
 		safeID := strings.ReplaceAll(managerID, " ", "")
 		email := fmt.Sprintf("manager_%s@salesai.local", safeID)
 
-		// Hash default password
-		defaultPassword := "SaleAI!2016"
-		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(defaultPassword), bcrypt.DefaultCost)
+		// Generate random password
+		randomPassword := generateRandomPassword(12)
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(randomPassword), bcrypt.DefaultCost)
 		if err != nil {
-			log.Error("error hashing default password", zap.Error(err))
+			log.Error("error hashing random password", zap.Error(err))
 			return
 		}
 
 		newUser := &domain.User{
-			ID:           uuid.New().String(),
-			Email:        email,
-			Username:     managerName, // Use manager name as initial username
-			PasswordHash: string(hashedPassword),
-			Role:         domain.RoleSalesRep,
-			ManagerID:    &managerID,
-			ManagerName:  managerName,
-			FirstName:    managerName,
-			IsActive:     true,
+			ID:              uuid.New().String(),
+			CompanyID:       companyID,
+			Email:           email,
+			Username:        managerName, // Use manager name as initial username
+			PasswordHash:    string(hashedPassword),
+			InitialPassword: &randomPassword,
+			Role:            domain.RoleSalesRep,
+			ManagerID:       &managerID,
+			ManagerName:     managerName,
+			FirstName:       managerName,
+			IsActive:        true,
 		}
 
 		if err := uc.userRepo.Create(ctx, newUser); err != nil {
@@ -177,6 +191,7 @@ func (uc *HandleEventUseCase) Execute(ctx context.Context, request json.RawMessa
 
 	call := &domain.Call{
 		ID:          callID,
+		CompanyID:   companyID,
 		ManagerID:   managerID,
 		ManagerName: managerName,
 		ClientPhone: clientPhone,

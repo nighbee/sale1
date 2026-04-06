@@ -11,10 +11,12 @@ const (
 )
 
 type User struct {
-	ID           string     `json:"id"`
-	Email        string     `json:"email"`
-	PasswordHash string     `json:"-"`
-	Role         UserRole   `json:"role"`
+	ID              string     `json:"id"`
+	CompanyID       string     `json:"company_id"`
+	Email           string     `json:"email"`
+	PasswordHash    string     `json:"-"`
+	InitialPassword *string    `json:"initial_password,omitempty"`
+	Role            UserRole   `json:"role"`
 	ManagerID    *string    `json:"manager_id,omitempty"`
 	ManagerName  string     `json:"manager_name"`
 	FirstName    string     `json:"first_name"`

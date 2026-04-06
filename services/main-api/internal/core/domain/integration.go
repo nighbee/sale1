@@ -23,6 +23,7 @@ const (
 
 type Integration struct {
 	ID              string          `json:"id"`
+	CompanyID       string          `json:"company_id"`
 	IntegrationType IntegrationType `json:"integration_type"`
 	Credentials     json.RawMessage `json:"credentials"`
 	Config          json.RawMessage `json:"config"`

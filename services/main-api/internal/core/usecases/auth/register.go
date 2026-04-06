@@ -26,17 +26,20 @@ type RegisterResponse struct {
 }
 
 type RegisterUseCase struct {
-	userRepo   ports.UserRepository
-	jwtService ports.JWTService
+	userRepo    ports.UserRepository
+	companyRepo ports.CompanyRepository
+	jwtService  ports.JWTService
 }
 
 func NewRegisterUseCase(
 	userRepo ports.UserRepository,
+	companyRepo ports.CompanyRepository,
 	jwtService ports.JWTService,
 ) *RegisterUseCase {
 	return &RegisterUseCase{
-		userRepo:   userRepo,
-		jwtService: jwtService,
+		userRepo:    userRepo,
+		companyRepo: companyRepo,
+		jwtService:  jwtService,
 	}
 }
 
@@ -59,6 +62,18 @@ func (uc *RegisterUseCase) Execute(ctx context.Context, req *RegisterRequest) (*
 		return nil, err
 	}
 
+	// Create Company first
+	company := &domain.Company{
+		ID:       uuid.New().String(),
+		Name:     req.FullName + "'s Company",
+		IsActive: true,
+	}
+
+	err = uc.companyRepo.Create(ctx, company)
+	if err != nil {
+		return nil, err
+	}
+
 	// Create user
 	managerID := req.ManagerID
 	if managerID == "" {
@@ -67,6 +82,7 @@ func (uc *RegisterUseCase) Execute(ctx context.Context, req *RegisterRequest) (*
 
 	user := &domain.User{
 		ID:           uuid.New().String(),
+		CompanyID:    company.ID,
 		Email:        req.Email,
 		FirstName:    req.FullName,
 		PasswordHash: string(passwordHash),

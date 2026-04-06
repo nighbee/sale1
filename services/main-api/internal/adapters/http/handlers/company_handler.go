@@ -27,7 +27,8 @@ func NewCompanyHandler(companyRepo ports.CompanyRepository) *CompanyHandler {
 // @Security BearerAuth
 // @Router /settings/billing [get]
 func (h *CompanyHandler) GetBilling(c *fiber.Ctx) error {
-	billing, err := h.companyRepo.GetBillingInfo(c.Context())
+	companyID := c.Locals("company_id").(string)
+	billing, err := h.companyRepo.GetBillingInfo(c.Context(), companyID)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -51,6 +52,10 @@ func (h *CompanyHandler) UpdateBilling(c *fiber.Ctx) error {
 	if err := c.BodyParser(&billing); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid body"})
 	}
+
+	companyID := c.Locals("company_id").(string)
+	billing.ID = companyID
+
 	if err := h.companyRepo.UpdateBillingInfo(c.Context(), &billing); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}

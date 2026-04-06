@@ -27,8 +27,8 @@ func NewIntegrationUseCase(repo ports.IntegrationRepository) *IntegrationUseCase
 	return &IntegrationUseCase{repo: repo}
 }
 
-func (uc *IntegrationUseCase) Save(ctx context.Context, it domain.IntegrationType, credentials, config json.RawMessage, isActive bool) (*domain.Integration, error) {
-	existing, err := uc.repo.GetByType(ctx, it)
+func (uc *IntegrationUseCase) Save(ctx context.Context, companyID string, it domain.IntegrationType, credentials, config json.RawMessage, isActive bool) (*domain.Integration, error) {
+	existing, err := uc.repo.GetByType(ctx, it, companyID)
 	if err == nil {
 		existing.Credentials = credentials
 		existing.Config = config
@@ -39,6 +39,7 @@ func (uc *IntegrationUseCase) Save(ctx context.Context, it domain.IntegrationTyp
 
 	integration := &domain.Integration{
 		ID:              uuid.New().String(),
+		CompanyID:       companyID,
 		IntegrationType: it,
 		Credentials:     credentials,
 		Config:          config,
@@ -48,23 +49,23 @@ func (uc *IntegrationUseCase) Save(ctx context.Context, it domain.IntegrationTyp
 	return integration, err
 }
 
-func (uc *IntegrationUseCase) List(ctx context.Context) ([]*domain.Integration, error) {
-	return uc.repo.List(ctx)
+func (uc *IntegrationUseCase) List(ctx context.Context, companyID string) ([]*domain.Integration, error) {
+	return uc.repo.List(ctx, companyID)
 }
 
-func (uc *IntegrationUseCase) GetByType(ctx context.Context, it domain.IntegrationType) (*domain.Integration, error) {
-	return uc.repo.GetByType(ctx, it)
+func (uc *IntegrationUseCase) GetByType(ctx context.Context, companyID string, it domain.IntegrationType) (*domain.Integration, error) {
+	return uc.repo.GetByType(ctx, it, companyID)
 }
 
-func (uc *IntegrationUseCase) Delete(ctx context.Context, it domain.IntegrationType) error {
-	return uc.repo.Delete(ctx, it)
+func (uc *IntegrationUseCase) Delete(ctx context.Context, companyID string, it domain.IntegrationType) error {
+	return uc.repo.Delete(ctx, it, companyID)
 }
 
 func (uc *IntegrationUseCase) ListAllActive(ctx context.Context) ([]*domain.Integration, error) {
 	return uc.repo.ListAllActive(ctx)
 }
 
-func (uc *IntegrationUseCase) GetModels(ctx context.Context, it domain.IntegrationType, credentials json.RawMessage) (map[string]interface{}, error) {
+func (uc *IntegrationUseCase) GetModels(ctx context.Context, companyID string, it domain.IntegrationType, credentials json.RawMessage) (map[string]interface{}, error) {
 	sttServiceURL := os.Getenv("STT_SERVICE_URL")
 	if sttServiceURL == "" {
 		sttServiceURL = "http://stt-service:8001"
@@ -77,7 +78,7 @@ func (uc *IntegrationUseCase) GetModels(ctx context.Context, it domain.Integrati
 	}
 
 	if len(credentials) == 0 || string(credentials) == "null" {
-		existing, err := uc.repo.GetByType(ctx, it)
+		existing, err := uc.repo.GetByType(ctx, it, companyID)
 		if err == nil {
 			credentials = existing.Credentials
 		}
@@ -119,7 +120,7 @@ func (uc *IntegrationUseCase) GetModels(ctx context.Context, it domain.Integrati
 	return result, nil
 }
 
-func (uc *IntegrationUseCase) CheckModel(ctx context.Context, it domain.IntegrationType, credentials json.RawMessage, model string) (map[string]interface{}, error) {
+func (uc *IntegrationUseCase) CheckModel(ctx context.Context, companyID string, it domain.IntegrationType, credentials json.RawMessage, model string) (map[string]interface{}, error) {
 	sttServiceURL := os.Getenv("STT_SERVICE_URL")
 	if sttServiceURL == "" {
 		sttServiceURL = "http://stt-service:8001"
@@ -133,7 +134,7 @@ func (uc *IntegrationUseCase) CheckModel(ctx context.Context, it domain.Integrat
 	}
 
 	if len(credentials) == 0 || string(credentials) == "null" {
-		existing, err := uc.repo.GetByType(ctx, it)
+		existing, err := uc.repo.GetByType(ctx, it, companyID)
 		if err == nil {
 			credentials = existing.Credentials
 			if model == "" {
@@ -184,10 +185,10 @@ func (uc *IntegrationUseCase) CheckModel(ctx context.Context, it domain.Integrat
 	return result, nil
 }
 
-func (uc *IntegrationUseCase) TestConnection(ctx context.Context, it domain.IntegrationType, credentials, config json.RawMessage) error {
+func (uc *IntegrationUseCase) TestConnection(ctx context.Context, companyID string, it domain.IntegrationType, credentials, config json.RawMessage) error {
 	// If credentials or config are not provided in request, fetch from DB
 	if len(credentials) == 0 || string(credentials) == "null" {
-		existing, err := uc.repo.GetByType(ctx, it)
+		existing, err := uc.repo.GetByType(ctx, it, companyID)
 		if err != nil {
 			return fmt.Errorf("no credentials provided and none found in database for %s", it)
 		}

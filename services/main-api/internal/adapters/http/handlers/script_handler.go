@@ -43,7 +43,8 @@ func NewScriptHandler(scriptRepo ports.ScriptRepository, scriptServiceURL string
 // @Router /scripts [get]
 func (h *ScriptHandler) ListScripts(c *fiber.Ctx) error {
 	log := applogger.FromFiberCtx(c).With(zap.String("operation", "list_scripts"))
-	scripts, err := h.scriptRepo.List(c.Context())
+	companyID := c.Locals("company_id").(string)
+	scripts, err := h.scriptRepo.List(c.Context(), companyID)
 	if err != nil {
 		log.Error("list scripts failed", zap.Error(err))
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
@@ -65,7 +66,8 @@ func (h *ScriptHandler) ListScripts(c *fiber.Ctx) error {
 // @Router /scripts/{id} [get]
 func (h *ScriptHandler) GetScript(c *fiber.Ctx) error {
 	id := c.Params("id")
-	script, err := h.scriptRepo.GetByID(c.Context(), id)
+	companyID := c.Locals("company_id").(string)
+	script, err := h.scriptRepo.GetByID(c.Context(), id, companyID)
 	if err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Script not found"})
 	}
@@ -85,7 +87,8 @@ func (h *ScriptHandler) GetScript(c *fiber.Ctx) error {
 // @Router /scripts/{id}/content [get]
 func (h *ScriptHandler) GetScriptContent(c *fiber.Ctx) error {
 	id := c.Params("id")
-	script, err := h.scriptRepo.GetByID(c.Context(), id)
+	companyID := c.Locals("company_id").(string)
+	script, err := h.scriptRepo.GetByID(c.Context(), id, companyID)
 	if err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Script not found"})
 	}
@@ -179,7 +182,8 @@ func (h *ScriptHandler) CreateScript(c *fiber.Ctx) error {
 // @Router /scripts/{id} [put]
 func (h *ScriptHandler) UpdateScript(c *fiber.Ctx) error {
 	id := c.Params("id")
-	script, err := h.scriptRepo.GetByID(c.Context(), id)
+	companyID := c.Locals("company_id").(string)
+	script, err := h.scriptRepo.GetByID(c.Context(), id, companyID)
 	if err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Script not found"})
 	}
@@ -225,9 +229,10 @@ func (h *ScriptHandler) UpdateScript(c *fiber.Ctx) error {
 func (h *ScriptHandler) DeleteScript(c *fiber.Ctx) error {
 	log := applogger.FromFiberCtx(c).With(zap.String("operation", "delete_script"))
 	id := c.Params("id")
+	companyID := c.Locals("company_id").(string)
 
 	// 1. Delete record in main-api DB (soft or metadata)
-	if err := h.scriptRepo.Delete(c.Context(), id); err != nil {
+	if err := h.scriptRepo.Delete(c.Context(), id, companyID); err != nil {
 		log.Error("delete script metadata failed", zap.String("script_id", id), zap.Error(err))
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -263,7 +268,8 @@ func (h *ScriptHandler) DeleteScript(c *fiber.Ctx) error {
 // @Router /scripts/{id}/download [get]
 func (h *ScriptHandler) DownloadScript(c *fiber.Ctx) error {
 	id := c.Params("id")
-	_, err := h.scriptRepo.GetByID(c.Context(), id)
+	companyID := c.Locals("company_id").(string)
+	_, err := h.scriptRepo.GetByID(c.Context(), id, companyID)
 	if err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Script not found"})
 	}
@@ -343,8 +349,9 @@ func (h *ScriptHandler) ListBaseScripts(c *fiber.Ctx) error {
 func (h *ScriptHandler) ActivateAsBase(c *fiber.Ctx) error {
 	log := applogger.FromFiberCtx(c).With(zap.String("operation", "activate_as_base"))
 	scriptID := c.Params("id")
+	companyID := c.Locals("company_id").(string)
 
-	script, err := h.baseScriptUseCase.ActivateAsBase(c.Context(), scriptID)
+	script, err := h.baseScriptUseCase.ActivateAsBase(c.Context(), scriptID, companyID)
 	if err != nil {
 		log.Warn("activate as base failed", zap.String("script_id", scriptID), zap.Error(err))
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
