@@ -22,8 +22,8 @@ func NewCallRepository(db *sql.DB) ports.CallRepository {
 func (r *callRepository) Create(ctx context.Context, call *domain.Call) error {
 	query := `
 		INSERT INTO calls_schema.calls
-		(id, manager_id, manager_name, client_phone, client_id, duration, call_link, storage_link, chat_link, call_date, call_time, status, source, external_id)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+		(id, company_id, manager_id, manager_name, client_phone, client_id, duration, call_link, storage_link, chat_link, call_date, call_time, status, source, external_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 		RETURNING created_at, updated_at
 	`
 
@@ -31,6 +31,7 @@ func (r *callRepository) Create(ctx context.Context, call *domain.Call) error {
 		ctx,
 		query,
 		call.ID,
+		call.CompanyID,
 		call.ManagerID,
 		call.ManagerName,
 		call.ClientPhone,
@@ -51,7 +52,7 @@ func (r *callRepository) Create(ctx context.Context, call *domain.Call) error {
 
 func (r *callRepository) GetByID(ctx context.Context, id string) (*domain.Call, error) {
 	query := `
-		SELECT id, manager_id, manager_name, client_phone, client_id, duration, call_link, storage_link, chat_link, call_date, call_time, status, source, external_id, created_at, updated_at
+		SELECT id, company_id, manager_id, manager_name, client_phone, client_id, duration, call_link, storage_link, chat_link, call_date, call_time, status, source, external_id, created_at, updated_at
 		FROM calls_schema.calls
 		WHERE id::text = $1 OR external_id = $1
 	`
@@ -59,6 +60,7 @@ func (r *callRepository) GetByID(ctx context.Context, id string) (*domain.Call, 
 	call := &domain.Call{}
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&call.ID,
+		&call.CompanyID,
 		&call.ManagerID,
 		&call.ManagerName,
 		&call.ClientPhone,
@@ -85,7 +87,7 @@ func (r *callRepository) GetByID(ctx context.Context, id string) (*domain.Call, 
 
 func (r *callRepository) GetByIDInternal(ctx context.Context, id string) (*domain.Call, error) {
 	query := `
-		SELECT id, manager_id, manager_name, client_phone, client_id, duration, call_link, storage_link, chat_link, call_date, call_time, status, source, external_id, created_at, updated_at
+		SELECT id, company_id, manager_id, manager_name, client_phone, client_id, duration, call_link, storage_link, chat_link, call_date, call_time, status, source, external_id, created_at, updated_at
 		FROM calls_schema.calls
 		WHERE id = $1
 	`
@@ -93,6 +95,7 @@ func (r *callRepository) GetByIDInternal(ctx context.Context, id string) (*domai
 	call := &domain.Call{}
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&call.ID,
+		&call.CompanyID,
 		&call.ManagerID,
 		&call.ManagerName,
 		&call.ClientPhone,
@@ -205,7 +208,7 @@ func (r *callRepository) List(ctx context.Context, filters map[string]interface{
 	offset := (page - 1) * limit
 
 	query := fmt.Sprintf(`
-		SELECT c.id, c.manager_id, c.manager_name, c.client_phone, c.client_id,
+		SELECT c.id, c.company_id, c.manager_id, c.manager_name, c.client_phone, c.client_id,
 		       c.duration, c.call_link, c.storage_link, c.chat_link, c.call_date, c.call_time,
 		       c.status, c.source, c.external_id, c.created_at, c.updated_at,
 		       ar.quality_score, ar.script_match, ar.errors_free
@@ -227,6 +230,7 @@ func (r *callRepository) List(ctx context.Context, filters map[string]interface{
 		call := &domain.Call{}
 		err := rows.Scan(
 			&call.ID,
+			&call.CompanyID,
 			&call.ManagerID,
 			&call.ManagerName,
 			&call.ClientPhone,
