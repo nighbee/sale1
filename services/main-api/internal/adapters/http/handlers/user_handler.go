@@ -38,7 +38,11 @@ func NewUserHandler(userRepo ports.UserRepository, listCallsUC *calls.ListCallsU
 // @Router /users [get]
 func (h *UserHandler) ListUsers(c *fiber.Ctx) error {
 	log := applogger.FromFiberCtx(c).With(zap.String("operation", "list_users"))
-	companyID := c.Locals("company_id").(string)
+	companyID, ok := c.Locals("company_id").(string)
+	if !ok || companyID == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized: company_id not found"})
+	}
+
 	users, err := h.userRepo.List(c.Context(), companyID)
 	if err != nil {
 		log.Error("list users failed", zap.Error(err))
@@ -62,7 +66,10 @@ func (h *UserHandler) ListUsers(c *fiber.Ctx) error {
 // @Router /users/invite [post]
 func (h *UserHandler) InviteUser(c *fiber.Ctx) error {
 	log := applogger.FromFiberCtx(c).With(zap.String("operation", "invite_user"))
-	companyID := c.Locals("company_id").(string)
+	companyID, ok := c.Locals("company_id").(string)
+	if !ok || companyID == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized: company_id not found"})
+	}
 
 	var req struct {
 		Email             string   `json:"email"`
@@ -159,7 +166,11 @@ func (h *UserHandler) InviteUser(c *fiber.Ctx) error {
 // @Router /users/{id} [get]
 func (h *UserHandler) GetUser(c *fiber.Ctx) error {
 	id := c.Params("id")
-	companyID := c.Locals("company_id").(string)
+	companyID, ok := c.Locals("company_id").(string)
+	if !ok || companyID == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized: company_id not found"})
+	}
+
 	user, err := h.userRepo.GetByID(c.Context(), id)
 	if err != nil || user.CompanyID != companyID {
 		return c.Status(404).JSON(fiber.Map{"error": "User not found"})
@@ -182,7 +193,11 @@ func (h *UserHandler) GetUser(c *fiber.Ctx) error {
 // @Router /users/{id} [put]
 func (h *UserHandler) UpdateUser(c *fiber.Ctx) error {
 	id := c.Params("id")
-	companyID := c.Locals("company_id").(string)
+	companyID, ok := c.Locals("company_id").(string)
+	if !ok || companyID == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized: company_id not found"})
+	}
+
 	user, err := h.userRepo.GetByID(c.Context(), id)
 	if err != nil || user.CompanyID != companyID {
 		return c.Status(404).JSON(fiber.Map{"error": "User not found"})
@@ -277,7 +292,10 @@ func (h *UserHandler) GetMe(c *fiber.Ctx) error {
 // @Router /users/{id} [delete]
 func (h *UserHandler) DeleteUser(c *fiber.Ctx) error {
 	id := c.Params("id")
-	companyID := c.Locals("company_id").(string)
+	companyID, ok := c.Locals("company_id").(string)
+	if !ok || companyID == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized: company_id not found"})
+	}
 
 	user, err := h.userRepo.GetByID(c.Context(), id)
 	if err != nil || user.CompanyID != companyID {

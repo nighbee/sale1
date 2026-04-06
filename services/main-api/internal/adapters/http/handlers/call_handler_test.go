@@ -77,6 +77,7 @@ func TestGetCall_ByExternalID(t *testing.T) {
 	app := fiber.New()
 	mockCall := &domain.Call{
 		ID:         "internal-uuid",
+		CompanyID:  "company-1",
 		ExternalID: func(s string) *string { return &s }("sipuni-123"),
 	}
 
@@ -86,6 +87,10 @@ func TestGetCall_ByExternalID(t *testing.T) {
 		analysisRepo:   &mockAnalysisRepo{},
 	}
 
+	app.Use(func(c *fiber.Ctx) error {
+		c.Locals("company_id", "company-1")
+		return c.Next()
+	})
 	app.Get("/calls/:id", h.GetCall)
 
 	// Test by External ID
@@ -109,6 +114,7 @@ func TestGetTranscript_IDResolution(t *testing.T) {
 	app := fiber.New()
 	mockCall := &domain.Call{
 		ID:         "internal-uuid",
+		CompanyID:  "company-1",
 		ExternalID: func(s string) *string { return &s }("sipuni-123"),
 	}
 	mockTranscript := &domain.Transcript{
@@ -121,6 +127,10 @@ func TestGetTranscript_IDResolution(t *testing.T) {
 		transcriptRepo: &mockTranscriptRepo{transcript: mockTranscript},
 	}
 
+	app.Use(func(c *fiber.Ctx) error {
+		c.Locals("company_id", "company-1")
+		return c.Next()
+	})
 	app.Get("/calls/:id/transcript", h.GetTranscript)
 
 	// Fetching by external ID should resolve to internal ID and return transcript
@@ -142,14 +152,19 @@ func TestGetTranscript_IDResolution(t *testing.T) {
 func TestGetAudio_ForceStorage(t *testing.T) {
 	app := fiber.New()
 	mockCall := &domain.Call{
-		ID:       "internal-uuid",
-		CallLink: "http://sipuni.com/record.mp3",
+		ID:        "internal-uuid",
+		CompanyID: "company-1",
+		CallLink:  "http://sipuni.com/record.mp3",
 	}
 
 	h := &CallHandler{
 		callRepo: &mockCallRepoForDetail{call: mockCall},
 	}
 
+	app.Use(func(c *fiber.Ctx) error {
+		c.Locals("company_id", "company-1")
+		return c.Next()
+	})
 	app.Get("/calls/:id/audio", func(c *fiber.Ctx) error {
 		defer func() {
 			if r := recover(); r != nil {

@@ -34,27 +34,39 @@ func (r *analysisRepository) Create(ctx context.Context, a *domain.AnalysisRepor
 
 func (r *analysisRepository) GetTeamPerformance(ctx context.Context, filters map[string]interface{}) ([]map[string]interface{}, error) {
 	argIdx := 1
-	where := "(c.status = 'completed' OR ar.call_id IS NOT NULL)"
+	whereClauses := []string{}
 	args := []interface{}{}
 
-	if includePending, ok := filters["include_pending"].(bool); ok && includePending {
-		where = "(c.status IN ('completed', 'pending', 'processing') OR ar.call_id IS NOT NULL)"
+	// Enforce multi-tenancy: company_id must be provided
+	if companyID, ok := filters["company_id"].(string); ok && companyID != "" {
+		whereClauses = append(whereClauses, fmt.Sprintf("c.company_id = $%d", argIdx))
+		args = append(args, companyID)
+		argIdx++
+	} else {
+		return nil, errors.New("company_id filter is required")
 	}
 
+	// Status filter
+	statusClause := "(c.status = 'completed' OR ar.call_id IS NOT NULL)"
+	if includePending, ok := filters["include_pending"].(bool); ok && includePending {
+		statusClause = "(c.status IN ('completed', 'pending', 'processing') OR ar.call_id IS NOT NULL)"
+	}
+	whereClauses = append(whereClauses, statusClause)
+
 	if teamID, ok := filters["team_id"].(string); ok && teamID != "" {
-		where += fmt.Sprintf(" AND c.manager_id IN (SELECT manager_id FROM auth_schema.users WHERE team_id = $%d)", argIdx)
+		whereClauses = append(whereClauses, fmt.Sprintf("c.manager_id IN (SELECT manager_id FROM auth_schema.users WHERE team_id = $%d AND company_id = c.company_id)", argIdx))
 		args = append(args, teamID)
 		argIdx++
 	}
 
 	if source, ok := filters["source"].(string); ok && source != "" {
-		where += fmt.Sprintf(" AND (replace(lower(coalesce(c.source, '')), '-', '_') = replace(lower($%d), '-', '_') OR replace(lower(coalesce(ar.llm_provider, '')), '-', '_') = replace(lower($%d), '-', '_'))", argIdx, argIdx)
+		whereClauses = append(whereClauses, fmt.Sprintf("(replace(lower(coalesce(c.source, '')), '-', '_') = replace(lower($%d), '-', '_') OR replace(lower(coalesce(ar.llm_provider, '')), '-', '_') = replace(lower($%d), '-', '_'))", argIdx, argIdx))
 		args = append(args, source)
 		argIdx++
 	}
 
 	if managerID, ok := filters["manager_id"].(string); ok && managerID != "" {
-		where += fmt.Sprintf(" AND c.manager_id = $%d", argIdx)
+		whereClauses = append(whereClauses, fmt.Sprintf("c.manager_id = $%d", argIdx))
 		args = append(args, managerID)
 		argIdx++
 	}
@@ -70,9 +82,11 @@ func (r *analysisRepository) GetTeamPerformance(ctx context.Context, filters map
 			interval = "90 days"
 		}
 		if interval != "" {
-			where += fmt.Sprintf(" AND COALESCE(c.call_date, ar.processed_at) >= NOW() - INTERVAL '%s'", interval)
+			whereClauses = append(whereClauses, fmt.Sprintf("COALESCE(c.call_date, ar.processed_at) >= NOW() - INTERVAL '%s'", interval))
 		}
 	}
+
+	where := strings.Join(whereClauses, " AND ")
 
 	sortBy := "avg_kpi"
 	if s, ok := filters["sort_by"].(string); ok {
@@ -100,7 +114,7 @@ func (r *analysisRepository) GetTeamPerformance(ctx context.Context, filters map
 			COUNT(CASE WHEN ar.overall_rating >= 4.0 THEN 1 END) AS excellent_calls_count,
 			MAX(c.manager_id) as external_id
 		FROM calls_schema.calls c
-		LEFT JOIN auth_schema.users u ON c.manager_id = u.manager_id
+		LEFT JOIN auth_schema.users u ON c.manager_id = u.manager_id AND c.company_id = u.company_id
 		LEFT JOIN calls_schema.analysis_reports ar ON c.id = ar.call_id
 		WHERE %s
 	GROUP BY COALESCE(NULLIF(TRIM(u.first_name || ' ' || u.last_name), ''), c.manager_name), COALESCE(u.id::text, c.manager_id)
