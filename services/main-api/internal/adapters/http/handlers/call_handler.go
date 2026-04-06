@@ -80,7 +80,10 @@ func (h *CallHandler) ListCalls(c *fiber.Ctx) error {
 	page, _ := strconv.Atoi(c.Query("page", "1"))
 	limit, _ := strconv.Atoi(c.Query("limit", "20"))
 
-	companyID := c.Locals("company_id").(string)
+	companyID, ok := c.Locals("company_id").(string)
+	if !ok || companyID == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized: company_id not found"})
+	}
 
 	req := calls.ListCallsRequest{
 		CompanyID:   companyID,
@@ -135,10 +138,16 @@ func (h *CallHandler) ListCalls(c *fiber.Ctx) error {
 func (h *CallHandler) GetCall(c *fiber.Ctx) error {
 	log := applogger.FromFiberCtx(c).With(zap.String("operation", "get_call"))
 	id := c.Params("id")
+
+	companyID, ok := c.Locals("company_id").(string)
+	if !ok || companyID == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized: company_id not found"})
+	}
+
 	log.Debug("fetching call", zap.String("call_id", id))
 	call, err := h.callRepo.GetByID(c.Context(), id)
-	if err != nil {
-		log.Warn("call not found", zap.String("call_id", id), zap.Error(err))
+	if err != nil || call.CompanyID != companyID {
+		log.Warn("call not found or unauthorized access", zap.String("call_id", id), zap.String("company_id", companyID), zap.Error(err))
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Call not found"})
 	}
 
@@ -170,12 +179,18 @@ func (h *CallHandler) GetCall(c *fiber.Ctx) error {
 func (h *CallHandler) GetTranscript(c *fiber.Ctx) error {
 	log := applogger.FromFiberCtx(c).With(zap.String("operation", "get_transcript"))
 	id := c.Params("id")
+
+	companyID, ok := c.Locals("company_id").(string)
+	if !ok || companyID == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized: company_id not found"})
+	}
+
 	log.Debug("fetching transcript", zap.String("call_id", id))
 
 	// Resolve the internal UUID first
 	call, err := h.callRepo.GetByID(c.Context(), id)
-	if err != nil {
-		log.Warn("call not found for transcript", zap.String("call_id", id), zap.Error(err))
+	if err != nil || call.CompanyID != companyID {
+		log.Warn("call not found or unauthorized access for transcript", zap.String("call_id", id), zap.String("company_id", companyID), zap.Error(err))
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Call not found"})
 	}
 	internalID := call.ID
@@ -222,12 +237,18 @@ func (h *CallHandler) GetTranscript(c *fiber.Ctx) error {
 func (h *CallHandler) GetAnalysis(c *fiber.Ctx) error {
 	log := applogger.FromFiberCtx(c).With(zap.String("operation", "get_analysis"))
 	id := c.Params("id")
+
+	companyID, ok := c.Locals("company_id").(string)
+	if !ok || companyID == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized: company_id not found"})
+	}
+
 	log.Debug("fetching analysis", zap.String("call_id", id))
 
 	// Resolve the internal UUID first
 	call, err := h.callRepo.GetByID(c.Context(), id)
-	if err != nil {
-		log.Warn("call not found for analysis", zap.String("call_id", id), zap.Error(err))
+	if err != nil || call.CompanyID != companyID {
+		log.Warn("call not found or unauthorized access for analysis", zap.String("call_id", id), zap.String("company_id", companyID), zap.Error(err))
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Call not found"})
 	}
 	internalID := call.ID
@@ -294,9 +315,21 @@ func (h *CallHandler) ReprocessCall(c *fiber.Ctx) error {
 	log := applogger.FromFiberCtx(c).With(zap.String("operation", "reprocess_call"))
 	id := c.Params("id")
 	userID, _ := c.Locals("user_id").(string)
+	companyID, ok := c.Locals("company_id").(string)
+	if !ok || companyID == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized: company_id not found"})
+	}
+
 	log.Info("call reprocess requested", zap.String("call_id", id), zap.String("user_id", userID))
 
-	err := h.reprocessCallUC.Execute(c.Context(), id)
+	// Resolve the internal UUID and check company ownership
+	call, err := h.callRepo.GetByID(c.Context(), id)
+	if err != nil || call.CompanyID != companyID {
+		log.Warn("call not found or unauthorized access for reprocess", zap.String("call_id", id), zap.String("company_id", companyID), zap.Error(err))
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Call not found"})
+	}
+
+	err = h.reprocessCallUC.Execute(c.Context(), id)
 	if err != nil {
 		log.Error("failed to reprocess call", zap.String("call_id", id), zap.Error(err))
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -323,8 +356,14 @@ func (h *CallHandler) ReprocessCall(c *fiber.Ctx) error {
 // @Router /calls/:id/audio [get]
 func (h *CallHandler) GetAudio(c *fiber.Ctx) error {
 	id := c.Params("id")
+
+	companyID, ok := c.Locals("company_id").(string)
+	if !ok || companyID == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized: company_id not found"})
+	}
+
 	call, err := h.callRepo.GetByID(c.Context(), id)
-	if err != nil {
+	if err != nil || call.CompanyID != companyID {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Call not found"})
 	}
 	var bucketName, objectName string

@@ -38,8 +38,13 @@ func NewAnalyticsHandler(teamPerformanceUC *analytics.TeamPerformanceUseCase) *A
 // @Router /analytics/team-performance [get]
 func (h *AnalyticsHandler) GetTeamPerformance(c *fiber.Ctx) error {
 	log := applogger.FromFiberCtx(c).With(zap.String("operation", "team_performance"))
+	companyID, ok := c.Locals("company_id").(string)
+	if !ok || companyID == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized: company_id not found"})
+	}
 
 	filters := map[string]interface{}{
+		"company_id":      companyID,
 		"period":          c.Query("period"),
 		"team_id":         c.Query("team_id"),
 		"include_pending": c.Query("include_pending") == "true",
@@ -76,8 +81,13 @@ func (h *AnalyticsHandler) GetTeamPerformance(c *fiber.Ctx) error {
 // @Router /analytics/leaderboard [get]
 func (h *AnalyticsHandler) GetLeaderboard(c *fiber.Ctx) error {
 	log := applogger.FromFiberCtx(c).With(zap.String("operation", "get_leaderboard"))
+	companyID, ok := c.Locals("company_id").(string)
+	if !ok || companyID == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized: company_id not found"})
+	}
 
 	filters := map[string]interface{}{
+		"company_id": companyID,
 		"team_id":    c.Query("team_id"),
 		"period":     c.Query("period"),
 		"source":     c.Query("source"),
@@ -112,8 +122,14 @@ func (h *AnalyticsHandler) GetLeaderboard(c *fiber.Ctx) error {
 // @Router /analytics/leaderboard/export/{format} [get]
 func (h *AnalyticsHandler) ExportLeaderboard(c *fiber.Ctx) error {
 	format := c.Params("format")
+	companyID, ok := c.Locals("company_id").(string)
+	if !ok || companyID == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized: company_id not found"})
+	}
+
 	filters := map[string]interface{}{
-		"team_id": c.Query("team_id"),
+		"company_id": companyID,
+		"team_id":    c.Query("team_id"),
 	}
 
 	result, err := h.teamPerformanceUC.Execute(c.Context(), filters)

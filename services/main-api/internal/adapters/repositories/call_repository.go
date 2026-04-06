@@ -132,6 +132,9 @@ func (r *callRepository) List(ctx context.Context, filters map[string]interface{
 		countsWhere = append(countsWhere, condition)
 		args = append(args, companyID)
 		argIdx++
+	} else {
+		// Enforce multi-tenancy: company_id must be provided
+		return nil, 0, nil, errors.New("company_id filter is required")
 	}
 
 	if managerID, ok := filters["manager_id"].(string); ok && managerID != "" {
@@ -143,7 +146,7 @@ func (r *callRepository) List(ctx context.Context, filters map[string]interface{
 	}
 
 	if teamID, ok := filters["team_id"].(string); ok && teamID != "" {
-		condition := fmt.Sprintf("c.manager_id IN (SELECT manager_id FROM auth_schema.users WHERE team_id = $%d)", argIdx)
+		condition := fmt.Sprintf("c.manager_id IN (SELECT manager_id FROM auth_schema.users WHERE team_id = $%d AND company_id = c.company_id)", argIdx)
 		where = append(where, condition)
 		countsWhere = append(countsWhere, condition)
 		args = append(args, teamID)
