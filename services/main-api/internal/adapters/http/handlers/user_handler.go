@@ -38,7 +38,8 @@ func NewUserHandler(userRepo ports.UserRepository, listCallsUC *calls.ListCallsU
 // @Router /users [get]
 func (h *UserHandler) ListUsers(c *fiber.Ctx) error {
 	log := applogger.FromFiberCtx(c).With(zap.String("operation", "list_users"))
-	users, err := h.userRepo.List(c.Context())
+	companyID := c.Locals("company_id").(string)
+	users, err := h.userRepo.List(c.Context(), companyID)
 	if err != nil {
 		log.Error("list users failed", zap.Error(err))
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
@@ -61,6 +62,7 @@ func (h *UserHandler) ListUsers(c *fiber.Ctx) error {
 // @Router /users/invite [post]
 func (h *UserHandler) InviteUser(c *fiber.Ctx) error {
 	log := applogger.FromFiberCtx(c).With(zap.String("operation", "invite_user"))
+	companyID := c.Locals("company_id").(string)
 
 	var req struct {
 		Email             string   `json:"email"`
@@ -118,6 +120,7 @@ func (h *UserHandler) InviteUser(c *fiber.Ctx) error {
 
 		user := &domain.User{
 			ID:           uuid.New().String(),
+			CompanyID:    companyID,
 			Email:        email,
 			Role:         domain.UserRole(role),
 			ManagerName:  req.ManagerName,
@@ -340,6 +343,7 @@ func (h *UserHandler) GetUserCalls(c *fiber.Ctx) error {
 		zap.Int("limit", limit))
 
 	resp, err := h.listCallsUC.Execute(c.Context(), calls.ListCallsRequest{
+		CompanyID: user.CompanyID,
 		ManagerID: *user.ManagerID,
 		Page:      page,
 		Limit:     limit,

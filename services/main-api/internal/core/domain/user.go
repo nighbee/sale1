@@ -13,14 +13,16 @@ const (
 )
 
 type User struct {
-	ID           string     `json:"id"`
-	FirstName    string     `json:"first_name"`
-	LastName     string     `json:"last_name"`
-	Email        string     `json:"email"`
-	Username     string     `json:"username"`
-	Phone        string     `json:"phone"`
-	PasswordHash string     `json:"-"`
-	Role         UserRole   `json:"role"`
+	ID              string     `json:"id"`
+	CompanyID       string     `json:"company_id"`
+	FirstName       string     `json:"first_name"`
+	LastName        string     `json:"last_name"`
+	Email           string     `json:"email"`
+	Username        string     `json:"username"`
+	Phone           string     `json:"phone"`
+	PasswordHash    string     `json:"-"`
+	InitialPassword *string    `json:"initial_password,omitempty"`
+	Role            UserRole   `json:"role"`
 	ManagerID    *string    `json:"manager_id,omitempty"`
 	ManagerName  string     `json:"manager_name"`
 	IsActive     bool       `json:"is_active"`

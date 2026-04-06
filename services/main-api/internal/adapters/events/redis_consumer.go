@@ -98,7 +98,7 @@ func (c *RedisConsumer) Start(ctx context.Context) {
 					}
 					call, err := c.callRepo.GetByIDInternal(ctx, callID)
 					if err == nil {
-						_, err := c.userRepo.GetByManagerID(ctx, call.ManagerID)
+						_, err := c.userRepo.GetByManagerID(ctx, call.ManagerID, call.CompanyID)
 						if err == nil {
 							c.hub.Broadcast(ws.Message{
 								UserID:  call.ManagerID,
@@ -106,21 +106,21 @@ func (c *RedisConsumer) Start(ctx context.Context) {
 								Payload: payload,
 							})
 							// External Notifications
-							go c.notifyExternal(ctx, "Call Analysis Completed", fmt.Sprintf("Call with %s completed. Rating: %v", call.ClientPhone, payload["overall_rating"]))
+							go c.notifyExternal(ctx, call.CompanyID, "Call Analysis Completed", fmt.Sprintf("Call with %s completed. Rating: %v", call.ClientPhone, payload["overall_rating"]))
 						}
 					}
 				} else if streamName == "critical_error" {
 					call, err := c.callRepo.GetByIDInternal(ctx, callID)
 					if err == nil {
-						_, err := c.userRepo.GetByManagerID(ctx, call.ManagerID)
+						_, err := c.userRepo.GetByManagerID(ctx, call.ManagerID, call.CompanyID)
 						if err == nil {
-							// Broadcast to everyone
+							// Broadcast to everyone in company
 							c.hub.Broadcast(ws.Message{
 								Type:    "critical_error",
 								Payload: payload,
 							})
 							// External Notifications
-							go c.notifyExternal(ctx, "CRITICAL ERROR", fmt.Sprintf("%v", payload["message"]))
+							go c.notifyExternal(ctx, call.CompanyID, "CRITICAL ERROR", fmt.Sprintf("%v", payload["message"]))
 						}
 					}
 				}
@@ -131,8 +131,8 @@ func (c *RedisConsumer) Start(ctx context.Context) {
 	}
 }
 
-func (c *RedisConsumer) notifyExternal(ctx context.Context, subject, message string) {
-	integrations, err := c.integrationRepo.List(ctx)
+func (c *RedisConsumer) notifyExternal(ctx context.Context, companyID, subject, message string) {
+	integrations, err := c.integrationRepo.List(ctx, companyID)
 	if err != nil {
 		return
 	}

@@ -13,6 +13,7 @@ const (
 
 type Call struct {
 	ID           string     `json:"id"`
+	CompanyID    string     `json:"company_id"`
 	ManagerID    string     `json:"manager_id"`
 	ManagerName  string     `json:"manager_name"`
 	ClientPhone  string     `json:"client_phone"`

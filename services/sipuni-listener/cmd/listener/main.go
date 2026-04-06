@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"sync"
 	"time"
 
 	"github.com/ansrivas/fiberprometheus/v2"
@@ -38,6 +39,8 @@ type SipuniEvent struct {
 
 var (
 	handleEventUC *usecases.HandleEventUseCase
+	connections   = make(map[string]chan struct{}) // companyID -> stop channel
+	mu            sync.Mutex
 )
 
 func main() {
@@ -124,158 +127,157 @@ func main() {
 		}
 	}()
 
-	u := url.URL{Scheme: "wss", Host: "wss.sipuni.com", Path: "/api"}
 	apiClient := api.NewMainAPIClient()
+
+	go func() {
+		for {
+			log.Info("Checking for active Sipuni integrations")
+			integrations, err := apiClient.GetActiveIntegrations()
+			if err != nil {
+				log.Error("Failed to fetch integrations", zap.Error(err))
+			} else {
+				activeCompanyIDs := make(map[string]bool)
+				for _, i := range integrations {
+					if i.IntegrationType == "sipuni" {
+						var creds struct {
+							APIKey string `json:"api_key"`
+						}
+						if err := json.Unmarshal(i.Credentials, &creds); err == nil && creds.APIKey != "" {
+							activeCompanyIDs[i.CompanyID] = true
+							mu.Lock()
+							if _, exists := connections[i.CompanyID]; !exists {
+								stopChan := make(chan struct{})
+								connections[i.CompanyID] = stopChan
+								go manageSipuniConnection(i.CompanyID, creds.APIKey, stopChan)
+								log.Info("Started Sipuni connection for company", zap.String("company_id", i.CompanyID))
+							}
+							mu.Unlock()
+						}
+					}
+				}
+
+				// Stop connections for integrations that are no longer active
+				mu.Lock()
+				for companyID, stopChan := range connections {
+					if !activeCompanyIDs[companyID] {
+						close(stopChan)
+						delete(connections, companyID)
+						log.Info("Stopped Sipuni connection for company", zap.String("company_id", companyID))
+					}
+				}
+				mu.Unlock()
+			}
+			time.Sleep(1 * time.Minute)
+		}
+	}()
+
+	<-interrupt
+	log.Info("Interrupt received, shutting down")
+}
+
+func manageSipuniConnection(companyID string, apiKey string, stopChan chan struct{}) {
+	log := applogger.L.With(zap.String("company_id", companyID))
+	u := url.URL{Scheme: "wss", Host: "wss.sipuni.com", Path: "/api"}
 
 	backoff := 2 * time.Second
 	maxBackoff := 60 * time.Second
 	retryCount := 0
 
 	for {
-		apiKey := os.Getenv("SIPUNI_API_KEY")
-		integrations, err := apiClient.GetActiveIntegrations()
-		if err == nil {
-			for _, i := range integrations {
-				if i.IntegrationType == "sipuni" {
-					var creds struct {
-						APIKey string `json:"api_key"`
-					}
-					if err := json.Unmarshal(i.Credentials, &creds); err == nil && creds.APIKey != "" {
-						apiKey = creds.APIKey
-						log.Info("Using Sipuni API key from main-api")
-					}
-					break
-				}
-			}
-		} else {
-			log.Warn("Failed to fetch integrations from main-api, using env fallback", zap.Error(err))
-		}
-
-		if apiKey == "" {
-			log.Warn("Sipuni API Key not found, retrying in backoff...")
-			time.Sleep(backoff)
-			continue
-		}
-
-		log.Info("Connecting to Sipuni WebSocket", zap.String("url", u.String()), zap.Int("retry_count", retryCount))
-		c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
-		if err != nil {
-			log.Warn("WebSocket dial error, will retry",
-				zap.Error(err), zap.Duration("backoff", backoff), zap.Int("retry_count", retryCount))
-			retryCount++
-			select {
-			case <-interrupt:
-				log.Info("Interrupt received during reconnect, shutting down")
-				return
-			case <-time.After(backoff):
-				backoff *= 2
-				if backoff > maxBackoff {
-					backoff = maxBackoff
-				}
-				continue
-			}
-		}
-
-		// Connected successfully
-		backoff = 2 * time.Second
-		retryCount = 0
-		log.Info("Connected to Sipuni WebSocket server")
-
-		// Auth
-		authMsg := SipuniAuthMessage{
-			Type: "auth",
-			Body: SipuniAuthBody{Key: apiKey},
-		}
-		if err := c.WriteJSON(authMsg); err != nil {
-			log.Error("auth send error", zap.Error(err))
-			c.Close()
-			continue
-		}
-		log.Info("Authentication message sent to Sipuni")
-
-		// Keepalive goroutine
-		keepaliveStop := make(chan struct{})
-		go func() {
-			ticker := time.NewTicker(30 * time.Second)
-			defer ticker.Stop()
-			for {
+		select {
+		case <-stopChan:
+			return
+		default:
+			log.Info("Connecting to Sipuni WebSocket", zap.String("url", u.String()), zap.Int("retry_count", retryCount))
+			c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
+			if err != nil {
+				log.Warn("WebSocket dial error, will retry",
+					zap.Error(err), zap.Duration("backoff", backoff), zap.Int("retry_count", retryCount))
+				retryCount++
 				select {
-				case <-ticker.C:
-					keepalive := map[string]string{"type": "keepalive"}
-					if err := c.WriteJSON(keepalive); err != nil {
-						log.Warn("keepalive send error", zap.Error(err))
-						return
-					}
-					log.Debug("keepalive sent")
-				case <-keepaliveStop:
+				case <-stopChan:
 					return
-				}
-			}
-		}()
-
-		// Listen loop
-		done := make(chan struct{})
-		go func() {
-			defer close(done)
-			defer close(keepaliveStop)
-			for {
-				_, message, err := c.ReadMessage()
-				if err != nil {
-					log.Warn("WebSocket read error", zap.Error(err))
-					return
-				}
-
-				log.Info("Message received from Sipuni", zap.String("raw", string(message)))
-
-				// Try to parse as event message (notify or auth response)
-				var event SipuniEvent
-				err = json.Unmarshal(message, &event)
-				if err == nil {
-					// Handle auth response
-					if event.Action == "auth" {
-						if event.Status == 1 {
-							log.Info("Sipuni authentication successful — waiting for events")
-						} else {
-							log.Error("Sipuni authentication failed",
-								zap.Int("status", event.Status), zap.String("raw", string(message)))
-						}
-						continue
+				case <-time.After(backoff):
+					backoff *= 2
+					if backoff > maxBackoff {
+						backoff = maxBackoff
 					}
-
-					// Handle notify message
-					if event.Action == "notify" {
-						log.Info("Sipuni notify event received",
-							zap.String("raw", string(message)))
-						handleEventUC.Execute(context.Background(), event.Request)
-						continue
-					}
-				}
-
-				// Fallback: Try to parse as direct notify request (unwrapped)
-				var directNotify usecases.SipuniNotifyRequest
-				err = json.Unmarshal(message, &directNotify)
-				if err == nil && directNotify.CallID != "" {
-					log.Info("received direct notify (unwrapped)",
-						zap.String("call_id", directNotify.CallID))
-					// We need to re-marshal to RawMessage to use existing handleNotify
-					rawRequest, _ := json.Marshal(directNotify)
-					handleEventUC.Execute(context.Background(), rawRequest)
 					continue
 				}
-
-				log.Debug("unrecognized message format", zap.String("raw", string(message)))
 			}
-		}()
 
-		select {
-		case <-done:
-			log.Warn("Listen loop terminated, reconnecting")
-			c.Close()
-		case <-interrupt:
-			log.Info("Interrupt received, closing WebSocket connection")
-			c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-			c.Close()
-			return
+			// Connected successfully
+			backoff = 2 * time.Second
+			retryCount = 0
+			log.Info("Connected to Sipuni WebSocket server")
+
+			// Auth
+			authMsg := SipuniAuthMessage{
+				Type: "auth",
+				Body: SipuniAuthBody{Key: apiKey},
+			}
+			if err := c.WriteJSON(authMsg); err != nil {
+				log.Error("auth send error", zap.Error(err))
+				c.Close()
+				continue
+			}
+
+			// Listen loop and keepalive
+			done := make(chan struct{})
+			keepaliveStop := make(chan struct{})
+
+			go func() {
+				ticker := time.NewTicker(30 * time.Second)
+				defer ticker.Stop()
+				for {
+					select {
+					case <-ticker.C:
+						if err := c.WriteJSON(map[string]string{"type": "keepalive"}); err != nil {
+							return
+						}
+					case <-keepaliveStop:
+						return
+					}
+				}
+			}()
+
+			go func() {
+				defer close(done)
+				defer close(keepaliveStop)
+				for {
+					_, message, err := c.ReadMessage()
+					if err != nil {
+						return
+					}
+
+					var event SipuniEvent
+					if err := json.Unmarshal(message, &event); err == nil {
+						if event.Action == "notify" {
+							handleEventUC.Execute(context.Background(), companyID, event.Request)
+						} else if event.Action == "auth" && event.Status != 1 {
+							log.Error("Sipuni authentication failed", zap.Int("status", event.Status))
+							return
+						}
+					} else {
+						// Try unwrapped
+						var directNotify usecases.SipuniNotifyRequest
+						if err := json.Unmarshal(message, &directNotify); err == nil && directNotify.CallID != "" {
+							rawRequest, _ := json.Marshal(directNotify)
+							handleEventUC.Execute(context.Background(), companyID, rawRequest)
+						}
+					}
+				}
+			}()
+
+			select {
+			case <-done:
+				c.Close()
+				log.Warn("Connection closed, reconnecting")
+			case <-stopChan:
+				c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+				c.Close()
+				return
+			}
 		}
 	}
 }

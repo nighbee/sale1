@@ -10,6 +10,7 @@ import (
 
 type Integration struct {
 	ID              string          `json:"id"`
+	CompanyID       string          `json:"company_id"`
 	IntegrationType string          `json:"integration_type"`
 	Credentials     json.RawMessage `json:"credentials"`
 	Config          json.RawMessage `json:"config"`

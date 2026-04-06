@@ -24,10 +24,10 @@ func (m *mockUserRepo) GetByEmail(ctx context.Context, email string) (*domain.Us
 func (m *mockUserRepo) GetByPhone(ctx context.Context, phone string) (*domain.User, error) { return nil, nil }
 func (m *mockUserRepo) Update(ctx context.Context, u *domain.User) error                { return nil }
 func (m *mockUserRepo) Delete(ctx context.Context, id string) error                    { return nil }
-func (m *mockUserRepo) List(ctx context.Context) ([]*domain.User, error) {
+func (m *mockUserRepo) List(ctx context.Context, companyID string) ([]*domain.User, error) {
 	return nil, nil
 }
-func (m *mockUserRepo) GetByManagerID(ctx context.Context, managerID string) (*domain.User, error) {
+func (m *mockUserRepo) GetByManagerID(ctx context.Context, managerID string, companyID string) (*domain.User, error) {
 	return nil, nil
 }
 
@@ -70,6 +70,7 @@ func TestGetUserCalls_Auth(t *testing.T) {
 	app.Get("/users/:id/calls", func(c *fiber.Ctx) error {
 		// Mock locals for auth
 		c.Locals("user_id", "user-2") // Different user
+		c.Locals("company_id", "company-1")
 		c.Locals("role", string(domain.RoleSalesRep))
 		return h.GetUserCalls(c)
 	})
@@ -103,6 +104,7 @@ func TestGetUserCalls_Success(t *testing.T) {
 	app.Get("/users/:id/calls", func(c *fiber.Ctx) error {
 		// Mock locals for auth
 		c.Locals("user_id", "user-1") // Same user
+		c.Locals("company_id", "company-1")
 		c.Locals("role", string(domain.RoleSalesRep))
 		return h.GetUserCalls(c)
 	})
@@ -146,6 +148,7 @@ func TestGetUserCalls_ManagerAccess(t *testing.T) {
 	app.Get("/users/:id/calls", func(c *fiber.Ctx) error {
 		// Mock locals for auth: requester is the manager
 		c.Locals("user_id", managerID)
+		c.Locals("company_id", "company-1")
 		c.Locals("role", string(domain.RoleSalesRep))
 		return h.GetUserCalls(c)
 	})

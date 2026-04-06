@@ -4,6 +4,7 @@ import "time"
 
 type AISettings struct {
 	ID                    string    `json:"id"`
+	CompanyID             string    `json:"company_id"`
 	STTProvider           string    `json:"stt_provider"`
 	STTModel              *string   `json:"stt_model,omitempty"`
 	STTLanguage           *string   `json:"stt_language,omitempty"`

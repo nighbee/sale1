@@ -80,7 +80,10 @@ func (h *CallHandler) ListCalls(c *fiber.Ctx) error {
 	page, _ := strconv.Atoi(c.Query("page", "1"))
 	limit, _ := strconv.Atoi(c.Query("limit", "20"))
 
+	companyID := c.Locals("company_id").(string)
+
 	req := calls.ListCallsRequest{
+		CompanyID:   companyID,
 		ManagerID:   c.Query("manager_id"),
 		ManagerName: c.Query("manager_name"),
 		ClientPhone: c.Query("client_phone"),

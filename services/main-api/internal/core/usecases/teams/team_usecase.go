@@ -26,9 +26,10 @@ func NewTeamUseCase(
 	}
 }
 
-func (uc *TeamUseCase) Create(ctx context.Context, name, description string, autoAssign bool) (*domain.Team, error) {
+func (uc *TeamUseCase) Create(ctx context.Context, companyID, name, description string, autoAssign bool) (*domain.Team, error) {
 	team := &domain.Team{
 		ID:          uuid.New().String(),
+		CompanyID:   companyID,
 		Name:        name,
 		Description: description,
 		AutoAssign:  autoAssign,
@@ -37,14 +38,14 @@ func (uc *TeamUseCase) Create(ctx context.Context, name, description string, aut
 	return team, err
 }
 
-func (uc *TeamUseCase) GetByID(ctx context.Context, id string) (*domain.Team, error) {
-	team, err := uc.teamRepo.GetByID(ctx, id)
+func (uc *TeamUseCase) GetByID(ctx context.Context, id string, companyID string) (*domain.Team, error) {
+	team, err := uc.teamRepo.GetByID(ctx, id, companyID)
 	if err != nil {
 		return nil, err
 	}
 
 	// Fetch members
-	users, _ := uc.userRepo.List(ctx)
+	users, _ := uc.userRepo.List(ctx, companyID)
 	for _, u := range users {
 		if u.TeamID != nil && *u.TeamID == id {
 			team.Members = append(team.Members, u)
@@ -52,7 +53,7 @@ func (uc *TeamUseCase) GetByID(ctx context.Context, id string) (*domain.Team, er
 	}
 
 	// Fetch script
-	scripts, _ := uc.scriptRepo.List(ctx)
+	scripts, _ := uc.scriptRepo.List(ctx, companyID)
 	for _, s := range scripts {
 		if s.TeamID != nil && *s.TeamID == id {
 			team.Script = s
@@ -63,8 +64,8 @@ func (uc *TeamUseCase) GetByID(ctx context.Context, id string) (*domain.Team, er
 	return team, nil
 }
 
-func (uc *TeamUseCase) List(ctx context.Context) ([]*domain.Team, error) {
-	return uc.teamRepo.List(ctx)
+func (uc *TeamUseCase) List(ctx context.Context, companyID string) ([]*domain.Team, error) {
+	return uc.teamRepo.List(ctx, companyID)
 }
 
 func (uc *TeamUseCase) Update(ctx context.Context, team *domain.Team) error {
@@ -92,12 +93,12 @@ func (uc *TeamUseCase) RemoveMember(ctx context.Context, teamID, userID string) 
 	return nil
 }
 
-func (uc *TeamUseCase) Delete(ctx context.Context, id string) error {
-	return uc.teamRepo.Delete(ctx, id)
+func (uc *TeamUseCase) Delete(ctx context.Context, id string, companyID string) error {
+	return uc.teamRepo.Delete(ctx, id, companyID)
 }
 
-func (uc *TeamUseCase) EnsureTeamExists(ctx context.Context, teamName, description string) (*domain.Team, error) {
-	existing, err := uc.teamRepo.GetByName(ctx, teamName)
+func (uc *TeamUseCase) EnsureTeamExists(ctx context.Context, companyID, teamName, description string) (*domain.Team, error) {
+	existing, err := uc.teamRepo.GetByName(ctx, teamName, companyID)
 	if err != nil {
 		return nil, err
 	}
@@ -107,6 +108,7 @@ func (uc *TeamUseCase) EnsureTeamExists(ctx context.Context, teamName, descripti
 
 	team := &domain.Team{
 		ID:          uuid.New().String(),
+		CompanyID:   companyID,
 		Name:        teamName,
 		Description: description,
 		AutoAssign:  false,
