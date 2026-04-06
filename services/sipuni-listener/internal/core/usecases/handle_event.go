@@ -213,7 +213,7 @@ func (uc *HandleEventUseCase) Execute(ctx context.Context, companyID string, req
 		zap.String("call_id", callID), zap.String("manager_id", managerID),
 		zap.String("client_phone", clientPhone), zap.Int("duration_s", talkDuration))
 
-	if err := uc.publisher.EnqueueAudioProcessing(ctx, callID, recordLink, managerID); err != nil {
+	if err := uc.publisher.EnqueueAudioProcessing(ctx, callID, recordLink, managerID, companyID); err != nil {
 		log.Error("queue error enqueuing audio job",
 			zap.String("call_id", callID), zap.Error(err))
 	} else {

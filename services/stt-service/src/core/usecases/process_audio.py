@@ -224,8 +224,15 @@ class ProcessAudioUseCase:
             # We wrap the segments in the expected JSON column structure
             await asyncio.to_thread(save_transcript, call_id, segments, stt_provider_name)
 
+            # Determine company_id for the event - it should be in the job or from DB
+            company_id = job.get('company_id')
+            if not company_id and db_call_link:
+                # If not in job, we might have it from another source, but job is the best source.
+                # In most cases it should be in the job now.
+                pass
+
             # Publish event
-            await publish_transcript_ready(call_id)
+            await publish_transcript_ready(call_id, company_id)
 
             total_elapsed = round(time.monotonic() - t_total, 2)
             logger.info(

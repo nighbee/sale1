@@ -15,5 +15,5 @@ type UserRepository interface {
 }
 
 type QueuePublisher interface {
-	EnqueueAudioProcessing(ctx context.Context, jobID string, audioURL string, managerID string) error
+	EnqueueAudioProcessing(ctx context.Context, jobID string, audioURL string, managerID string, companyID string) error
 }

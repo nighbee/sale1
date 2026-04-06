@@ -104,13 +104,14 @@ func (h *TeamHandler) Get(c *fiber.Ctx) error {
 // @Router /teams/{id}/members [post]
 func (h *TeamHandler) AddMember(c *fiber.Ctx) error {
 	id := c.Params("id")
+	companyID := c.Locals("company_id").(string)
 	var req struct {
 		UserID string `json:"user_id"`
 	}
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid body"})
 	}
-	if err := h.teamUC.AddMember(c.Context(), id, req.UserID); err != nil {
+	if err := h.teamUC.AddMember(c.Context(), id, req.UserID, companyID); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.SendStatus(200)
@@ -131,7 +132,8 @@ func (h *TeamHandler) AddMember(c *fiber.Ctx) error {
 func (h *TeamHandler) RemoveMember(c *fiber.Ctx) error {
 	id := c.Params("id")
 	userID := c.Params("userID")
-	if err := h.teamUC.RemoveMember(c.Context(), id, userID); err != nil {
+	companyID := c.Locals("company_id").(string)
+	if err := h.teamUC.RemoveMember(c.Context(), id, userID, companyID); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.SendStatus(200)
@@ -152,11 +154,13 @@ func (h *TeamHandler) RemoveMember(c *fiber.Ctx) error {
 // @Router /teams/{id} [put]
 func (h *TeamHandler) Update(c *fiber.Ctx) error {
 	id := c.Params("id")
+	companyID := c.Locals("company_id").(string)
 	var team domain.Team
 	if err := c.BodyParser(&team); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid body"})
 	}
 	team.ID = id
+	team.CompanyID = companyID
 	if err := h.teamUC.Update(c.Context(), &team); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -223,7 +227,7 @@ func (h *TeamHandler) Ensure(c *fiber.Ctx) error {
 
 	if len(req.UserIDs) > 0 {
 		var err error
-		membersAdded, alreadyInTeam, err = h.teamUC.AddMultipleMembers(c.Context(), team.ID, req.UserIDs)
+		membersAdded, alreadyInTeam, err = h.teamUC.AddMultipleMembers(c.Context(), team.ID, req.UserIDs, companyID)
 		if err != nil {
 			log.Error("add members failed", zap.String("team_id", team.ID), zap.Error(err))
 		}

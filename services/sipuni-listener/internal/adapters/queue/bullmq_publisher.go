@@ -23,16 +23,18 @@ func NewBullMQPublisher(redisURL string) (ports.QueuePublisher, error) {
 type AudioProcessingJob struct {
 	JobType    string `json:"job_type"`
 	CallID     string `json:"call_id"`
+	CompanyID  string `json:"company_id"`
 	AudioURL   string `json:"audio_url"`
 	ManagerID  string `json:"manager_id"`
 	RetryCount int    `json:"retry_count"`
 	MaxRetries int    `json:"max_retries"`
 }
 
-func (p *BullMQPublisher) EnqueueAudioProcessing(ctx context.Context, callID string, audioURL string, managerID string) error {
+func (p *BullMQPublisher) EnqueueAudioProcessing(ctx context.Context, callID string, audioURL string, managerID string, companyID string) error {
 	job := AudioProcessingJob{
 		JobType:    "audio_processing",
 		CallID:     callID,
+		CompanyID:  companyID,
 		AudioURL:   audioURL,
 		ManagerID:  managerID,
 		MaxRetries: 3,

@@ -159,8 +159,9 @@ func (h *UserHandler) InviteUser(c *fiber.Ctx) error {
 // @Router /users/{id} [get]
 func (h *UserHandler) GetUser(c *fiber.Ctx) error {
 	id := c.Params("id")
+	companyID := c.Locals("company_id").(string)
 	user, err := h.userRepo.GetByID(c.Context(), id)
-	if err != nil {
+	if err != nil || user.CompanyID != companyID {
 		return c.Status(404).JSON(fiber.Map{"error": "User not found"})
 	}
 	return c.JSON(user)
@@ -181,8 +182,9 @@ func (h *UserHandler) GetUser(c *fiber.Ctx) error {
 // @Router /users/{id} [put]
 func (h *UserHandler) UpdateUser(c *fiber.Ctx) error {
 	id := c.Params("id")
+	companyID := c.Locals("company_id").(string)
 	user, err := h.userRepo.GetByID(c.Context(), id)
-	if err != nil {
+	if err != nil || user.CompanyID != companyID {
 		return c.Status(404).JSON(fiber.Map{"error": "User not found"})
 	}
 
@@ -275,6 +277,13 @@ func (h *UserHandler) GetMe(c *fiber.Ctx) error {
 // @Router /users/{id} [delete]
 func (h *UserHandler) DeleteUser(c *fiber.Ctx) error {
 	id := c.Params("id")
+	companyID := c.Locals("company_id").(string)
+
+	user, err := h.userRepo.GetByID(c.Context(), id)
+	if err != nil || user.CompanyID != companyID {
+		return c.Status(404).JSON(fiber.Map{"error": "User not found"})
+	}
+
 	if err := h.userRepo.Delete(c.Context(), id); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}

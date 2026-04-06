@@ -5,12 +5,13 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-async def publish_transcript_ready(call_id):
+async def publish_transcript_ready(call_id, company_id):
     redis_url = os.getenv("REDIS_URL", "redis://redis:6379")
     r = await redis.from_url(redis_url)
     event = {
         "event_type": "transcript_ready",
-        "call_id": call_id
+        "call_id": call_id,
+        "company_id": company_id
     }
     # Redis Streams use xadd
     msg_id = await r.xadd("transcript_ready", event)

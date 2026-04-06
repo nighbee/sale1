@@ -6,7 +6,7 @@ from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
-async def publish_analysis_completed(call_id, overall_rating):
+async def publish_analysis_completed(call_id, overall_rating, company_id):
     redis_url = os.getenv("REDIS_URL")
     if not redis_url:
         password = os.getenv("REDIS_PASSWORD")
@@ -22,6 +22,7 @@ async def publish_analysis_completed(call_id, overall_rating):
     event = {
         "event_type": "analysis_completed",
         "call_id": call_id,
+        "company_id": company_id,
         "overall_rating": float(overall_rating),
         "timestamp": datetime.now().isoformat()
     }
@@ -37,7 +38,7 @@ async def publish_analysis_completed(call_id, overall_rating):
     finally:
         await r.close()
 
-async def publish_critical_error(call_id, error_type, message):
+async def publish_critical_error(call_id, error_type, message, company_id):
     redis_url = os.getenv("REDIS_URL")
     if not redis_url:
         password = os.getenv("REDIS_PASSWORD")
@@ -53,6 +54,7 @@ async def publish_critical_error(call_id, error_type, message):
     event = {
         "event_type": "critical_error",
         "call_id": call_id,
+        "company_id": company_id,
         "error_type": error_type,
         "message": message,
         "timestamp": datetime.now().isoformat()

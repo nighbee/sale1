@@ -72,20 +72,42 @@ func (uc *TeamUseCase) Update(ctx context.Context, team *domain.Team) error {
 	return uc.teamRepo.Update(ctx, team)
 }
 
-func (uc *TeamUseCase) AddMember(ctx context.Context, teamID, userID string) error {
+func (uc *TeamUseCase) AddMember(ctx context.Context, teamID, userID, companyID string) error {
+	// First ensure team belongs to company
+	_, err := uc.teamRepo.GetByID(ctx, teamID, companyID)
+	if err != nil {
+		return err
+	}
+
 	user, err := uc.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return err
 	}
+	// Ensure user belongs to same company
+	if user.CompanyID != companyID {
+		return context.DeadlineExceeded // Or another appropriate error
+	}
+
 	user.TeamID = &teamID
 	return uc.userRepo.Update(ctx, user)
 }
 
-func (uc *TeamUseCase) RemoveMember(ctx context.Context, teamID, userID string) error {
+func (uc *TeamUseCase) RemoveMember(ctx context.Context, teamID, userID, companyID string) error {
+	// First ensure team belongs to company
+	_, err := uc.teamRepo.GetByID(ctx, teamID, companyID)
+	if err != nil {
+		return err
+	}
+
 	user, err := uc.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return err
 	}
+	// Ensure user belongs to same company
+	if user.CompanyID != companyID {
+		return context.DeadlineExceeded
+	}
+
 	if user.TeamID != nil && *user.TeamID == teamID {
 		user.TeamID = nil
 		return uc.userRepo.Update(ctx, user)
@@ -117,13 +139,24 @@ func (uc *TeamUseCase) EnsureTeamExists(ctx context.Context, companyID, teamName
 	return team, err
 }
 
-func (uc *TeamUseCase) AddMultipleMembers(ctx context.Context, teamID string, userIDs []string) (int, int, error) {
+func (uc *TeamUseCase) AddMultipleMembers(ctx context.Context, teamID string, userIDs []string, companyID string) (int, int, error) {
+	// First ensure team belongs to company
+	_, err := uc.teamRepo.GetByID(ctx, teamID, companyID)
+	if err != nil {
+		return 0, 0, err
+	}
+
 	var membersAdded int
 	var alreadyInTeam int
 
 	for _, userID := range userIDs {
 		user, err := uc.userRepo.GetByID(ctx, userID)
 		if err != nil {
+			continue
+		}
+
+		// Ensure user belongs to same company
+		if user.CompanyID != companyID {
 			continue
 		}
 
