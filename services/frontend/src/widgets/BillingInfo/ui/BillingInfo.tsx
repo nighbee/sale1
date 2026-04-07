@@ -5,10 +5,9 @@ import type { Billing } from '../../../entities/company/types';
 import Skeleton from '../../../shared/ui/Skeleton';
 
 interface BillingInfoProps {
-  companyId: string;
 }
 
-export const BillingInfo: React.FC<BillingInfoProps> = ({ companyId }) => {
+export const BillingInfo: React.FC<BillingInfoProps> = () => {
   const { t } = useTranslation();
   const [billing, setBilling] = useState<Billing | null>(null);
   const [loading, setLoading] = useState(true);
@@ -16,7 +15,7 @@ export const BillingInfo: React.FC<BillingInfoProps> = ({ companyId }) => {
   useEffect(() => {
     const fetchBilling = async () => {
       try {
-        const res = await companyApi.getBilling(companyId);
+        const res = await companyApi.getBilling();
         setBilling(res.data);
       } catch (err) {
         console.error(err);
@@ -25,7 +24,7 @@ export const BillingInfo: React.FC<BillingInfoProps> = ({ companyId }) => {
       }
     };
     fetchBilling();
-  }, [companyId]);
+  }, []);
 
   if (loading) return <Skeleton className="h-48 w-full" />;
   if (!billing) return <div>{t('common.not_found')}</div>;

@@ -19,20 +19,17 @@ const CompanySetupPage: React.FC = () => {
 
   useEffect(() => {
     const fetchCompany = async () => {
-      const companyId = localStorage.getItem('company_id');
-      if (companyId) {
-        try {
-          const res = await companyApi.getCompany(companyId);
-          const data = res.data as Company;
-          setFormData({
-            companyName: data.name || '',
-            industry: data.industry || '',
-            companySize: data.size || '',
-            timezone: data.time_zone || '',
-          });
-        } catch {
-          console.error('Failed to fetch company');
-        }
+      try {
+        const res = await companyApi.getCompany();
+        const data = res.data as Company;
+        setFormData({
+          companyName: data.name || '',
+          industry: data.industry || '',
+          companySize: data.size || '',
+          timezone: data.time_zone || '',
+        });
+      } catch {
+        console.error('Failed to fetch company');
       }
     };
     fetchCompany();
@@ -50,15 +47,8 @@ const CompanySetupPage: React.FC = () => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    const companyId = localStorage.getItem('company_id');
-    if (!companyId) {
-      setError('Company ID not found');
-      setLoading(false);
-      return;
-    }
-
     try {
-      await companyApi.updateSettings(companyId, {
+      await companyApi.updateSettings({
         name: formData.companyName,
         industry: formData.industry,
         size: formData.companySize,
