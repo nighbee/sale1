@@ -14,9 +14,8 @@ const CompanySettingsPage: React.FC = () => {
   type TabId = 'general' | 'ai' | 'integrations' | 'billing';
   const [activeTab, setActiveTab] = useState<TabId>('general');
 
-  const companyId = localStorage.getItem('company_id') || '';
-  const { company, loading: companyLoading, updateSettings, setCompany } = useCompany(companyId) as any;
-  const { billing, loading: billingLoading, updateBilling, setBilling } = useBilling(companyId) as any;
+  const { company, loading: companyLoading, updateSettings, setCompany } = useCompany() as any;
+  const { billing, loading: billingLoading, updateBilling, setBilling } = useBilling() as any;
 
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [integrationsLoading, setIntegrationsLoading] = useState(true);
@@ -241,7 +240,7 @@ const CompanySettingsPage: React.FC = () => {
 
             {activeTab === 'billing' && billing && (
                 <section className="space-y-8">
-                    <BillingInfo companyId={companyId} />
+                    <BillingInfo />
                     <div className="bg-gradient-to-br from-primary to-blue-700 p-8 rounded-2xl text-white shadow-xl shadow-primary/20">
                         <div className="flex justify-between items-start mb-12">
                             <span className="text-lg font-bold italic tracking-widest uppercase">{billing.card_type || 'VISA'}</span>
