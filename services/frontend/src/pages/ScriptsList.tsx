@@ -16,6 +16,7 @@ const ScriptsList: React.FC = () => {
     deleteScript,
     uploadScript,
     updateScript,
+    downloadScript,
   } = useScripts();
   const [searchTerm, setSearchTerm] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -186,6 +187,15 @@ const ScriptsList: React.FC = () => {
                           </td>
                           <td className="px-6 py-4 text-right">
                             <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => downloadScript(s.id, s.name)}
+                                className="p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
+                                title={t("common.download")}
+                              >
+                                <span className="material-icons text-lg">
+                                  download
+                                </span>
+                              </button>
                               <button
                                 onClick={() => handleRename(s.id, s.name)}
                                 className="p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-all"

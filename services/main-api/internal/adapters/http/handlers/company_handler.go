@@ -87,6 +87,8 @@ func (h *CompanyHandler) UpdateSettings(c *fiber.Ctx) error {
 	company.Size = update.Size
 	company.ManagersCount = update.ManagersCount
 	company.TimeZone = update.TimeZone
+	company.STTModelPreference = update.STTModelPreference
+	company.LLMProvider = update.LLMProvider
 
 	if err := h.companyRepo.Update(c.Context(), company); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
