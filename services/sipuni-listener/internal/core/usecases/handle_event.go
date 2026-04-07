@@ -66,10 +66,24 @@ func (uc *HandleEventUseCase) Execute(ctx context.Context, companyID string, req
 		return
 	}
 
-	// Unify UserID and User
+	// Identify manager ID and name
 	managerID := notify.UserID
 	if managerID == "" {
-		managerID = notify.User
+		// Fallback to extensions if UserID is missing
+		if notify.SrcType != 1 && notify.SrcNum != "" {
+			// Src is likely the manager (internal)
+			managerID = notify.SrcNum
+		} else if notify.DstType != 1 && notify.DstNum != "" {
+			// Dst is likely the manager (internal)
+			managerID = notify.DstNum
+		} else {
+			managerID = notify.User
+		}
+	}
+
+	managerName := notify.User
+	if managerName == "" {
+		managerName = "Sipuni Manager"
 	}
 
 	log.Info("processing Sipuni notify",
@@ -79,7 +93,58 @@ func (uc *HandleEventUseCase) Execute(ctx context.Context, companyID string, req
 		zap.String("src_num", notify.SrcNum),
 		zap.Int("src_type", notify.SrcType),
 		zap.String("dst_num", notify.DstNum),
+		zap.String("manager_id", managerID),
 		zap.Bool("has_recording", notify.CallRecordLink != ""))
+
+	// Ensure manager exists in auth_schema.users - move this BEFORE call status checks
+	// to enable dynamic manager creation for any event (ringing, busy, etc.)
+	var user *domain.User
+	if managerID != "" {
+		var err error
+		user, err = uc.userRepo.FindByManagerID(ctx, managerID, companyID)
+		if err != nil {
+			log.Error("error checking for manager existence", zap.String("manager_id", managerID), zap.Error(err))
+			// Continue anyway, maybe we can still save the call
+		}
+
+		if user == nil {
+			log.Info("manager not found, creating new user", zap.String("manager_id", managerID))
+
+			// Use a safe email format
+			safeID := strings.ReplaceAll(managerID, " ", "")
+			email := fmt.Sprintf("manager_%s@salesai.local", safeID)
+
+			// Generate random password
+			randomPassword := generateRandomPassword(12)
+			hashedPassword, err := bcrypt.GenerateFromPassword([]byte(randomPassword), bcrypt.DefaultCost)
+			if err != nil {
+				log.Error("error hashing random password", zap.Error(err))
+			} else {
+				newUser := &domain.User{
+					ID:              uuid.New().String(),
+					CompanyID:       companyID,
+					Email:           email,
+					Username:        managerName, // Use manager name as initial username
+					PasswordHash:    string(hashedPassword),
+					InitialPassword: &randomPassword,
+					Role:            domain.RoleSalesRep,
+					ManagerID:       &managerID,
+					ManagerName:     managerName,
+					FirstName:       managerName,
+					IsActive:        true,
+				}
+
+				if err := uc.userRepo.Create(ctx, newUser); err != nil {
+					log.Error("error creating new manager user", zap.String("manager_id", managerID), zap.Error(err))
+				} else {
+					log.Info("new manager user created", zap.String("user_id", newUser.ID), zap.String("manager_id", managerID))
+					user = newUser
+				}
+			}
+		} else {
+			managerName = user.ManagerName
+		}
+	}
 
 	// Only process answered calls — NOANSWER/BUSY/FAILED/CANCEL have no actual audio
 	if notify.Status != "ANSWER" {
@@ -94,56 +159,6 @@ func (uc *HandleEventUseCase) Execute(ctx context.Context, companyID string, req
 		log.Info("skipping notify — no recording link despite ANSWER status",
 			zap.String("sipuni_call_id", notify.CallID))
 		return
-	}
-
-	// Ensure manager exists in auth_schema.users
-	user, err := uc.userRepo.FindByManagerID(ctx, managerID, companyID)
-	if err != nil {
-		log.Error("error checking for manager existence", zap.String("manager_id", managerID), zap.Error(err))
-		return
-	}
-
-	managerName := notify.User
-	if managerName == "" {
-		managerName = "Sipuni Manager"
-	}
-
-	if user == nil {
-		log.Info("manager not found, creating new user", zap.String("manager_id", managerID))
-
-		// Use a safe email format
-		safeID := strings.ReplaceAll(managerID, " ", "")
-		email := fmt.Sprintf("manager_%s@salesai.local", safeID)
-
-		// Generate random password
-		randomPassword := generateRandomPassword(12)
-		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(randomPassword), bcrypt.DefaultCost)
-		if err != nil {
-			log.Error("error hashing random password", zap.Error(err))
-			return
-		}
-
-		newUser := &domain.User{
-			ID:              uuid.New().String(),
-			CompanyID:       companyID,
-			Email:           email,
-			Username:        managerName, // Use manager name as initial username
-			PasswordHash:    string(hashedPassword),
-			InitialPassword: &randomPassword,
-			Role:            domain.RoleSalesRep,
-			ManagerID:       &managerID,
-			ManagerName:     managerName,
-			FirstName:       managerName,
-			IsActive:        true,
-		}
-
-		if err := uc.userRepo.Create(ctx, newUser); err != nil {
-			log.Error("error creating new manager user", zap.String("manager_id", managerID), zap.Error(err))
-			return
-		}
-		log.Info("new manager user created", zap.String("user_id", newUser.ID), zap.String("manager_id", managerID))
-	} else {
-		managerName = user.ManagerName
 	}
 
 	// Generate deterministic UUID for the call based on Sipuni CallID

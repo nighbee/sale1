@@ -144,9 +144,9 @@ const CompanySettingsPage: React.FC = () => {
               </div>
               <div className="space-y-4">
                 {[
-                  { id: 'whisperx_local', name: t('settings.stt_whisperx'), type: 'Free', details: [t('settings.zero_data_egress'), t('settings.lowest_latency')], warning: [t('settings.requires_gpu'), t('settings.higher_maintenance')] },
-                  { id: 'openai', name: t('settings.stt_openai'), type: '$0.006 / min', details: [t('settings.highest_accuracy'), t('settings.managed_infra')], warning: [t('settings.data_leaves_region')] },
-                  { id: 'gemini', name: t('settings.stt_gemini'), type: '$0.004 / min', details: [t('settings.strong_multilingual'), t('settings.native_gcp')], warning: [t('settings.lower_jargon_accuracy')] },
+                  { id: 'whisperx_local', name: t('settings.stt_whisperx'), type: t('settings.free'), details: [t('settings.zero_data_egress'), t('settings.lowest_latency')], warning: [t('settings.requires_gpu'), t('settings.higher_maintenance')] },
+                  { id: 'openai', name: t('settings.stt_openai'), type: t('settings.price_per_min', { price: '$0.006' }), details: [t('settings.highest_accuracy'), t('settings.managed_infra')], warning: [t('settings.data_leaves_region')] },
+                  { id: 'gemini', name: t('settings.stt_gemini'), type: t('settings.price_per_min', { price: '$0.004' }), details: [t('settings.strong_multilingual'), t('settings.native_gcp')], warning: [t('settings.lower_jargon_accuracy')] },
                 ].map((p) => (
                   <div
                     key={p.id}
@@ -185,8 +185,8 @@ const CompanySettingsPage: React.FC = () => {
               </div>
               <div className="space-y-4">
                 {[
-                  { id: 'openai', name: t('settings.llm_openai'), type: '$10 / 1M tokens', details: [t('settings.sota_reasoning'), t('settings.excellent_nuance')], warning: [t('settings.highest_cost'), t('settings.latency_3s')] },
-                  { id: 'gemini', name: t('settings.llm_gemini'), type: '$7 / 1M tokens', details: [t('settings.context_window_1m'), t('settings.cost_effective')], warning: [t('settings.strict_safety_filters')] },
+                  { id: 'openai', name: t('settings.llm_openai'), type: t('settings.price_per_m_tokens', { price: '$10' }), details: [t('settings.sota_reasoning'), t('settings.excellent_nuance')], warning: [t('settings.highest_cost'), t('settings.latency_3s')] },
+                  { id: 'gemini', name: t('settings.llm_gemini'), type: t('settings.price_per_m_tokens', { price: '$7' }), details: [t('settings.context_window_1m'), t('settings.cost_effective')], warning: [t('settings.strict_safety_filters')] },
                 ].map((p) => (
                   <div
                     key={p.id}
@@ -280,7 +280,7 @@ const CompanySettingsPage: React.FC = () => {
                                  <span className="text-2xl font-black uppercase">{company.subscription_tier}</span>
                                  <span className="bg-primary/10 text-primary text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider">Active</span>
                              </div>
-                             <p className="text-xs text-slate-400 mt-2">Renews on March 15, 2024</p>
+                             <p className="text-xs text-slate-400 mt-2">{t('settings.renews_on', { date: 'March 15, 2024' })}</p>
                         </div>
                     </div>
 
