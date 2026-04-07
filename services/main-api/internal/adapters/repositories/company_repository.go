@@ -30,18 +30,30 @@ func (r *companyRepository) Create(ctx context.Context, company *domain.Company)
 
 func (r *companyRepository) GetByID(ctx context.Context, id string) (*domain.Company, error) {
 	query := `
-		SELECT id, name, description, industry, size, time_zone, stt_model_preference, llm_provider, subscription_tier, is_active, created_at, updated_at
+		SELECT id, name, description, industry, size, managers_count, time_zone, stt_model_preference, llm_provider, subscription_tier, is_active, created_at, updated_at
 		FROM auth_schema.companies
 		WHERE id = $1
 	`
 	c := &domain.Company{}
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
-		&c.ID, &c.Name, &c.Description, &c.Industry, &c.Size, &c.TimeZone, &c.STTModelPreference, &c.LLMProvider, &c.SubscriptionTier, &c.IsActive, &c.CreatedAt, &c.UpdatedAt,
+		&c.ID, &c.Name, &c.Description, &c.Industry, &c.Size, &c.ManagersCount, &c.TimeZone, &c.STTModelPreference, &c.LLMProvider, &c.SubscriptionTier, &c.IsActive, &c.CreatedAt, &c.UpdatedAt,
 	)
 	if err == sql.ErrNoRows {
 		return nil, errors.New("company not found")
 	}
 	return c, err
+}
+
+func (r *companyRepository) Update(ctx context.Context, company *domain.Company) error {
+	query := `
+		UPDATE auth_schema.companies
+		SET name = $2, description = $3, industry = $4, size = $5, managers_count = $6, time_zone = $7, updated_at = NOW()
+		WHERE id = $1
+	`
+	_, err := r.db.ExecContext(ctx, query,
+		company.ID, company.Name, company.Description, company.Industry, company.Size, company.ManagersCount, company.TimeZone,
+	)
+	return err
 }
 
 func (r *companyRepository) GetBillingInfo(ctx context.Context, companyID string) (*domain.BillingInfo, error) {

@@ -368,7 +368,8 @@
     "cost_effective": "Cost effective",
     "strict_safety_filters": "Strict safety filters",
     "update_success": "Settings updated successfully",
-    "update_failed": "Failed to update settings"
+    "update_failed": "Failed to update settings",
+    "managers_count": "Number of Managers"
   },
   "integrations": {
     "title": "Integrations",

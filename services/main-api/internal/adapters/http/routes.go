@@ -104,6 +104,8 @@ func SetupRoutes(
 
 	// Settings & Billing
 	settings := protected.Group("/settings", middleware.RequireRole("super_admin", "tenant_admin"))
+	settings.Get("/", companyHandler.GetCompany)
+	settings.Put("/", companyHandler.UpdateSettings)
 	settings.Get("/billing", companyHandler.GetBilling)
 	settings.Put("/billing", companyHandler.UpdateBilling)
 

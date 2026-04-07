@@ -22,6 +22,7 @@ type UserRepository interface {
 type CompanyRepository interface {
 	Create(ctx context.Context, company *domain.Company) error
 	GetByID(ctx context.Context, id string) (*domain.Company, error)
+	Update(ctx context.Context, company *domain.Company) error
 	GetBillingInfo(ctx context.Context, companyID string) (*domain.BillingInfo, error)
 	UpdateBillingInfo(ctx context.Context, billing *domain.BillingInfo) error
 }

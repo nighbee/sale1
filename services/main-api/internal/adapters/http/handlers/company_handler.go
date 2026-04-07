@@ -35,6 +35,66 @@ func (h *CompanyHandler) GetBilling(c *fiber.Ctx) error {
 	return c.JSON(billing)
 }
 
+// GetCompany godoc
+// @Summary Get company settings
+// @Description Get current company settings and profile
+// @Tags settings
+// @Accept json
+// @Produce json
+// @Success 200 {object} domain.Company
+// @Failure 500 {object} fiber.Map
+// @Security BearerAuth
+// @Router /settings [get]
+func (h *CompanyHandler) GetCompany(c *fiber.Ctx) error {
+	companyID := c.Locals("company_id").(string)
+	company, err := h.companyRepo.GetByID(c.Context(), companyID)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(company)
+}
+
+// UpdateSettings godoc
+// @Summary Update company settings
+// @Description Update company name, description, industry, size, and other general settings
+// @Tags settings
+// @Accept json
+// @Produce json
+// @Param request body domain.Company true "Settings Update Request"
+// @Success 200 {object} domain.Company
+// @Failure 400 {object} fiber.Map
+// @Failure 500 {object} fiber.Map
+// @Security BearerAuth
+// @Router /settings [put]
+func (h *CompanyHandler) UpdateSettings(c *fiber.Ctx) error {
+	var update domain.Company
+	if err := c.BodyParser(&update); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid body"})
+	}
+
+	companyID := c.Locals("company_id").(string)
+
+	// Fetch current company to ensure we only update allowed fields
+	company, err := h.companyRepo.GetByID(c.Context(), companyID)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	// Update allowed fields
+	company.Name = update.Name
+	company.Description = update.Description
+	company.Industry = update.Industry
+	company.Size = update.Size
+	company.ManagersCount = update.ManagersCount
+	company.TimeZone = update.TimeZone
+
+	if err := h.companyRepo.Update(c.Context(), company); err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	return c.JSON(company)
+}
+
 // UpdateBilling godoc
 // @Summary Update billing info
 // @Description Update card details and billing preferences

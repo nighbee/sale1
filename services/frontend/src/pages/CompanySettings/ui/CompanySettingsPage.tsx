@@ -123,6 +123,12 @@ const CompanySettingsPage: React.FC = () => {
                             value={company.size}
                             onChange={(e) => setCompany({ ...company, size: e.target.value })}
                         />
+                        <Input
+                            label={t('settings.managers_count')}
+                            type="number"
+                            value={company.managers_count}
+                            onChange={(e) => setCompany({ ...company, managers_count: parseInt(e.target.value) || 0 })}
+                        />
                     </div>
                 </section>
             )}
