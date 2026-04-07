@@ -23,6 +23,7 @@ type Company struct {
 	Description        string      `json:"description"`
 	Industry           string      `json:"industry"`
 	Size               string      `json:"size"`
+	ManagersCount      int         `json:"managers_count"`
 	TimeZone           string      `json:"time_zone"`
 	STTModelPreference STTModel    `json:"stt_model_preference"`
 	LLMProvider        LLMProvider `json:"llm_provider"`

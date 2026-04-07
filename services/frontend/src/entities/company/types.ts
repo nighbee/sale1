@@ -8,6 +8,7 @@ export interface Company {
   description?: string;
   industry?: string;
   size?: string;
+  managers_count?: number;
   subscription_tier?: string;
   time_zone?: string;
 }
