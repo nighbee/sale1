@@ -30,7 +30,9 @@ func (r *companyRepository) Create(ctx context.Context, company *domain.Company)
 
 func (r *companyRepository) GetByID(ctx context.Context, id string) (*domain.Company, error) {
 	query := `
-		SELECT id, name, description, industry, size, managers_count, time_zone, stt_model_preference, llm_provider, subscription_tier, is_active, created_at, updated_at
+		SELECT id, name, COALESCE(description, ''), COALESCE(industry, ''), COALESCE(size, ''), managers_count, COALESCE(time_zone, ''),
+		       COALESCE(stt_model_preference, 'whisperx_local'), COALESCE(llm_provider, 'openai'), COALESCE(subscription_tier, 'basic'),
+		       is_active, created_at, updated_at
 		FROM auth_schema.companies
 		WHERE id = $1
 	`
@@ -58,7 +60,9 @@ func (r *companyRepository) Update(ctx context.Context, company *domain.Company)
 
 func (r *companyRepository) GetBillingInfo(ctx context.Context, companyID string) (*domain.BillingInfo, error) {
 	query := `
-		SELECT id, card_holder_name, card_number_masked, expiration_date, card_type, tokens_used, tokens_limit, stripe_customer_id, stripe_payment_method_id, created_at, updated_at
+		SELECT id, COALESCE(card_holder_name, ''), COALESCE(card_number_masked, ''), COALESCE(expiration_date, ''),
+		       COALESCE(card_type, ''), tokens_used, tokens_limit, COALESCE(stripe_customer_id, ''),
+		       COALESCE(stripe_payment_method_id, ''), created_at, updated_at
 		FROM auth_schema.billing_info
 		WHERE company_id = $1
 	`

@@ -52,7 +52,9 @@ func (r *callRepository) Create(ctx context.Context, call *domain.Call) error {
 
 func (r *callRepository) GetByID(ctx context.Context, id string) (*domain.Call, error) {
 	query := `
-		SELECT id, company_id, manager_id, manager_name, client_phone, client_id, duration, call_link, storage_link, chat_link, call_date, call_time, status, source, external_id, created_at, updated_at
+		SELECT id, company_id, COALESCE(manager_id, ''), COALESCE(manager_name, ''), COALESCE(client_phone, ''), client_id,
+		       duration, COALESCE(call_link, ''), storage_link, chat_link, call_date, call_time, status, source,
+		       COALESCE(external_id, ''), created_at, updated_at
 		FROM calls_schema.calls
 		WHERE id::text = $1 OR external_id = $1
 	`
@@ -87,7 +89,9 @@ func (r *callRepository) GetByID(ctx context.Context, id string) (*domain.Call, 
 
 func (r *callRepository) GetByIDInternal(ctx context.Context, id string) (*domain.Call, error) {
 	query := `
-		SELECT id, company_id, manager_id, manager_name, client_phone, client_id, duration, call_link, storage_link, chat_link, call_date, call_time, status, source, external_id, created_at, updated_at
+		SELECT id, company_id, COALESCE(manager_id, ''), COALESCE(manager_name, ''), COALESCE(client_phone, ''), client_id,
+		       duration, COALESCE(call_link, ''), storage_link, chat_link, call_date, call_time, status, source,
+		       COALESCE(external_id, ''), created_at, updated_at
 		FROM calls_schema.calls
 		WHERE id = $1
 	`
@@ -211,9 +215,9 @@ func (r *callRepository) List(ctx context.Context, filters map[string]interface{
 	offset := (page - 1) * limit
 
 	query := fmt.Sprintf(`
-		SELECT c.id, c.company_id, c.manager_id, c.manager_name, c.client_phone, c.client_id,
-		       c.duration, c.call_link, c.storage_link, c.chat_link, c.call_date, c.call_time,
-		       c.status, c.source, c.external_id, c.created_at, c.updated_at,
+		SELECT c.id, c.company_id, COALESCE(c.manager_id, ''), COALESCE(c.manager_name, ''), COALESCE(c.client_phone, ''), c.client_id,
+		       c.duration, COALESCE(c.call_link, ''), c.storage_link, c.chat_link, c.call_date, c.call_time,
+		       c.status, c.source, COALESCE(c.external_id, ''), c.created_at, c.updated_at,
 		       ar.quality_score, ar.script_match, ar.errors_free
 		FROM calls_schema.calls c
 		LEFT JOIN calls_schema.analysis_reports ar ON ar.call_id = c.id
