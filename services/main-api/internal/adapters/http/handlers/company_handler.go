@@ -4,15 +4,18 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/salesai/main-api/internal/core/domain"
 	"github.com/salesai/main-api/internal/core/ports"
+	"github.com/salesai/main-api/internal/core/usecases/billing"
 )
 
 type CompanyHandler struct {
-	companyRepo ports.CompanyRepository
+	companyRepo    ports.CompanyRepository
+	billingUseCase *billing.BillingUseCase
 }
 
-func NewCompanyHandler(companyRepo ports.CompanyRepository) *CompanyHandler {
+func NewCompanyHandler(companyRepo ports.CompanyRepository, billingUseCase *billing.BillingUseCase) *CompanyHandler {
 	return &CompanyHandler{
-		companyRepo: companyRepo,
+		companyRepo:    companyRepo,
+		billingUseCase: billingUseCase,
 	}
 }
 
@@ -28,7 +31,7 @@ func NewCompanyHandler(companyRepo ports.CompanyRepository) *CompanyHandler {
 // @Router /settings/billing [get]
 func (h *CompanyHandler) GetBilling(c *fiber.Ctx) error {
 	companyID := c.Locals("company_id").(string)
-	billing, err := h.companyRepo.GetBillingInfo(c.Context(), companyID)
+	billing, err := h.billingUseCase.GetBilling(c.Context(), companyID)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -110,16 +113,41 @@ func (h *CompanyHandler) UpdateSettings(c *fiber.Ctx) error {
 // @Security BearerAuth
 // @Router /settings/billing [put]
 func (h *CompanyHandler) UpdateBilling(c *fiber.Ctx) error {
-	var billing domain.BillingInfo
-	if err := c.BodyParser(&billing); err != nil {
+	var req domain.BillingInfo
+	if err := c.BodyParser(&req); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid body"})
 	}
 
 	companyID := c.Locals("company_id").(string)
-	billing.ID = companyID
 
-	if err := h.companyRepo.UpdateBillingInfo(c.Context(), &billing); err != nil {
+	updated, err := h.billingUseCase.UpdateBilling(c.Context(), companyID, &req)
+	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
-	return c.JSON(billing)
+	return c.JSON(updated)
+}
+
+// CreateSetupIntent godoc
+// @Summary Create Stripe SetupIntent
+// @Description Create a Stripe SetupIntent to securely collect payment method details on the frontend
+// @Tags settings
+// @Accept json
+// @Produce json
+// @Success 200 {object} fiber.Map
+// @Failure 500 {object} fiber.Map
+// @Security BearerAuth
+// @Router /settings/billing/setup-intent [post]
+func (h *CompanyHandler) CreateSetupIntent(c *fiber.Ctx) error {
+	companyID := c.Locals("company_id").(string)
+	userID := c.Locals("user_id").(string)
+
+	intentID, clientSecret, err := h.billingUseCase.CreateSetupIntent(c.Context(), companyID, userID)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	return c.JSON(fiber.Map{
+		"intent_id":     intentID,
+		"client_secret": clientSecret,
+	})
 }

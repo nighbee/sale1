@@ -21,6 +21,7 @@ type Config struct {
 	STTServiceGRPC            string
 	AnalyticsGRPC             string
 	MinioPublicEndpoint	   string
+	StripeSecretKey           string
 }
 
 func Load() *Config {
@@ -111,5 +112,6 @@ func Load() *Config {
 		STTServiceGRPC:            sttGRPC,
 		AnalyticsGRPC:             analyticsGRPC,
 		MinioPublicEndpoint:       minioPublicEndpoint,
+		StripeSecretKey:           os.Getenv("STRIPE_SECRET_KEY"),
 	}
 }

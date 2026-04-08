@@ -108,6 +108,7 @@ func SetupRoutes(
 	settings.Put("/", companyHandler.UpdateSettings)
 	settings.Get("/billing", companyHandler.GetBilling)
 	settings.Put("/billing", companyHandler.UpdateBilling)
+	settings.Post("/billing/setup-intent", companyHandler.CreateSetupIntent)
 
 	// Teams
 	protected.Post("/teams/ensure", teamHandler.Ensure)

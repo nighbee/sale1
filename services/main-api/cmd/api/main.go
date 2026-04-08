@@ -40,12 +40,14 @@ import (
 	"github.com/salesai/main-api/internal/adapters/grpc"
 	httpAdapter "github.com/salesai/main-api/internal/adapters/http"
 	"github.com/salesai/main-api/internal/adapters/http/handlers"
+	"github.com/salesai/main-api/internal/adapters/payment"
 	"github.com/salesai/main-api/internal/adapters/http/middleware"
 	"github.com/salesai/main-api/internal/adapters/http/ws"
 	"github.com/salesai/main-api/internal/adapters/queue"
 	"github.com/salesai/main-api/internal/adapters/repositories"
 	"github.com/salesai/main-api/internal/core/usecases/analytics"
 	"github.com/salesai/main-api/internal/core/usecases/auth"
+	"github.com/salesai/main-api/internal/core/usecases/billing"
 	"github.com/salesai/main-api/internal/core/usecases/calls"
 	"github.com/salesai/main-api/internal/core/usecases/integrations"
 	"github.com/salesai/main-api/internal/core/usecases/teams"
@@ -176,6 +178,9 @@ func main() {
 	teamUC := teams.NewTeamUseCase(teamRepo, userRepo, scriptRepo)
 	integrationUC := integrations.NewIntegrationUseCase(integrationRepo)
 
+	stripeAdapter := payment.NewStripeAdapter(cfg.StripeSecretKey)
+	billingUC := billing.NewBillingUseCase(companyRepo, userRepo, stripeAdapter)
+
 	// WebSocket Hub
 	hub := ws.NewHub()
 	go hub.Run()
@@ -188,7 +193,7 @@ func main() {
 	authHandler := handlers.NewAuthHandler(registerUC, loginUC, refreshUC)
 	callHandler := handlers.NewCallHandler(listCallsUC, reprocessCallUC, callRepo, transcriptRepo, analysisRepo, minioClient, publicMinioClient, grpcClient, cfg.MinioPresign, time.Duration(cfg.MinioPresignExpirySeconds)*time.Second)
 	analyticsHandler := handlers.NewAnalyticsHandler(teamPerformanceUC)
-	companyHandler := handlers.NewCompanyHandler(companyRepo)
+	companyHandler := handlers.NewCompanyHandler(companyRepo, billingUC)
 	userHandler := handlers.NewUserHandler(userRepo, listCallsUC)
 	teamHandler := handlers.NewTeamHandler(teamUC)
 	integrationHandler := handlers.NewIntegrationHandler(integrationUC)

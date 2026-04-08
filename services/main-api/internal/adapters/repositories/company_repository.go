@@ -58,7 +58,7 @@ func (r *companyRepository) Update(ctx context.Context, company *domain.Company)
 
 func (r *companyRepository) GetBillingInfo(ctx context.Context, companyID string) (*domain.BillingInfo, error) {
 	query := `
-		SELECT id, card_holder_name, card_number_masked, expiration_date, card_type, tokens_used, tokens_limit, created_at, updated_at
+		SELECT id, card_holder_name, card_number_masked, expiration_date, card_type, tokens_used, tokens_limit, stripe_customer_id, stripe_payment_method_id, created_at, updated_at
 		FROM auth_schema.billing_info
 		WHERE company_id = $1
 	`
@@ -71,6 +71,8 @@ func (r *companyRepository) GetBillingInfo(ctx context.Context, companyID string
 		&billing.CardType,
 		&billing.TokensUsed,
 		&billing.TokensLimit,
+		&billing.StripeCustomerID,
+		&billing.StripePaymentMethodID,
 		&billing.CreatedAt,
 		&billing.UpdatedAt,
 	)
@@ -83,15 +85,17 @@ func (r *companyRepository) GetBillingInfo(ctx context.Context, companyID string
 
 func (r *companyRepository) UpdateBillingInfo(ctx context.Context, billing *domain.BillingInfo) error {
 	query := `
-		INSERT INTO auth_schema.billing_info (company_id, card_holder_name, card_number_masked, expiration_date, card_type, tokens_used, tokens_limit, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+		INSERT INTO auth_schema.billing_info (company_id, card_holder_name, card_number_masked, expiration_date, card_type, tokens_used, tokens_limit, stripe_customer_id, stripe_payment_method_id, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
 		ON CONFLICT (company_id) DO UPDATE SET
-			card_holder_name = EXCLUDED.card_holder_name,
-			card_number_masked = EXCLUDED.card_number_masked,
-			expiration_date = EXCLUDED.expiration_date,
-			card_type = EXCLUDED.card_type,
+			card_holder_name = COALESCE(NULLIF(EXCLUDED.card_holder_name, ''), auth_schema.billing_info.card_holder_name),
+			card_number_masked = COALESCE(NULLIF(EXCLUDED.card_number_masked, ''), auth_schema.billing_info.card_number_masked),
+			expiration_date = COALESCE(NULLIF(EXCLUDED.expiration_date, ''), auth_schema.billing_info.expiration_date),
+			card_type = COALESCE(NULLIF(EXCLUDED.card_type, ''), auth_schema.billing_info.card_type),
 			tokens_used = EXCLUDED.tokens_used,
 			tokens_limit = EXCLUDED.tokens_limit,
+			stripe_customer_id = COALESCE(NULLIF(EXCLUDED.stripe_customer_id, ''), auth_schema.billing_info.stripe_customer_id),
+			stripe_payment_method_id = COALESCE(NULLIF(EXCLUDED.stripe_payment_method_id, ''), auth_schema.billing_info.stripe_payment_method_id),
 			updated_at = NOW()
 	`
 	_, err := r.db.ExecContext(
@@ -104,6 +108,8 @@ func (r *companyRepository) UpdateBillingInfo(ctx context.Context, billing *doma
 		billing.CardType,
 		billing.TokensUsed,
 		billing.TokensLimit,
+		billing.StripeCustomerID,
+		billing.StripePaymentMethodID,
 	)
 	return err
 }
