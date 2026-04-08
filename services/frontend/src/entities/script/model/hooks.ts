@@ -66,7 +66,7 @@ export const useScripts = () => {
   const downloadScript = async (id: string, name: string) => {
     try {
       const response = await scriptApi.download(id);
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const url = window.URL.createObjectURL(response.data);
       const link = document.createElement("a");
       link.href = url;
       link.setAttribute("download", name);

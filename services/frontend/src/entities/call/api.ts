@@ -6,6 +6,6 @@ export const callApi = {
   getCall: (id: string) => api.get<Call>(`/calls/${id}`),
   getTranscript: (id: string) => api.get<CallTranscript>(`/calls/${id}/transcript`),
   getAnalysis: (id: string) => api.get<CallAnalysis>(`/calls/${id}/analysis`),
-  getAudio: (id: string) => api.get(`/calls/${id}/audio`, { responseType: 'blob' }),
+  getAudio: (id: string) => api.get<Blob>(`/calls/${id}/audio`, { responseType: 'blob' }),
   reprocess: (id: string) => api.post(`/calls/${id}/reprocess`),
 };
