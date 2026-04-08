@@ -34,13 +34,15 @@ type Company struct {
 }
 
 type BillingInfo struct {
-	ID                string    `json:"id"`
-	CardHolderName    string    `json:"card_holder_name"`
-	CardNumberMasked  string    `json:"card_number_masked"`
-	ExpirationDate    string    `json:"expiration_date"`
-	CardType          string    `json:"card_type"`
-	TokensUsed        int       `json:"tokens_used"`
-	TokensLimit       int       `json:"tokens_limit"`
-	CreatedAt         time.Time `json:"created_at"`
-	UpdatedAt         time.Time `json:"updated_at"`
+	ID                    string    `json:"id"`
+	CardHolderName        string    `json:"card_holder_name"`
+	CardNumberMasked      string    `json:"card_number_masked"`
+	ExpirationDate        string    `json:"expiration_date"`
+	CardType              string    `json:"card_type"`
+	TokensUsed            int       `json:"tokens_used"`
+	TokensLimit           int       `json:"tokens_limit"`
+	StripeCustomerID      string    `json:"stripe_customer_id"`
+	StripePaymentMethodID string    `json:"stripe_payment_method_id"`
+	CreatedAt             time.Time `json:"created_at"`
+	UpdatedAt             time.Time `json:"updated_at"`
 }
