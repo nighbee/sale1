@@ -27,7 +27,7 @@ export const useCompany = () => {
     await fetchCompany();
   };
 
-  return { company, loading, updateSettings, fetchCompany };
+  return { company, loading, updateSettings, fetchCompany, setCompany };
 };
 
 export const useBilling = () => {
@@ -55,5 +55,5 @@ export const useBilling = () => {
     await fetchBilling();
   };
 
-  return { billing, loading, updateBilling, fetchBilling };
+  return { billing, loading, updateBilling, fetchBilling, setBilling };
 };

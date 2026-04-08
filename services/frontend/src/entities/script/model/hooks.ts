@@ -63,6 +63,23 @@ export const useScripts = () => {
     }
   };
 
+  const downloadScript = async (id: string, name: string) => {
+    try {
+      const response = await scriptApi.download(id);
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", name);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      throw err;
+    }
+  };
+
   return {
     scripts,
     loading,
@@ -71,6 +88,7 @@ export const useScripts = () => {
     uploadScript,
     deleteScript,
     updateScript,
+    downloadScript,
   };
 };
 
