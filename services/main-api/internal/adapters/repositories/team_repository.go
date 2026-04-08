@@ -31,7 +31,7 @@ func (r *teamRepository) Create(ctx context.Context, team *domain.Team) error {
 
 func (r *teamRepository) GetByID(ctx context.Context, id string, companyID string) (*domain.Team, error) {
 	query := `
-		SELECT id, company_id, name, description, auto_assign, created_at, updated_at
+		SELECT id, company_id, name, COALESCE(description, ''), auto_assign, created_at, updated_at
 		FROM auth_schema.teams
 		WHERE id = $1 AND company_id = $2
 	`
@@ -47,7 +47,7 @@ func (r *teamRepository) GetByID(ctx context.Context, id string, companyID strin
 
 func (r *teamRepository) GetByName(ctx context.Context, name string, companyID string) (*domain.Team, error) {
 	query := `
-		SELECT id, company_id, name, description, auto_assign, created_at, updated_at
+		SELECT id, company_id, name, COALESCE(description, ''), auto_assign, created_at, updated_at
 		FROM auth_schema.teams
 		WHERE name = $1 AND company_id = $2
 		LIMIT 1
@@ -64,7 +64,7 @@ func (r *teamRepository) GetByName(ctx context.Context, name string, companyID s
 
 func (r *teamRepository) List(ctx context.Context, companyID string) ([]*domain.Team, error) {
 	query := `
-		SELECT id, company_id, name, description, auto_assign, created_at, updated_at
+		SELECT id, company_id, name, COALESCE(description, ''), auto_assign, created_at, updated_at
 		FROM auth_schema.teams
 		WHERE company_id = $1
 	`
