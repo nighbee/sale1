@@ -7,4 +7,6 @@ export const companyApi = {
   getBilling: () => api.get<Billing>(`/settings/billing`),
   updateBilling: (data: Partial<Billing>) => api.put<Billing>(`/settings/billing`, data),
   listCompanies: () => api.get<{ companies: Company[] }>('/companies'),
+  listAllCompanies: () => api.get<{ companies: Company[] }>('/admin/companies'),
+  updateCompanyGlobal: (id: string, data: Partial<Company>) => api.put<Company>(`/admin/companies/${id}`, data),
 };

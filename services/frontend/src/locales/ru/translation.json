@@ -30,7 +30,9 @@
     "save_changes": "Сохранить изменения",
     "download": "Скачать",
     "delete_confirm": "Вы уверены, что хотите удалить этот элемент?",
-    "not_available": "Н/Д"
+    "not_available": "Н/Д",
+    "system": "Система",
+    "inactive": "Неактивен"
   },
   "nav": {
     "dashboard": "Панель управления",

@@ -17,4 +17,5 @@ export const scriptApi = {
   listBaseScripts: () => api.get<{ scripts: Script[] }>('/base-scripts'),
   activateAsBase: (id: string) => api.post(`/base-scripts/${id}/activate`),
   getBaseMetrics: (id: string) => api.get<Record<string, unknown>>(`/base-scripts/${id}/metrics`),
+  listAllScripts: () => api.get<{ scripts: Script[] }>('/admin/scripts'),
 };

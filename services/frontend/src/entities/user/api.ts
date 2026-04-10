@@ -14,4 +14,6 @@ export const userApi = {
   getMe: () => api.get<User>('/user/me'),
   logout: () => api.post('/auth/logout'),
   getUserCalls: (id: string, params?: unknown) => api.get<ListCallsResponse>(`/users/${id}/calls`, { params }),
+  listAllUsers: () => api.get<{ users: User[] }>('/admin/users'),
+  updateUserGlobal: (id: string, data: Partial<User>) => api.put<User>(`/admin/users/${id}`, data),
 };
