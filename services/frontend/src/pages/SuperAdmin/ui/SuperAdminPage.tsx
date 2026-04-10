@@ -151,42 +151,40 @@ export const SuperAdminPage: React.FC = () => {
 
   return (
     <PageLayout title={t('superadmin.title')}>
-      <div className="flex flex-col lg:flex-row gap-8 p-4 md:p-8">
-        {/* Sidebar Navigation */}
-        <aside className="w-full lg:w-64 flex-shrink-0">
-          <nav className="bg-white dark:bg-slate-900 rounded-xl border border-border-light dark:border-slate-800 p-2 shadow-sm sticky top-24">
-            {[
-              { id: 'companies', label: t('superadmin.companies'), icon: 'corporate_fare' },
-              { id: 'users', label: t('superadmin.global_users'), icon: 'groups' },
-              { id: 'calls', label: t('superadmin.global_calls'), icon: 'call' },
-              { id: 'teams', label: t('nav.teams'), icon: 'hub' },
-              { id: 'scripts', label: t('scripts.title'), icon: 'description' },
-              { id: 'redis', label: t('superadmin.redis_manager'), icon: 'database' },
-              { id: 'system', label: t('superadmin.system_health'), icon: 'health_and_safety' },
-              { id: 'leadership', label: t('superadmin.global_rating'), icon: 'leaderboard' },
-              { id: 'subscriptions', label: t('superadmin.subscriptions'), icon: 'payments' },
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  setActiveTab(tab.id as TabType);
-                  setSelectedCompany(null);
-                }}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold transition-all mb-1 ${
-                  activeTab === tab.id
-                    ? 'bg-primary/10 text-primary'
-                    : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'
-                }`}
-              >
-                <span className="material-symbols-outlined text-xl">{tab.icon}</span>
-                {tab.label}
-              </button>
-            ))}
-          </nav>
-        </aside>
+      <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
+        {/* Horizontal Navigation */}
+        <nav className="flex space-x-8 overflow-x-auto bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-20 mb-8 border-b border-slate-200 dark:border-slate-800 scrollbar-hide">
+          {[
+            { id: 'companies', label: t('superadmin.companies'), icon: 'corporate_fare' },
+            { id: 'users', label: t('superadmin.global_users'), icon: 'groups' },
+            { id: 'calls', label: t('superadmin.global_calls'), icon: 'call' },
+            { id: 'teams', label: t('nav.teams'), icon: 'hub' },
+            { id: 'scripts', label: t('scripts.title'), icon: 'description' },
+            { id: 'redis', label: t('superadmin.redis_manager'), icon: 'database' },
+            { id: 'system', label: t('superadmin.system_health'), icon: 'health_and_safety' },
+            { id: 'leadership', label: t('superadmin.global_rating'), icon: 'leaderboard' },
+            { id: 'subscriptions', label: t('superadmin.subscriptions'), icon: 'payments' },
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => {
+                setActiveTab(tab.id as TabType);
+                setSelectedCompany(null);
+              }}
+              className={`flex items-center gap-2 px-1 py-4 text-sm font-bold transition-all whitespace-nowrap border-b-2 ${
+                activeTab === tab.id
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+              }`}
+            >
+              <span className="material-symbols-outlined text-xl">{tab.icon}</span>
+              {tab.label}
+            </button>
+          ))}
+        </nav>
 
         {/* Main Content */}
-        <main className="flex-grow min-w-0">
+        <main className="min-w-0">
           {selectedCompany ? (
             <div className="space-y-6">
               <div className="flex items-center gap-4 mb-2">
@@ -199,15 +197,15 @@ export const SuperAdminPage: React.FC = () => {
                 <h2 className="text-2xl font-bold">{selectedCompany.company.name}</h2>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-border-light dark:border-slate-800 shadow-sm">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-900 dark:to-slate-800/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800/50 shadow-sm">
                   <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
                     <span className="material-symbols-outlined text-primary">groups</span>
                     {t('superadmin.users')}
                   </h3>
                   <div className="space-y-3">
                     {selectedCompany.users.map(u => (
-                      <div key={u.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+                      <div key={u.id} className="flex items-center justify-between p-3 bg-white dark:bg-slate-800/50 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700/50">
                         <div>
                           <p className="font-bold text-sm">{u.email}</p>
                           <p className="text-xs text-slate-500 uppercase">{u.role}</p>
@@ -218,14 +216,14 @@ export const SuperAdminPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-border-light dark:border-slate-800 shadow-sm">
+                <div className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-900 dark:to-slate-800/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800/50 shadow-sm">
                   <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
                     <span className="material-symbols-outlined text-primary">settings_input_component</span>
                     {t('settings.integrations')}
                   </h3>
                   <div className="space-y-3">
                     {selectedCompany.integrations.map((i, idx) => (
-                      <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+                      <div key={idx} className="flex items-center justify-between p-3 bg-white dark:bg-slate-800/50 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700/50">
                         <div>
                           <p className="font-bold text-sm uppercase">{i.integration_type}</p>
                           <p className="text-xs text-slate-500">{t('settings.connected')}</p>
@@ -243,7 +241,7 @@ export const SuperAdminPage: React.FC = () => {
           ) : (
             <div className="space-y-6">
               {activeTab === 'companies' && (
-                <div className="bg-white dark:bg-slate-900 rounded-xl border border-border-light dark:border-slate-800 shadow-sm overflow-hidden">
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/50 shadow-sm overflow-hidden">
                   <div className="p-6 border-b border-border-light dark:border-slate-800">
                     <h3 className="text-xl font-bold">{t('superadmin.companies')}</h3>
                   </div>
@@ -252,7 +250,7 @@ export const SuperAdminPage: React.FC = () => {
                   ) : (
                     <div className="overflow-x-auto">
                         <table className="w-full text-left">
-                            <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 text-xs font-bold uppercase tracking-wider">
+                            <thead className="bg-slate-50/50 dark:bg-slate-800/30 text-slate-500 text-xs font-bold uppercase tracking-wider">
                                 <tr>
                                     <th className="px-6 py-4">{t('superadmin.company_name')}</th>
                                     <th className="px-6 py-4">{t('superadmin.created_at')}</th>
@@ -294,7 +292,7 @@ export const SuperAdminPage: React.FC = () => {
               )}
 
               {activeTab === 'redis' && (
-                <div className="bg-white dark:bg-slate-900 rounded-xl border border-border-light dark:border-slate-800 shadow-sm overflow-hidden">
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/50 shadow-sm overflow-hidden">
                   <div className="p-6 border-b border-border-light dark:border-slate-800 flex justify-between items-center">
                     <h3 className="text-xl font-bold">{t('superadmin.redis_keys')}</h3>
                     <button onClick={fetchRedisKeys} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
@@ -303,7 +301,7 @@ export const SuperAdminPage: React.FC = () => {
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-left">
-                        <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 text-xs font-bold uppercase tracking-wider">
+                        <thead className="bg-slate-50/50 dark:bg-slate-800/30 text-slate-500 text-xs font-bold uppercase tracking-wider">
                         <tr>
                             <th className="px-6 py-4">Key</th>
                             <th className="px-6 py-4">Type</th>
@@ -333,10 +331,10 @@ export const SuperAdminPage: React.FC = () => {
               )}
 
               {activeTab === 'users' && (
-                 <div className="bg-white dark:bg-slate-900 rounded-xl border border-border-light dark:border-slate-800 shadow-sm overflow-hidden">
+                 <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/50 shadow-sm overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="w-full text-left">
-                        <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 text-xs font-bold uppercase tracking-wider">
+                        <thead className="bg-slate-50/50 dark:bg-slate-800/30 text-slate-500 text-xs font-bold uppercase tracking-wider">
                             <tr>
                             <th className="px-6 py-4">{t('common.email')}</th>
                             <th className="px-6 py-4">{t('superadmin.company_id')}</th>
@@ -362,10 +360,10 @@ export const SuperAdminPage: React.FC = () => {
               )}
 
               {activeTab === 'calls' && (
-                 <div className="bg-white dark:bg-slate-900 rounded-xl border border-border-light dark:border-slate-800 shadow-sm overflow-hidden">
+                 <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/50 shadow-sm overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="w-full text-left">
-                        <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 text-xs font-bold uppercase tracking-wider">
+                        <thead className="bg-slate-50/50 dark:bg-slate-800/30 text-slate-500 text-xs font-bold uppercase tracking-wider">
                             <tr>
                             <th className="px-6 py-4">ID</th>
                             <th className="px-6 py-4">{t('superadmin.company_id')}</th>
@@ -389,10 +387,10 @@ export const SuperAdminPage: React.FC = () => {
               )}
 
               {activeTab === 'teams' && (
-                <div className="bg-white dark:bg-slate-900 rounded-xl border border-border-light dark:border-slate-800 shadow-sm overflow-hidden">
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/50 shadow-sm overflow-hidden">
                   <div className="overflow-x-auto">
                     <table className="w-full text-left">
-                        <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 text-xs font-bold uppercase tracking-wider">
+                        <thead className="bg-slate-50/50 dark:bg-slate-800/30 text-slate-500 text-xs font-bold uppercase tracking-wider">
                         <tr>
                             <th className="px-6 py-4">{t('common.name')}</th>
                             <th className="px-6 py-4">{t('superadmin.company_id')}</th>
@@ -414,10 +412,10 @@ export const SuperAdminPage: React.FC = () => {
               )}
 
               {activeTab === 'scripts' && (
-                <div className="bg-white dark:bg-slate-900 rounded-xl border border-border-light dark:border-slate-800 shadow-sm overflow-hidden">
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/50 shadow-sm overflow-hidden">
                   <div className="overflow-x-auto">
                     <table className="w-full text-left">
-                        <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 text-xs font-bold uppercase tracking-wider">
+                        <thead className="bg-slate-50/50 dark:bg-slate-800/30 text-slate-500 text-xs font-bold uppercase tracking-wider">
                         <tr>
                             <th className="px-6 py-4">{t('common.name')}</th>
                             <th className="px-6 py-4">{t('superadmin.company_id')}</th>
@@ -443,19 +441,19 @@ export const SuperAdminPage: React.FC = () => {
               )}
 
               {activeTab === 'system' && systemStatus && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-border-light dark:border-slate-800 shadow-sm">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800/50 shadow-sm">
                     <h3 className="text-lg font-bold mb-4">{t('superadmin.queue_metrics')}</h3>
                     <div className="space-y-4">
                       {Object.entries(systemStatus.queues).map(([name, len]) => (
-                        <div key={name} className="flex justify-between items-center p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                        <div key={name} className="flex justify-between items-center p-4 bg-white dark:bg-slate-800/50 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700/50">
                           <span className="font-mono text-sm">{name}</span>
                           <span className="text-2xl font-bold text-primary">{len}</span>
                         </div>
                       ))}
                     </div>
                   </div>
-                  <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-border-light dark:border-slate-800 shadow-sm flex flex-col justify-center items-center">
+                  <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800/50 shadow-sm flex flex-col justify-center items-center">
                     <p className="text-slate-500 font-bold uppercase text-xs mb-2">{t('superadmin.overall_status')}</p>
                     <h2 className="text-4xl font-black text-emerald-500 uppercase">{systemStatus.status}</h2>
                   </div>
@@ -465,7 +463,7 @@ export const SuperAdminPage: React.FC = () => {
               {activeTab === 'leadership' && <Leaderboard teamId="" />}
 
               {activeTab === 'subscriptions' && (
-                <div className="bg-white dark:bg-slate-900 rounded-xl border border-border-light dark:border-slate-800 shadow-sm p-12 text-center text-slate-500">
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/50 shadow-sm p-12 text-center text-slate-500">
                   <span className="material-symbols-outlined text-4xl mb-4">payments</span>
                   <p>{t('superadmin.sub_mgmt_soon')}</p>
                 </div>
@@ -585,7 +583,7 @@ export const SuperAdminPage: React.FC = () => {
                           <select
                             className="w-full border rounded-lg p-2 dark:bg-slate-800 dark:border-slate-700 outline-none"
                             value={editingUser.role}
-                            onChange={e => setEditingUser({...editingUser, role: e.target.value as any})}
+                            onChange={e => setEditingUser({...editingUser, role: e.target.value})}
                           >
                               <option value="sales_rep">Sales Rep</option>
                               <option value="tenant_admin">Tenant Admin</option>
