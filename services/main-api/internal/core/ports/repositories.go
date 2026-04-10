@@ -16,6 +16,7 @@ type UserRepository interface {
 	Delete(ctx context.Context, id string) error
 	List(ctx context.Context, companyID string) ([]*domain.User, error)
 	GetByManagerID(ctx context.Context, managerID string, companyID string) (*domain.User, error)
+	GetBySrcNum(ctx context.Context, srcNum string, companyID string) (*domain.User, error)
 }
 
 // CompanyRepository defines the contract for company-related data operations.

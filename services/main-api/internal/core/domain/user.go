@@ -25,6 +25,8 @@ type User struct {
 	Role            UserRole   `json:"role"`
 	ManagerID    *string    `json:"manager_id,omitempty"`
 	ManagerName  string     `json:"manager_name"`
+	LineID       *string    `json:"line_id,omitempty"`
+	SrcNum       *string    `json:"src_num,omitempty"`
 	IsActive     bool       `json:"is_active"`
 	LastLogin    *time.Time `json:"last_login,omitempty"`
 	CreatedAt    time.Time  `json:"created_at"`

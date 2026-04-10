@@ -11,6 +11,7 @@ type CallRepository interface {
 
 type UserRepository interface {
 	FindByManagerID(ctx context.Context, managerID string, companyID string) (*domain.User, error)
+	FindBySrcNum(ctx context.Context, srcNum string, companyID string) (*domain.User, error)
 	Create(ctx context.Context, user *domain.User) error
 }
 

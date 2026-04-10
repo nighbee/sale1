@@ -83,6 +83,8 @@ func (h *UserHandler) InviteUser(c *fiber.Ctx) error {
 		LastName          string   `json:"last_name"`
 		Username          string   `json:"username"`
 		Phone             string   `json:"phone"`
+		LineID            string   `json:"line_id"`
+		SrcNum            string   `json:"src_num"`
 	}
 
 	if err := c.BodyParser(&req); err != nil {
@@ -139,6 +141,12 @@ func (h *UserHandler) InviteUser(c *fiber.Ctx) error {
 			LastName:     req.LastName,
 			Username:     req.Username,
 			Phone:        req.Phone,
+		}
+		if req.LineID != "" {
+			user.LineID = &req.LineID
+		}
+		if req.SrcNum != "" {
+			user.SrcNum = &req.SrcNum
 		}
 		if err := h.userRepo.Create(c.Context(), user); err != nil {
 			continue
@@ -213,6 +221,8 @@ func (h *UserHandler) UpdateUser(c *fiber.Ctx) error {
 		Username    string `json:"username"`
 		Phone       string `json:"phone"`
 		TeamID      string `json:"team_id"`
+		LineID      string `json:"line_id"`
+		SrcNum      string `json:"src_num"`
 	}
 
 	if err := c.BodyParser(&update); err != nil {
@@ -243,6 +253,12 @@ func (h *UserHandler) UpdateUser(c *fiber.Ctx) error {
 	}
 	if update.Phone != "" {
 		user.Phone = update.Phone
+	}
+	if update.LineID != "" {
+		user.LineID = &update.LineID
+	}
+	if update.SrcNum != "" {
+		user.SrcNum = &update.SrcNum
 	}
 	if update.TeamID != "" {
 		if update.TeamID == "none" || update.TeamID == "null" {

@@ -19,6 +19,8 @@ type User struct {
 	Role            UserRole   `json:"role"`
 	ManagerID    *string    `json:"manager_id,omitempty"`
 	ManagerName  string     `json:"manager_name"`
+	LineID       *string    `json:"line_id,omitempty"`
+	SrcNum       *string    `json:"src_num,omitempty"`
 	FirstName    string     `json:"first_name"`
 	LastName     string     `json:"last_name"`
 	Username     string     `json:"username"`
