@@ -27,6 +27,9 @@ func (m *mockUserRepo) Delete(ctx context.Context, id string) error             
 func (m *mockUserRepo) List(ctx context.Context, companyID string) ([]*domain.User, error) {
 	return nil, nil
 }
+func (m *mockUserRepo) ListAll(ctx context.Context) ([]*domain.User, error) {
+	return nil, nil
+}
 func (m *mockUserRepo) GetByManagerID(ctx context.Context, managerID string, companyID string) (*domain.User, error) {
 	return nil, nil
 }
@@ -47,6 +50,9 @@ func (m *mockCallRepo) GetByIDInternal(ctx context.Context, id string) (*domain.
 }
 func (m *mockCallRepo) List(ctx context.Context, filters map[string]interface{}) ([]*domain.Call, int, map[string]int, error) {
 	return m.calls, m.total, nil, m.err
+}
+func (m *mockCallRepo) ListAll(ctx context.Context, filters map[string]interface{}) ([]*domain.Call, int, error) {
+	return m.calls, m.total, m.err
 }
 func (m *mockCallRepo) UpdateStatus(ctx context.Context, id string, status domain.CallStatus) error {
 	return nil

@@ -396,3 +396,21 @@ func (h *ScriptHandler) GetBaseMetrics(c *fiber.Ctx) error {
 
 	return c.JSON(script.BaseScriptMetrics)
 }
+
+// ListAllScripts godoc
+// @Summary List all scripts (Admin)
+// @Description List all scripts in the system.
+// @Tags admin
+// @Accept json
+// @Produce json
+// @Success 200 {object} fiber.Map
+// @Failure 500 {object} fiber.Map
+// @Security BearerAuth
+// @Router /admin/scripts [get]
+func (h *ScriptHandler) ListAllScripts(c *fiber.Ctx) error {
+	scripts, err := h.scriptRepo.ListAll(c.Context())
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"scripts": scripts})
+}

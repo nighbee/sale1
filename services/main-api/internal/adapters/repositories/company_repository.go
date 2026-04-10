@@ -44,6 +44,32 @@ func (r *companyRepository) GetByID(ctx context.Context, id string) (*domain.Com
 	return c, err
 }
 
+func (r *companyRepository) List(ctx context.Context) ([]*domain.Company, error) {
+	query := `
+		SELECT id, name, COALESCE(description, ''), COALESCE(industry, ''), COALESCE(size, ''), managers_count, COALESCE(time_zone, ''), stt_model_preference, llm_provider, subscription_tier, is_active, created_at, updated_at
+		FROM auth_schema.companies
+		ORDER BY created_at DESC
+	`
+	rows, err := r.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var companies []*domain.Company
+	for rows.Next() {
+		c := &domain.Company{}
+		err := rows.Scan(
+			&c.ID, &c.Name, &c.Description, &c.Industry, &c.Size, &c.ManagersCount, &c.TimeZone, &c.STTModelPreference, &c.LLMProvider, &c.SubscriptionTier, &c.IsActive, &c.CreatedAt, &c.UpdatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		companies = append(companies, c)
+	}
+	return companies, nil
+}
+
 func (r *companyRepository) Update(ctx context.Context, company *domain.Company) error {
 	query := `
 		UPDATE auth_schema.companies

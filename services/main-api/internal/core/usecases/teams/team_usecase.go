@@ -68,6 +68,10 @@ func (uc *TeamUseCase) List(ctx context.Context, companyID string) ([]*domain.Te
 	return uc.teamRepo.List(ctx, companyID)
 }
 
+func (uc *TeamUseCase) ListAll(ctx context.Context) ([]*domain.Team, error) {
+	return uc.teamRepo.ListAll(ctx)
+}
+
 func (uc *TeamUseCase) Update(ctx context.Context, team *domain.Team) error {
 	return uc.teamRepo.Update(ctx, team)
 }

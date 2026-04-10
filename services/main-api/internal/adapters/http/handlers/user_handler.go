@@ -399,3 +399,66 @@ func (h *UserHandler) GetUserCalls(c *fiber.Ctx) error {
 
 	return c.JSON(resp)
 }
+
+// ListAllUsers godoc
+// @Summary List all users (Admin)
+// @Description List all users in the system.
+// @Tags admin
+// @Accept json
+// @Produce json
+// @Success 200 {object} fiber.Map
+// @Failure 500 {object} fiber.Map
+// @Security BearerAuth
+// @Router /admin/users [get]
+func (h *UserHandler) ListAllUsers(c *fiber.Ctx) error {
+	users, err := h.userRepo.ListAll(c.Context())
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"users": users})
+}
+
+// UpdateUserGlobal godoc
+// @Summary Update user (Admin)
+// @Description Update any user field.
+// @Tags admin
+// @Accept json
+// @Produce json
+// @Param id path string true "User ID"
+// @Param request body domain.User true "Update Request"
+// @Success 200 {object} domain.User
+// @Failure 400 {object} fiber.Map
+// @Failure 500 {object} fiber.Map
+// @Security BearerAuth
+// @Router /admin/users/{id} [put]
+func (h *UserHandler) UpdateUserGlobal(c *fiber.Ctx) error {
+	userID := c.Params("id")
+	var update map[string]interface{}
+	if err := c.BodyParser(&update); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid body"})
+	}
+
+	user, err := h.userRepo.GetByID(c.Context(), userID)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	if val, ok := update["first_name"].(string); ok {
+		user.FirstName = val
+	}
+	if val, ok := update["last_name"].(string); ok {
+		user.LastName = val
+	}
+	if val, ok := update["role"].(string); ok && val != "" {
+		user.Role = domain.UserRole(val)
+	}
+	if val, ok := update["is_active"].(bool); ok {
+		user.IsActive = val
+	}
+
+	if err := h.userRepo.Update(c.Context(), user); err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	return c.JSON(user)
+}
