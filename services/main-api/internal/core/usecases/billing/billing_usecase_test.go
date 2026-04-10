@@ -82,6 +82,11 @@ func (m *MockUserRepository) GetByManagerID(ctx context.Context, managerID strin
 	return args.Get(0).(*domain.User), args.Error(1)
 }
 
+func (m *MockUserRepository) GetBySrcNum(ctx context.Context, srcNum string, companyID string) (*domain.User, error) {
+	args := m.Called(ctx, srcNum, companyID)
+	return args.Get(0).(*domain.User), args.Error(1)
+}
+
 type MockPaymentProvider struct {
 	mock.Mock
 }

@@ -30,6 +30,9 @@ func (m *mockUserRepo) List(ctx context.Context, companyID string) ([]*domain.Us
 func (m *mockUserRepo) GetByManagerID(ctx context.Context, managerID string, companyID string) (*domain.User, error) {
 	return nil, nil
 }
+func (m *mockUserRepo) GetBySrcNum(ctx context.Context, srcNum string, companyID string) (*domain.User, error) {
+	return nil, nil
+}
 
 type mockCallRepo struct {
 	calls []*domain.Call

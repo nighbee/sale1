@@ -66,19 +66,19 @@ func (uc *HandleEventUseCase) Execute(ctx context.Context, companyID string, req
 		return
 	}
 
-	// Identify manager ID and name
-	managerID := notify.UserID
-	if managerID == "" {
-		// Fallback to extensions if UserID is missing
-		if notify.SrcType != 1 && notify.SrcNum != "" {
-			// Src is likely the manager (internal)
-			managerID = notify.SrcNum
-		} else if notify.DstType != 1 && notify.DstNum != "" {
-			// Dst is likely the manager (internal)
-			managerID = notify.DstNum
-		} else {
-			managerID = notify.User
-		}
+	// Identify full source number and line ID
+	lineID := notify.UserID
+	fullSrcNum := notify.SrcNum
+	if notify.SrcType != 1 && notify.SrcNum != "" {
+		fullSrcNum = notify.SrcNum
+	} else if notify.DstType != 1 && notify.DstNum != "" {
+		fullSrcNum = notify.DstNum
+	}
+
+	// Calculate extension (managerID) by removing lineID prefix from fullSrcNum
+	managerID := fullSrcNum
+	if lineID != "" && strings.HasPrefix(fullSrcNum, lineID) {
+		managerID = strings.TrimPrefix(fullSrcNum, lineID)
 	}
 
 	managerName := notify.User
@@ -93,25 +93,34 @@ func (uc *HandleEventUseCase) Execute(ctx context.Context, companyID string, req
 		zap.String("src_num", notify.SrcNum),
 		zap.Int("src_type", notify.SrcType),
 		zap.String("dst_num", notify.DstNum),
+		zap.String("full_src_num", fullSrcNum),
+		zap.String("line_id", lineID),
 		zap.String("manager_id", managerID),
 		zap.Bool("has_recording", notify.CallRecordLink != ""))
 
-	// Ensure manager exists in auth_schema.users - move this BEFORE call status checks
-	// to enable dynamic manager creation for any event (ringing, busy, etc.)
+	// Ensure manager exists in auth_schema.users
 	var user *domain.User
-	if managerID != "" {
+	if fullSrcNum != "" {
 		var err error
-		user, err = uc.userRepo.FindByManagerID(ctx, managerID, companyID)
+		// First try searching by full SrcNum
+		user, err = uc.userRepo.FindBySrcNum(ctx, fullSrcNum, companyID)
 		if err != nil {
-			log.Error("error checking for manager existence", zap.String("manager_id", managerID), zap.Error(err))
-			// Continue anyway, maybe we can still save the call
+			log.Error("error checking for manager existence by src_num", zap.String("src_num", fullSrcNum), zap.Error(err))
+		}
+
+		// Fallback to manager_id (extension) if not found by full src_num
+		if user == nil && managerID != "" {
+			user, err = uc.userRepo.FindByManagerID(ctx, managerID, companyID)
+			if err != nil {
+				log.Error("error checking for manager existence by manager_id", zap.String("manager_id", managerID), zap.Error(err))
+			}
 		}
 
 		if user == nil {
-			log.Info("manager not found, creating new user", zap.String("manager_id", managerID))
+			log.Info("manager not found, creating new user", zap.String("src_num", fullSrcNum), zap.String("manager_id", managerID))
 
 			// Use a safe email format
-			safeID := strings.ReplaceAll(managerID, " ", "")
+			safeID := strings.ReplaceAll(fullSrcNum, " ", "")
 			email := fmt.Sprintf("manager_%s@salesai.local", safeID)
 
 			// Generate random password
@@ -124,25 +133,31 @@ func (uc *HandleEventUseCase) Execute(ctx context.Context, companyID string, req
 					ID:              uuid.New().String(),
 					CompanyID:       companyID,
 					Email:           email,
-					Username:        managerName, // Use manager name as initial username
+					Username:        managerName,
 					PasswordHash:    string(hashedPassword),
 					InitialPassword: &randomPassword,
 					Role:            domain.RoleSalesRep,
 					ManagerID:       &managerID,
 					ManagerName:     managerName,
+					LineID:          &lineID,
+					SrcNum:          &fullSrcNum,
 					FirstName:       managerName,
 					IsActive:        true,
 				}
 
 				if err := uc.userRepo.Create(ctx, newUser); err != nil {
-					log.Error("error creating new manager user", zap.String("manager_id", managerID), zap.Error(err))
+					log.Error("error creating new manager user", zap.String("src_num", fullSrcNum), zap.Error(err))
 				} else {
-					log.Info("new manager user created", zap.String("user_id", newUser.ID), zap.String("manager_id", managerID))
+					log.Info("new manager user created", zap.String("user_id", newUser.ID), zap.String("src_num", fullSrcNum), zap.String("manager_id", managerID))
 					user = newUser
 				}
 			}
 		} else {
 			managerName = user.ManagerName
+			// Use the extension from the existing user record
+			if user.ManagerID != nil {
+				managerID = *user.ManagerID
+			}
 		}
 	}
 
@@ -207,7 +222,7 @@ func (uc *HandleEventUseCase) Execute(ctx context.Context, companyID string, req
 	call := &domain.Call{
 		ID:          callID,
 		CompanyID:   companyID,
-		ManagerID:   managerID,
+		ManagerID:   managerID, // This is now the extension (deleted left part)
 		ManagerName: managerName,
 		ClientPhone: clientPhone,
 		Duration:    talkDuration,
