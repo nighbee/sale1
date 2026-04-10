@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { scriptApi } from '../../../entities/script/api';
+import { useScripts } from '../../../entities/script/model/hooks';
 import { toast } from 'sonner';
 import Button from '../../../shared/ui/Button';
 
 const ScriptUploadPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { uploadScript } = useScripts();
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState('');
@@ -27,10 +28,9 @@ const ScriptUploadPage: React.FC = () => {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('name', file.name);
-    formData.append('company_id', localStorage.getItem('company_id') || '');
 
     try {
-      await scriptApi.upload(formData);
+      await uploadScript(formData);
       toast.success(t('setup.upload_success'));
       navigate('/invite-members');
     } catch (err: unknown) {

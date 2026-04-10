@@ -66,7 +66,12 @@ export const useScripts = () => {
   const downloadScript = async (id: string, name: string) => {
     try {
       const response = await scriptApi.download(id);
-      const url = window.URL.createObjectURL(response.data);
+      // Ensure we have a Blob. Axios with responseType: 'blob' returns Blob in response.data
+      const blob = response.data instanceof Blob
+        ? response.data
+        : new Blob([response.data as any]);
+
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
       link.setAttribute("download", name);
@@ -89,6 +94,46 @@ export const useScripts = () => {
     deleteScript,
     updateScript,
     downloadScript,
+  };
+};
+
+export const useScript = (id?: string) => {
+  const [script, setScript] = useState<Script | null>(null);
+  const [content, setContent] = useState<string>("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchScriptDetails = useCallback(async () => {
+    if (!id) return;
+    setLoading(true);
+    try {
+      const [detailsRes, contentRes] = await Promise.all([
+        scriptApi.get(id),
+        scriptApi.getContent(id).catch(() => ({ data: { parsed_text: "" } })),
+      ]);
+      setScript(detailsRes.data);
+      // Backend might return parsed_text or content
+      const contentData = contentRes.data as any;
+      setContent(contentData.parsed_text || contentData.content || "");
+      setError(null);
+    } catch (err) {
+      console.error(err);
+      setError("Failed to fetch script details");
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    fetchScriptDetails();
+  }, [fetchScriptDetails]);
+
+  return {
+    script,
+    content,
+    loading,
+    error,
+    refetch: fetchScriptDetails,
   };
 };
 

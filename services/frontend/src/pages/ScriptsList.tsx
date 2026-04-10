@@ -1,5 +1,6 @@
 import React, { useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 import { useScripts } from "../entities/script/model/hooks";
 import { BaseScripts } from "../widgets/BaseScripts/ui/BaseScripts";
 import { PageLayout } from "../widgets/PageLayout";
@@ -8,6 +9,7 @@ import { toast } from "sonner";
 
 const ScriptsList: React.FC = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const {
     scripts,
     loading,
@@ -22,7 +24,8 @@ const ScriptsList: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
     if (window.confirm(t("common.delete_confirm"))) {
       try {
         await deleteScript(id);
@@ -33,7 +36,8 @@ const ScriptsList: React.FC = () => {
     }
   };
 
-  const handleRename = async (id: string, currentName: string) => {
+  const handleRename = async (e: React.MouseEvent, id: string, currentName: string) => {
+    e.stopPropagation();
     const newName = window.prompt(t("scripts.new_name"), currentName);
     if (newName && newName !== currentName) {
       try {
@@ -42,6 +46,15 @@ const ScriptsList: React.FC = () => {
       } catch {
         toast.error(t("scripts.rename_failed"));
       }
+    }
+  };
+
+  const handleDownload = async (e: React.MouseEvent, id: string, name: string) => {
+    e.stopPropagation();
+    try {
+      await downloadScript(id, name);
+    } catch {
+      toast.error(t("scripts.download_failed", "Download failed"));
     }
   };
 
@@ -75,29 +88,29 @@ const ScriptsList: React.FC = () => {
 
   return (
     <PageLayout title={t("scripts.title")}>
-      {/** show error from hook if exists */}
-      {loading === false && error && (
-        <div className="p-4 max-w-7xl mx-auto">
-          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm flex items-center justify-between">
-            <div>{error}</div>
-            <div>
-              <button
-                onClick={() => fetchScripts()}
-                className="text-sm font-medium text-primary underline"
-              >
-                {t("common.retry")}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
       <div className="p-4 md:p-8 space-y-8 max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        {/** show error from hook if exists */}
+        {loading === false && error && (
+          <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 text-red-700 dark:text-red-400 rounded-2xl text-sm flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="material-icons">error_outline</span>
+              {error}
+            </div>
+            <button
+              onClick={() => fetchScripts()}
+              className="text-sm font-bold underline px-3 py-1 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-lg transition-colors"
+            >
+              {t("common.retry")}
+            </button>
+          </div>
+        )}
+
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
+            <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
               {t("scripts.title")}
-            </h2>
-            <p className="text-slate-500 dark:text-slate-400">
+            </h1>
+            <p className="text-slate-500 dark:text-slate-400 mt-1">
               {t("scripts.management_subtitle")}
             </p>
           </div>
@@ -112,26 +125,26 @@ const ScriptsList: React.FC = () => {
             <Button
               onClick={handleUploadClick}
               isLoading={isUploading}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 px-6 shadow-lg shadow-primary/20"
             >
-              <span className="material-icons text-sm">cloud_upload</span>
+              <span className="material-icons">cloud_upload</span>
               {t("scripts.upload")}
             </Button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-6">
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
-              <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex items-center gap-4">
-                <div className="relative flex-1">
-                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                    <span className="material-icons text-lg">search</span>
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          <div className="lg:col-span-3 space-y-6">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+              <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                    <span className="material-icons text-xl">search</span>
                   </span>
                   <input
                     type="text"
                     placeholder={t("scripts.search")}
-                    className="w-full pl-10 pr-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-primary transition-all"
+                    className="w-full pl-12 pr-4 py-3 border-none bg-white dark:bg-slate-800 focus:ring-2 focus:ring-primary rounded-xl text-sm transition-all"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
@@ -139,80 +152,90 @@ const ScriptsList: React.FC = () => {
               </div>
 
               {loading && scripts.length === 0 ? (
-                <div className="p-12 text-center text-slate-500">
-                  <div className="animate-spin inline-block w-8 h-8 border-4 border-primary border-t-transparent rounded-full mb-4"></div>
-                  <p>{t("common.loading")}</p>
+                <div className="p-20 text-center">
+                  <div className="animate-spin inline-block w-10 h-10 border-4 border-primary border-t-transparent rounded-full mb-4"></div>
+                  <p className="text-slate-500 font-medium">{t("common.loading")}</p>
                 </div>
               ) : filteredScripts.length === 0 ? (
-                <div className="p-12 text-center text-slate-500">
-                  <span className="material-icons text-4xl mb-2 opacity-20">
-                    description
-                  </span>
-                  <p>{t("scripts.no_scripts")}</p>
+                <div className="p-20 text-center">
+                  <div className="w-20 h-20 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <span className="material-icons text-4xl text-slate-300">
+                      description
+                    </span>
+                  </div>
+                  <p className="text-slate-500 font-medium">{t("scripts.no_scripts")}</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-left">
                     <thead>
-                      <tr className="border-b border-slate-200 dark:border-slate-800 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-50/50 dark:bg-slate-800/30">
+                      <tr className="text-xs font-bold uppercase tracking-wider text-slate-400 bg-slate-50/30 dark:bg-slate-800/20">
                         <th className="px-6 py-4">{t("common.name")}</th>
-                        <th className="px-6 py-4">
-                          {t("superadmin.created_at")}
-                        </th>
-                        <th className="px-6 py-4 text-right">
-                          {t("common.actions")}
-                        </th>
+                        <th className="px-6 py-4">{t("superadmin.created_at")}</th>
+                        <th className="px-6 py-4 text-right">{t("common.actions")}</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                       {filteredScripts.map((s) => (
                         <tr
                           key={s.id}
-                          className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                          className="group hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-all cursor-pointer"
+                          onClick={() => navigate(`/scripts/${s.id}`)}
                         >
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-primary">
-                                <span className="material-icons text-lg">
-                                  description
-                                </span>
+                          <td className="px-6 py-5">
+                            <div className="flex items-center gap-4">
+                              <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-primary transition-transform group-hover:scale-110">
+                                <span className="material-icons">description</span>
                               </div>
-                              <span className="font-medium text-slate-900 dark:text-white">
-                                {s.name}
-                              </span>
+                              <div>
+                                <span className="font-bold text-slate-900 dark:text-white block">
+                                  {s.name}
+                                </span>
+                                {s.version && (
+                                  <span className="text-[10px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-500 uppercase font-bold">
+                                    v{s.version}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </td>
-                          <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">
-                            {new Date(s.created_at).toLocaleDateString()}
+                          <td className="px-6 py-5">
+                            <div className="text-sm text-slate-500 dark:text-slate-400">
+                              {new Date(s.created_at).toLocaleDateString()}
+                            </div>
                           </td>
-                          <td className="px-6 py-4 text-right">
-                            <div className="flex items-center justify-end gap-2">
+                          <td className="px-6 py-5 text-right">
+                            <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                               <button
-                                onClick={() => downloadScript(s.id, s.name)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/scripts/${s.id}`);
+                                }}
+                                className="p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
+                                title={t("common.view", "Review")}
+                              >
+                                <span className="material-icons text-xl">visibility</span>
+                              </button>
+                              <button
+                                onClick={(e) => handleDownload(e, s.id, s.name)}
                                 className="p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
                                 title={t("common.download")}
                               >
-                                <span className="material-icons text-lg">
-                                  download
-                                </span>
+                                <span className="material-icons text-xl">download</span>
                               </button>
                               <button
-                                onClick={() => handleRename(s.id, s.name)}
+                                onClick={(e) => handleRename(e, s.id, s.name)}
                                 className="p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
                                 title={t("common.edit")}
                               >
-                                <span className="material-icons text-lg">
-                                  edit
-                                </span>
+                                <span className="material-icons text-xl">edit</span>
                               </button>
                               <button
-                                onClick={() => handleDelete(s.id)}
+                                onClick={(e) => handleDelete(e, s.id)}
                                 className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
                                 title={t("common.delete")}
                               >
-                                <span className="material-icons text-lg">
-                                  delete
-                                </span>
+                                <span className="material-icons text-xl">delete</span>
                               </button>
                             </div>
                           </td>
@@ -225,27 +248,27 @@ const ScriptsList: React.FC = () => {
             </div>
           </div>
 
-          <div className="space-y-6">
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
+          <aside className="space-y-6">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
               <BaseScripts />
             </div>
 
-            <div className="bg-primary/5 dark:bg-primary/10 rounded-xl border border-primary/10 dark:border-primary/20 p-6">
-              <div className="flex items-start gap-3">
-                <span className="material-icons text-primary text-xl mt-0.5">
-                  info
-                </span>
+            <div className="bg-gradient-to-br from-primary to-blue-600 rounded-2xl p-6 text-white shadow-lg shadow-primary/20">
+              <div className="flex items-start gap-4">
+                <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+                  <span className="material-icons text-white">lightbulb</span>
+                </div>
                 <div>
-                  <h4 className="text-sm font-semibold text-slate-900 dark:text-white">
+                  <h4 className="font-bold text-lg mb-2">
                     {t("setup.why_scripts_title")}
                   </h4>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
+                  <p className="text-sm text-white/80 leading-relaxed">
                     {t("setup.why_scripts_desc")}
                   </p>
                 </div>
               </div>
             </div>
-          </div>
+          </aside>
         </div>
       </div>
     </PageLayout>
