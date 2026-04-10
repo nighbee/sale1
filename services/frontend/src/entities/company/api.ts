@@ -1,5 +1,7 @@
 import { api } from '../../shared/api/base';
 import type { Company, Billing } from './types';
+import type { User } from '../user/types';
+import type { Integration } from '../integration/types';
 
 export const companyApi = {
   updateSettings: (data: Partial<Company>) => api.put<Company>(`/settings`, data),
@@ -8,5 +10,6 @@ export const companyApi = {
   updateBilling: (data: Partial<Billing>) => api.put<Billing>(`/settings/billing`, data),
   listCompanies: () => api.get<{ companies: Company[] }>('/companies'),
   listAllCompanies: () => api.get<{ companies: Company[] }>('/admin/companies'),
+  getCompanyDetails: (id: string) => api.get<{ company: Company; users: User[]; integrations: Integration[] }>(`/admin/companies/${id}`),
   updateCompanyGlobal: (id: string, data: Partial<Company>) => api.put<Company>(`/admin/companies/${id}`, data),
 };

@@ -97,7 +97,19 @@
     "no_companies": "Компаниялар табылмады.",
     "no_users": "Пайдаланушылар табылмады.",
     "sub_mgmt_soon": "Жазылымдарды басқару жақында болады.",
-    "company_id": "Компания ID"
+    "company_id": "Компания ID",
+    "redis_manager": "Redis басқару",
+    "system_health": "Жүйе жағдайы",
+    "global_rating": "Глобалды рейтинг",
+    "global_users": "Барлық пайдаланушылар",
+    "global_calls": "Барлық қоңыраулар",
+    "queue_metrics": "Кезек метрикалары",
+    "overall_status": "Жалпы күйі",
+    "redis_keys": "Redis кілттері",
+    "edit_redis_value": "Redis мәнін өңдеу",
+    "key_json_or_string": "Мән (JSON немесе жол)",
+    "update_key": "Кілтті жаңарту",
+    "view_details": "Толығырақ"
   },
   "setup": {
     "company_title": "Компанияңызды реттеңіз",
