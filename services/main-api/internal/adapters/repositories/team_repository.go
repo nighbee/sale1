@@ -85,6 +85,29 @@ func (r *teamRepository) List(ctx context.Context, companyID string) ([]*domain.
 	return teams, nil
 }
 
+func (r *teamRepository) ListAll(ctx context.Context) ([]*domain.Team, error) {
+	query := `
+		SELECT id, company_id, name, description, auto_assign, created_at, updated_at
+		FROM auth_schema.teams
+		ORDER BY created_at DESC
+	`
+	rows, err := r.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	teams := []*domain.Team{}
+	for rows.Next() {
+		team := &domain.Team{}
+		if err := rows.Scan(&team.ID, &team.CompanyID, &team.Name, &team.Description, &team.AutoAssign, &team.CreatedAt, &team.UpdatedAt); err != nil {
+			return nil, err
+		}
+		teams = append(teams, team)
+	}
+	return teams, nil
+}
+
 func (r *teamRepository) Update(ctx context.Context, team *domain.Team) error {
 	query := `
 		UPDATE auth_schema.teams

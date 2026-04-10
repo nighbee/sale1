@@ -120,6 +120,94 @@ func (r *callRepository) GetByIDInternal(ctx context.Context, id string) (*domai
 	return call, err
 }
 
+func (r *callRepository) ListAll(ctx context.Context, filters map[string]interface{}) ([]*domain.Call, int, error) {
+	where := []string{"1=1"}
+	args := []interface{}{}
+	argIdx := 1
+
+	if companyID, ok := filters["company_id"].(string); ok && companyID != "" {
+		where = append(where, fmt.Sprintf("c.company_id = $%d", argIdx))
+		args = append(args, companyID)
+		argIdx++
+	}
+
+	if managerID, ok := filters["manager_id"].(string); ok && managerID != "" {
+		where = append(where, fmt.Sprintf("c.manager_id = $%d", argIdx))
+		args = append(args, managerID)
+		argIdx++
+	}
+
+	if status, ok := filters["status"].(string); ok && status != "" {
+		where = append(where, fmt.Sprintf("c.status = $%d", argIdx))
+		args = append(args, status)
+		argIdx++
+	}
+
+	// Pagination
+	limit := 20
+	if l, ok := filters["limit"].(int); ok && l > 0 {
+		limit = l
+	}
+	page := 1
+	if p, ok := filters["page"].(int); ok && p > 0 {
+		page = p
+	}
+	offset := (page - 1) * limit
+
+	query := fmt.Sprintf(`
+		SELECT c.id, c.company_id, c.manager_id, c.manager_name, c.client_phone, c.client_id,
+		       c.duration, c.call_link, c.storage_link, c.chat_link, c.call_date, c.call_time,
+		       c.status, c.source, c.external_id, c.created_at, c.updated_at
+		FROM calls_schema.calls c
+		WHERE %s
+		ORDER BY c.created_at DESC
+		LIMIT $%d OFFSET $%d
+	`, strings.Join(where, " AND "), argIdx, argIdx+1)
+
+	rows, err := r.db.QueryContext(ctx, query, append(args, limit, offset)...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	calls := []*domain.Call{}
+	for rows.Next() {
+		call := &domain.Call{}
+		err := rows.Scan(
+			&call.ID,
+			&call.CompanyID,
+			&call.ManagerID,
+			&call.ManagerName,
+			&call.ClientPhone,
+			&call.ClientID,
+			&call.Duration,
+			&call.CallLink,
+			&call.StorageLink,
+			&call.ChatLink,
+			&call.CallDate,
+			&call.CallTime,
+			&call.Status,
+			&call.Source,
+			&call.ExternalID,
+			&call.CreatedAt,
+			&call.UpdatedAt,
+		)
+		if err != nil {
+			return nil, 0, err
+		}
+		calls = append(calls, call)
+	}
+
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM calls_schema.calls c WHERE %s", strings.Join(where, " AND "))
+	var total int
+	err = r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return calls, total, nil
+}
+
 func (r *callRepository) List(ctx context.Context, filters map[string]interface{}) ([]*domain.Call, int, map[string]int, error) {
 	where := []string{"1=1"}
 	countsWhere := []string{"1=1"}

@@ -68,6 +68,9 @@ func (m *mockCallRepoForDetail) GetByIDInternal(ctx context.Context, id string) 
 func (m *mockCallRepoForDetail) List(ctx context.Context, f map[string]interface{}) ([]*domain.Call, int, map[string]int, error) {
 	return m.calls, m.total, nil, m.err
 }
+func (m *mockCallRepoForDetail) ListAll(ctx context.Context, filters map[string]interface{}) ([]*domain.Call, int, error) {
+	return m.calls, m.total, m.err
+}
 func (m *mockCallRepoForDetail) UpdateStatus(ctx context.Context, id string, s domain.CallStatus) error {
 	return nil
 }

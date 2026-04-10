@@ -8,14 +8,23 @@ import (
 )
 
 type CompanyHandler struct {
-	companyRepo    ports.CompanyRepository
-	billingUseCase *billing.BillingUseCase
+	companyRepo     ports.CompanyRepository
+	billingUseCase  *billing.BillingUseCase
+	userRepo        ports.UserRepository
+	integrationRepo ports.IntegrationRepository
 }
 
-func NewCompanyHandler(companyRepo ports.CompanyRepository, billingUseCase *billing.BillingUseCase) *CompanyHandler {
+func NewCompanyHandler(
+	companyRepo ports.CompanyRepository,
+	billingUseCase *billing.BillingUseCase,
+	userRepo ports.UserRepository,
+	integrationRepo ports.IntegrationRepository,
+) *CompanyHandler {
 	return &CompanyHandler{
-		companyRepo:    companyRepo,
-		billingUseCase: billingUseCase,
+		companyRepo:     companyRepo,
+		billingUseCase:  billingUseCase,
+		userRepo:        userRepo,
+		integrationRepo: integrationRepo,
 	}
 }
 
@@ -150,4 +159,109 @@ func (h *CompanyHandler) CreateSetupIntent(c *fiber.Ctx) error {
 		"intent_id":     intentID,
 		"client_secret": clientSecret,
 	})
+}
+
+// ListAllCompanies godoc
+// @Summary List all companies (Admin)
+// @Description List all companies in the system.
+// @Tags admin
+// @Accept json
+// @Produce json
+// @Success 200 {object} fiber.Map
+// @Failure 500 {object} fiber.Map
+// @Security BearerAuth
+// @Router /admin/companies [get]
+func (h *CompanyHandler) ListAllCompanies(c *fiber.Ctx) error {
+	companies, err := h.companyRepo.List(c.Context())
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"companies": companies})
+}
+
+// GetCompanyDetails godoc
+// @Summary Get company details (Admin)
+// @Description Get company profile, users, and integrations.
+// @Tags admin
+// @Accept json
+// @Produce json
+// @Param id path string true "Company ID"
+// @Success 200 {object} fiber.Map
+// @Failure 500 {object} fiber.Map
+// @Security BearerAuth
+// @Router /admin/companies/{id} [get]
+func (h *CompanyHandler) GetCompanyDetails(c *fiber.Ctx) error {
+	companyID := c.Params("id")
+
+	company, err := h.companyRepo.GetByID(c.Context(), companyID)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	users, err := h.userRepo.List(c.Context(), companyID)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	integrations, err := h.integrationRepo.List(c.Context(), companyID)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	return c.JSON(fiber.Map{
+		"company":      company,
+		"users":        users,
+		"integrations": integrations,
+	})
+}
+
+// UpdateCompanyGlobal godoc
+// @Summary Update company (Admin)
+// @Description Update any company field.
+// @Tags admin
+// @Accept json
+// @Produce json
+// @Param id path string true "Company ID"
+// @Param request body domain.Company true "Update Request"
+// @Success 200 {object} domain.Company
+// @Failure 400 {object} fiber.Map
+// @Failure 500 {object} fiber.Map
+// @Security BearerAuth
+// @Router /admin/companies/{id} [put]
+func (h *CompanyHandler) UpdateCompanyGlobal(c *fiber.Ctx) error {
+	companyID := c.Params("id")
+	var update map[string]interface{}
+	if err := c.BodyParser(&update); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid body"})
+	}
+
+	company, err := h.companyRepo.GetByID(c.Context(), companyID)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	if val, ok := update["name"].(string); ok && val != "" {
+		company.Name = val
+	}
+	if val, ok := update["description"].(string); ok {
+		company.Description = val
+	}
+	if val, ok := update["industry"].(string); ok {
+		company.Industry = val
+	}
+	if val, ok := update["size"].(string); ok {
+		company.Size = val
+	}
+	if val, ok := update["managers_count"].(float64); ok {
+		company.ManagersCount = int(val)
+	}
+	if val, ok := update["is_active"].(bool); ok {
+		company.IsActive = val
+	}
+
+	if err := h.companyRepo.Update(c.Context(), company); err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	return c.JSON(company)
 }

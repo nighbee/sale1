@@ -134,6 +134,60 @@ func (r *scriptRepository) List(ctx context.Context, companyID string) ([]*domai
 	return scripts, nil
 }
 
+func (r *scriptRepository) ListAll(ctx context.Context) ([]*domain.Script, error) {
+	query := `
+		SELECT id, company_id, name, file_path_minio, parsed_text, structure, version, is_active, created_at, updated_at, team_id, is_base_script, is_active_base, base_script_metrics
+		FROM scripts_schema.scripts
+		ORDER BY created_at DESC
+	`
+
+	rows, err := r.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	scripts := []*domain.Script{}
+	for rows.Next() {
+		s := &domain.Script{}
+		var structureJSON []byte
+		var metricsJSON []byte
+		var minioPath, pText sql.NullString
+
+		err := rows.Scan(
+			&s.ID,
+			&s.CompanyID,
+			&s.Name,
+			&minioPath,
+			&pText,
+			&structureJSON,
+			&s.Version,
+			&s.IsActive,
+			&s.CreatedAt,
+			&s.UpdatedAt,
+			&s.TeamID,
+			&s.IsBaseScript,
+			&s.IsActiveBase,
+			&metricsJSON,
+		)
+		if err != nil {
+			return nil, err
+		}
+		s.FilePathMinio = minioPath.String
+		s.ParsedText = pText.String
+
+		if structureJSON != nil {
+			json.Unmarshal(structureJSON, &s.Structure)
+		}
+		if metricsJSON != nil {
+			json.Unmarshal(metricsJSON, &s.BaseScriptMetrics)
+		}
+		scripts = append(scripts, s)
+	}
+
+	return scripts, nil
+}
+
 func (r *scriptRepository) GetByID(ctx context.Context, id string, companyID string) (*domain.Script, error) {
 	query := `
 		SELECT id, company_id, name, file_path_minio, parsed_text, structure, version, is_active, created_at, updated_at, team_id, is_base_script, is_active_base, base_script_metrics

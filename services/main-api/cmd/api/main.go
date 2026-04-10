@@ -193,13 +193,14 @@ func main() {
 	authHandler := handlers.NewAuthHandler(registerUC, loginUC, refreshUC)
 	callHandler := handlers.NewCallHandler(listCallsUC, reprocessCallUC, callRepo, transcriptRepo, analysisRepo, minioClient, publicMinioClient, grpcClient, cfg.MinioPresign, time.Duration(cfg.MinioPresignExpirySeconds)*time.Second)
 	analyticsHandler := handlers.NewAnalyticsHandler(teamPerformanceUC)
-	companyHandler := handlers.NewCompanyHandler(companyRepo, billingUC)
+	companyHandler := handlers.NewCompanyHandler(companyRepo, billingUC, userRepo, integrationRepo)
 	userHandler := handlers.NewUserHandler(userRepo, listCallsUC)
 	teamHandler := handlers.NewTeamHandler(teamUC)
 	integrationHandler := handlers.NewIntegrationHandler(integrationUC)
 	scriptHandler := handlers.NewScriptHandler(scriptRepo, cfg.ScriptServiceURL)
 	notificationHandler := handlers.NewNotificationHandler(notificationRepo)
 	aiSettingsHandler := handlers.NewAISettingsHandler(aiSettingsRepo)
+	systemHandler := handlers.NewSystemHandler(rdb)
 	wsHandler := handlers.NewWSHandler(hub)
 
 	app := fiber.New()
@@ -212,7 +213,7 @@ func main() {
 	prometheus.RegisterAt(app, "/metrics")
 	app.Use(prometheus.Middleware)
 
-	httpAdapter.SetupRoutes(app, authHandler, callHandler, analyticsHandler, companyHandler, userHandler, teamHandler, integrationHandler, scriptHandler, notificationHandler, aiSettingsHandler, wsHandler, jwtService)
+	httpAdapter.SetupRoutes(app, authHandler, callHandler, analyticsHandler, companyHandler, userHandler, teamHandler, integrationHandler, scriptHandler, notificationHandler, aiSettingsHandler, systemHandler, wsHandler, jwtService)
 
 	port := os.Getenv("PORT")
 	if port == "" {

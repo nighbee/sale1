@@ -124,6 +124,45 @@ func (h *CallHandler) ListCalls(c *fiber.Ctx) error {
 	return c.JSON(resp)
 }
 
+// ListAllCalls godoc
+// @Summary List all calls (Admin)
+// @Description List all calls in the system with optional filters.
+// @Tags admin
+// @Accept json
+// @Produce json
+// @Param page query int false "Page number" default(1)
+// @Param limit query int false "Page limit" default(20)
+// @Success 200 {object} fiber.Map
+// @Failure 500 {object} fiber.Map
+// @Security BearerAuth
+// @Router /admin/calls [get]
+func (h *CallHandler) ListAllCalls(c *fiber.Ctx) error {
+	page, _ := strconv.Atoi(c.Query("page", "1"))
+	limit, _ := strconv.Atoi(c.Query("limit", "20"))
+
+	filters := map[string]interface{}{
+		"page":  page,
+		"limit": limit,
+	}
+
+	if companyID := c.Query("company_id"); companyID != "" {
+		filters["company_id"] = companyID
+	}
+	if status := c.Query("status"); status != "" {
+		filters["status"] = status
+	}
+
+	calls, total, err := h.callRepo.ListAll(c.Context(), filters)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	return c.JSON(fiber.Map{
+		"calls": calls,
+		"total": total,
+	})
+}
+
 // GetCall godoc
 // @Summary Get call details
 // @Description Get full details of a call including transcript and analysis

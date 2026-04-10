@@ -243,3 +243,21 @@ func (h *TeamHandler) Ensure(c *fiber.Ctx) error {
 		"total_user_ids_sent": len(req.UserIDs),
 	})
 }
+
+// ListAllTeams godoc
+// @Summary List all teams (Admin)
+// @Description List all teams in the system.
+// @Tags admin
+// @Accept json
+// @Produce json
+// @Success 200 {object} fiber.Map
+// @Failure 500 {object} fiber.Map
+// @Security BearerAuth
+// @Router /admin/teams [get]
+func (h *TeamHandler) ListAllTeams(c *fiber.Ctx) error {
+	teams, err := h.teamUC.ListAll(c.Context())
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"teams": teams})
+}

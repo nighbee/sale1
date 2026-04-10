@@ -28,6 +28,11 @@ func (m *MockCompanyRepository) Update(ctx context.Context, company *domain.Comp
 	return args.Error(0)
 }
 
+func (m *MockCompanyRepository) List(ctx context.Context) ([]*domain.Company, error) {
+	args := m.Called(ctx)
+	return args.Get(0).([]*domain.Company), args.Error(1)
+}
+
 func (m *MockCompanyRepository) GetBillingInfo(ctx context.Context, companyID string) (*domain.BillingInfo, error) {
 	args := m.Called(ctx, companyID)
 	return args.Get(0).(*domain.BillingInfo), args.Error(1)
@@ -74,6 +79,11 @@ func (m *MockUserRepository) Delete(ctx context.Context, id string) error {
 
 func (m *MockUserRepository) List(ctx context.Context, companyID string) ([]*domain.User, error) {
 	args := m.Called(ctx, companyID)
+	return args.Get(0).([]*domain.User), args.Error(1)
+}
+
+func (m *MockUserRepository) ListAll(ctx context.Context) ([]*domain.User, error) {
+	args := m.Called(ctx)
 	return args.Get(0).([]*domain.User), args.Error(1)
 }
 

@@ -219,6 +219,58 @@ func (r *userRepository) List(ctx context.Context, companyID string) ([]*domain.
 	return users, nil
 }
 
+func (r *userRepository) ListAll(ctx context.Context) ([]*domain.User, error) {
+	query := `
+		SELECT id, company_id, email, role, manager_id, manager_name,
+		       is_active, created_at, updated_at, team_id, first_name, last_name, username, phone, initial_password
+		FROM auth_schema.users
+		ORDER BY created_at DESC
+	`
+
+	rows, err := r.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	users := []*domain.User{}
+	for rows.Next() {
+		user := &domain.User{}
+		var mName, fName, lName, username, phone, initPass sql.NullString
+		err := rows.Scan(
+			&user.ID,
+			&user.CompanyID,
+			&user.Email,
+			&user.Role,
+			&user.ManagerID,
+			&mName,
+			&user.IsActive,
+			&user.CreatedAt,
+			&user.UpdatedAt,
+			&user.TeamID,
+			&fName,
+			&lName,
+			&username,
+			&phone,
+			&initPass,
+		)
+		if err != nil {
+			return nil, err
+		}
+		user.ManagerName = mName.String
+		user.FirstName = fName.String
+		user.LastName = lName.String
+		user.Username = username.String
+		user.Phone = phone.String
+		if initPass.Valid {
+			user.InitialPassword = &initPass.String
+		}
+		users = append(users, user)
+	}
+
+	return users, nil
+}
+
 func (r *userRepository) GetByManagerID(ctx context.Context, managerID string, companyID string) (*domain.User, error) {
 	query := `
 		SELECT id, company_id, email, password_hash, role, manager_id, manager_name,

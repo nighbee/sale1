@@ -22,6 +22,7 @@ func SetupRoutes(
 	scriptHandler *handlers.ScriptHandler,
 	notificationHandler *handlers.NotificationHandler,
 	aiSettingsHandler *handlers.AISettingsHandler,
+	systemHandler *handlers.SystemHandler,
 	wsHandler *handlers.WSHandler,
 	jwtService ports.JWTService,
 ) {
@@ -137,4 +138,32 @@ func SetupRoutes(
 	aiSettings := protected.Group("/ai-settings", middleware.RequireRole("super_admin", "tenant_admin"))
 	aiSettings.Get("/", aiSettingsHandler.Get)
 	aiSettings.Put("/", aiSettingsHandler.Update)
+
+	// Admin routes
+	admin := api.Group("/admin", middleware.JWTAuth(jwtService), middleware.RequireRole("super_admin"))
+
+	// Companies Admin
+	admin.Get("/companies", companyHandler.ListAllCompanies)
+	admin.Get("/companies/:id", companyHandler.GetCompanyDetails)
+	admin.Put("/companies/:id", companyHandler.UpdateCompanyGlobal)
+
+	// Users Admin
+	admin.Get("/users", userHandler.ListAllUsers)
+	admin.Put("/users/:id", userHandler.UpdateUserGlobal)
+
+	// Calls Admin
+	admin.Get("/calls", callHandler.ListAllCalls)
+
+	// Teams Admin
+	admin.Get("/teams", teamHandler.ListAllTeams)
+
+	// Scripts Admin
+	admin.Get("/scripts", scriptHandler.ListAllScripts)
+
+	// System Admin
+	admin.Get("/system/status", systemHandler.GetStatus)
+	admin.Get("/system/redis", systemHandler.ListRedisKeys)
+	admin.Get("/system/redis/value", systemHandler.GetRedisValue)
+	admin.Put("/system/redis", systemHandler.UpdateRedisValue)
+	admin.Delete("/system/redis", systemHandler.DeleteRedisKey)
 }
