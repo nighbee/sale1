@@ -97,7 +97,19 @@
     "no_companies": "Компании не найдены.",
     "no_users": "Пользователи не найдены.",
     "sub_mgmt_soon": "Управление подписками скоро появится.",
-    "company_id": "ID компании"
+    "company_id": "ID компании",
+    "redis_manager": "Управление Redis",
+    "system_health": "Состояние системы",
+    "global_rating": "Глобальный рейтинг",
+    "global_users": "Все пользователи",
+    "global_calls": "Все звонки",
+    "queue_metrics": "Метрики очередей",
+    "overall_status": "Общий статус",
+    "redis_keys": "Ключи Redis",
+    "edit_redis_value": "Редактировать значение Redis",
+    "key_json_or_string": "Значение (JSON или строка)",
+    "update_key": "Обновить ключ",
+    "view_details": "Подробнее"
   },
   "setup": {
     "company_title": "Настройте вашу компанию",
