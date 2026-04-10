@@ -30,7 +30,9 @@
     "save_changes": "Save Changes",
     "download": "Download",
     "delete_confirm": "Are you sure you want to delete this item?",
-    "not_available": "N/A"
+    "not_available": "N/A",
+    "system": "System",
+    "inactive": "Inactive"
   },
   "nav": {
     "dashboard": "Dashboard",

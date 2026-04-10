@@ -5,4 +5,5 @@ export interface Script {
   team_id?: string;
   version?: number;
   is_active?: boolean;
+  company_id?: string;
 }

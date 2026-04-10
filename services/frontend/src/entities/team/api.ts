@@ -6,8 +6,9 @@ export const teamApi = {
   create: (data: unknown) => api.post<Team>('/teams', data),
   list: () => api.get<{ teams: Team[] }>('/teams'),
   get: (id: string) => api.get<Team>(`/teams/${id}`),
-  update: (id: string, data: unknown) => api.put<Team>(`/teams/${id}`, data),
+  update: (id: string, data: Partial<Team>) => api.put<Team>(`/teams/${id}`, data),
   delete: (id: string) => api.delete(`/teams/${id}`),
   addMember: (teamId: string, userId: string) => api.post(`/teams/${teamId}/members`, { user_id: userId }),
   removeMember: (teamId: string, userId: string) => api.delete(`/teams/${teamId}/members/${userId}`),
+  listAllTeams: () => api.get<{ teams: Team[] }>('/admin/teams'),
 };

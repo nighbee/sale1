@@ -3,6 +3,7 @@ import type { Call, CallTranscript, CallAnalysis, ListCallsResponse } from './ty
 
 export const callApi = {
   listCalls: (params?: unknown) => api.get<ListCallsResponse>('/calls', { params }),
+  listAllCalls: (params?: unknown) => api.get<{ calls: Call[]; total: number }>('/admin/calls', { params }),
   getCall: (id: string) => api.get<Call>(`/calls/${id}`),
   getTranscript: (id: string) => api.get<CallTranscript>(`/calls/${id}/transcript`),
   getAnalysis: (id: string) => api.get<CallAnalysis>(`/calls/${id}/analysis`),

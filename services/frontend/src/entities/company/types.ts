@@ -11,6 +11,7 @@ export interface Company {
   managers_count?: number;
   subscription_tier?: string;
   time_zone?: string;
+  is_active?: boolean;
 }
 
 export interface Billing {

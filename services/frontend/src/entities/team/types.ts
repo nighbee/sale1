@@ -8,4 +8,6 @@ export interface Team {
   auto_assign: boolean;
   members?: User[];
   script?: Script;
+  company_id?: string;
+  created_at?: string;
 }

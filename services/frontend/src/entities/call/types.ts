@@ -19,6 +19,8 @@ export interface Call {
   quality_score?: number;
   script_match?: number;
   errors_free?: number;
+  company_id?: string;
+  created_at: string;
 }
 
 export interface TranscriptSegment {
