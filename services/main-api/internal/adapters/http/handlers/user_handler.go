@@ -223,6 +223,7 @@ func (h *UserHandler) UpdateUser(c *fiber.Ctx) error {
 		TeamID      string `json:"team_id"`
 		LineID      string `json:"line_id"`
 		SrcNum      string `json:"src_num"`
+		ManagerID   string `json:"manager_id"`
 	}
 
 	if err := c.BodyParser(&update); err != nil {
@@ -241,9 +242,13 @@ func (h *UserHandler) UpdateUser(c *fiber.Ctx) error {
 	if update.Password != "" {
 		hash, _ := bcrypt.GenerateFromPassword([]byte(update.Password), bcrypt.DefaultCost)
 		user.PasswordHash = string(hash)
+		user.InitialPassword = nil
 	}
 	if update.ManagerName != "" {
 		user.ManagerName = update.ManagerName
+	}
+	if update.ManagerID != "" {
+		user.ManagerID = &update.ManagerID
 	}
 	if update.Role != "" {
 		user.Role = domain.UserRole(update.Role)
@@ -454,6 +459,15 @@ func (h *UserHandler) UpdateUserGlobal(c *fiber.Ctx) error {
 	}
 	if val, ok := update["is_active"].(bool); ok {
 		user.IsActive = val
+	}
+	if val, ok := update["line_id"].(string); ok {
+		user.LineID = &val
+	}
+	if val, ok := update["src_num"].(string); ok {
+		user.SrcNum = &val
+	}
+	if val, ok := update["manager_id"].(string); ok {
+		user.ManagerID = &val
 	}
 
 	if err := h.userRepo.Update(c.Context(), user); err != nil {

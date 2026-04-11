@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { PageLayout } from "../../../widgets/PageLayout";
 import { callApi } from "../../../entities/call/api";
 import { userApi } from "../../../entities/user/api";
+import type { User } from "../../../entities/user/types";
 import type { Call, ListCallsResponse } from "../../../entities/call/types";
 import Skeleton from "../../../shared/ui/Skeleton";
 import Pagination from "../../../shared/ui/Pagination";
@@ -16,6 +17,8 @@ const CallsListPage: React.FC = () => {
   const { currentTeamId, user } = useUserStore();
   const [source, setSource] = useState<CallSource>("google_sheets");
   const [calls, setCalls] = useState<Call[]>([]);
+  const [managers, setManagers] = useState<User[]>([]);
+  const [selectedManager, setSelectedManager] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [limit] = useState(20);
@@ -31,6 +34,18 @@ const CallsListPage: React.FC = () => {
   });
 
   useEffect(() => {
+    const fetchManagers = async () => {
+      try {
+        const res = await userApi.listUsers();
+        setManagers(res.data.users || []);
+      } catch (err) {
+        console.error("Failed to fetch managers", err);
+      }
+    };
+    fetchManagers();
+  }, []);
+
+  useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
@@ -41,6 +56,9 @@ const CallsListPage: React.FC = () => {
         };
         if (currentTeamId) {
           params.team_id = currentTeamId;
+        }
+        if (selectedManager) {
+          params.manager_id = selectedManager;
         }
 
         let res;
@@ -76,7 +94,7 @@ const CallsListPage: React.FC = () => {
       }
     };
     fetchData();
-  }, [currentTeamId, user, source, page, limit]);
+  }, [currentTeamId, user, source, page, limit, selectedManager]);
 
   return (
     <PageLayout title={t("calls.list_title")}>
@@ -191,15 +209,37 @@ const CallsListPage: React.FC = () => {
 
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm mb-6">
           <div className="p-4 flex flex-col lg:flex-row gap-4 justify-between items-center">
-            <div className="relative w-full lg:w-64">
-              <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-                <span className="material-icons">search</span>
-              </span>
-              <input
-                className="block w-full pl-10 pr-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-sm"
-                placeholder={t("calls.search")}
-                type="text"
-              />
+            <div className="flex flex-col md:flex-row gap-4 w-full lg:w-auto">
+              <div className="relative w-full lg:w-64">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                  <span className="material-icons">search</span>
+                </span>
+                <input
+                  className="block w-full pl-10 pr-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-sm"
+                  placeholder={t("calls.search")}
+                  type="text"
+                />
+              </div>
+
+              {user?.role !== 'sales_rep' && (
+                <div className="w-full lg:w-64">
+                  <select
+                    value={selectedManager}
+                    onChange={(e) => {
+                      setSelectedManager(e.target.value);
+                      setPage(1);
+                    }}
+                    className="block w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-sm focus:ring-primary focus:border-primary transition-colors"
+                  >
+                    <option value="">{t("calls.all_managers") || "All Managers"}</option>
+                    {managers.map((m) => (
+                      <option key={m.id} value={m.manager_id}>
+                        {m.first_name || m.username || m.email} {m.last_name || ""} ({m.manager_id || 'no id'})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
           </div>
           <div className="overflow-x-auto">

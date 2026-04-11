@@ -58,6 +58,16 @@ func generateRandomPassword(length int) string {
 	return string(ret)
 }
 
+func generateRandomName() string {
+	adjectives := []string{"Swift", "Silent", "Bright", "Bold", "Calm", "Fierce", "Noble", "Quick", "Smart", "Wise"}
+	nouns := []string{"Falcon", "Tiger", "River", "Mountain", "Eagle", "Lion", "Wolf", "Phoenix", "Storm", "Oak"}
+
+	adjIdx, _ := rand.Int(rand.Reader, big.NewInt(int64(len(adjectives))))
+	nounIdx, _ := rand.Int(rand.Reader, big.NewInt(int64(len(nouns))))
+
+	return adjectives[adjIdx.Int64()] + " " + nouns[nounIdx.Int64()]
+}
+
 func (uc *HandleEventUseCase) Execute(ctx context.Context, companyID string, request json.RawMessage) {
 	log := applogger.L.With(zap.String("operation", "HandleEventUseCase.Execute"), zap.String("company_id", companyID))
 	var notify SipuniNotifyRequest
@@ -81,9 +91,25 @@ func (uc *HandleEventUseCase) Execute(ctx context.Context, companyID string, req
 		managerID = strings.TrimPrefix(fullSrcNum, lineID)
 	}
 
+	if managerID == "" {
+		log.Warn("skipping notify — empty managerID (extension)",
+			zap.String("full_src_num", fullSrcNum),
+			zap.String("line_id", lineID),
+			zap.String("sipuni_call_id", notify.CallID))
+		return
+	}
+
+	// Requirement: if managerID length is > 9, skip creation
+	if len(managerID) > 9 {
+		log.Warn("skipping notify — managerID exceeds 9 digits",
+			zap.String("manager_id", managerID),
+			zap.String("sipuni_call_id", notify.CallID))
+		return
+	}
+
 	managerName := notify.User
 	if managerName == "" {
-		managerName = "Sipuni Manager"
+		managerName = generateRandomName()
 	}
 
 	log.Info("processing Sipuni notify",

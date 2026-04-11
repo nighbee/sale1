@@ -25,6 +25,9 @@ export const UsersManagementPage: React.FC = () => {
     password: "",
     role: "sales_rep",
     team_id: "",
+    line_id: "",
+    src_num: "",
+    manager_id: "",
   });
 
   const fetchUsers = async () => {
@@ -65,6 +68,9 @@ export const UsersManagementPage: React.FC = () => {
       password: "",
       role: user.role || "sales_rep",
       team_id: user.team_id || "none",
+      line_id: user.line_id || "",
+      src_num: user.src_num || "",
+      manager_id: user.manager_id || "",
     });
     setIsModalOpen(true);
   };
@@ -115,6 +121,7 @@ export const UsersManagementPage: React.FC = () => {
                     <th className="px-6 py-4">{t("common.name")}</th>
                     <th className="px-6 py-4">{t("common.username")} / {t("common.email")}</th>
                     <th className="px-6 py-4">{t("common.phone")}</th>
+                    <th className="px-6 py-4">Line ID / Src Num</th>
                     <th className="px-6 py-4">{t("common.role")}</th>
                     <th className="px-6 py-4">{t("common.team")}</th>
                     <th className="px-6 py-4 text-right">{t("common.actions")}</th>
@@ -131,6 +138,11 @@ export const UsersManagementPage: React.FC = () => {
                           {user.first_name} {user.last_name}
                         </div>
                         <div className="text-xs text-slate-400">ID: {user.manager_id || "N/A"}</div>
+                        {user.initial_password && (
+                          <div className="text-xs text-amber-600 font-medium">
+                            Initial: {user.initial_password}
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -140,6 +152,10 @@ export const UsersManagementPage: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">
                         {user.phone || "-"}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">
+                        <div className="font-medium">{user.line_id || "-"}</div>
+                        <div className="text-xs text-slate-500">{user.src_num || "-"}</div>
                       </td>
                       <td className="px-6 py-4">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase ${
@@ -252,6 +268,39 @@ export const UsersManagementPage: React.FC = () => {
                     className="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
                     value={formData.password}
                     onChange={(e) => setFormData({...formData, password: e.target.value})}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">Manager ID (Extension)</label>
+                  <input
+                    type="text"
+                    className="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
+                    value={formData.manager_id}
+                    onChange={(e) => setFormData({...formData, manager_id: e.target.value})}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">Line ID</label>
+                  <input
+                    type="text"
+                    className="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
+                    value={formData.line_id}
+                    onChange={(e) => setFormData({...formData, line_id: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">Source Number (Src Num)</label>
+                  <input
+                    type="text"
+                    className="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
+                    value={formData.src_num}
+                    onChange={(e) => setFormData({...formData, src_num: e.target.value})}
                   />
                 </div>
               </div>
