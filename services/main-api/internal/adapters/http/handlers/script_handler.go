@@ -3,6 +3,7 @@ package handlers
 import (
 	"bytes"
 	"fmt"
+	"strconv"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -403,14 +404,30 @@ func (h *ScriptHandler) GetBaseMetrics(c *fiber.Ctx) error {
 // @Tags admin
 // @Accept json
 // @Produce json
+// @Param page query int false "Page number" default(1)
+// @Param limit query int false "Page limit" default(20)
+// @Param search query string false "Search by name"
 // @Success 200 {object} fiber.Map
 // @Failure 500 {object} fiber.Map
 // @Security BearerAuth
 // @Router /admin/scripts [get]
 func (h *ScriptHandler) ListAllScripts(c *fiber.Ctx) error {
-	scripts, err := h.scriptRepo.ListAll(c.Context())
+	page, _ := strconv.Atoi(c.Query("page", "1"))
+	limit, _ := strconv.Atoi(c.Query("limit", "20"))
+	search := c.Query("search")
+
+	filters := map[string]interface{}{
+		"page":   page,
+		"limit":  limit,
+		"search": search,
+	}
+
+	scripts, total, err := h.scriptRepo.ListAll(c.Context(), filters)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
-	return c.JSON(fiber.Map{"scripts": scripts})
+	return c.JSON(fiber.Map{
+		"scripts": scripts,
+		"total":   total,
+	})
 }

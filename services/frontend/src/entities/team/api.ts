@@ -10,5 +10,5 @@ export const teamApi = {
   delete: (id: string) => api.delete(`/teams/${id}`),
   addMember: (teamId: string, userId: string) => api.post(`/teams/${teamId}/members`, { user_id: userId }),
   removeMember: (teamId: string, userId: string) => api.delete(`/teams/${teamId}/members/${userId}`),
-  listAllTeams: () => api.get<{ teams: Team[] }>('/admin/teams'),
+  listAllTeams: (params?: unknown) => api.get<{ teams: Team[]; total: number }>('/admin/teams', { params }),
 };

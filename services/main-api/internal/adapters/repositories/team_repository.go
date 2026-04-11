@@ -4,6 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/salesai/main-api/internal/core/domain"
 	"github.com/salesai/main-api/internal/core/ports"
@@ -85,15 +88,38 @@ func (r *teamRepository) List(ctx context.Context, companyID string) ([]*domain.
 	return teams, nil
 }
 
-func (r *teamRepository) ListAll(ctx context.Context) ([]*domain.Team, error) {
-	query := `
+func (r *teamRepository) ListAll(ctx context.Context, filters map[string]interface{}) ([]*domain.Team, int, error) {
+	where := []string{"1=1"}
+	args := []interface{}{}
+	argIdx := 1
+
+	if search, ok := filters["search"].(string); ok && search != "" {
+		where = append(where, "name ILIKE $"+strconv.Itoa(argIdx))
+		args = append(args, "%"+search+"%")
+		argIdx++
+	}
+
+	limit := 20
+	if l, ok := filters["limit"].(int); ok && l > 0 {
+		limit = l
+	}
+	page := 1
+	if p, ok := filters["page"].(int); ok && p > 0 {
+		page = p
+	}
+	offset := (page - 1) * limit
+
+	query := fmt.Sprintf(`
 		SELECT id, company_id, name, description, auto_assign, created_at, updated_at
 		FROM auth_schema.teams
+		WHERE %s
 		ORDER BY created_at DESC
-	`
-	rows, err := r.db.QueryContext(ctx, query)
+		LIMIT $%d OFFSET $%d
+	`, strings.Join(where, " AND "), argIdx, argIdx+1)
+
+	rows, err := r.db.QueryContext(ctx, query, append(args, limit, offset)...)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 
@@ -101,11 +127,19 @@ func (r *teamRepository) ListAll(ctx context.Context) ([]*domain.Team, error) {
 	for rows.Next() {
 		team := &domain.Team{}
 		if err := rows.Scan(&team.ID, &team.CompanyID, &team.Name, &team.Description, &team.AutoAssign, &team.CreatedAt, &team.UpdatedAt); err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		teams = append(teams, team)
 	}
-	return teams, nil
+
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM auth_schema.teams WHERE %s", strings.Join(where, " AND "))
+	var total int
+	err = r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return teams, total, nil
 }
 
 func (r *teamRepository) Update(ctx context.Context, team *domain.Team) error {

@@ -4,6 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/salesai/main-api/internal/core/domain"
 	"github.com/salesai/main-api/internal/core/ports"
@@ -44,15 +47,38 @@ func (r *companyRepository) GetByID(ctx context.Context, id string) (*domain.Com
 	return c, err
 }
 
-func (r *companyRepository) List(ctx context.Context) ([]*domain.Company, error) {
-	query := `
+func (r *companyRepository) List(ctx context.Context, filters map[string]interface{}) ([]*domain.Company, int, error) {
+	where := []string{"1=1"}
+	args := []interface{}{}
+	argIdx := 1
+
+	if search, ok := filters["search"].(string); ok && search != "" {
+		where = append(where, "name ILIKE $"+strconv.Itoa(argIdx))
+		args = append(args, "%"+search+"%")
+		argIdx++
+	}
+
+	limit := 20
+	if l, ok := filters["limit"].(int); ok && l > 0 {
+		limit = l
+	}
+	page := 1
+	if p, ok := filters["page"].(int); ok && p > 0 {
+		page = p
+	}
+	offset := (page - 1) * limit
+
+	query := fmt.Sprintf(`
 		SELECT id, name, COALESCE(description, ''), COALESCE(industry, ''), COALESCE(size, ''), managers_count, COALESCE(time_zone, ''), stt_model_preference, llm_provider, subscription_tier, is_active, created_at, updated_at
 		FROM auth_schema.companies
+		WHERE %s
 		ORDER BY created_at DESC
-	`
-	rows, err := r.db.QueryContext(ctx, query)
+		LIMIT $%d OFFSET $%d
+	`, strings.Join(where, " AND "), argIdx, argIdx+1)
+
+	rows, err := r.db.QueryContext(ctx, query, append(args, limit, offset)...)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 
@@ -63,11 +89,19 @@ func (r *companyRepository) List(ctx context.Context) ([]*domain.Company, error)
 			&c.ID, &c.Name, &c.Description, &c.Industry, &c.Size, &c.ManagersCount, &c.TimeZone, &c.STTModelPreference, &c.LLMProvider, &c.SubscriptionTier, &c.IsActive, &c.CreatedAt, &c.UpdatedAt,
 		)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		companies = append(companies, c)
 	}
-	return companies, nil
+
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM auth_schema.companies WHERE %s", strings.Join(where, " AND "))
+	var total int
+	err = r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return companies, total, nil
 }
 
 func (r *companyRepository) Update(ctx context.Context, company *domain.Company) error {

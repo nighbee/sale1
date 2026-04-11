@@ -14,8 +14,9 @@ type UserRepository interface {
 	GetByPhone(ctx context.Context, phone string) (*domain.User, error)
 	Update(ctx context.Context, user *domain.User) error
 	Delete(ctx context.Context, id string) error
+	DeleteGlobal(ctx context.Context, id string) error
 	List(ctx context.Context, companyID string) ([]*domain.User, error)
-	ListAll(ctx context.Context) ([]*domain.User, error)
+	ListAll(ctx context.Context, filters map[string]interface{}) ([]*domain.User, int, error)
 	GetByManagerID(ctx context.Context, managerID string, companyID string) (*domain.User, error)
 	GetBySrcNum(ctx context.Context, srcNum string, companyID string) (*domain.User, error)
 }
@@ -25,7 +26,7 @@ type CompanyRepository interface {
 	Create(ctx context.Context, company *domain.Company) error
 	GetByID(ctx context.Context, id string) (*domain.Company, error)
 	Update(ctx context.Context, company *domain.Company) error
-	List(ctx context.Context) ([]*domain.Company, error)
+	List(ctx context.Context, filters map[string]interface{}) ([]*domain.Company, int, error)
 	GetBillingInfo(ctx context.Context, companyID string) (*domain.BillingInfo, error)
 	UpdateBillingInfo(ctx context.Context, billing *domain.BillingInfo) error
 }
@@ -58,7 +59,7 @@ type ScriptRepository interface {
 	Create(ctx context.Context, script *domain.Script) error
 	GetByID(ctx context.Context, id string, companyID string) (*domain.Script, error)
 	List(ctx context.Context, companyID string) ([]*domain.Script, error)
-	ListAll(ctx context.Context) ([]*domain.Script, error)
+	ListAll(ctx context.Context, filters map[string]interface{}) ([]*domain.Script, int, error)
 	Update(ctx context.Context, script *domain.Script) error
 	Delete(ctx context.Context, id string, companyID string) error
 	GetActive(ctx context.Context, companyID string) (*domain.Script, error)
@@ -81,7 +82,7 @@ type TeamRepository interface {
 	GetByID(ctx context.Context, id string, companyID string) (*domain.Team, error)
 	GetByName(ctx context.Context, name string, companyID string) (*domain.Team, error)
 	List(ctx context.Context, companyID string) ([]*domain.Team, error)
-	ListAll(ctx context.Context) ([]*domain.Team, error)
+	ListAll(ctx context.Context, filters map[string]interface{}) ([]*domain.Team, int, error)
 	Update(ctx context.Context, team *domain.Team) error
 	Delete(ctx context.Context, id string, companyID string) error
 }

@@ -411,16 +411,51 @@ func (h *UserHandler) GetUserCalls(c *fiber.Ctx) error {
 // @Tags admin
 // @Accept json
 // @Produce json
+// @Param page query int false "Page number" default(1)
+// @Param limit query int false "Page limit" default(20)
+// @Param search query string false "Search by email"
 // @Success 200 {object} fiber.Map
 // @Failure 500 {object} fiber.Map
 // @Security BearerAuth
 // @Router /admin/users [get]
 func (h *UserHandler) ListAllUsers(c *fiber.Ctx) error {
-	users, err := h.userRepo.ListAll(c.Context())
+	page, _ := strconv.Atoi(c.Query("page", "1"))
+	limit, _ := strconv.Atoi(c.Query("limit", "20"))
+	search := c.Query("search")
+
+	filters := map[string]interface{}{
+		"page":   page,
+		"limit":  limit,
+		"search": search,
+	}
+
+	users, total, err := h.userRepo.ListAll(c.Context(), filters)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
-	return c.JSON(fiber.Map{"users": users})
+	return c.JSON(fiber.Map{
+		"users": users,
+		"total": total,
+	})
+}
+
+// DeleteUserGlobal godoc
+// @Summary Delete user (Admin)
+// @Description Delete a user and their associated records.
+// @Tags admin
+// @Accept json
+// @Produce json
+// @Param id path string true "User ID"
+// @Success 204
+// @Failure 500 {object} fiber.Map
+// @Security BearerAuth
+// @Router /admin/users/{id} [delete]
+func (h *UserHandler) DeleteUserGlobal(c *fiber.Ctx) error {
+	userID := c.Params("id")
+	if err := h.userRepo.DeleteGlobal(c.Context(), userID); err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.SendStatus(fiber.StatusNoContent)
 }
 
 // UpdateUserGlobal godoc
