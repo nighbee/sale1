@@ -66,14 +66,14 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ isOpen, onClose, ty
     try {
       const res = await integrationApi.test(type, { credentials, config });
       if (res.data.success) {
-        setTestResult({ success: true, message: res.data.message || 'Connection successful' });
-        toast.success('Connection test successful');
+        setTestResult({ success: true, message: res.data.message || t('integrations.test_success') });
+        toast.success(t('integrations.test_success'));
       } else {
-        setTestResult({ success: false, message: res.data.error || 'Connection failed' });
-        toast.error(res.data.error || 'Connection test failed');
+        setTestResult({ success: false, message: res.data.error || t('integrations.test_failed') });
+        toast.error(res.data.error || t('integrations.test_failed'));
       }
     } catch (err: any) {
-      const errorMsg = err.response?.data?.error || err.message || 'Failed to reach test endpoint';
+      const errorMsg = err.response?.data?.error || err.message || t('integrations.connection_error');
       setTestResult({ success: false, message: errorMsg });
       toast.error(errorMsg);
     } finally {
@@ -109,9 +109,9 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ isOpen, onClose, ty
           case 'google_sheets':
               return (
                   <div className="space-y-4">
-                      <Input label="Spreadsheet ID" value={config.spreadsheet_id || ''} onChange={e => setConfig({...config, spreadsheet_id: e.target.value})} />
+                      <Input label={t('integrations.spreadsheet_id')} value={config.spreadsheet_id || ''} onChange={e => setConfig({...config, spreadsheet_id: e.target.value})} />
                       <div>
-                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Service Account JSON</label>
+                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('integrations.service_account_json')}</label>
                           <textarea
                               className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-sm text-slate-900 dark:text-white"
                               rows={8}
@@ -133,7 +133,7 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ isOpen, onClose, ty
           case 'sipuni':
               return (
                   <div className="space-y-4">
-                      <Input label="API Key" type="password" value={credentials.api_key || ''} onChange={e => setCredentials({...credentials, api_key: e.target.value})} />
+                      <Input label={t('integrations.api_key')} type="password" value={credentials.api_key || ''} onChange={e => setCredentials({...credentials, api_key: e.target.value})} />
                   </div>
               );
           case 'openai':
@@ -144,10 +144,10 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ isOpen, onClose, ty
           case 'soniox':
               return (
                   <div className="space-y-4">
-                      <Input label="API Key" type="password" value={credentials.api_key || ''} onChange={e => setCredentials({...credentials, api_key: e.target.value})} />
+                      <Input label={t('integrations.api_key')} type="password" value={credentials.api_key || ''} onChange={e => setCredentials({...credentials, api_key: e.target.value})} />
                       {['openai', 'groq', 'deepgram', 'gemini'].includes(type) && (
                           <Input
-                              label="Base URL (Optional)"
+                              label={t('integrations.base_url_optional')}
                               placeholder="https://api.openai.com/v1"
                               value={credentials.base_url || ''}
                               onChange={e => setCredentials({...credentials, base_url: e.target.value})}
@@ -155,7 +155,7 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ isOpen, onClose, ty
                       )}
                       <div className="grid grid-cols-2 gap-4">
                         <div className="w-full">
-                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Model</label>
+                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('integrations.model')}</label>
                           <div className="relative">
                             <select
                                 className="appearance-none block w-full px-3 py-2.5 border border-slate-300 dark:border-slate-700 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary sm:text-sm bg-white dark:bg-slate-800 dark:text-white transition-all duration-200"
@@ -163,7 +163,7 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ isOpen, onClose, ty
                                 onChange={e => setConfig({...config, model: e.target.value})}
                                 disabled={isFetchingModels}
                             >
-                                <option value="">Select Model</option>
+                                <option value="">{t('integrations.select_model')}</option>
                                 {models.map(m => (
                                     <option key={m} value={m}>{m}</option>
                                 ))}
@@ -183,17 +183,17 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ isOpen, onClose, ty
                         </div>
 
                         <div className="w-full">
-                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Language</label>
+                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('integrations.language')}</label>
                           <div className="relative">
                             <select
                                 className="appearance-none block w-full px-3 py-2.5 border border-slate-300 dark:border-slate-700 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary sm:text-sm bg-white dark:bg-slate-800 dark:text-white transition-all duration-200"
                                 value={config.language || ''}
                                 onChange={e => setConfig({...config, language: e.target.value})}
                             >
-                                <option value="auto">Auto Detect</option>
-                                <option value="kk">Kazakh (kk)</option>
-                                <option value="ru">Russian (ru)</option>
-                                <option value="en">English (en)</option>
+                                <option value="auto">{t('integrations.auto_detect')}</option>
+                                <option value="kk">{t('common.languages.kk', 'Kazakh (kk)')}</option>
+                                <option value="ru">{t('common.languages.ru', 'Russian (ru)')}</option>
+                                <option value="en">{t('common.languages.en', 'English (en)')}</option>
                             </select>
                             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
                                 <span className="material-symbols-outlined text-base">expand_more</span>
@@ -205,7 +205,7 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ isOpen, onClose, ty
                       <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800/30">
                         <h4 className="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-1 flex items-center gap-2">
                           <span className="material-symbols-outlined text-base">info</span>
-                          Transcription Strategy
+                          {t('integrations.transcription_strategy')}
                         </h4>
                         <p className="text-xs text-blue-700 dark:text-blue-400">
                           {type === 'openai' && 'Uses Whisper-1 model. High accuracy, no diarization support.'}
@@ -221,32 +221,32 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ isOpen, onClose, ty
           case 'slack':
               return (
                   <div className="space-y-4">
-                      <Input label="Webhook URL" value={credentials.webhook_url || ''} onChange={e => setCredentials({...credentials, webhook_url: e.target.value})} />
-                      <Input label="Channel Name" value={config.channel || ''} onChange={e => setConfig({...config, channel: e.target.value})} />
+                      <Input label={t('integrations.webhook_url')} value={credentials.webhook_url || ''} onChange={e => setCredentials({...credentials, webhook_url: e.target.value})} />
+                      <Input label={t('integrations.channel_name')} value={config.channel || ''} onChange={e => setConfig({...config, channel: e.target.value})} />
                   </div>
               );
           case 'telegram':
               return (
                   <div className="space-y-4">
-                      <Input label="Bot Token" value={credentials.bot_token || ''} onChange={e => setCredentials({...credentials, bot_token: e.target.value})} />
-                      <Input label="Chat ID" value={config.chat_id || ''} onChange={e => setConfig({...config, chat_id: e.target.value})} />
+                      <Input label={t('integrations.bot_token')} value={credentials.bot_token || ''} onChange={e => setCredentials({...credentials, bot_token: e.target.value})} />
+                      <Input label={t('integrations.chat_id')} value={config.chat_id || ''} onChange={e => setConfig({...config, chat_id: e.target.value})} />
                   </div>
               );
           case 'amocrm':
               return (
                   <div className="space-y-4">
-                      <Input label="Subdomain" value={config.subdomain || ''} onChange={e => setConfig({...config, subdomain: e.target.value})} />
-                      <Input label="Client ID" value={credentials.client_id || ''} onChange={e => setCredentials({...credentials, client_id: e.target.value})} />
-                      <Input label="Client Secret" type="password" value={credentials.client_secret || ''} onChange={e => setCredentials({...credentials, client_secret: e.target.value})} />
+                      <Input label={t('integrations.subdomain')} value={config.subdomain || ''} onChange={e => setConfig({...config, subdomain: e.target.value})} />
+                      <Input label={t('integrations.client_id')} value={credentials.client_id || ''} onChange={e => setCredentials({...credentials, client_id: e.target.value})} />
+                      <Input label={t('integrations.client_secret')} type="password" value={credentials.client_secret || ''} onChange={e => setCredentials({...credentials, client_secret: e.target.value})} />
                   </div>
               );
           default:
-              return <p>No specific configuration needed for {type}. Just click save to enable.</p>;
+              return <p>{t('integrations.no_config_needed', { type })}</p>;
       }
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={`Configure ${type}`}>
+    <Modal isOpen={isOpen} onClose={onClose} title={t('integrations.configure_type', { type })}>
       <div className="space-y-6">
         {renderFields()}
 
@@ -261,7 +261,7 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ isOpen, onClose, ty
           <div className="p-3 rounded-lg text-sm bg-red-50 text-red-700 flex items-start gap-2">
             <span className="material-symbols-outlined text-base mt-0.5">error</span>
             <div>
-              <p className="font-bold">Failed to fetch models</p>
+              <p className="font-bold">{t('integrations.fetch_models_failed')}</p>
               <p>{modelsError}</p>
             </div>
           </div>
@@ -271,7 +271,7 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ isOpen, onClose, ty
           <div className={`p-3 rounded-lg text-sm flex flex-col gap-2 ${checkResult.success ? 'bg-blue-50 text-blue-700' : 'bg-red-50 text-red-700'}`}>
             <div className="flex items-start gap-2">
               <span className="material-symbols-outlined text-base mt-0.5">{checkResult.success ? 'verified' : 'error'}</span>
-              <p className="font-bold">{checkResult.success ? 'Sample Transcription:' : 'Model Check Failed'}</p>
+              <p className="font-bold">{checkResult.success ? t('integrations.sample_transcription') : t('integrations.model_check_failed')}</p>
             </div>
             {checkResult.success ? (
               <p className="italic bg-white/50 p-2 rounded border border-blue-100 max-h-40 overflow-y-auto">{checkResult.transcript}</p>
@@ -289,7 +289,7 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ isOpen, onClose, ty
             {['openai', 'groq', 'deepgram', 'gemini', 'elevenlabs', 'soniox'].includes(type) && (
               <Button variant="outline" onClick={handleCheckModel} isLoading={isChecking} disabled={loading || isTesting}>
                 <span className="material-symbols-outlined text-base mr-1">audio_file</span>
-                Check model
+                {t('integrations.check_model')}
               </Button>
             )}
           </div>

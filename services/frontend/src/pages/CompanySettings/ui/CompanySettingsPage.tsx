@@ -98,12 +98,12 @@ const CompanySettingsPage: React.FC = () => {
             {activeTab === 'general' && (
                 <section className="space-y-6">
                     <Input
-                        label="Company Name"
+                        label={t('settings.company_name')}
                         value={company.name}
                         onChange={(e) => setCompany({ ...company, name: e.target.value })}
                     />
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Description</label>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('settings.description')}</label>
                         <textarea
                             className="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-sm text-slate-900 dark:text-white"
                             rows={4}
@@ -113,12 +113,12 @@ const CompanySettingsPage: React.FC = () => {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <Input
-                            label="Industry"
+                            label={t('settings.industry')}
                             value={company.industry}
                             onChange={(e) => setCompany({ ...company, industry: e.target.value })}
                         />
                         <Input
-                            label="Company Size"
+                            label={t('settings.company_size')}
                             value={company.size}
                             onChange={(e) => setCompany({ ...company, size: e.target.value })}
                         />
@@ -225,12 +225,12 @@ const CompanySettingsPage: React.FC = () => {
                                             <span className="material-icons">{int.icon}</span>
                                         </div>
                                         <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded ${isConnected ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
-                                            {isConnected ? 'Connected' : 'Disconnected'}
+                                            {isConnected ? t('settings.connected') : t('settings.disconnected')}
                                         </span>
                                     </div>
                                     <h3 className="font-bold">{int.name}</h3>
                                     <p className="text-xs text-slate-500 mt-1 mb-4">{int.desc}</p>
-                                    <Button variant="outline" className="w-full text-xs">Configure</Button>
+                                    <Button variant="outline" className="w-full text-xs">{t('settings.configure')}</Button>
                                 </div>
                             )
                         })}
@@ -247,16 +247,16 @@ const CompanySettingsPage: React.FC = () => {
                             <span className="material-icons text-3xl">contactless</span>
                         </div>
                         <div className="mb-8">
-                            <p className="text-xs text-white/60 uppercase tracking-widest mb-2 font-medium">Card Number</p>
+                            <p className="text-xs text-white/60 uppercase tracking-widest mb-2 font-medium">{t('settings.card_number')}</p>
                             <p className="text-2xl font-mono tracking-[0.2em]">{billing.card_number_masked || '•••• •••• •••• ••••'}</p>
                         </div>
                         <div className="flex justify-between items-end">
                             <div>
-                                <p className="text-[10px] text-white/60 uppercase mb-1 font-medium">Card Holder</p>
-                                <p className="font-bold tracking-wide uppercase">{billing.card_holder_name || 'NOT PROVIDED'}</p>
+                                <p className="text-[10px] text-white/60 uppercase mb-1 font-medium">{t('settings.card_holder')}</p>
+                                <p className="font-bold tracking-wide uppercase">{billing.card_holder_name || t('common.not_available')}</p>
                             </div>
                             <div className="text-right">
-                                <p className="text-[10px] text-white/60 uppercase mb-1 font-medium">Expires</p>
+                                <p className="text-[10px] text-white/60 uppercase mb-1 font-medium">{t('settings.expiry_date')}</p>
                                 <p className="font-bold font-mono">{billing.expiration_date || 'MM/YY'}</p>
                             </div>
                         </div>
@@ -264,7 +264,7 @@ const CompanySettingsPage: React.FC = () => {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="p-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
-                            <h3 className="text-sm font-bold text-slate-500 uppercase mb-4 tracking-wider">Token Usage</h3>
+                            <h3 className="text-sm font-bold text-slate-500 uppercase mb-4 tracking-wider">{t('settings.token_usage')}</h3>
                             <div className="flex items-baseline gap-2 mb-2">
                                 <span className="text-3xl font-black">{billing.tokens_used?.toLocaleString()}</span>
                                 <span className="text-slate-400 font-medium">/ {billing.tokens_limit?.toLocaleString()}</span>
@@ -274,22 +274,22 @@ const CompanySettingsPage: React.FC = () => {
                             </div>
                         </div>
                         <div className="p-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
-                             <h3 className="text-sm font-bold text-slate-500 uppercase mb-4 tracking-wider">Plan</h3>
+                             <h3 className="text-sm font-bold text-slate-500 uppercase mb-4 tracking-wider">{t('settings.plan')}</h3>
                              <div className="flex items-center gap-3">
                                  <span className="text-2xl font-black uppercase">{company.subscription_tier}</span>
-                                 <span className="bg-primary/10 text-primary text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider">Active</span>
+                                 <span className="bg-primary/10 text-primary text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider">{t('settings.active')}</span>
                              </div>
-                             <p className="text-xs text-slate-400 mt-2">{t('settings.renews_on', { date: 'March 15, 2024' })}</p>
+                             <p className="text-xs text-slate-400 mt-2">{t('settings.renews_on', { date: new Date('2024-03-15').toLocaleDateString() })}</p>
                         </div>
                     </div>
 
                     <div className="space-y-4">
-                        <h3 className="font-bold text-slate-900 dark:text-white">Update Payment Method</h3>
+                        <h3 className="font-bold text-slate-900 dark:text-white">{t('settings.payment_method_title')}</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <Input label="Card Holder Name" value={billing.card_holder_name || ''} onChange={(e) => setBilling({...billing, card_holder_name: e.target.value})} />
-                            <Input label="Card Number" value={billing.card_number_masked || ''} onChange={(e) => setBilling({...billing, card_number_masked: e.target.value})} />
-                            <Input label="Expiration Date (MM/YY)" value={billing.expiration_date || ''} onChange={(e) => setBilling({...billing, expiration_date: e.target.value})} />
-                            <Input label="Card Type (Visa/Mastercard)" value={billing.card_type || ''} onChange={(e) => setBilling({...billing, card_type: e.target.value})} />
+                            <Input label={t('settings.card_holder')} value={billing.card_holder_name || ''} onChange={(e) => setBilling({...billing, card_holder_name: e.target.value})} />
+                            <Input label={t('settings.card_number')} value={billing.card_number_masked || ''} onChange={(e) => setBilling({...billing, card_number_masked: e.target.value})} />
+                            <Input label={t('settings.expiry_date')} value={billing.expiration_date || ''} onChange={(e) => setBilling({...billing, expiration_date: e.target.value})} />
+                            <Input label={t('settings.card_type')} value={billing.card_type || ''} onChange={(e) => setBilling({...billing, card_type: e.target.value})} />
                         </div>
                     </div>
                 </section>
@@ -305,7 +305,7 @@ const CompanySettingsPage: React.FC = () => {
               >
                 {t('settings.save_changes')}
               </Button>
-              <p className="text-center text-xs text-slate-400 mt-4">All changes will be applied instantly to your organization.</p>
+              <p className="text-center text-xs text-slate-400 mt-4">{t('settings.save_instant_hint')}</p>
             </div>
           </div>
         </div>

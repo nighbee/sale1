@@ -35,7 +35,7 @@ export const ComparisonChart: React.FC<ComparisonChartProps> = ({ data }) => {
         [t("leaderboard.comparison.script_match")]: +m.avg_script_match.toFixed(1),
         [t("leaderboard.comparison.errors_free")]: +m.avg_errors_free.toFixed(1),
       })),
-    [data],
+    [data, t],
   );
 
   if (chartData.length === 0) return null;

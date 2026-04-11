@@ -187,18 +187,18 @@ const IntegrationsPage: React.FC = () => {
               psychology
             </span>
             <h2 className="text-slate-900 dark:text-white text-2xl font-bold tracking-tight">
-              Global AI Configuration
+              {t('integrations.global_ai_config')}
             </h2>
           </div>
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-8 shadow-sm">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-8">
               <div className="space-y-4">
                 <h3 className="font-bold text-lg text-slate-800 dark:text-slate-200">
-                  Transcription (STT)
+                  {t('settings.stt_title')}
                 </h3>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Default STT Provider
+                    {t('integrations.stt_provider')}
                   </label>
                   <select
                     className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 text-sm"
@@ -220,7 +220,7 @@ const IntegrationsPage: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Default STT Model
+                    {t('integrations.stt_model')}
                   </label>
                   <div className="relative">
                     <select
@@ -234,7 +234,7 @@ const IntegrationsPage: React.FC = () => {
                       }
                       disabled={loadingSTTModels}
                     >
-                      <option value="">Select Model</option>
+                      <option value="">{t('integrations.select_model')}</option>
                       {sttModels.map((m) => (
                         <option key={m} value={m}>
                           {m}
@@ -261,7 +261,7 @@ const IntegrationsPage: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Default STT Language
+                    {t('integrations.stt_language')}
                   </label>
                   <select
                     className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 text-sm"
@@ -273,21 +273,21 @@ const IntegrationsPage: React.FC = () => {
                       }))
                     }
                   >
-                    <option value="auto">Auto Detect</option>
-                    <option value="ru">Russian (ru)</option>
-                    <option value="en">English (en)</option>
-                    <option value="kk">Kazakh (kk)</option>
+                    <option value="auto">{t('integrations.auto_detect')}</option>
+                    <option value="ru">{t('common.languages.ru', 'Russian (ru)')}</option>
+                    <option value="en">{t('common.languages.en', 'English (en)')}</option>
+                    <option value="kk">{t('common.languages.kk', 'Kazakh (kk)')}</option>
                   </select>
                 </div>
               </div>
 
               <div className="space-y-4">
                 <h3 className="font-bold text-lg text-slate-800 dark:text-slate-200">
-                  Analysis (LLM)
+                  {t('settings.llm_title')}
                 </h3>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Default LLM Provider
+                    {t('integrations.llm_provider')}
                   </label>
                   <select
                     className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 text-sm"
@@ -305,7 +305,7 @@ const IntegrationsPage: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Default LLM Model
+                    {t('integrations.llm_model')}
                   </label>
                   <div className="relative">
                     <select
@@ -319,7 +319,7 @@ const IntegrationsPage: React.FC = () => {
                       }
                       disabled={loadingLLMModels}
                     >
-                      <option value="">Select Model</option>
+                      <option value="">{t('integrations.select_model')}</option>
                       {llmModels.map((m) => (
                         <option key={m} value={m}>
                           {m}
@@ -348,15 +348,15 @@ const IntegrationsPage: React.FC = () => {
 
               <div className="space-y-4">
                 <h3 className="font-bold text-lg text-slate-800 dark:text-slate-200">
-                  System Protection
+                  {t('integrations.system_protection')}
                 </h3>
                 <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
                   <div>
                     <p className="font-bold text-slate-900 dark:text-white">
-                      Circuit Breaker
+                      {t('integrations.circuit_breaker')}
                     </p>
                     <p className="text-xs text-slate-500">
-                      Stop STT on repeated failures to save tokens.
+                      {t('integrations.circuit_breaker_desc')}
                     </p>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
@@ -381,7 +381,7 @@ const IntegrationsPage: React.FC = () => {
                 onClick={handleSaveAISettings}
                 isLoading={isSavingSettings}
               >
-                Save Configuration
+                {t('integrations.save_config')}
               </Button>
             </div>
           </div>

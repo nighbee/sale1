@@ -113,11 +113,11 @@ export const UserDashboardPage: React.FC = () => {
                 <ul className="space-y-4">
                   <li className="flex gap-3 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
                     <span className="material-symbols-outlined text-emerald-500 shrink-0">check_circle</span>
-                    <span>Discovery questions are up <strong>15%</strong> this week. Excellent job identifying prospect pain points earlier in the conversation.</span>
+                    <span dangerouslySetInnerHTML={{ __html: t('dashboard.discovery_insight') }} />
                   </li>
                   <li className="flex gap-3 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
                     <span className="material-symbols-outlined text-emerald-500 shrink-0">check_circle</span>
-                    <span>Closing velocity has increased by 10% since using the new value-based pitch deck.</span>
+                    <span dangerouslySetInnerHTML={{ __html: t('dashboard.closing_insight') }} />
                   </li>
                 </ul>
               </div>
@@ -131,11 +131,11 @@ export const UserDashboardPage: React.FC = () => {
                 <ul className="space-y-4">
                   <li className="flex gap-3 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
                     <span className="material-symbols-outlined text-amber-500 shrink-0">lightbulb</span>
-                    <span>Try using more <strong>open-ended questions</strong> during the objection handling phase to understand deeper concerns.</span>
+                    <span dangerouslySetInnerHTML={{ __html: t('dashboard.open_ended_insight') }} />
                   </li>
                   <li className="flex gap-3 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
                     <span className="material-symbols-outlined text-amber-500 shrink-0">lightbulb</span>
-                    <span>Reduce your talk-to-listen ratio in enterprise calls. Target is 45% talk / 55% listen.</span>
+                    <span dangerouslySetInnerHTML={{ __html: t('dashboard.talk_ratio_insight') }} />
                   </li>
                 </ul>
               </div>
@@ -188,7 +188,7 @@ export const UserDashboardPage: React.FC = () => {
                           </span>
                         </td>
                         <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400 max-w-xs truncate">
-                          Strong objection handling and clear next steps defined.
+                          {t('calls.excellent_insight', 'Strong objection handling and clear next steps defined.')}
                         </td>
                         <td className="px-6 py-4 text-right">
                           <button className="text-primary font-bold text-sm hover:text-primary/80" onClick={() => navigate(`/calls/${call.id}`)}>{t('dashboard.analyze')}</button>

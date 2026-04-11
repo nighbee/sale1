@@ -31,8 +31,17 @@
     "download": "Жүктеу",
     "delete_confirm": "Осы элементті жойғыңыз келетініне сенімдісіз бе?",
     "not_available": "Қолжетімсіз",
-    "system": "Жүйе",
-    "inactive": "Белсенді емес"
+    "system": "SalesAI",
+    "inactive": "Белсенді емес",
+    "no_industry": "Сала көрсетілмеген",
+    "no_name": "Аты көрсетілмеген",
+    "no_manager": "Тағайындалмаған",
+    "id": "ID",
+    "key": "Кілт",
+    "type": "Түрі",
+    "close": "Жабу",
+    "irreversible": "Бұл әрекет қайтарылмайды.",
+    "info": "Ақпарат"
   },
   "nav": {
     "dashboard": "Бақылау тақтасы",
@@ -44,7 +53,8 @@
     "settings": "Параметрлер",
     "super_admin": "Супер Админ",
     "active_team": "Белсенді команда",
-    "all_teams": "Барлық командалар"
+    "all_teams": "Барлық командалар",
+    "profile": "Профиль"
   },
   "auth": {
     "login_title": "Сату тақтасына кіру үшін жүйеге кіріңіз",
@@ -109,7 +119,11 @@
     "edit_redis_value": "Redis мәнін өңдеу",
     "key_json_or_string": "Мән (JSON немесе жол)",
     "update_key": "Кілтті жаңарту",
-    "view_details": "Толығырақ"
+    "view_details": "Толығырақ",
+    "edit_company": "Компанияны өңдеу",
+    "edit_user": "Пайдаланушыны өңдеу",
+    "managers_count": "Менеджерлер саны",
+    "delete_user_warning": "Сіз {{email}} пайдаланушысын жойғалы жатырсыз. Бұл сонымен қатар оның барлық қоңырауларын, транскрипттерін және жеке скрипттерін жояды."
   },
   "setup": {
     "company_title": "Компанияңызды реттеңіз",
@@ -153,7 +167,7 @@
     "upload_success": "Скрипт сәтті жүктелді!",
     "upload_failed": "Скриптті жүктеу сәтсіз аяқталды",
     "invite_title": "Арман командасын құрыңыз",
-    "invite_subtitle": "Төменде сату өкілдеріของผู้ электрондық пошта мекенжайларын қосыңыз.",
+    "invite_subtitle": "Төменде сату өкілдерінің электрондық пошта мекенжайларын қосыңыз.",
     "emails_label": "Электрондық пошта мекенжайлары",
     "one_per_line": "(Әр жолға біреу)",
     "csv_paste": "CSV-ден қоюға болады",
@@ -161,8 +175,8 @@
     "temp_password_label": "Әдепкі уақытша құпия сөз",
     "regenerate_password": "Құпия сөзді жаңарту",
     "invite_details_title": "Шақыру мәліметтері",
-    "invite_details_desc": "Біз әр пайдаланушыға қауіпсіз сілтеме жібереміз. Олардан бірінші рет кірген кезде осы құпия сөзді дереу өзгерту сұралады.",
-    "send_invitations": "Шақыруларды жіберу",
+    "invite_details_desc": "Пайдаланушылар уақытша құпия сөзбен тіркеледі. Олардан бірінші рет кірген кезде осы құпия сөзді дереу өзгерту сұралады.",
+    "send_invitations": "Мүшелерді тіркеу",
     "invite_help_prompt": "Мүшелерді қосуға көмек керек пе?",
     "invite_failed": "Шақыруларды жіберу сәтсіз аяқталды",
     "team_setup": "Команданы реттеу",
@@ -241,7 +255,11 @@
     "client_name": "Клиент аты",
     "ai_insight": "AI түсініктемесі",
     "action": "Әрекет",
-    "no_managers": "Менеджерлер табылмады."
+    "no_managers": "Менеджерлер табылмады.",
+    "discovery_insight": "Осы аптада анықтау сұрақтары <strong>15%-ға</strong> өсті. Келіссөздің басында тұтынушының мәселелерін анықтауда тамаша жұмыс атқарылды.",
+    "closing_insight": "Құндылыққа негізделген жаңа презентацияны қолданғаннан бері мәмілелерді жабу жылдамдығы 10%-ға артты.",
+    "open_ended_insight": "Қарсылықтармен жұмыс кезеңінде тереңірек мәселелерді түсіну үшін көбірек <strong>ашық сұрақтар</strong> қойып көріңіз.",
+    "talk_ratio_insight": "Корпоративтік қоңырауларда сөйлеу мен тыңдау арақатысын азайтыңыз. Мақсат — 45% сөйлеу / 55% тыңдау."
   },
   "calls": {
     "back": "Артқа",
@@ -287,7 +305,8 @@
     "agent": "Агент",
     "client": "Клиент",
     "transcript_processing": "Транскрипт өңделуде...",
-    "analysis_pending": "Талдау күтілуде..."
+    "analysis_pending": "Талдау күтілуде...",
+    "excellent_insight": "Қарсылықтармен мықты жұмыс және келесі қадамдар нақты анықталған."
   },
   "leaderboard": {
     "title": "Командалық көшбасшылар тақтасы",
@@ -382,7 +401,28 @@
     "cost_effective": "Тиімді құн",
     "strict_safety_filters": "Қатаң қауіпсіздік сүзгілері",
     "update_success": "Параметрлер сәтті жаңартылды",
-    "update_failed": "Параметрлерді жаңарту сәтсіз аяқталды"
+    "update_failed": "Параметрлерді жаңарту сәтсіз аяқталды",
+    "managers_count": "Менеджерлер саны",
+    "company_name": "Компания атауы",
+    "description": "Сипаттама",
+    "industry": "Сала",
+    "company_size": "Компания көлемі",
+    "connected": "Қосылған",
+    "disconnected": "Ажыратылған",
+    "configure": "Конфигурациялау",
+    "payment_method_title": "Төлем әдісін жаңарту",
+    "card_holder": "Карта иесінің аты",
+    "card_number": "Карта нөмірі",
+    "expiry_date": "Мерзімі (АА/ЖЖ)",
+    "card_type": "Карта түрі (Visa/Mastercard)",
+    "token_usage": "Токендерді пайдалану",
+    "plan": "Тариф",
+    "active": "Белсенді",
+    "renews_on": "{{date}} жаңартылады",
+    "save_instant_hint": "Барлық өзгерістер ұйымыңызға дереу қолданылады.",
+    "free": "Тегін",
+    "price_per_min": "{{price}} / мин",
+    "price_per_m_tokens": "{{price}} / 1М токен"
   },
   "integrations": {
     "title": "Интеграциялар",
@@ -399,6 +439,8 @@
     "loading": "Интеграциялар жүктелуде...",
     "google_sheets_name": "Google Sheets",
     "google_sheets_desc": "Тұтынушылар мен аналитиканы тікелей кестелерге экспорттаңыз.",
+    "amocrm_name": "AmoCRM",
+    "amocrm_desc": "Тұтынушылар мен қоңырауларды AmoCRM-мен синхрондаңыз",
     "telegram_name": "Telegram",
     "telegram_desc": "Жаңа тұтынушылар туралы жедел мобильді хабарландырулар алыңыз.",
     "slack_name": "Slack",
@@ -409,7 +451,45 @@
     "connect_success": "{{type}} сәтті қосылды",
     "connect_failed": "{{type}} қосылу сәтсіз аяқталды",
     "disconnect_success": "{{type}} сәтті ажыратылды",
-    "disconnect_failed": "{{type}} ажырату сәтсіз аяқталды"
+    "disconnect_failed": "{{type}} ажырату сәтсіз аяқталды",
+    "test_connection": "Байланысты тексеру",
+    "last_checked": "Соңғы тексеру: {{time}}",
+    "connection_error": "Байланыс қатесі",
+    "connection_ok": "Байланыс дұрыс",
+    "global_ai_config": "Глобалды AI конфигурациясы",
+    "stt_provider": "Әдепкі STT провайдері",
+    "stt_model": "Әдепкі STT моделі",
+    "stt_language": "Әдепкі STT тілі",
+    "llm_provider": "Әдепкі LLM провайдері",
+    "llm_model": "Әдепкі LLM моделі",
+    "system_protection": "Жүйені қорғау",
+    "circuit_breaker": "Автоматты ажыратқыш",
+    "circuit_breaker_desc": "Токендерді үнемдеу үшін қателер қайталанған кезде STT-ді тоқтату.",
+    "save_config": "Конфигурацияны сақтау",
+    "select_model": "Модельді таңдаңыз",
+    "auto_detect": "Автоматты түрде анықтау",
+    "configure_type": "{{type}} баптау",
+    "spreadsheet_id": "Кесте ID",
+    "service_account_json": "Сервистік аккаунт JSON",
+    "api_key": "API кілті",
+    "base_url_optional": "Базалық URL (міндетті емес)",
+    "model": "Модель",
+    "language": "Тіл",
+    "transcription_strategy": "Транскрипция стратегиясы",
+    "webhook_url": "Webhook URL",
+    "channel_name": "Арна атауы",
+    "bot_token": "Бот токені",
+    "chat_id": "Чат ID",
+    "subdomain": "Субдомен",
+    "client_id": "Клиент ID",
+    "client_secret": "Клиент құпиясы",
+    "no_config_needed": "{{type}} үшін арнайы конфигурация қажет емес. Белсендіру үшін сақтау түймесін басыңыз.",
+    "test_success": "Байланыс сәтті орнатылды",
+    "test_failed": "Байланыс сәтсіз аяқталды",
+    "fetch_models_failed": "Модельдерді алу сәтсіз аяқталды",
+    "sample_transcription": "Транскрипция үлгісі:",
+    "model_check_failed": "Модельді тексеру сәтсіз аяқталды",
+    "check_model": "Модельді тексеру"
   },
   "roles": {
     "super_admin": "Супер Админ",
@@ -424,7 +504,11 @@
     "fetch_failed": "Пайдаланушыларды жүктеу сәтсіз аяқталды",
     "update_success": "Пайдаланушы сәтті жаңартылды",
     "update_failed": "Пайдаланушыны жаңарту сәтсіз аяқталды",
-    "leave_blank_no_change": "өзгертпеу үшін бос қалдырыңыз"
+    "leave_blank_no_change": "өзгертпеу үшін бос қалдырыңыз",
+    "line_id_src_num": "Line ID / Src Num",
+    "manager_id_ext": "Менеджер ID (ішкі нөмір)",
+    "line_id": "Line ID",
+    "src_num": "Бастапқы нөмір (Src Num)"
   },
   "teams": {
     "management_title": "Командаларды басқару",
@@ -441,7 +525,8 @@
     "auto_assign_on": "Авто-тағайындау ҚОСУЛЫ",
     "auto_assign_off": "Авто-тағайындау ӨШІРУЛІ",
     "delete_failed": "Команданы жою сәтсіз аяқталды",
-    "fetch_details_failed": "Команда мәліметтерін алу сәтсіз аяқталды"
+    "fetch_details_failed": "Команда мәліметтерін алу сәтсіз аяқталды",
+    "team_script": "Команда скрипті"
   },
   "sheet_calls": {
     "title": "Google Sheets қоңыраулары",
@@ -495,8 +580,20 @@
     "page": "Бет",
     "of": "барлығы",
     "showing": "Көрсетілуде",
-    "to": "-",
+    "to": "дейін",
     "results": "нәтиже"
+  },
+  "profile": {
+    "title": "Менің профилім",
+    "first_name": "Аты",
+    "last_name": "Тегі",
+    "email_address": "Электрондық пошта",
+    "change_password": "Құпия сөзді өзгерту",
+    "new_password": "Жаңа құпия сөз",
+    "leave_blank_hint": "Өзгертпеу үшін бос қалдырыңыз",
+    "update_success": "Профиль сәтті жаңартылды",
+    "update_failed": "Профильді жаңарту сәтсіз аяқталды",
+    "not_found": "Пайдаланушы табылмады."
   },
   "landing": {
     "nav": {

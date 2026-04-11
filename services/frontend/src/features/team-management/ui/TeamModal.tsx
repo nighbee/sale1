@@ -106,7 +106,7 @@ const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose, teamId, onSucces
           await teamApi.addMember(teamId!, userId);
           fetchTeamDetails();
       } catch {
-          toast.error("Failed to add member");
+          toast.error(t('teams.add_member_failed', 'Failed to add member'));
       }
   }
 
@@ -115,7 +115,7 @@ const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose, teamId, onSucces
           await teamApi.removeMember(teamId!, userId);
           fetchTeamDetails();
       } catch {
-          toast.error("Failed to remove member");
+          toast.error(t('teams.remove_member_failed', 'Failed to remove member'));
       }
   }
 
@@ -163,7 +163,7 @@ const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose, teamId, onSucces
           link.click();
           link.remove();
       } catch {
-          toast.error("Failed to download script");
+          toast.error(t('scripts.download_failed', 'Failed to download script'));
       }
   }
 
@@ -210,7 +210,7 @@ const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose, teamId, onSucces
                 </div>
 
                 <div className="border-t border-slate-100 dark:border-slate-800 pt-6">
-                    <h3 className="font-bold mb-4 text-slate-900 dark:text-white">Team Script</h3>
+                    <h3 className="font-bold mb-4 text-slate-900 dark:text-white">{t('teams.team_script')}</h3>
                     {script ? (
                         <div className="flex items-center justify-between p-3 border border-slate-200 dark:border-slate-700 rounded-lg">
                             <div className="flex items-center gap-2 overflow-hidden">

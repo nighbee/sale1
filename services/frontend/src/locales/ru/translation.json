@@ -31,8 +31,17 @@
     "download": "Скачать",
     "delete_confirm": "Вы уверены, что хотите удалить этот элемент?",
     "not_available": "Н/Д",
-    "system": "Система",
-    "inactive": "Неактивен"
+    "system": "SalesAI",
+    "inactive": "Неактивен",
+    "no_industry": "Отрасль не указана",
+    "no_name": "Имя не указано",
+    "no_manager": "Не назначен",
+    "id": "ID",
+    "key": "Ключ",
+    "type": "Тип",
+    "close": "Закрыть",
+    "irreversible": "Это действие необратимо.",
+    "info": "Информация"
   },
   "nav": {
     "dashboard": "Панель управления",
@@ -44,7 +53,8 @@
     "settings": "Настройки",
     "super_admin": "Супер Админ",
     "active_team": "Активная команда",
-    "all_teams": "Все команды"
+    "all_teams": "Все команды",
+    "profile": "Профиль"
   },
   "auth": {
     "login_title": "Войдите, чтобы получить доступ к панели продаж",
@@ -109,7 +119,11 @@
     "edit_redis_value": "Редактировать значение Redis",
     "key_json_or_string": "Значение (JSON или строка)",
     "update_key": "Обновить ключ",
-    "view_details": "Подробнее"
+    "view_details": "Подробнее",
+    "edit_company": "Редактировать компанию",
+    "edit_user": "Редактировать пользователя",
+    "managers_count": "Количество менеджеров",
+    "delete_user_warning": "Вы собираетесь удалить пользователя {{email}}. Это также удалит все его звонки, транскрипты и личные скрипты."
   },
   "setup": {
     "company_title": "Настройте вашу компанию",
@@ -241,7 +255,11 @@
     "client_name": "Имя клиента",
     "ai_insight": "Инсайт AI",
     "action": "Действие",
-    "no_managers": "Менеджеры не найдены."
+    "no_managers": "Менеджеры не найдены.",
+    "discovery_insight": "Количество уточняющих вопросов выросло на <strong>15%</strong> на этой неделе. Отличная работа по выявлению болей потенциальных клиентов в начале разговора.",
+    "closing_insight": "Скорость закрытия сделок увеличилась на 10% с момента использования новой презентации, основанной на ценности.",
+    "open_ended_insight": "Старайтесь использовать больше <strong>открытых вопросов</strong> на этапе обработки возражений, чтобы понять глубинные опасения.",
+    "talk_ratio_insight": "Уменьшите соотношение разговора и слушания в корпоративных звонках. Цель — 45% разговора / 55% слушания."
   },
   "calls": {
     "back": "Назад",
@@ -287,7 +305,8 @@
     "agent": "Агент",
     "client": "Клиент",
     "transcript_processing": "Транскрипт обрабатывается...",
-    "analysis_pending": "Анализ ожидается..."
+    "analysis_pending": "Анализ ожидается...",
+    "excellent_insight": "Сильная обработка возражений и четко определенные следующие шаги."
   },
   "leaderboard": {
     "title": "Лидерборд команды",
@@ -382,7 +401,28 @@
     "cost_effective": "Экономически эффективно",
     "strict_safety_filters": "Строгие фильтры безопасности",
     "update_success": "Настройки успешно обновлены",
-    "update_failed": "Ошибка при обновлении настроек"
+    "update_failed": "Ошибка при обновлении настроек",
+    "managers_count": "Количество менеджеров",
+    "company_name": "Название компании",
+    "description": "Описание",
+    "industry": "Отрасль",
+    "company_size": "Размер компании",
+    "connected": "Подключено",
+    "disconnected": "Отключено",
+    "configure": "Настроить",
+    "payment_method_title": "Обновить способ оплаты",
+    "card_holder": "Имя владельца карты",
+    "card_number": "Номер карты",
+    "expiry_date": "Срок действия (ММ/ГГ)",
+    "card_type": "Тип карты (Visa/Mastercard)",
+    "token_usage": "Использование токенов",
+    "plan": "Тариф",
+    "active": "Активен",
+    "renews_on": "Обновляется {{date}}",
+    "save_instant_hint": "Все изменения будут мгновенно применены к вашей организации.",
+    "free": "Бесплатно",
+    "price_per_min": "{{price}} / мин",
+    "price_per_m_tokens": "{{price}} / 1М токенов"
   },
   "integrations": {
     "title": "Интеграции",
@@ -399,6 +439,8 @@
     "loading": "Загрузка интеграций...",
     "google_sheets_name": "Google Sheets",
     "google_sheets_desc": "Экспортируйте лидов и аналитику напрямую в таблицы.",
+    "amocrm_name": "AmoCRM",
+    "amocrm_desc": "Синхронизируйте лиды и звонки с AmoCRM",
     "telegram_name": "Telegram",
     "telegram_desc": "Получайте мгновенные мобильные уведомления о новых лидах.",
     "slack_name": "Slack",
@@ -409,7 +451,45 @@
     "connect_success": "{{type}} успешно подключен",
     "connect_failed": "Ошибка при подключении {{type}}",
     "disconnect_success": "{{type}} успешно отключен",
-    "disconnect_failed": "Ошибка при отключении {{type}}"
+    "disconnect_failed": "Ошибка при отключении {{type}}",
+    "test_connection": "Тест соединения",
+    "last_checked": "Последняя проверка: {{time}}",
+    "connection_error": "Ошибка соединения",
+    "connection_ok": "Соединение ОК",
+    "global_ai_config": "Глобальная конфигурация ИИ",
+    "stt_provider": "Провайдер STT по умолчанию",
+    "stt_model": "Модель STT по умолчанию",
+    "stt_language": "Язык STT по умолчанию",
+    "llm_provider": "Провайдер LLM по умолчанию",
+    "llm_model": "Модель LLM по умолчанию",
+    "system_protection": "Защита системы",
+    "circuit_breaker": "Автоматический выключатель",
+    "circuit_breaker_desc": "Остановить STT при повторяющихся ошибках для экономии токенов.",
+    "save_config": "Сохранить конфигурацию",
+    "select_model": "Выберите модель",
+    "auto_detect": "Автоопределение",
+    "configure_type": "Настройка {{type}}",
+    "spreadsheet_id": "ID таблицы",
+    "service_account_json": "JSON сервисного аккаунта",
+    "api_key": "API ключ",
+    "base_url_optional": "Базовый URL (необязательно)",
+    "model": "Модель",
+    "language": "Язык",
+    "transcription_strategy": "Стратегия транскрибации",
+    "webhook_url": "Webhook URL",
+    "channel_name": "Название канала",
+    "bot_token": "Токен бота",
+    "chat_id": "Chat ID",
+    "subdomain": "Поддомен",
+    "client_id": "ID клиента",
+    "client_secret": "Секрет клиента",
+    "no_config_needed": "Для {{type}} не требуется специальной настройки. Просто нажмите сохранить, чтобы включить.",
+    "test_success": "Соединение успешно установлено",
+    "test_failed": "Ошибка соединения",
+    "fetch_models_failed": "Не удалось загрузить модели",
+    "sample_transcription": "Пример транскрибации:",
+    "model_check_failed": "Ошибка проверки модели",
+    "check_model": "Проверить модель"
   },
   "roles": {
     "super_admin": "Супер Админ",
@@ -424,7 +504,11 @@
     "fetch_failed": "Не удалось загрузить пользователей",
     "update_success": "Пользователь успешно обновлен",
     "update_failed": "Не удалось обновить пользователя",
-    "leave_blank_no_change": "оставьте пустым, чтобы не менять"
+    "leave_blank_no_change": "оставьте пустым, чтобы не менять",
+    "line_id_src_num": "Line ID / Src Num",
+    "manager_id_ext": "ID менеджера (добавочный)",
+    "line_id": "Line ID",
+    "src_num": "Исходный номер (Src Num)"
   },
   "teams": {
     "management_title": "Управление командами",
@@ -441,7 +525,10 @@
     "auto_assign_on": "Авто-назначение ВКЛ",
     "auto_assign_off": "Авто-назначение ВЫКЛ",
     "delete_failed": "Ошибка при удалении команды",
-    "fetch_details_failed": "Ошибка при получении данных команды"
+    "fetch_details_failed": "Ошибка при получении данных команды",
+    "team_script": "Скрипт команды",
+    "add_member_failed": "Не удалось добавить участника",
+    "remove_member_failed": "Не удалось удалить участника"
   },
   "sheet_calls": {
     "title": "Звонки из Google Sheets",
@@ -497,6 +584,18 @@
     "showing": "Показано",
     "to": "до",
     "results": "результатов"
+  },
+  "profile": {
+    "title": "Мой профиль",
+    "first_name": "Имя",
+    "last_name": "Фамилия",
+    "email_address": "Электронная почта",
+    "change_password": "Изменить пароль",
+    "new_password": "Новый пароль",
+    "leave_blank_hint": "Оставьте пустым, чтобы не менять",
+    "update_success": "Профиль успешно обновлен",
+    "update_failed": "Не удалось обновить профиль",
+    "not_found": "Пользователь не найден."
   },
   "landing": {
     "nav": {

@@ -121,7 +121,7 @@ export const UsersManagementPage: React.FC = () => {
                     <th className="px-6 py-4">{t("common.name")}</th>
                     <th className="px-6 py-4">{t("common.username")} / {t("common.email")}</th>
                     <th className="px-6 py-4">{t("common.phone")}</th>
-                    <th className="px-6 py-4">Line ID / Src Num</th>
+                    <th className="px-6 py-4">{t("users.line_id_src_num")}</th>
                     <th className="px-6 py-4">{t("common.role")}</th>
                     <th className="px-6 py-4">{t("common.team")}</th>
                     <th className="px-6 py-4 text-right">{t("common.actions")}</th>
@@ -137,7 +137,7 @@ export const UsersManagementPage: React.FC = () => {
                         <div className="font-semibold text-slate-900 dark:text-white">
                           {user.first_name} {user.last_name}
                         </div>
-                        <div className="text-xs text-slate-400">ID: {user.manager_id || "N/A"}</div>
+                        <div className="text-xs text-slate-400">{t('common.id')}: {user.manager_id || t('common.not_available')}</div>
                         {user.initial_password && (
                           <div className="text-xs text-amber-600 font-medium">
                             Initial: {user.initial_password}
@@ -274,7 +274,7 @@ export const UsersManagementPage: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-sm font-medium">Manager ID (Extension)</label>
+                  <label className="text-sm font-medium">{t('users.manager_id_ext')}</label>
                   <input
                     type="text"
                     className="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
@@ -286,7 +286,7 @@ export const UsersManagementPage: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-sm font-medium">Line ID</label>
+                  <label className="text-sm font-medium">{t('users.line_id')}</label>
                   <input
                     type="text"
                     className="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
@@ -295,7 +295,7 @@ export const UsersManagementPage: React.FC = () => {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-sm font-medium">Source Number (Src Num)</label>
+                  <label className="text-sm font-medium">{t('users.src_num')}</label>
                   <input
                     type="text"
                     className="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"

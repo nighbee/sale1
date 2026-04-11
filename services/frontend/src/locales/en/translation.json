@@ -32,11 +32,21 @@
     "delete_confirm": "Are you sure you want to delete this item?",
     "irreversible": "This action cannot be undone.",
     "not_available": "N/A",
-    "system": "System",
+    "system": "SalesAI",
     "inactive": "Inactive",
     "no_industry": "No industry specified",
     "no_name": "Name not provided",
-    "no_manager": "Unassigned"
+    "no_manager": "Unassigned",
+    "id": "ID",
+    "key": "Key",
+    "type": "Type",
+    "close": "Close",
+    "info": "Information",
+    "languages": {
+      "ru": "Russian (ru)",
+      "en": "English (en)",
+      "kk": "Kazakh (kk)"
+    }
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -48,7 +58,8 @@
     "settings": "Settings",
     "super_admin": "Super Admin",
     "active_team": "Active Team",
-    "all_teams": "All Teams"
+    "all_teams": "All Teams",
+    "profile": "Profile"
   },
   "auth": {
     "login_title": "Sign in to access your sales dashboard",
@@ -112,7 +123,12 @@
     "edit_redis_value": "Edit Redis Value",
     "key_json_or_string": "Value (JSON or String)",
     "update_key": "Update Key",
-    "delete_user_warning": "You are about to delete user {{email}}. This will also remove all their calls, transcripts, and personal scripts."
+    "delete_user_warning": "You are about to delete user {{email}}. This will also remove all their calls, transcripts, and personal scripts.",
+    "redis_keys": "Redis Keys",
+    "view_details": "View Details",
+    "edit_company": "Edit Company",
+    "edit_user": "Edit User",
+    "managers_count": "Managers Count"
   },
   "setup": {
     "company_title": "Set Up Your Company",
@@ -192,7 +208,8 @@
     "delete_success": "Script deleted successfully",
     "delete_failed": "Failed to delete script",
     "rename_success": "Script renamed successfully",
-    "rename_failed": "Failed to rename script"
+    "rename_failed": "Failed to rename script",
+    "download_failed": "Failed to download script"
   },
   "billing": {
     "title": "Subscription & Billing",
@@ -244,7 +261,11 @@
     "client_name": "Client Name",
     "ai_insight": "AI Insight",
     "action": "Action",
-    "no_managers": "No managers found."
+    "no_managers": "No managers found.",
+    "discovery_insight": "Discovery questions are up <strong>15%</strong> this week. Excellent job identifying prospect pain points earlier in the conversation.",
+    "closing_insight": "Closing velocity has increased by 10% since using the new value-based pitch deck.",
+    "open_ended_insight": "Try using more <strong>open-ended questions</strong> during the objection handling phase to understand deeper concerns.",
+    "talk_ratio_insight": "Reduce your talk-to-listen ratio in enterprise calls. Target is 45% talk / 55% listen."
   },
   "calls": {
     "back": "Back",
@@ -290,7 +311,8 @@
     "agent": "Agent",
     "client": "Client",
     "transcript_processing": "Transcript being processed...",
-    "analysis_pending": "Analysis pending..."
+    "analysis_pending": "Analysis pending...",
+    "excellent_insight": "Strong objection handling and clear next steps defined."
   },
   "leaderboard": {
     "title": "Team Leaderboard",
@@ -439,7 +461,41 @@
     "test_connection": "Test Connection",
     "last_checked": "Last checked: {{time}}",
     "connection_error": "Connection Error",
-    "connection_ok": "Connection OK"
+    "connection_ok": "Connection OK",
+    "global_ai_config": "Global AI Configuration",
+    "stt_provider": "Default STT Provider",
+    "stt_model": "Default STT Model",
+    "stt_language": "Default STT Language",
+    "llm_provider": "Default LLM Provider",
+    "llm_model": "Default LLM Model",
+    "system_protection": "System Protection",
+    "circuit_breaker": "Circuit Breaker",
+    "circuit_breaker_desc": "Stop STT on repeated failures to save tokens.",
+    "save_config": "Save Configuration",
+    "select_model": "Select Model",
+    "auto_detect": "Auto Detect",
+    "configure_type": "Configure {{type}}",
+    "spreadsheet_id": "Spreadsheet ID",
+    "service_account_json": "Service Account JSON",
+    "api_key": "API Key",
+    "base_url_optional": "Base URL (Optional)",
+    "model": "Model",
+    "language": "Language",
+    "transcription_strategy": "Transcription Strategy",
+    "webhook_url": "Webhook URL",
+    "channel_name": "Channel Name",
+    "bot_token": "Bot Token",
+    "chat_id": "Chat ID",
+    "subdomain": "Subdomain",
+    "client_id": "Client ID",
+    "client_secret": "Client Secret",
+    "no_config_needed": "No specific configuration needed for {{type}}. Just click save to enable.",
+    "test_success": "Connection successful",
+    "test_failed": "Connection failed",
+    "fetch_models_failed": "Failed to fetch models",
+    "sample_transcription": "Sample Transcription:",
+    "model_check_failed": "Model Check Failed",
+    "check_model": "Check model"
   },
   "roles": {
     "super_admin": "Super Admin",
@@ -454,7 +510,11 @@
     "fetch_failed": "Failed to fetch users",
     "update_success": "User updated successfully",
     "update_failed": "Failed to update user",
-    "leave_blank_no_change": "leave blank for no change"
+    "leave_blank_no_change": "leave blank for no change",
+    "line_id_src_num": "Line ID / Src Num",
+    "manager_id_ext": "Manager ID (Extension)",
+    "line_id": "Line ID",
+    "src_num": "Source Number (Src Num)"
   },
   "teams": {
     "management_title": "Teams Management",
@@ -471,7 +531,10 @@
     "auto_assign_on": "Auto-assign ON",
     "auto_assign_off": "Auto-assign OFF",
     "delete_failed": "Failed to delete team",
-    "fetch_details_failed": "Failed to fetch team details"
+    "fetch_details_failed": "Failed to fetch team details",
+    "add_member_failed": "Failed to add member",
+    "remove_member_failed": "Failed to remove member",
+    "team_script": "Team Script"
   },
   "sheet_calls": {
     "title": "Google Sheets Calls",
@@ -528,6 +591,18 @@
     "to": "to",
     "results": "results"
   },
+  "profile": {
+    "title": "My Profile",
+    "first_name": "First Name",
+    "last_name": "Last Name",
+    "email_address": "Email Address",
+    "change_password": "Change Password",
+    "new_password": "New Password",
+    "leave_blank_hint": "Leave blank to keep current",
+    "update_success": "Profile updated successfully",
+    "update_failed": "Failed to update profile",
+    "not_found": "User not found."
+  },
   "landing": {
     "nav": {
       "features": "Features",
@@ -562,7 +637,7 @@
       },
       "crm": {
         "title": "CRM Integration",
-        "desc": "Seamless two-way sync with AmoCRM, Salesforce, and HubSpot to keep your deal data unified and up-to-date."
+        "desc": "Seamless two-way sync with AmoCRM, Salesforce and HubSpot to keep your deal data unified and up-to-date."
       }
     },
     "how_it_works": {

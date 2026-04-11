@@ -130,7 +130,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               <div className="w-8 h-8 rounded bg-primary flex items-center justify-center">
                 <span className="material-icons text-lg">insights</span>
               </div>
-              <span className="font-bold text-lg tracking-tight">SalesAI</span>
+              <span className="font-bold text-lg tracking-tight">{t('common.system', 'SalesAI')}</span>
             </div>
             <button
               onClick={onClose}

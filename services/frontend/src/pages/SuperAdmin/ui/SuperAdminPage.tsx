@@ -300,7 +300,7 @@ export const SuperAdminPage: React.FC = () => {
                             <thead className="bg-slate-50/50 dark:bg-slate-800/30 text-slate-500 text-xs font-bold uppercase tracking-wider">
                                 <tr>
                                     <th className="px-6 py-4">{t('superadmin.company_name')}</th>
-                                    <th className="px-6 py-4">ID</th>
+                                    <th className="px-6 py-4">{t('common.id')}</th>
                                     <th className="px-6 py-4">{t('superadmin.created_at')}</th>
                                     <th className="px-6 py-4">{t('common.status')}</th>
                                     <th className="px-6 py-4 text-right">{t('common.actions')}</th>
@@ -364,8 +364,8 @@ export const SuperAdminPage: React.FC = () => {
                     <table className="w-full text-left">
                         <thead className="bg-slate-50/50 dark:bg-slate-800/30 text-slate-500 text-xs font-bold uppercase tracking-wider">
                         <tr>
-                            <th className="px-6 py-4">Key</th>
-                            <th className="px-6 py-4">Type</th>
+                            <th className="px-6 py-4">{t('common.key')}</th>
+                            <th className="px-6 py-4">{t('common.type')}</th>
                             <th className="px-6 py-4 text-right">{t('common.actions')}</th>
                         </tr>
                         </thead>
@@ -382,7 +382,7 @@ export const SuperAdminPage: React.FC = () => {
                         ))}
                         {redisKeys.length === 0 && (
                             <tr>
-                                <td colSpan={3} className="px-6 py-12 text-center text-slate-500">No Redis keys found</td>
+                                <td colSpan={3} className="px-6 py-12 text-center text-slate-500">{t('superadmin.no_redis_keys', 'No Redis keys found')}</td>
                             </tr>
                         )}
                         </tbody>
@@ -413,7 +413,7 @@ export const SuperAdminPage: React.FC = () => {
                         <thead className="bg-slate-50/50 dark:bg-slate-800/30 text-slate-500 text-xs font-bold uppercase tracking-wider">
                             <tr>
                             <th className="px-6 py-4">{t('common.email')}</th>
-                            <th className="px-6 py-4">ID</th>
+                            <th className="px-6 py-4">{t('common.id')}</th>
                             <th className="px-6 py-4">{t('superadmin.company_id')}</th>
                             <th className="px-6 py-4">{t('common.role')}</th>
                             <th className="px-6 py-4 text-right">{t('common.actions')}</th>
@@ -466,7 +466,7 @@ export const SuperAdminPage: React.FC = () => {
                         <table className="w-full text-left">
                         <thead className="bg-slate-50/50 dark:bg-slate-800/30 text-slate-500 text-xs font-bold uppercase tracking-wider">
                             <tr>
-                            <th className="px-6 py-4">ID</th>
+                            <th className="px-6 py-4">{t('common.id')}</th>
                             <th className="px-6 py-4">{t('superadmin.company_id')}</th>
                                     <th className="px-6 py-4">{t('nav.calls')}</th>
                             <th className="px-6 py-4">{t('common.status')}</th>
@@ -531,7 +531,7 @@ export const SuperAdminPage: React.FC = () => {
                         <thead className="bg-slate-50/50 dark:bg-slate-800/30 text-slate-500 text-xs font-bold uppercase tracking-wider">
                         <tr>
                             <th className="px-6 py-4">{t('common.name')}</th>
-                            <th className="px-6 py-4">ID</th>
+                            <th className="px-6 py-4">{t('common.id')}</th>
                             <th className="px-6 py-4">{t('superadmin.company_id')}</th>
                             <th className="px-6 py-4">{t('sheet_calls.table.date')}</th>
                         </tr>
@@ -580,7 +580,7 @@ export const SuperAdminPage: React.FC = () => {
                         <thead className="bg-slate-50/50 dark:bg-slate-800/30 text-slate-500 text-xs font-bold uppercase tracking-wider">
                         <tr>
                             <th className="px-6 py-4">{t('common.name')}</th>
-                            <th className="px-6 py-4">ID</th>
+                            <th className="px-6 py-4">{t('common.id')}</th>
                             <th className="px-6 py-4">{t('superadmin.company_id')}</th>
                             <th className="px-6 py-4">{t('common.status')}</th>
                         </tr>
@@ -653,7 +653,7 @@ export const SuperAdminPage: React.FC = () => {
             </h3>
             <div className="space-y-6">
               <div>
-                <label className="block text-sm font-bold text-slate-500 uppercase mb-2">Key</label>
+                <label className="block text-sm font-bold text-slate-500 uppercase mb-2">{t('common.key')}</label>
                 <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-lg font-mono text-sm select-all">
                   {editingRedis.key}
                 </div>
@@ -688,10 +688,10 @@ export const SuperAdminPage: React.FC = () => {
       {editingCompany && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
               <div className="bg-white dark:bg-slate-900 rounded-xl p-8 w-full max-w-md shadow-2xl border border-border-light dark:border-slate-800">
-                  <h3 className="text-xl font-bold mb-6">Edit Company</h3>
+                  <h3 className="text-xl font-bold mb-6">{t('superadmin.edit_company')}</h3>
                   <form onSubmit={handleUpdateCompany} className="space-y-4">
                       <div>
-                          <label className="block text-sm font-medium mb-1">Name</label>
+                          <label className="block text-sm font-medium mb-1">{t('common.name')}</label>
                           <input
                             className="w-full border rounded-lg p-2 dark:bg-slate-800 dark:border-slate-700 outline-none focus:ring-2 focus:ring-primary"
                             value={editingCompany.name}
@@ -699,7 +699,7 @@ export const SuperAdminPage: React.FC = () => {
                           />
                       </div>
                       <div>
-                          <label className="block text-sm font-medium mb-1">Managers Count</label>
+                          <label className="block text-sm font-medium mb-1">{t('superadmin.managers_count')}</label>
                           <input
                             type="number"
                             className="w-full border rounded-lg p-2 dark:bg-slate-800 dark:border-slate-700 outline-none focus:ring-2 focus:ring-primary"
@@ -718,8 +718,8 @@ export const SuperAdminPage: React.FC = () => {
                           <label htmlFor="company-active" className="text-sm font-medium">{t('superadmin.active')}</label>
                       </div>
                       <div className="flex justify-end gap-3 mt-8">
-                          <button type="button" onClick={() => setEditingCompany(null)} className="px-4 py-2 border rounded-lg hover:bg-slate-50 transition-colors">Cancel</button>
-                          <button type="submit" className="px-6 py-2 bg-primary text-white rounded-lg font-bold">Save</button>
+                          <button type="button" onClick={() => setEditingCompany(null)} className="px-4 py-2 border rounded-lg hover:bg-slate-50 transition-colors">{t('common.cancel')}</button>
+                          <button type="submit" className="px-6 py-2 bg-primary text-white rounded-lg font-bold">{t('common.save')}</button>
                       </div>
                   </form>
               </div>
@@ -759,11 +759,11 @@ export const SuperAdminPage: React.FC = () => {
       {editingUser && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
               <div className="bg-white dark:bg-slate-900 rounded-xl p-8 w-full max-w-md shadow-2xl border border-border-light dark:border-slate-800">
-                  <h3 className="text-xl font-bold mb-6">Edit User</h3>
+                  <h3 className="text-xl font-bold mb-6">{t('superadmin.edit_user')}</h3>
                   <form onSubmit={handleUpdateUser} className="space-y-4">
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-medium mb-1">First Name</label>
+                            <label className="block text-sm font-medium mb-1">{t('common.first_name')}</label>
                             <input
                                 className="w-full border rounded-lg p-2 dark:bg-slate-800 dark:border-slate-700"
                                 value={editingUser.first_name || ''}
@@ -771,7 +771,7 @@ export const SuperAdminPage: React.FC = () => {
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium mb-1">Last Name</label>
+                            <label className="block text-sm font-medium mb-1">{t('common.last_name')}</label>
                             <input
                                 className="w-full border rounded-lg p-2 dark:bg-slate-800 dark:border-slate-700"
                                 value={editingUser.last_name || ''}
@@ -780,15 +780,15 @@ export const SuperAdminPage: React.FC = () => {
                         </div>
                       </div>
                       <div>
-                          <label className="block text-sm font-medium mb-1">Role</label>
+                          <label className="block text-sm font-medium mb-1">{t('common.role')}</label>
                           <select
                             className="w-full border rounded-lg p-2 dark:bg-slate-800 dark:border-slate-700 outline-none"
                             value={editingUser.role}
                             onChange={e => setEditingUser({...editingUser, role: e.target.value})}
                           >
-                              <option value="sales_rep">Sales Rep</option>
-                              <option value="tenant_admin">Tenant Admin</option>
-                              <option value="super_admin">Super Admin</option>
+                              <option value="sales_rep">{t('roles.sales_rep')}</option>
+                              <option value="tenant_admin">{t('roles.tenant_admin')}</option>
+                              <option value="super_admin">{t('roles.super_admin')}</option>
                           </select>
                       </div>
                       <div className="flex items-center gap-2">
@@ -802,8 +802,8 @@ export const SuperAdminPage: React.FC = () => {
                           <label htmlFor="user-active" className="text-sm font-medium">{t('superadmin.active')}</label>
                       </div>
                       <div className="flex justify-end gap-3 mt-8">
-                          <button type="button" onClick={() => setEditingUser(null)} className="px-4 py-2 border rounded-lg">Cancel</button>
-                          <button type="submit" className="px-6 py-2 bg-primary text-white rounded-lg font-bold">Save</button>
+                          <button type="button" onClick={() => setEditingUser(null)} className="px-4 py-2 border rounded-lg">{t('common.cancel')}</button>
+                          <button type="submit" className="px-6 py-2 bg-primary text-white rounded-lg font-bold">{t('common.save')}</button>
                       </div>
                   </form>
               </div>

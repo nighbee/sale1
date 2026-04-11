@@ -67,7 +67,7 @@ const CompanySetupPage: React.FC = () => {
       <header className="w-full px-8 py-6 flex justify-between items-center relative z-10">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white font-bold text-lg">S</div>
-          <span className="font-bold text-xl tracking-tight text-neutral-900 dark:text-white">SalesAI</span>
+          <span className="font-bold text-xl tracking-tight text-neutral-900 dark:text-white">{t('common.system', 'SalesAI')}</span>
         </div>
         <button className="text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-primary dark:hover:text-primary transition-colors">
           {t('common.need_help')}
