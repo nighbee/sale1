@@ -128,19 +128,20 @@ func (h *UserHandler) InviteUser(c *fiber.Ctx) error {
 		}
 
 		user := &domain.User{
-			ID:           uuid.New().String(),
-			CompanyID:    companyID,
-			Email:        email,
-			Role:         domain.UserRole(role),
-			ManagerName:  req.ManagerName,
-			ManagerID:    &req.ManagerID,
-			PasswordHash: string(hash),
-			TeamID:       teamIDPtr,
-			IsActive:     true,
-			FirstName:    req.FirstName,
-			LastName:     req.LastName,
-			Username:     req.Username,
-			Phone:        req.Phone,
+			ID:              uuid.New().String(),
+			CompanyID:       companyID,
+			Email:           email,
+			Role:            domain.UserRole(role),
+			ManagerName:     req.ManagerName,
+			ManagerID:       &req.ManagerID,
+			PasswordHash:    string(hash),
+			InitialPassword: &req.TemporaryPassword,
+			TeamID:          teamIDPtr,
+			IsActive:        true,
+			FirstName:       req.FirstName,
+			LastName:        req.LastName,
+			Username:        req.Username,
+			Phone:           req.Phone,
 		}
 		if req.LineID != "" {
 			user.LineID = &req.LineID
@@ -200,6 +201,7 @@ func (h *UserHandler) GetUser(c *fiber.Ctx) error {
 // @Security BearerAuth
 // @Router /users/{id} [put]
 func (h *UserHandler) UpdateUser(c *fiber.Ctx) error {
+	log := applogger.FromFiberCtx(c).With(zap.String("operation", "update_user"))
 	id := c.Params("id")
 	companyID, ok := c.Locals("company_id").(string)
 	if !ok || companyID == "" {
@@ -240,9 +242,13 @@ func (h *UserHandler) UpdateUser(c *fiber.Ctx) error {
 		user.Email = update.Email
 	}
 	if update.Password != "" {
-		hash, _ := bcrypt.GenerateFromPassword([]byte(update.Password), bcrypt.DefaultCost)
+		hash, err := bcrypt.GenerateFromPassword([]byte(update.Password), bcrypt.DefaultCost)
+		if err != nil {
+			log.Error("password hash failed", zap.Error(err))
+			return c.Status(500).JSON(fiber.Map{"error": "Failed to hash password"})
+		}
 		user.PasswordHash = string(hash)
-		user.InitialPassword = nil
+		user.InitialPassword = &update.Password
 	}
 	if update.ManagerName != "" {
 		user.ManagerName = update.ManagerName
