@@ -167,4 +167,5 @@ func SetupRoutes(
 	admin.Get("/system/redis/value", systemHandler.GetRedisValue)
 	admin.Put("/system/redis", systemHandler.UpdateRedisValue)
 	admin.Delete("/system/redis", systemHandler.DeleteRedisKey)
+	admin.Post("/system/queues/clear", systemHandler.ClearQueue)
 }

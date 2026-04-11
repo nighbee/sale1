@@ -27,14 +27,20 @@ func NewSystemHandler(rdb *redis.Client) *SystemHandler {
 // @Router /admin/system/status [get]
 func (h *SystemHandler) GetStatus(c *fiber.Ctx) error {
 	ctx := c.Context()
-	queues := []string{"stt_queue", "analysis_queue", "notify_queue", "integration_sync"}
-	metrics := make(map[string]int)
+	metrics := make(map[string]int64)
 
-	for _, q := range queues {
-		// Example for BullMQ/Redis: LLEN for simple lists, or HGET for more complex structures
-		// Here we assume simple list lengths for monitoring purposes
+	// BullMQ/List based queues
+	lists := []string{"bullmq:audio_processing", "notify_queue", "integration_sync"}
+	for _, q := range lists {
 		val, _ := h.rdb.LLen(ctx, q).Result()
-		metrics[q] = int(val)
+		metrics[q] = val
+	}
+
+	// Stream based queues
+	streams := []string{"transcript_ready", "analysis_completed", "critical_error"}
+	for _, s := range streams {
+		val, _ := h.rdb.XLen(ctx, s).Result()
+		metrics[s] = val
 	}
 
 	return c.JSON(fiber.Map{
@@ -150,6 +156,62 @@ func (h *SystemHandler) UpdateRedisValue(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(fiber.Map{"status": "ok"})
+}
+
+// ClearQueue godoc
+// @Summary Clear a specific queue
+// @Description Delete all items in a specific queue or stream
+// @Tags admin
+// @Accept json
+// @Produce json
+// @Param request body map[string]string true "Queue name"
+// @Success 200 {object} fiber.Map
+// @Security BearerAuth
+// @Router /admin/system/queues/clear [post]
+func (h *SystemHandler) ClearQueue(c *fiber.Ctx) error {
+	var req struct {
+		Queue string `json:"queue"`
+		All   bool   `json:"all"`
+	}
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid body"})
+	}
+
+	whitelistedQueues := map[string]bool{
+		"bullmq:audio_processing": true,
+		"transcript_ready":        true,
+		"analysis_completed":      true,
+		"critical_error":          true,
+		"notify_queue":            true,
+		"integration_sync":        true,
+	}
+
+	ctx := c.Context()
+
+	if req.All {
+		for q := range whitelistedQueues {
+			h.rdb.Del(ctx, q)
+		}
+		return c.JSON(fiber.Map{"status": "ok", "message": "All whitelisted queues cleared"})
+	}
+
+	if req.Queue == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "queue name or all=true is required"})
+	}
+
+	if !whitelistedQueues[req.Queue] {
+		return c.Status(403).JSON(fiber.Map{"error": "queue not whitelisted for clearing"})
+	}
+
+	err := h.rdb.Del(ctx, req.Queue).Err()
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	return c.JSON(fiber.Map{
+		"status":  "ok",
+		"message": fmt.Sprintf("Queue %s cleared", req.Queue),
+	})
 }
 
 // DeleteRedisKey godoc
