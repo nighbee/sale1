@@ -148,7 +148,7 @@ export const SuperAdminPage: React.FC = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const params = { page, limit, search, name: search };
+        const params = { page, limit, search };
         if (activeTab === 'companies') {
           const res = await companyApi.listAllCompanies(params);
           setCompanies(res.data.companies || []);

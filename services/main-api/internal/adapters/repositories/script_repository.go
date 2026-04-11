@@ -5,6 +5,9 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/salesai/main-api/internal/core/domain"
 	"github.com/salesai/main-api/internal/core/ports"
@@ -134,16 +137,38 @@ func (r *scriptRepository) List(ctx context.Context, companyID string) ([]*domai
 	return scripts, nil
 }
 
-func (r *scriptRepository) ListAll(ctx context.Context) ([]*domain.Script, error) {
-	query := `
+func (r *scriptRepository) ListAll(ctx context.Context, filters map[string]interface{}) ([]*domain.Script, int, error) {
+	where := []string{"1=1"}
+	args := []interface{}{}
+	argIdx := 1
+
+	if search, ok := filters["search"].(string); ok && search != "" {
+		where = append(where, "name ILIKE $"+strconv.Itoa(argIdx))
+		args = append(args, "%"+search+"%")
+		argIdx++
+	}
+
+	limit := 20
+	if l, ok := filters["limit"].(int); ok && l > 0 {
+		limit = l
+	}
+	page := 1
+	if p, ok := filters["page"].(int); ok && p > 0 {
+		page = p
+	}
+	offset := (page - 1) * limit
+
+	query := fmt.Sprintf(`
 		SELECT id, company_id, name, file_path_minio, parsed_text, structure, version, is_active, created_at, updated_at, team_id, is_base_script, is_active_base, base_script_metrics
 		FROM scripts_schema.scripts
+		WHERE %s
 		ORDER BY created_at DESC
-	`
+		LIMIT $%d OFFSET $%d
+	`, strings.Join(where, " AND "), argIdx, argIdx+1)
 
-	rows, err := r.db.QueryContext(ctx, query)
+	rows, err := r.db.QueryContext(ctx, query, append(args, limit, offset)...)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 
@@ -171,7 +196,7 @@ func (r *scriptRepository) ListAll(ctx context.Context) ([]*domain.Script, error
 			&metricsJSON,
 		)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		s.FilePathMinio = minioPath.String
 		s.ParsedText = pText.String
@@ -185,7 +210,14 @@ func (r *scriptRepository) ListAll(ctx context.Context) ([]*domain.Script, error
 		scripts = append(scripts, s)
 	}
 
-	return scripts, nil
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM scripts_schema.scripts WHERE %s", strings.Join(where, " AND "))
+	var total int
+	err = r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return scripts, total, nil
 }
 
 func (r *scriptRepository) GetByID(ctx context.Context, id string, companyID string) (*domain.Script, error) {

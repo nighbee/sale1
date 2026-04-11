@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"strconv"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/salesai/main-api/internal/core/domain"
 	"github.com/salesai/main-api/internal/core/usecases/teams"
@@ -250,14 +252,30 @@ func (h *TeamHandler) Ensure(c *fiber.Ctx) error {
 // @Tags admin
 // @Accept json
 // @Produce json
+// @Param page query int false "Page number" default(1)
+// @Param limit query int false "Page limit" default(20)
+// @Param search query string false "Search by name"
 // @Success 200 {object} fiber.Map
 // @Failure 500 {object} fiber.Map
 // @Security BearerAuth
 // @Router /admin/teams [get]
 func (h *TeamHandler) ListAllTeams(c *fiber.Ctx) error {
-	teams, err := h.teamUC.ListAll(c.Context())
+	page, _ := strconv.Atoi(c.Query("page", "1"))
+	limit, _ := strconv.Atoi(c.Query("limit", "20"))
+	search := c.Query("search")
+
+	filters := map[string]interface{}{
+		"page":   page,
+		"limit":  limit,
+		"search": search,
+	}
+
+	teams, total, err := h.teamUC.ListAll(c.Context(), filters)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
-	return c.JSON(fiber.Map{"teams": teams})
+	return c.JSON(fiber.Map{
+		"teams": teams,
+		"total": total,
+	})
 }

@@ -9,7 +9,7 @@ export const companyApi = {
   getBilling: () => api.get<Billing>(`/settings/billing`),
   updateBilling: (data: Partial<Billing>) => api.put<Billing>(`/settings/billing`, data),
   listCompanies: () => api.get<{ companies: Company[] }>('/companies'),
-  listAllCompanies: () => api.get<{ companies: Company[] }>('/admin/companies'),
+  listAllCompanies: (params?: unknown) => api.get<{ companies: Company[]; total: number }>('/admin/companies', { params }),
   getCompanyDetails: (id: string) => api.get<{ company: Company; users: User[]; integrations: Integration[] }>(`/admin/companies/${id}`),
   updateCompanyGlobal: (id: string, data: Partial<Company>) => api.put<Company>(`/admin/companies/${id}`, data),
 };

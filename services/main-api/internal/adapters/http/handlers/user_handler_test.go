@@ -24,11 +24,12 @@ func (m *mockUserRepo) GetByEmail(ctx context.Context, email string) (*domain.Us
 func (m *mockUserRepo) GetByPhone(ctx context.Context, phone string) (*domain.User, error) { return nil, nil }
 func (m *mockUserRepo) Update(ctx context.Context, u *domain.User) error                { return nil }
 func (m *mockUserRepo) Delete(ctx context.Context, id string) error                    { return nil }
+func (m *mockUserRepo) DeleteGlobal(ctx context.Context, id string) error              { return nil }
 func (m *mockUserRepo) List(ctx context.Context, companyID string) ([]*domain.User, error) {
 	return nil, nil
 }
-func (m *mockUserRepo) ListAll(ctx context.Context) ([]*domain.User, error) {
-	return nil, nil
+func (m *mockUserRepo) ListAll(ctx context.Context, filters map[string]interface{}) ([]*domain.User, int, error) {
+	return nil, 0, nil
 }
 func (m *mockUserRepo) GetByManagerID(ctx context.Context, managerID string, companyID string) (*domain.User, error) {
 	return nil, nil

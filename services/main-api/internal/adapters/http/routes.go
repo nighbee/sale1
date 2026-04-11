@@ -150,6 +150,7 @@ func SetupRoutes(
 	// Users Admin
 	admin.Get("/users", userHandler.ListAllUsers)
 	admin.Put("/users/:id", userHandler.UpdateUserGlobal)
+	admin.Delete("/users/:id", userHandler.DeleteUserGlobal)
 
 	// Calls Admin
 	admin.Get("/calls", callHandler.ListAllCalls)

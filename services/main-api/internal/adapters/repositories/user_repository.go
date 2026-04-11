@@ -4,6 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/salesai/main-api/internal/core/domain"
 	"github.com/salesai/main-api/internal/core/ports"
@@ -184,6 +187,28 @@ func (r *userRepository) Delete(ctx context.Context, id string) error {
 	return err
 }
 
+func (r *userRepository) DeleteGlobal(ctx context.Context, id string) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// 1. Delete calls associated with this user (manager_id)
+	_, err = tx.ExecContext(ctx, `DELETE FROM calls_schema.calls WHERE manager_id = $1`, id)
+	if err != nil {
+		return err
+	}
+
+	// 2. Delete the user
+	_, err = tx.ExecContext(ctx, `DELETE FROM auth_schema.users WHERE id = $1`, id)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
 func (r *userRepository) List(ctx context.Context, companyID string) ([]*domain.User, error) {
 	query := `
 		SELECT id, company_id, email, role, manager_id, manager_name,
@@ -245,17 +270,39 @@ func (r *userRepository) List(ctx context.Context, companyID string) ([]*domain.
 	return users, nil
 }
 
-func (r *userRepository) ListAll(ctx context.Context) ([]*domain.User, error) {
-	query := `
+func (r *userRepository) ListAll(ctx context.Context, filters map[string]interface{}) ([]*domain.User, int, error) {
+	where := []string{"1=1"}
+	args := []interface{}{}
+	argIdx := 1
+
+	if search, ok := filters["search"].(string); ok && search != "" {
+		where = append(where, "email ILIKE $"+strconv.Itoa(argIdx))
+		args = append(args, "%"+search+"%")
+		argIdx++
+	}
+
+	limit := 20
+	if l, ok := filters["limit"].(int); ok && l > 0 {
+		limit = l
+	}
+	page := 1
+	if p, ok := filters["page"].(int); ok && p > 0 {
+		page = p
+	}
+	offset := (page - 1) * limit
+
+	query := fmt.Sprintf(`
 		SELECT id, company_id, email, role, manager_id, manager_name,
 		       is_active, created_at, updated_at, team_id, first_name, last_name, username, phone, initial_password
 		FROM auth_schema.users
+		WHERE %s
 		ORDER BY created_at DESC
-	`
+		LIMIT $%d OFFSET $%d
+	`, strings.Join(where, " AND "), argIdx, argIdx+1)
 
-	rows, err := r.db.QueryContext(ctx, query)
+	rows, err := r.db.QueryContext(ctx, query, append(args, limit, offset)...)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 
@@ -281,7 +328,7 @@ func (r *userRepository) ListAll(ctx context.Context) ([]*domain.User, error) {
 			&initPass,
 		)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		user.ManagerName = mName.String
 		user.FirstName = fName.String
@@ -294,7 +341,14 @@ func (r *userRepository) ListAll(ctx context.Context) ([]*domain.User, error) {
 		users = append(users, user)
 	}
 
-	return users, nil
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM auth_schema.users WHERE %s", strings.Join(where, " AND "))
+	var total int
+	err = r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return users, total, nil
 }
 
 func (r *userRepository) GetByManagerID(ctx context.Context, managerID string, companyID string) (*domain.User, error) {
