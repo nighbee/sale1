@@ -96,7 +96,7 @@ function App() {
         />
 
         <Route
-          path="/super-admin"
+          path="/super-admin/:tab?"
           element={
             <ProtectedRoute allowedRoles={["super_admin"]}>
               <SuperAdminPage />
