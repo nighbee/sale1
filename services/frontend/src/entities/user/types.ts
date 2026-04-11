@@ -15,6 +15,9 @@ export interface User {
   manager_name?: string;
   team_id?: string;
   company_id?: string;
+  line_id?: string;
+  src_num?: string;
+  initial_password?: string;
 }
 
 export interface AuthResponse {
