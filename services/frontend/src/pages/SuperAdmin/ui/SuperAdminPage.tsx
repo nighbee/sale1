@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useParams, useNavigate } from 'react-router-dom';
 import { PageLayout } from '../../../widgets/PageLayout';
 import { companyApi } from '../../../entities/company/api';
 import { userApi } from '../../../entities/user/api';
@@ -15,13 +16,17 @@ import type { Team } from '../../../entities/team/types';
 import type { Script } from '../../../entities/script/types';
 import type { Integration } from '../../../entities/integration/types';
 import Skeleton from '../../../shared/ui/Skeleton';
+import Pagination from '../../../shared/ui/Pagination';
 import { Leaderboard } from '../../../widgets/Leaderboard';
 
 type TabType = 'companies' | 'users' | 'calls' | 'teams' | 'scripts' | 'redis' | 'system' | 'leadership' | 'subscriptions';
 
 export const SuperAdminPage: React.FC = () => {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState<TabType>('companies');
+  const { tab } = useParams<{ tab: string }>();
+  const navigate = useNavigate();
+  const activeTab = (tab as TabType) || 'companies';
+
   const [companies, setCompanies] = useState<Company[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [allCalls, setAllCalls] = useState<Call[]>([]);
@@ -30,6 +35,12 @@ export const SuperAdminPage: React.FC = () => {
   const [redisKeys, setRedisKeys] = useState<{ key: string; type: string }[]>([]);
   const [systemStatus, setSystemStatus] = useState<QueueStatus | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Pagination & Filters
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [search, setSearch] = useState('');
+  const limit = 20;
 
   const [selectedCompany, setSelectedCompany] = useState<{
     company: Company;
@@ -40,6 +51,7 @@ export const SuperAdminPage: React.FC = () => {
   const [editingRedis, setEditingRedis] = useState<{ key: string; value: string } | null>(null);
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [deletingUser, setDeletingUser] = useState<User | null>(null);
 
   const fetchRedisKeys = async () => {
     try {
@@ -115,25 +127,48 @@ export const SuperAdminPage: React.FC = () => {
     }
   };
 
+  const handleDeleteUser = async () => {
+    if (!deletingUser) return;
+    try {
+        await userApi.deleteGlobal(deletingUser.id);
+        setUsers(users.filter(u => u.id !== deletingUser.id));
+        setTotal(prev => prev - 1);
+        setDeletingUser(null);
+    } catch (err) {
+        console.error('Failed to delete user', err);
+    }
+  };
+
+  useEffect(() => {
+    setPage(1);
+    setSearch('');
+  }, [activeTab]);
+
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
+        const params = { page, limit, search, name: search };
         if (activeTab === 'companies') {
-          const res = await companyApi.listAllCompanies();
+          const res = await companyApi.listAllCompanies(params);
           setCompanies(res.data.companies || []);
+          setTotal(res.data.total || 0);
         } else if (activeTab === 'users') {
-          const res = await userApi.listAllUsers();
+          const res = await userApi.listAllUsers(params);
           setUsers(res.data.users || []);
+          setTotal(res.data.total || 0);
         } else if (activeTab === 'calls') {
-          const res = await callApi.listAllCalls();
+          const res = await callApi.listAllCalls(params);
           setAllCalls(res.data.calls || []);
+          setTotal(res.data.total || 0);
         } else if (activeTab === 'teams') {
-          const res = await teamApi.listAllTeams();
+          const res = await teamApi.listAllTeams(params);
           setTeams(res.data.teams || []);
+          setTotal(res.data.total || 0);
         } else if (activeTab === 'scripts') {
-          const res = await scriptApi.listAllScripts();
+          const res = await scriptApi.listAllScripts(params);
           setScripts(res.data.scripts || []);
+          setTotal(res.data.total || 0);
         } else if (activeTab === 'redis') {
           await fetchRedisKeys();
         } else if (activeTab === 'system') {
@@ -147,7 +182,7 @@ export const SuperAdminPage: React.FC = () => {
       }
     };
     fetchData();
-  }, [activeTab]);
+  }, [activeTab, page, search]);
 
   return (
     <PageLayout title={t('superadmin.title')}>
@@ -164,21 +199,21 @@ export const SuperAdminPage: React.FC = () => {
             { id: 'system', label: t('superadmin.system_health'), icon: 'health_and_safety' },
             { id: 'leadership', label: t('superadmin.global_rating'), icon: 'leaderboard' },
             { id: 'subscriptions', label: t('superadmin.subscriptions'), icon: 'payments' },
-          ].map(tab => (
+          ].map(tabItem => (
             <button
-              key={tab.id}
+              key={tabItem.id}
               onClick={() => {
-                setActiveTab(tab.id as TabType);
+                navigate(`/super-admin/${tabItem.id}`);
                 setSelectedCompany(null);
               }}
               className={`flex items-center gap-2 px-1 py-4 text-sm font-bold transition-all whitespace-nowrap border-b-2 ${
-                activeTab === tab.id
+                activeTab === tabItem.id
                   ? 'border-primary text-primary'
                   : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
               }`}
             >
-              <span className="material-symbols-outlined text-xl">{tab.icon}</span>
-              {tab.label}
+              <span className="material-symbols-outlined text-xl">{tabItem.icon}</span>
+              {tabItem.label}
             </button>
           ))}
         </nav>
@@ -242,8 +277,20 @@ export const SuperAdminPage: React.FC = () => {
             <div className="space-y-6">
               {activeTab === 'companies' && (
                 <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/50 shadow-sm overflow-hidden">
-                  <div className="p-6 border-b border-border-light dark:border-slate-800">
+                  <div className="p-6 border-b border-border-light dark:border-slate-800 flex justify-between items-center">
                     <h3 className="text-xl font-bold">{t('superadmin.companies')}</h3>
+                    <div className="flex items-center gap-4">
+                      <div className="relative">
+                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
+                        <input
+                          type="text"
+                          placeholder={t('common.search')}
+                          className="pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border-none rounded-xl text-sm focus:ring-2 focus:ring-primary w-64"
+                          value={search}
+                          onChange={(e) => setSearch(e.target.value)}
+                        />
+                      </div>
+                    </div>
                   </div>
                   {loading ? (
                     <div className="p-8 space-y-4"><Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" /></div>
@@ -253,6 +300,7 @@ export const SuperAdminPage: React.FC = () => {
                             <thead className="bg-slate-50/50 dark:bg-slate-800/30 text-slate-500 text-xs font-bold uppercase tracking-wider">
                                 <tr>
                                     <th className="px-6 py-4">{t('superadmin.company_name')}</th>
+                                    <th className="px-6 py-4">ID</th>
                                     <th className="px-6 py-4">{t('superadmin.created_at')}</th>
                                     <th className="px-6 py-4">{t('common.status')}</th>
                                     <th className="px-6 py-4 text-right">{t('common.actions')}</th>
@@ -261,7 +309,13 @@ export const SuperAdminPage: React.FC = () => {
                             <tbody className="divide-y divide-border-light dark:divide-slate-800">
                                 {companies.map(c => (
                                 <tr key={c.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                                    <td className="px-6 py-4 font-bold">{c.name}</td>
+                                    <td className="px-6 py-4">
+                                      <div className="flex flex-col">
+                                        <span className="font-bold text-slate-900 dark:text-white">{c.name}</span>
+                                        <span className="text-xs text-slate-500">{c.industry || t('common.no_industry')}</span>
+                                      </div>
+                                    </td>
+                                    <td className="px-6 py-4 text-xs font-mono text-slate-400">{c.id}</td>
                                     <td className="px-6 py-4 text-sm text-slate-500">{c.created_at ? new Date(c.created_at).toLocaleDateString() : '—'}</td>
                                     <td className="px-6 py-4">
                                     <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${c.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
@@ -288,6 +342,13 @@ export const SuperAdminPage: React.FC = () => {
                         </table>
                     </div>
                   )}
+                  <Pagination
+                    currentPage={page}
+                    totalPages={Math.ceil(total / limit)}
+                    onPageChange={setPage}
+                    totalResults={total}
+                    limit={limit}
+                  />
                 </div>
               )}
 
@@ -332,11 +393,27 @@ export const SuperAdminPage: React.FC = () => {
 
               {activeTab === 'users' && (
                  <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/50 shadow-sm overflow-hidden">
+                    <div className="p-6 border-b border-border-light dark:border-slate-800 flex justify-between items-center">
+                      <h3 className="text-xl font-bold">{t('superadmin.global_users')}</h3>
+                      <div className="flex items-center gap-4">
+                        <div className="relative">
+                          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
+                          <input
+                            type="text"
+                            placeholder={t('common.search')}
+                            className="pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border-none rounded-xl text-sm focus:ring-2 focus:ring-primary w-64"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    </div>
                     <div className="overflow-x-auto">
                         <table className="w-full text-left">
                         <thead className="bg-slate-50/50 dark:bg-slate-800/30 text-slate-500 text-xs font-bold uppercase tracking-wider">
                             <tr>
                             <th className="px-6 py-4">{t('common.email')}</th>
+                            <th className="px-6 py-4">ID</th>
                             <th className="px-6 py-4">{t('superadmin.company_id')}</th>
                             <th className="px-6 py-4">{t('common.role')}</th>
                             <th className="px-6 py-4 text-right">{t('common.actions')}</th>
@@ -345,28 +422,53 @@ export const SuperAdminPage: React.FC = () => {
                         <tbody className="divide-y divide-border-light dark:divide-slate-800">
                             {users.map(u => (
                             <tr key={u.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                                <td className="px-6 py-4 font-bold">{u.email}</td>
-                                <td className="px-6 py-4 text-xs font-mono">{u.company_id}</td>
-                                <td className="px-6 py-4 uppercase text-xs font-bold">{u.role}</td>
-                                <td className="px-6 py-4 text-right">
+                                <td className="px-6 py-4">
+                                  <div className="flex flex-col">
+                                    <span className="font-bold text-slate-900 dark:text-white">{u.email}</span>
+                                    <span className="text-xs text-slate-500">{(u.first_name || u.last_name) ? `${u.first_name} ${u.last_name}` : t('common.no_name')}</span>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 text-xs font-mono text-slate-400">{u.id}</td>
+                                <td className="px-6 py-4 text-xs font-mono text-slate-400">{u.company_id}</td>
+                                <td className="px-6 py-4 uppercase">
+                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                    u.role === 'super_admin' ? 'bg-purple-100 text-purple-800' :
+                                    u.role === 'tenant_admin' ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-800'
+                                  }`}>
+                                    {u.role}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 text-right space-x-4">
                                     <button onClick={() => setEditingUser(u)} className="text-primary font-bold text-sm hover:underline">{t('common.edit')}</button>
+                                    <button onClick={() => setDeletingUser(u)} className="text-red-500 font-bold text-sm hover:underline">{t('common.delete')}</button>
                                 </td>
                             </tr>
                             ))}
                         </tbody>
                         </table>
                     </div>
+                    <Pagination
+                      currentPage={page}
+                      totalPages={Math.ceil(total / limit)}
+                      onPageChange={setPage}
+                      totalResults={total}
+                      limit={limit}
+                    />
                  </div>
               )}
 
               {activeTab === 'calls' && (
                  <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/50 shadow-sm overflow-hidden">
+                    <div className="p-6 border-b border-border-light dark:border-slate-800">
+                      <h3 className="text-xl font-bold">{t('superadmin.global_calls')}</h3>
+                    </div>
                     <div className="overflow-x-auto">
                         <table className="w-full text-left">
                         <thead className="bg-slate-50/50 dark:bg-slate-800/30 text-slate-500 text-xs font-bold uppercase tracking-wider">
                             <tr>
                             <th className="px-6 py-4">ID</th>
                             <th className="px-6 py-4">{t('superadmin.company_id')}</th>
+                                    <th className="px-6 py-4">{t('nav.calls')}</th>
                             <th className="px-6 py-4">{t('common.status')}</th>
                             <th className="px-6 py-4">{t('sheet_calls.table.date')}</th>
                             </tr>
@@ -375,24 +477,61 @@ export const SuperAdminPage: React.FC = () => {
                             {allCalls.map(c => (
                             <tr key={c.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                                 <td className="px-6 py-4">{c.id}</td>
-                                <td className="px-6 py-4">{c.company_id}</td>
-                                <td className="px-6 py-4 uppercase">{c.status}</td>
+                                <td className="px-6 py-4 text-xs font-mono text-slate-400">{c.company_id}</td>
+                                <td className="px-6 py-4">
+                                  <div className="flex flex-col">
+                                    <span className="font-bold text-slate-900 dark:text-white">{c.manager_name || t('common.no_manager')}</span>
+                                    <span className="text-[10px] text-slate-500">{c.client_phone}</span>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4">
+                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                    c.status === 'completed' ? 'bg-emerald-100 text-emerald-800' :
+                                    c.status === 'processing' ? 'bg-blue-100 text-blue-800' :
+                                    c.status === 'error' ? 'bg-red-100 text-red-800' : 'bg-slate-100 text-slate-800'
+                                  }`}>
+                                    {c.status}
+                                  </span>
+                                </td>
                                 <td className="px-6 py-4">{new Date(c.created_at).toLocaleString()}</td>
                             </tr>
                             ))}
                         </tbody>
                         </table>
                     </div>
+                    <Pagination
+                      currentPage={page}
+                      totalPages={Math.ceil(total / limit)}
+                      onPageChange={setPage}
+                      totalResults={total}
+                      limit={limit}
+                    />
                  </div>
               )}
 
               {activeTab === 'teams' && (
                 <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/50 shadow-sm overflow-hidden">
+                  <div className="p-6 border-b border-border-light dark:border-slate-800 flex justify-between items-center">
+                    <h3 className="text-xl font-bold">{t('nav.teams')}</h3>
+                    <div className="flex items-center gap-4">
+                      <div className="relative">
+                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
+                        <input
+                          type="text"
+                          placeholder={t('common.search')}
+                          className="pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border-none rounded-xl text-sm focus:ring-2 focus:ring-primary w-64"
+                          value={search}
+                          onChange={(e) => setSearch(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-left">
                         <thead className="bg-slate-50/50 dark:bg-slate-800/30 text-slate-500 text-xs font-bold uppercase tracking-wider">
                         <tr>
                             <th className="px-6 py-4">{t('common.name')}</th>
+                            <th className="px-6 py-4">ID</th>
                             <th className="px-6 py-4">{t('superadmin.company_id')}</th>
                             <th className="px-6 py-4">{t('sheet_calls.table.date')}</th>
                         </tr>
@@ -401,23 +540,47 @@ export const SuperAdminPage: React.FC = () => {
                         {teams.map(team => (
                             <tr key={team.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                             <td className="px-6 py-4 font-bold">{team.name}</td>
-                            <td className="px-6 py-4 text-xs font-mono">{team.company_id}</td>
+                            <td className="px-6 py-4 text-xs font-mono text-slate-400">{team.id}</td>
+                            <td className="px-6 py-4 text-xs font-mono text-slate-400">{team.company_id}</td>
                             <td className="px-6 py-4 text-sm text-slate-500">{team.created_at ? new Date(team.created_at).toLocaleDateString() : '—'}</td>
                             </tr>
                         ))}
                         </tbody>
                     </table>
                   </div>
+                  <Pagination
+                    currentPage={page}
+                    totalPages={Math.ceil(total / limit)}
+                    onPageChange={setPage}
+                    totalResults={total}
+                    limit={limit}
+                  />
                 </div>
               )}
 
               {activeTab === 'scripts' && (
                 <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/50 shadow-sm overflow-hidden">
+                  <div className="p-6 border-b border-border-light dark:border-slate-800 flex justify-between items-center">
+                    <h3 className="text-xl font-bold">{t('scripts.title')}</h3>
+                    <div className="flex items-center gap-4">
+                      <div className="relative">
+                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
+                        <input
+                          type="text"
+                          placeholder={t('common.search')}
+                          className="pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border-none rounded-xl text-sm focus:ring-2 focus:ring-primary w-64"
+                          value={search}
+                          onChange={(e) => setSearch(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-left">
                         <thead className="bg-slate-50/50 dark:bg-slate-800/30 text-slate-500 text-xs font-bold uppercase tracking-wider">
                         <tr>
                             <th className="px-6 py-4">{t('common.name')}</th>
+                            <th className="px-6 py-4">ID</th>
                             <th className="px-6 py-4">{t('superadmin.company_id')}</th>
                             <th className="px-6 py-4">{t('common.status')}</th>
                         </tr>
@@ -426,7 +589,8 @@ export const SuperAdminPage: React.FC = () => {
                         {scripts.map(script => (
                             <tr key={script.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                             <td className="px-6 py-4 font-bold">{script.name}</td>
-                            <td className="px-6 py-4 text-xs font-mono">{script.company_id}</td>
+                            <td className="px-6 py-4 text-xs font-mono text-slate-400">{script.id}</td>
+                            <td className="px-6 py-4 text-xs font-mono text-slate-400">{script.company_id}</td>
                             <td className="px-6 py-4">
                                 <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${script.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-800'}`}>
                                 {script.is_active ? t('scripts.active') : t('common.inactive')}
@@ -437,6 +601,13 @@ export const SuperAdminPage: React.FC = () => {
                         </tbody>
                     </table>
                   </div>
+                  <Pagination
+                    currentPage={page}
+                    totalPages={Math.ceil(total / limit)}
+                    onPageChange={setPage}
+                    totalResults={total}
+                    limit={limit}
+                  />
                 </div>
               )}
 
@@ -553,6 +724,36 @@ export const SuperAdminPage: React.FC = () => {
                   </form>
               </div>
           </div>
+      )}
+
+      {deletingUser && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 w-full max-w-md shadow-2xl border border-border-light dark:border-slate-800">
+            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mb-6 mx-auto">
+              <span className="material-symbols-outlined text-red-500 text-3xl">delete_forever</span>
+            </div>
+            <h3 className="text-xl font-bold mb-2 text-center">{t('common.delete_confirm')}</h3>
+            <p className="text-slate-500 text-center mb-8">
+              {t('superadmin.delete_user_warning', { email: deletingUser.email })}
+              <br />
+              <span className="text-xs font-bold text-red-500 uppercase mt-2 block">{t('common.irreversible')}</span>
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeletingUser(null)}
+                className="flex-1 px-4 py-2.5 font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                onClick={handleDeleteUser}
+                className="flex-1 px-4 py-2.5 bg-red-500 text-white rounded-xl font-bold shadow-lg shadow-red-500/30 hover:bg-red-600 transition-all"
+              >
+                {t('common.delete')}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {editingUser && (
