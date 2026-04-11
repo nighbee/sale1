@@ -1,35 +1,59 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import { userApi } from '../../../entities/user/api';
 import Button from '../../../shared/ui/Button';
+import Textarea from '../../../shared/ui/Textarea';
+import { toast } from 'sonner';
+
+const inviteSchema = z.object({
+  emails: z.string().min(1, "At least one email is required").refine(
+    (val) => {
+      const emailList = val.split('\n').map(e => e.trim()).filter(e => e !== '');
+      return emailList.every(email => z.string().email().safeParse(email).success);
+    },
+    { message: "One or more emails are invalid" }
+  ),
+});
+
+type InviteFormValues = z.infer<typeof inviteSchema>;
 
 const InviteMembersPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [emails, setEmails] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   const password = "SalesAI2026!";
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    watch,
+  } = useForm<InviteFormValues>({
+    resolver: zodResolver(inviteSchema),
+    defaultValues: {
+      emails: '',
+    },
+  });
 
-    const emailList = emails.split('\n').map(e => e.trim()).filter(e => e !== '');
+  const emailsValue = watch('emails');
+
+  const onSubmit = async (data: InviteFormValues) => {
+    const emailList = data.emails.split('\n').map(e => e.trim()).filter(e => e !== '');
 
     try {
       await userApi.invite({
         emails: emailList,
         temporary_password: password,
       });
+      toast.success(t('setup.invite_success') || "Invitations sent successfully");
       navigate('/dashboard');
     } catch (_err: unknown) {
       const apiError = _err as { response?: { data?: { error?: string } } };
-      setError(apiError.response?.data?.error || t('setup.invite_failed'));
-    } finally {
-      setLoading(false);
+      const msg = apiError.response?.data?.error || t('setup.invite_failed');
+      toast.error(msg);
     }
   };
 
@@ -66,25 +90,24 @@ const InviteMembersPage: React.FC = () => {
               </p>
             </div>
 
-            {error && <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm">{error}</div>}
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               <div className="space-y-2">
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300" htmlFor="emails">
-                  {t('setup.emails_label')} <span className="text-slate-400 font-normal ml-1">{t('setup.one_per_line')}</span>
-                </label>
-                <div className="relative">
-                  <textarea
-                    className="block w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm focus:border-primary focus:ring-primary sm:text-sm font-mono leading-relaxed p-4 resize-none"
+                <div className="flex justify-between items-end mb-1">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300" htmlFor="emails">
+                        {t('setup.emails_label')} <span className="text-slate-400 font-normal ml-1">{t('setup.one_per_line')}</span>
+                    </label>
+                    <span className="text-xs text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded">{t('setup.csv_paste')}</span>
+                </div>
+
+                <Textarea
                     id="emails"
                     placeholder="john.doe@company.com&#10;sarah.smith@company.com&#10;alex.chen@company.com"
                     rows={6}
-                    value={emails}
-                    onChange={(e) => setEmails(e.target.value)}
-                  ></textarea>
-                  <div className="absolute top-3 right-3">
-                    <span className="text-xs text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded">{t('setup.csv_paste')}</span>
-                  </div>
-                </div>
+                    {...register('emails')}
+                    error={errors.emails?.message}
+                    className="font-mono leading-relaxed"
+                />
+
                 <p className="text-xs text-slate-500 dark:text-slate-500 flex items-center gap-1">
                   <span className="material-icons text-[14px]">info</span>
                   {t('setup.invite_limit_hint')}
@@ -133,8 +156,8 @@ const InviteMembersPage: React.FC = () => {
                 <Button
                   className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8"
                   type="submit"
-                  isLoading={loading}
-                  disabled={!emails.trim()}
+                  isLoading={isSubmitting}
+                  disabled={!emailsValue?.trim()}
                 >
                   <span>{t('setup.send_invitations')}</span>
                   <span className="material-icons text-sm">send</span>

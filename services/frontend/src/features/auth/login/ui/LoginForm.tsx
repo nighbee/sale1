@@ -1,40 +1,48 @@
-import React, { useState } from "react";
+import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { userApi } from "../../../../entities/user/api";
 import { useUserStore } from "../../../../entities/user/model/store";
 import Button from "../../../../shared/ui/Button";
 import Input from "../../../../shared/ui/Input";
+import Checkbox from "../../../../shared/ui/Checkbox";
+
+const loginSchema = z.object({
+  email: z.string().email({ message: "Invalid email address" }),
+  password: z.string().min(6, { message: "Password must be at least 6 characters" }),
+  rememberMe: z.boolean().optional(),
+});
+
+type LoginFormValues = z.infer<typeof loginSchema>;
 
 export const LoginForm: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const setUser = useUserStore((state) => state.setUser);
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-    rememberMe: false,
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    setError,
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+      rememberMe: false,
+    },
   });
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value,
-    }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
+  const onSubmit = async (data: LoginFormValues) => {
     try {
       const response = await userApi.login({
-        email: formData.email,
-        password: formData.password,
+        email: data.email,
+        password: data.password,
       });
       const { user, tokens } = response.data;
       localStorage.setItem("token", tokens.access_token);
@@ -52,59 +60,45 @@ export const LoginForm: React.FC = () => {
     } catch (_err: unknown) {
       const apiError = _err as { response?: { data?: { error?: string } } };
       const msg = apiError.response?.data?.error || t("auth.login_failed");
-      setError(msg);
+      setError("root", { message: msg });
       toast.error(msg);
-    } finally {
-      setLoading(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {error && (
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      {errors.root && (
         <div className="p-3 bg-red-100 text-red-700 rounded-lg text-sm">
-          {error}
+          {errors.root.message}
         </div>
       )}
+
       <Input
         label={t("auth.email")}
         id="email"
-        name="email"
         type="email"
         placeholder="name@company.com"
-        required
-        value={formData.email}
-        onChange={handleChange}
+        autoComplete="email"
+        {...register("email")}
+        error={errors.email?.message}
       />
 
       <Input
         label={t("auth.password")}
         id="password"
-        name="password"
         type="password"
         placeholder="••••••••"
-        required
-        value={formData.password}
-        onChange={handleChange}
+        autoComplete="current-password"
+        {...register("password")}
+        error={errors.password?.message}
       />
 
       <div className="flex items-center justify-between">
-        <div className="flex items-center">
-          <input
-            className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded cursor-pointer"
-            id="remember-me"
-            name="rememberMe"
-            type="checkbox"
-            checked={formData.rememberMe}
-            onChange={handleChange}
-          />
-          <label
-            className="ml-2 block text-sm text-slate-600 dark:text-slate-400 cursor-pointer select-none"
-            htmlFor="remember-me"
-          >
-            {t("auth.remember_me")}
-          </label>
-        </div>
+        <Checkbox
+          label={t("auth.remember_me")}
+          id="remember-me"
+          {...register("rememberMe")}
+        />
         <div className="text-sm">
           <a
             className="font-medium text-primary hover:text-primary/80 transition-colors"
@@ -115,7 +109,7 @@ export const LoginForm: React.FC = () => {
         </div>
       </div>
 
-      <Button className="w-full" type="submit" isLoading={loading}>
+      <Button className="w-full" type="submit" isLoading={isSubmitting}>
         {t("auth.sign_in")}
       </Button>
     </form>
