@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -28,6 +28,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   AreaChart, Area
 } from 'recharts';
+import { Virtuoso, TableVirtuoso } from 'react-virtuoso';
 
 type TabType = 'companies' | 'users' | 'calls' | 'teams' | 'scripts' | 'redis' | 'system' | 'leadership' | 'subscriptions';
 
@@ -81,6 +82,19 @@ export const SuperAdminPage: React.FC = () => {
   const [expandedQueue, setExpandedQueue] = useState<string | null>(null);
   const [metrics, setMetrics] = useState<any>(null);
   const [logs, setLogs] = useState<any[]>([]);
+
+  const flattenedLogs = useMemo(() => {
+    if (!logs || logs.length === 0) return [];
+    return logs.flatMap((stream, streamIdx) =>
+      stream.values.map((v: any, valIdx: number) => ({
+        id: `${streamIdx}-${valIdx}`,
+        rawTime: parseInt(v[0]),
+        timestamp: new Date(parseInt(v[0]) / 1000000).toLocaleTimeString(),
+        message: v[1],
+        stream: stream.stream || {}
+      }))
+    ).sort((a, b) => a.rawTime - b.rawTime);
+  }, [logs]);
   const [loading, setLoading] = useState(false);
 
   // Pagination & Filters
@@ -360,60 +374,64 @@ export const SuperAdminPage: React.FC = () => {
                   {loading ? (
                     <div className="p-8 space-y-4"><Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" /></div>
                   ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left">
-                            <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 text-[10px] font-black uppercase tracking-[0.2em]">
-                                <tr>
-                                    <th className="px-8 py-5">{t('superadmin.company_name')}</th>
-                                    <th className="px-8 py-5">ID</th>
-                                    <th className="px-8 py-5">{t('superadmin.created_at')}</th>
-                                    <th className="px-8 py-5">{t('common.status')}</th>
-                                    <th className="px-8 py-5 text-right">{t('common.actions')}</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
-                                {companies.map(c => (
-                                <tr key={c.id} className="group hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all duration-300">
-                                    <td className="px-8 py-6">
-                                      <div className="flex flex-col">
-                                        <span className="font-black text-slate-900 dark:text-white group-hover:text-primary transition-colors">{c.name}</span>
-                                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">{c.industry || t('common.no_industry')}</span>
-                                      </div>
-                                    </td>
-                                    <td className="px-8 py-6">
-                                      <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-lg text-[10px] font-mono border border-slate-200 dark:border-slate-700">
-                                        {c.id.split('-')[0]}...
-                                      </span>
-                                    </td>
-                                    <td className="px-8 py-6 text-sm text-slate-500 font-medium">{c.created_at ? new Date(c.created_at).toLocaleDateString() : '—'}</td>
-                                    <td className="px-8 py-6">
-                                      <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                                        c.is_active ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20'
-                                      }`}>
-                                        <span className={`w-1.5 h-1.5 rounded-full ${c.is_active ? 'bg-emerald-500' : 'bg-red-500'}`} />
-                                        {c.is_active ? t('superadmin.active') : t('common.inactive')}
-                                      </div>
-                                    </td>
-                                    <td className="px-8 py-6 text-right space-x-2">
-                                        <button
-                                            onClick={() => setEditingCompany(c)}
-                                            className="p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-xl transition-all"
-                                            title={t('common.edit')}
-                                        >
-                                            <span className="material-symbols-outlined text-xl">edit</span>
-                                        </button>
-                                        <button
-                                            onClick={() => handleViewCompany(c.id)}
-                                            className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-500/10 rounded-xl transition-all"
-                                            title={t('superadmin.view_details')}
-                                        >
-                                            <span className="material-symbols-outlined text-xl">visibility</span>
-                                        </button>
-                                    </td>
-                                </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                    <div className="h-[600px] overflow-hidden">
+                      <TableVirtuoso
+                        data={companies}
+                        components={{
+                          Table: (props) => <table {...props} className="w-full text-left border-collapse" />,
+                          TableHead: React.forwardRef((props, ref) => <thead {...props} ref={ref} className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] sticky top-0 z-10" />),
+                          TableRow: (props) => <tr {...props} className="group hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-all duration-200 border-b border-slate-100 dark:border-slate-800/50" />,
+                        }}
+                        fixedHeaderContent={() => (
+                          <tr>
+                            <th className="px-8 py-5">{t('superadmin.company_name')}</th>
+                            <th className="px-8 py-5">ID</th>
+                            <th className="px-8 py-5">{t('superadmin.created_at')}</th>
+                            <th className="px-8 py-5">{t('common.status')}</th>
+                            <th className="px-8 py-5 text-right">{t('common.actions')}</th>
+                          </tr>
+                        )}
+                        itemContent={(_index, c) => (
+                          <>
+                            <td className="px-8 py-6">
+                              <div className="flex flex-col">
+                                <span className="font-black text-slate-900 dark:text-white group-hover:text-primary transition-colors">{c.name}</span>
+                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">{c.industry || t('common.no_industry')}</span>
+                              </div>
+                            </td>
+                            <td className="px-8 py-6">
+                              <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-lg text-[10px] font-mono border border-slate-200 dark:border-slate-700">
+                                {c.id.split('-')[0]}...
+                              </span>
+                            </td>
+                            <td className="px-8 py-6 text-sm text-slate-500 font-medium">{c.created_at ? new Date(c.created_at).toLocaleDateString() : '—'}</td>
+                            <td className="px-8 py-6">
+                              <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                                c.is_active ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20'
+                              }`}>
+                                <span className={`w-1.5 h-1.5 rounded-full ${c.is_active ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                                {c.is_active ? t('superadmin.active') : t('common.inactive')}
+                              </div>
+                            </td>
+                            <td className="px-8 py-6 text-right space-x-2">
+                              <button
+                                onClick={() => setEditingCompany(c)}
+                                className="p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-xl transition-all"
+                                title={t('common.edit')}
+                              >
+                                <span className="material-symbols-outlined text-xl">edit</span>
+                              </button>
+                              <button
+                                onClick={() => handleViewCompany(c.id)}
+                                className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-500/10 rounded-xl transition-all"
+                                title={t('superadmin.view_details')}
+                              >
+                                <span className="material-symbols-outlined text-xl">visibility</span>
+                              </button>
+                            </td>
+                          </>
+                        )}
+                      />
                     </div>
                   )}
                   <Pagination
@@ -485,31 +503,58 @@ export const SuperAdminPage: React.FC = () => {
                                       <span className="material-symbols-outlined text-sm">database</span>
                                       {t('superadmin.recent_payloads')}
                                     </h4>
-                                    <div className="space-y-3">
+                                    <div className="h-[400px]">
                                       {(systemStatus as any).metadata?.[name]?.length > 0 ? (
-                                        (systemStatus as any).metadata[name].map((item: any, idx: number) => (
-                                          <div key={idx} className="bg-slate-950 rounded-2xl p-5 border border-white/5 font-mono text-[11px] overflow-x-auto shadow-inner group/item relative">
-                                            <div className="flex justify-between items-center mb-3 opacity-50">
-                                              <span className="text-primary uppercase font-bold tracking-tighter">{t('superadmin.payload')} #{idx + 1}</span>
-                                              <div className="flex items-center gap-4">
-                                                <span className="text-[10px]">{item.parsed ? t('superadmin.json_object') : t('superadmin.raw_string')}</span>
-                                                <button
-                                                  onClick={() => handleRemoveQueueItem(name, item)}
-                                                  className="opacity-0 group-hover/item:opacity-100 p-1 text-red-500 hover:bg-red-500/10 rounded transition-all"
-                                                  title="Remove this specific item"
-                                                >
-                                                  <span className="material-symbols-outlined text-sm">delete</span>
-                                                </button>
+                                        <Virtuoso
+                                          style={{ height: '100%' }}
+                                          data={(systemStatus as any).metadata[name]}
+                                          itemContent={(idx, item: any) => (
+                                            <div className="mb-4 pr-2">
+                                              <div className="bg-slate-950 rounded-2xl p-5 border border-white/5 font-mono text-[11px] overflow-hidden shadow-2xl group/item relative">
+                                                <div className="flex justify-between items-center mb-4 pb-3 border-b border-white/5">
+                                                  <div className="flex items-center gap-3">
+                                                    <span className="bg-primary/20 text-primary px-3 py-1 rounded-lg font-black uppercase tracking-tighter text-[10px]">
+                                                      {t('superadmin.payload')} #{idx + 1}
+                                                    </span>
+                                                    <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest ${
+                                                      item.parsed ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
+                                                    }`}>
+                                                      {item.parsed ? t('superadmin.json_object') : t('superadmin.raw_string')}
+                                                    </span>
+                                                  </div>
+                                                  <div className="flex items-center gap-2">
+                                                    <button
+                                                      onClick={() => {
+                                                        const text = JSON.stringify(item.parsed || item.values || item, null, 2);
+                                                        navigator.clipboard.writeText(text);
+                                                      }}
+                                                      className="p-1.5 text-slate-500 hover:text-white hover:bg-white/10 rounded-lg transition-all"
+                                                      title="Copy Payload"
+                                                    >
+                                                      <span className="material-symbols-outlined text-sm">content_copy</span>
+                                                    </button>
+                                                    <button
+                                                      onClick={() => handleRemoveQueueItem(name, item)}
+                                                      className="p-1.5 text-red-500/50 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
+                                                      title="Remove this specific item"
+                                                    >
+                                                      <span className="material-symbols-outlined text-sm">delete</span>
+                                                    </button>
+                                                  </div>
+                                                </div>
+                                                <div className="max-h-[200px] overflow-y-auto custom-scrollbar">
+                                                  <pre className="text-slate-300 leading-relaxed whitespace-pre-wrap selection:bg-primary/30">
+                                                    {JSON.stringify(item.parsed || item.values || item, null, 2)}
+                                                  </pre>
+                                                </div>
                                               </div>
                                             </div>
-                                            <pre className="text-slate-300 leading-relaxed whitespace-pre-wrap">
-                                              {JSON.stringify(item.parsed || item.values || item, null, 2)}
-                                            </pre>
-                                          </div>
-                                        ))
+                                          )}
+                                        />
                                       ) : (
-                                        <div className="py-8 text-center bg-slate-100/50 dark:bg-slate-800/30 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
-                                          <p className="text-xs text-slate-400 font-bold uppercase tracking-widest italic">{t('superadmin.queue_empty')}</p>
+                                        <div className="py-12 text-center bg-slate-50 dark:bg-slate-800/20 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-700/50">
+                                          <span className="material-symbols-outlined text-slate-300 text-4xl mb-3">inventory_2</span>
+                                          <p className="text-xs text-slate-400 font-black uppercase tracking-[0.2em] italic">{t('superadmin.queue_empty')}</p>
                                         </div>
                                       )}
                                     </div>
@@ -588,64 +633,68 @@ export const SuperAdminPage: React.FC = () => {
                         </div>
                       </div>
                     </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left">
-                        <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 text-[10px] font-black uppercase tracking-[0.2em]">
-                            <tr>
+                    <div className="h-[600px] overflow-hidden">
+                      <TableVirtuoso
+                        data={users}
+                        components={{
+                          Table: (props) => <table {...props} className="w-full text-left border-collapse" />,
+                          TableHead: React.forwardRef((props, ref) => <thead {...props} ref={ref} className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] sticky top-0 z-10" />),
+                          TableRow: (props) => <tr {...props} className="group hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-all duration-200 border-b border-slate-100 dark:border-slate-800/50" />,
+                        }}
+                        fixedHeaderContent={() => (
+                          <tr>
                             <th className="px-8 py-5">{t('common.email')}</th>
                             <th className="px-8 py-5">ID</th>
                             <th className="px-8 py-5">{t('superadmin.company_id')}</th>
                             <th className="px-8 py-5">{t('common.role')}</th>
                             <th className="px-8 py-5 text-right">{t('common.actions')}</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
-                            {users.map(u => (
-                            <tr key={u.id} className="group hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all duration-300">
-                                <td className="px-8 py-6">
-                                  <div className="flex flex-col">
-                                    <span className="font-black text-slate-900 dark:text-white group-hover:text-primary transition-colors">{u.email}</span>
-                                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">{(u.first_name || u.last_name) ? `${u.first_name} ${u.last_name}` : t('common.no_name')}</span>
-                                  </div>
-                                </td>
-                                <td className="px-8 py-6">
-                                  <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-lg text-[10px] font-mono border border-slate-200 dark:border-slate-700">
-                                    {u.id.split('-')[0]}...
-                                  </span>
-                                </td>
-                                <td className="px-8 py-6">
-                                  <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-lg text-[10px] font-mono border border-slate-200 dark:border-slate-700">
-                                    {u.company_id?.split('-')[0] || '—'}
-                                  </span>
-                                </td>
-                                <td className="px-8 py-6 uppercase">
-                                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                                    u.role === 'super_admin' ? 'bg-purple-500/10 text-purple-500 border border-purple-500/20' :
-                                    u.role === 'tenant_admin' ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20' : 'bg-slate-500/10 text-slate-500 border border-slate-500/20'
-                                  }`}>
-                                    {u.role}
-                                  </span>
-                                </td>
-                                <td className="px-8 py-6 text-right space-x-2">
-                                    <button
-                                      onClick={() => setEditingUser(u)}
-                                      className="p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-xl transition-all"
-                                      title={t('common.edit')}
-                                    >
-                                      <span className="material-symbols-outlined text-xl">edit</span>
-                                    </button>
-                                    <button
-                                      onClick={() => setDeletingUser(u)}
-                                      className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
-                                      title={t('common.delete')}
-                                    >
-                                      <span className="material-symbols-outlined text-xl">delete</span>
-                                    </button>
-                                </td>
-                            </tr>
-                            ))}
-                        </tbody>
-                        </table>
+                          </tr>
+                        )}
+                        itemContent={(_index, u) => (
+                          <>
+                            <td className="px-8 py-6">
+                              <div className="flex flex-col">
+                                <span className="font-black text-slate-900 dark:text-white group-hover:text-primary transition-colors">{u.email}</span>
+                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">{(u.first_name || u.last_name) ? `${u.first_name} ${u.last_name}` : t('common.no_name')}</span>
+                              </div>
+                            </td>
+                            <td className="px-8 py-6">
+                              <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-lg text-[10px] font-mono border border-slate-200 dark:border-slate-700">
+                                {u.id.split('-')[0]}...
+                              </span>
+                            </td>
+                            <td className="px-8 py-6">
+                              <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-lg text-[10px] font-mono border border-slate-200 dark:border-slate-700">
+                                {u.company_id?.split('-')[0] || '—'}
+                              </span>
+                            </td>
+                            <td className="px-8 py-6 uppercase">
+                              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                                u.role === 'super_admin' ? 'bg-purple-500/10 text-purple-500 border border-purple-500/20' :
+                                u.role === 'tenant_admin' ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20' : 'bg-slate-500/10 text-slate-500 border border-slate-500/20'
+                              }`}>
+                                {u.role}
+                              </span>
+                            </td>
+                            <td className="px-8 py-6 text-right space-x-2">
+                              <button
+                                onClick={() => setEditingUser(u)}
+                                className="p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-xl transition-all"
+                                title={t('common.edit')}
+                              >
+                                <span className="material-symbols-outlined text-xl">edit</span>
+                              </button>
+                              <button
+                                onClick={() => setDeletingUser(u)}
+                                className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
+                                title={t('common.delete')}
+                              >
+                                <span className="material-symbols-outlined text-xl">delete</span>
+                              </button>
+                            </td>
+                          </>
+                        )}
+                      />
                     </div>
                     <Pagination
                       currentPage={page}
@@ -662,50 +711,54 @@ export const SuperAdminPage: React.FC = () => {
                     <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/30 dark:bg-slate-800/10">
                       <h3 className="text-xl font-black uppercase italic tracking-tight">{t('superadmin.global_calls')}</h3>
                     </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left">
-                        <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 text-[10px] font-black uppercase tracking-[0.2em]">
-                            <tr>
+                    <div className="h-[600px] overflow-hidden">
+                      <TableVirtuoso
+                        data={allCalls}
+                        components={{
+                          Table: (props) => <table {...props} className="w-full text-left border-collapse" />,
+                          TableHead: React.forwardRef((props, ref) => <thead {...props} ref={ref} className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] sticky top-0 z-10" />),
+                          TableRow: (props) => <tr {...props} className="group hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-all duration-200 border-b border-slate-100 dark:border-slate-800/50" />,
+                        }}
+                        fixedHeaderContent={() => (
+                          <tr>
                             <th className="px-8 py-5">ID</th>
                             <th className="px-8 py-5">{t('superadmin.company_id')}</th>
-                                    <th className="px-8 py-5">{t('nav.calls')}</th>
+                            <th className="px-8 py-5">{t('nav.calls')}</th>
                             <th className="px-8 py-5">{t('common.status')}</th>
                             <th className="px-8 py-5">{t('sheet_calls.table.date')}</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50 font-mono text-xs">
-                            {allCalls.map(c => (
-                            <tr key={c.id} className="group hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all duration-300">
-                                <td className="px-8 py-6">
-                                  <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-lg text-[10px] font-mono border border-slate-200 dark:border-slate-700">
-                                    {c.id.split('-')[0]}...
-                                  </span>
-                                </td>
-                                <td className="px-8 py-6">
-                                  <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-lg text-[10px] font-mono border border-slate-200 dark:border-slate-700">
-                                    {c.company_id?.split('-')[0] || '—'}
-                                  </span>
-                                </td>
-                                <td className="px-8 py-6">
-                                  <div className="flex flex-col font-sans">
-                                    <span className="font-black text-slate-900 dark:text-white group-hover:text-primary transition-colors">{c.manager_name || t('common.no_manager')}</span>
-                                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">{c.client_phone}</span>
-                                  </div>
-                                </td>
-                                <td className="px-8 py-6">
-                                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                                    c.status === 'completed' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' :
-                                    c.status === 'processing' ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20' :
-                                    c.status === 'error' ? 'bg-red-500/10 text-red-500 border border-red-500/20' : 'bg-slate-500/10 text-slate-500 border border-slate-500/20'
-                                  }`}>
-                                    {c.status}
-                                  </span>
-                                </td>
-                                <td className="px-8 py-6 text-slate-500 font-medium font-sans">{new Date(c.created_at).toLocaleString()}</td>
-                            </tr>
-                            ))}
-                        </tbody>
-                        </table>
+                          </tr>
+                        )}
+                        itemContent={(_index, c) => (
+                          <>
+                            <td className="px-8 py-6">
+                              <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-lg text-[10px] font-mono border border-slate-200 dark:border-slate-700">
+                                {c.id.split('-')[0]}...
+                              </span>
+                            </td>
+                            <td className="px-8 py-6">
+                              <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-lg text-[10px] font-mono border border-slate-200 dark:border-slate-700">
+                                {c.company_id?.split('-')[0] || '—'}
+                              </span>
+                            </td>
+                            <td className="px-8 py-6">
+                              <div className="flex flex-col font-sans">
+                                <span className="font-black text-slate-900 dark:text-white group-hover:text-primary transition-colors">{c.manager_name || t('common.no_manager')}</span>
+                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">{c.client_phone}</span>
+                              </div>
+                            </td>
+                            <td className="px-8 py-6">
+                              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                                c.status === 'completed' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' :
+                                c.status === 'processing' ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20' :
+                                c.status === 'error' ? 'bg-red-500/10 text-red-500 border border-red-500/20' : 'bg-slate-500/10 text-slate-500 border border-slate-500/20'
+                              }`}>
+                                {c.status}
+                              </span>
+                            </td>
+                            <td className="px-8 py-6 text-slate-500 font-medium font-sans">{new Date(c.created_at).toLocaleString()}</td>
+                          </>
+                        )}
+                      />
                     </div>
                     <Pagination
                       currentPage={page}
@@ -924,17 +977,29 @@ export const SuperAdminPage: React.FC = () => {
                         <span className="material-symbols-outlined text-primary">terminal</span>
                         Live System Logs (Loki)
                       </h3>
-                      <div className="bg-slate-950 rounded-xl p-4 font-mono text-[10px] h-64 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-800">
-                        {logs && logs.length > 0 ? logs.map((stream, i) => (
-                           <div key={i} className="mb-2">
-                              {stream.values.map((v: any, j: number) => (
-                                <p key={j} className="text-slate-300 hover:text-white transition-colors">
-                                  <span className="text-slate-500">[{new Date(parseInt(v[0])/1000000).toLocaleTimeString()}]</span> {v[1]}
-                                </p>
-                              ))}
-                           </div>
-                        )) : (
-                          <p className="text-slate-500 italic text-center py-20">Waiting for logs...</p>
+                      <div className="bg-slate-950 rounded-xl p-4 font-mono text-[10px] h-96 overflow-hidden relative shadow-inner">
+                        {flattenedLogs.length > 0 ? (
+                          <Virtuoso
+                            style={{ height: '100%' }}
+                            data={flattenedLogs}
+                            initialTopMostItemIndex={flattenedLogs.length - 1}
+                            followOutput="auto"
+                            itemContent={(_index, log) => (
+                              <div className="py-1 px-4 border-l-2 border-transparent hover:border-primary/50 hover:bg-white/5 transition-all group">
+                                <span className="text-blue-400/80 font-bold mr-3 inline-block min-w-[70px]">[{log.timestamp}]</span>
+                                <span className="text-slate-300 group-hover:text-white transition-colors">{log.message}</span>
+                              </div>
+                            )}
+                          />
+                        ) : (
+                          <div className="flex flex-col items-center justify-center h-full space-y-4">
+                            <div className="animate-pulse flex space-x-2">
+                              <div className="h-2 w-2 bg-slate-800 rounded-full"></div>
+                              <div className="h-2 w-2 bg-slate-800 rounded-full"></div>
+                              <div className="h-2 w-2 bg-slate-800 rounded-full"></div>
+                            </div>
+                            <p className="text-slate-500 italic text-xs uppercase tracking-widest">{t('superadmin.waiting_logs') || 'Waiting for logs...'}</p>
+                          </div>
                         )}
                       </div>
                     </div>
