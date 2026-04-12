@@ -856,7 +856,7 @@ export const SuperAdminPage: React.FC = () => {
                       <div className="h-64">
                         <ResponsiveContainer width="100%" height="100%">
                           <BarChart data={metrics?.cpu?.data?.result?.map((r: any) => ({
-                            name: r.metric.container || 'host',
+                            name: r.metric.container_name || r.metric.container || 'host',
                             cpu: parseFloat(r.value[1]) * 100
                           })) || []}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
@@ -881,7 +881,7 @@ export const SuperAdminPage: React.FC = () => {
                       <div className="h-64">
                         <ResponsiveContainer width="100%" height="100%">
                           <AreaChart data={metrics?.memory?.data?.result?.map((r: any) => ({
-                            name: r.metric.container || 'host',
+                            name: r.metric.container_name || r.metric.container || 'host',
                             mem: parseFloat(r.value[1]) / (1024 * 1024)
                           })) || []}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />

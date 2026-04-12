@@ -206,9 +206,9 @@ func (h *SystemHandler) UpdateRedisValue(c *fiber.Ctx) error {
 // @Router /admin/system/metrics [get]
 func (h *SystemHandler) GetMetrics(c *fiber.Ctx) error {
 	// Query CPU usage (last 5m average per container)
-	cpuQuery := `sum(rate(container_cpu_usage_seconds_total{container!=""}[5m])) by (container)`
+	cpuQuery := `sum(rate(container_cpu_usage_seconds_total[5m])) by (container, container_name)`
 	// Query Memory usage
-	memQuery := `sum(container_memory_usage_bytes{container!=""}) by (container)`
+	memQuery := `sum(container_memory_usage_bytes) by (container, container_name)`
 
 	// For simplicity, we'll just proxy these to Prometheus
 	// In a real scenario, we might want to parse and format them
