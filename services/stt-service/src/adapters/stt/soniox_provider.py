@@ -78,7 +78,7 @@ class SonioxSTTProvider(STTProvider):
             logger.error("Soniox STT failed", extra={"error": str(e), "audio_path": audio_path, "audio_url": audio_url})
             raise RuntimeError(f"Soniox STT failed: {str(e)}") from e
 
-    async def get_models(self) -> list:
+    async def get_models(self, category: Optional[str] = None) -> list:
         if not SONIOX_AVAILABLE or not self.api_key:
              return ["stt-async-v4", "stt-async-v3", "stt-realtime-v4", "stt-realtime-v3"]
 

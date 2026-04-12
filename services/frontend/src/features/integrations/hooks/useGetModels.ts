@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { integrationApi } from '../../../entities/integration/api';
 
-export const useGetModels = (type: string) => {
+export const useGetModels = (type: string, category?: string) => {
   const [isLoading, setIsLoading] = useState(false);
   const [models, setModels] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -14,7 +14,7 @@ export const useGetModels = (type: string) => {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await integrationApi.getModels(type, { credentials });
+      const res = await integrationApi.getModels(type, { credentials, category });
       setModels(res.data.models || []);
     } catch (err: any) {
       setError(err.response?.data?.error || err.message || 'Failed to fetch models');

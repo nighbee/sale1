@@ -32,6 +32,7 @@ class ProcessAudioUseCase:
 
     async def execute(self, job: dict):
         call_id = job.get('call_id')
+        company_id = job.get('company_id')
         # Support both key names: 'audio_url' (sipuni-listener) and 'call_link' (sheets-sync legacy)
         audio_url = job.get('audio_url') or job.get('call_link')
 
@@ -39,7 +40,7 @@ class ProcessAudioUseCase:
             raise ValueError(f"Missing audio URL for call_id={call_id}: job has no 'audio_url' or 'call_link' field")
 
         # 0. Circuit Breaker Check
-        ai_settings = await self.api_client.get_ai_settings()
+        ai_settings = await self.api_client.get_ai_settings(company_id=company_id)
         cb_enabled = True
         if ai_settings:
             # Note: circuit_breaker_enabled toggle in UI ONLY controls if we automatically open on failures.
@@ -47,11 +48,11 @@ class ProcessAudioUseCase:
             cb_enabled = ai_settings.get("circuit_breaker_enabled", True)
 
         # check if we are blocked (OPEN or KILLED)
-        if await self.circuit_breaker.is_blocked():
-            state = await self.circuit_breaker.get_state()
+        if await self.circuit_breaker.is_blocked(company_id=company_id):
+            state = await self.circuit_breaker.get_state(company_id=company_id)
             logger.warning(
-                f"STT workflow is HALTED by Circuit Breaker (state={state.value})",
-                extra={"call_id": call_id, "state": state.value}
+                f"STT workflow is HALTED by Circuit Breaker for company {company_id} (state={state.value})",
+                extra={"call_id": call_id, "company_id": company_id, "state": state.value}
             )
             raise CircuitBreakerError("stt_workflow", state)
 
@@ -150,7 +151,7 @@ class ProcessAudioUseCase:
             t_stt = time.monotonic()
             try:
                 transcript_data = await stt_provider.transcribe(tmp_path if tmp_path else "", audio_url if can_skip_download else None, language=stt_language)
-                await self.circuit_breaker.record_success()
+                await self.circuit_breaker.record_success(company_id=company_id)
             except Exception as e:
                 logger.error(
                     "STT provider transcription failed",
@@ -161,7 +162,7 @@ class ProcessAudioUseCase:
                     }
                 )
                 # record_failure only moves to OPEN if cb_enabled is True
-                await self.circuit_breaker.record_failure(str(e), enabled=cb_enabled)
+                await self.circuit_breaker.record_failure(str(e), enabled=cb_enabled, company_id=company_id)
                 raise
             stt_elapsed = round(time.monotonic() - t_stt, 2)
             stt_text = transcript_data.get("text", "")

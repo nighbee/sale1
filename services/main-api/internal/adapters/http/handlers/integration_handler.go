@@ -207,11 +207,12 @@ func (h *IntegrationHandler) GetModels(c *fiber.Ctx) error {
 
 	var req struct {
 		Credentials json.RawMessage `json:"credentials"`
+		Category    string          `json:"category"`
 	}
 	c.BodyParser(&req)
 
 	companyID := c.Locals("company_id").(string)
-	result, err := h.integrationUC.GetModels(c.Context(), companyID, domain.IntegrationType(it), req.Credentials)
+	result, err := h.integrationUC.GetModels(c.Context(), companyID, domain.IntegrationType(it), req.Credentials, req.Category)
 	if err != nil {
 		log.Warn("get models failed", zap.Error(err))
 		return c.Status(400).JSON(fiber.Map{

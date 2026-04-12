@@ -32,31 +32,35 @@ def cb():
 
 @pytest.mark.asyncio
 async def test_circuit_breaker_states(cb):
+    company_id = "test-company"
     # Initial state should be CLOSED
-    assert await cb.get_state() == CircuitState.CLOSED
-    assert not await cb.is_blocked()
+    assert await cb.get_state(company_id=company_id) == CircuitState.CLOSED
+    assert not await cb.is_blocked(company_id=company_id)
 
     # Transition to OPEN
     cb.failure_threshold = 2
-    await cb.record_failure("error 1")
-    assert await cb.get_state() == CircuitState.CLOSED # threshold not reached
+    await cb.record_failure("error 1", company_id=company_id)
+    assert await cb.get_state(company_id=company_id) == CircuitState.CLOSED # threshold not reached
 
-    await cb.record_failure("error 2")
-    assert await cb.get_state() == CircuitState.OPEN
-    assert await cb.is_blocked()
+    await cb.record_failure("error 2", company_id=company_id)
+    assert await cb.get_state(company_id=company_id) == CircuitState.OPEN
+    assert await cb.is_blocked(company_id=company_id)
+
+    # Check that global state is still CLOSED
+    assert await cb.get_state() == CircuitState.CLOSED
 
     # Manual KILLED state
-    await cb.set_manual_status(True)
-    assert await cb.get_state() == CircuitState.KILLED
-    assert await cb.is_blocked()
+    await cb.set_manual_status(True, company_id=company_id)
+    assert await cb.get_state(company_id=company_id) == CircuitState.KILLED
+    assert await cb.is_blocked(company_id=company_id)
 
-    await cb.set_manual_status(False)
-    assert await cb.get_state() == CircuitState.OPEN # Should revert to OPEN as it was open before
+    await cb.set_manual_status(False, company_id=company_id)
+    assert await cb.get_state(company_id=company_id) == CircuitState.OPEN # Should revert to OPEN as it was open before
 
     # Success closes the circuit
-    await cb.record_success()
-    assert await cb.get_state() == CircuitState.CLOSED
-    assert not await cb.is_blocked()
+    await cb.record_success(company_id=company_id)
+    assert await cb.get_state(company_id=company_id) == CircuitState.CLOSED
+    assert not await cb.is_blocked(company_id=company_id)
 
 @pytest.mark.asyncio
 async def test_cb_disabled_behavior(cb):
@@ -97,9 +101,9 @@ async def test_process_audio_cb_logic():
         with patch.object(use_case.circuit_breaker, 'set_manual_status', AsyncMock()) as mock_set:
             with patch.object(use_case, 'stt_provider_name', 'openai'):
                 with patch('src.adapters.stt.factory.STTProviderFactory.create', return_value=MagicMock()):
-                    with patch('src.core.usecases.process_audio.get_call_link', return_value=None):
+                    with patch('src.core.usecases.process_audio.get_call_links', return_value=(None, None)):
                         try:
-                            await use_case.execute({"call_id": "test", "audio_url": "http://test.com"})
+                            await use_case.execute({"call_id": "test", "company_id": "test-company", "audio_url": "http://test.com"})
                         except:
                             pass
 
