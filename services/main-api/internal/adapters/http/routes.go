@@ -163,6 +163,8 @@ func SetupRoutes(
 
 	// System Admin
 	admin.Get("/system/status", systemHandler.GetStatus)
+	admin.Get("/system/metrics", systemHandler.GetMetrics)
+	admin.Get("/system/logs", systemHandler.GetLogs)
 	admin.Get("/system/redis", systemHandler.ListRedisKeys)
 	admin.Get("/system/redis/value", systemHandler.GetRedisValue)
 	admin.Put("/system/redis", systemHandler.UpdateRedisValue)

@@ -22,6 +22,8 @@ type Config struct {
 	AnalyticsGRPC             string
 	MinioPublicEndpoint	   string
 	StripeSecretKey           string
+	PrometheusURL             string
+	LokiURL                   string
 }
 
 func Load() *Config {
@@ -83,6 +85,16 @@ func Load() *Config {
 		analyticsGRPC = "ai-analytics:50052"
 	}
 
+	prometheusURL := os.Getenv("PROMETHEUS_URL")
+	if prometheusURL == "" {
+		prometheusURL = "http://prometheus:9090"
+	}
+
+	lokiURL := os.Getenv("LOKI_URL")
+	if lokiURL == "" {
+		lokiURL = "http://loki:3100"
+	}
+
 	presignEnabled := false
 	if v := os.Getenv("MINIO_PRESIGN_ENABLED"); v != "" {
 		if b, err := strconv.ParseBool(v); err == nil {
@@ -113,5 +125,7 @@ func Load() *Config {
 		AnalyticsGRPC:             analyticsGRPC,
 		MinioPublicEndpoint:       minioPublicEndpoint,
 		StripeSecretKey:           os.Getenv("STRIPE_SECRET_KEY"),
+		PrometheusURL:             prometheusURL,
+		LokiURL:                   lokiURL,
 	}
 }

@@ -101,6 +101,7 @@
     "redis_manager": "Управление Redis",
     "system_health": "Состояние системы",
     "global_rating": "Глобальный рейтинг",
+    "redis_queue": "Очередь Redis",
     "global_users": "Все пользователи",
     "global_calls": "Все звонки",
     "queue_metrics": "Метрики очередей",
@@ -109,7 +110,8 @@
     "edit_redis_value": "Редактировать значение Redis",
     "key_json_or_string": "Значение (JSON или строка)",
     "update_key": "Обновить ключ",
-    "view_details": "Подробнее"
+    "view_details": "Подробнее",
+    "system_performance": "Производительность системы"
   },
   "setup": {
     "company_title": "Настройте вашу компанию",

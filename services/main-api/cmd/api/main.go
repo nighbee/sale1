@@ -200,7 +200,7 @@ func main() {
 	scriptHandler := handlers.NewScriptHandler(scriptRepo, cfg.ScriptServiceURL)
 	notificationHandler := handlers.NewNotificationHandler(notificationRepo)
 	aiSettingsHandler := handlers.NewAISettingsHandler(aiSettingsRepo)
-	systemHandler := handlers.NewSystemHandler(rdb)
+	systemHandler := handlers.NewSystemHandler(rdb, cfg.PrometheusURL, cfg.LokiURL)
 	wsHandler := handlers.NewWSHandler(hub)
 
 	app := fiber.New()

@@ -107,12 +107,14 @@
     "redis_manager": "Redis Manager",
     "system_health": "System Health",
     "global_rating": "Global Rating",
+    "redis_queue": "Redis Queue",
     "queue_metrics": "Queue Metrics",
     "overall_status": "Overall System Status",
     "edit_redis_value": "Edit Redis Value",
     "key_json_or_string": "Value (JSON or String)",
     "update_key": "Update Key",
-    "delete_user_warning": "You are about to delete user {{email}}. This will also remove all their calls, transcripts, and personal scripts."
+    "delete_user_warning": "You are about to delete user {{email}}. This will also remove all their calls, transcripts, and personal scripts.",
+    "system_performance": "System Performance"
   },
   "setup": {
     "company_title": "Set Up Your Company",
