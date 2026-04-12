@@ -139,6 +139,19 @@ export const SuperAdminPage: React.FC = () => {
     }
   };
 
+  const handleRemoveQueueItem = async (queue: string, item: any) => {
+    if (!window.confirm('Remove this item from the queue?')) return;
+    try {
+      // For lists, use the raw string provided by backend; for streams, use the ID
+      const itemKey = item.id || item.raw || (typeof item === 'string' ? item : JSON.stringify(item));
+      await systemApi.removeQueueItem(queue, itemKey);
+      const res = await systemApi.getStatus();
+      setSystemStatus(res.data);
+    } catch (err) {
+      console.error('Failed to remove queue item', err);
+    }
+  };
+
   const handleDeleteRedis = async (key: string) => {
     if (!window.confirm(`Delete key ${key}?`)) return;
     try {
@@ -475,13 +488,22 @@ export const SuperAdminPage: React.FC = () => {
                                     <div className="space-y-3">
                                       {(systemStatus as any).metadata?.[name]?.length > 0 ? (
                                         (systemStatus as any).metadata[name].map((item: any, idx: number) => (
-                                          <div key={idx} className="bg-slate-950 rounded-2xl p-5 border border-white/5 font-mono text-[11px] overflow-x-auto shadow-inner">
+                                          <div key={idx} className="bg-slate-950 rounded-2xl p-5 border border-white/5 font-mono text-[11px] overflow-x-auto shadow-inner group/item relative">
                                             <div className="flex justify-between items-center mb-3 opacity-50">
                                               <span className="text-primary uppercase font-bold tracking-tighter">{t('superadmin.payload')} #{idx + 1}</span>
-                                              <span className="text-[10px]">{typeof item === 'object' ? t('superadmin.json_object') : t('superadmin.raw_string')}</span>
+                                              <div className="flex items-center gap-4">
+                                                <span className="text-[10px]">{item.parsed ? t('superadmin.json_object') : t('superadmin.raw_string')}</span>
+                                                <button
+                                                  onClick={() => handleRemoveQueueItem(name, item)}
+                                                  className="opacity-0 group-hover/item:opacity-100 p-1 text-red-500 hover:bg-red-500/10 rounded transition-all"
+                                                  title="Remove this specific item"
+                                                >
+                                                  <span className="material-symbols-outlined text-sm">delete</span>
+                                                </button>
+                                              </div>
                                             </div>
                                             <pre className="text-slate-300 leading-relaxed whitespace-pre-wrap">
-                                              {JSON.stringify(item, null, 2)}
+                                              {JSON.stringify(item.parsed || item.values || item, null, 2)}
                                             </pre>
                                           </div>
                                         ))

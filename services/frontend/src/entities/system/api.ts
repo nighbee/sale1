@@ -10,4 +10,5 @@ export const systemApi = {
   updateRedisValue: (key: string, value: string) => api.put('/admin/system/redis', { key, value }),
   deleteRedisKey: (key: string) => api.delete('/admin/system/redis', { params: { key } }),
   clearQueue: (queue: string, all: boolean = false) => api.post('/admin/system/queues/clear', { queue, all }),
+  removeQueueItem: (queue: string, item: string) => api.delete('/admin/system/queues/item', { data: { queue, item } }),
 };

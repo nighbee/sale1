@@ -47,15 +47,15 @@ func (h *SystemHandler) GetStatus(c *fiber.Ctx) error {
 		val, _ := h.rdb.LLen(ctx, q).Result()
 		metrics[q] = val
 
-		// Fetch last 5 items as metadata
-		items, _ := h.rdb.LRange(ctx, q, -5, -1).Result()
+		// Fetch first 10 items as metadata
+		items, _ := h.rdb.LRange(ctx, q, 0, 9).Result()
 		metaItems := make([]interface{}, len(items))
 		for i, item := range items {
 			var parsed interface{}
-			if err := json.Unmarshal([]byte(item), &parsed); err == nil {
-				metaItems[i] = parsed
-			} else {
-				metaItems[i] = item
+			json.Unmarshal([]byte(item), &parsed)
+			metaItems[i] = fiber.Map{
+				"raw":    item,
+				"parsed": parsed,
 			}
 		}
 		metadata[q] = metaItems
@@ -67,8 +67,11 @@ func (h *SystemHandler) GetStatus(c *fiber.Ctx) error {
 		val, _ := h.rdb.XLen(ctx, s).Result()
 		metrics[s] = val
 
-		// Fetch last 5 entries as metadata
-		entries, _ := h.rdb.XRevRangeN(ctx, s, "+", "-", 5).Result()
+		// Fetch first 10 entries as metadata
+		entries, _ := h.rdb.XRange(ctx, s, "-", "+").Result()
+		if len(entries) > 10 {
+			entries = entries[:10]
+		}
 		metaEntries := make([]interface{}, len(entries))
 		for i, entry := range entries {
 			metaEntries[i] = fiber.Map{
@@ -193,6 +196,64 @@ func (h *SystemHandler) UpdateRedisValue(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(fiber.Map{"status": "ok"})
+}
+
+// RemoveQueueItem godoc
+// @Summary Remove a specific item from a queue
+// @Description Delete a specific item from a list or stream queue
+// @Tags admin
+// @Accept json
+// @Produce json
+// @Param request body map[string]string true "Queue and Item ID/Value"
+// @Success 200 {object} fiber.Map
+// @Security BearerAuth
+// @Router /admin/system/queues/item [delete]
+func (h *SystemHandler) RemoveQueueItem(c *fiber.Ctx) error {
+	var req struct {
+		Queue string `json:"queue"`
+		Item  string `json:"item"` // For lists, it's the raw string value; for streams, it's the ID
+	}
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid body"})
+	}
+
+	if req.Queue == "" || req.Item == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "queue and item are required"})
+	}
+
+	whitelistedQueues := map[string]string{
+		"bullmq:audio_processing": "list",
+		"notify_queue":            "list",
+		"integration_sync":        "list",
+		"transcript_ready":        "stream",
+		"analysis_completed":      "stream",
+		"critical_error":          "stream",
+	}
+
+	qType, allowed := whitelistedQueues[req.Queue]
+	if !allowed {
+		return c.Status(403).JSON(fiber.Map{"error": "queue not whitelisted for item removal"})
+	}
+
+	ctx := c.Context()
+	var err error
+
+	if qType == "list" {
+		// Remove 1 occurrence of the item from the list
+		err = h.rdb.LRem(ctx, req.Queue, 1, req.Item).Err()
+	} else {
+		// Remove the specific entry from the stream
+		err = h.rdb.XDel(ctx, req.Queue, req.Item).Err()
+	}
+
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	return c.JSON(fiber.Map{
+		"status":  "ok",
+		"message": fmt.Sprintf("Item removed from %s", req.Queue),
+	})
 }
 
 // GetMetrics godoc
