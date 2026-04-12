@@ -1,13 +1,35 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { PageLayout } from "../../../widgets/PageLayout";
 import { userApi } from "../../../entities/user/api";
 import { teamApi } from "../../../entities/team/api";
 import type { User } from "../../../entities/user/types";
 import type { Team } from "../../../entities/team/types";
 import Button from "../../../shared/ui/Button";
+import Input from "../../../shared/ui/Input";
+import Select from "../../../shared/ui/Select";
 import Skeleton from "../../../shared/ui/Skeleton";
+import Modal from "../../../shared/ui/Modal";
 import { toast } from "sonner";
+
+const userSchema = z.object({
+  first_name: z.string().min(1, "First name is required"),
+  last_name: z.string().min(1, "Last name is required"),
+  email: z.string().email("Invalid email"),
+  username: z.string().min(3, "Username must be at least 3 characters"),
+  phone: z.string().optional(),
+  password: z.string().optional(),
+  role: z.string(),
+  team_id: z.string(),
+  line_id: z.string().optional(),
+  src_num: z.string().optional(),
+  manager_id: z.string().optional(),
+});
+
+type UserFormValues = z.infer<typeof userSchema>;
 
 export const UsersManagementPage: React.FC = () => {
   const { t } = useTranslation();
@@ -16,21 +38,17 @@ export const UsersManagementPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [formData, setFormData] = useState({
-    first_name: "",
-    last_name: "",
-    email: "",
-    username: "",
-    phone: "",
-    password: "",
-    role: "sales_rep",
-    team_id: "",
-    line_id: "",
-    src_num: "",
-    manager_id: "",
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<UserFormValues>({
+    resolver: zodResolver(userSchema),
   });
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
       const res = await userApi.listUsers();
@@ -41,25 +59,25 @@ export const UsersManagementPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
-  const fetchTeams = async () => {
+  const fetchTeams = useCallback(async () => {
     try {
       const res = await teamApi.list();
       setTeams(res.data.teams || []);
     } catch (error) {
       console.error("Failed to fetch teams", error);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchUsers();
     fetchTeams();
-  }, []);
+  }, [fetchUsers, fetchTeams]);
 
   const handleEdit = (user: User) => {
     setEditingUser(user);
-    setFormData({
+    reset({
       first_name: user.first_name || "",
       last_name: user.last_name || "",
       email: user.email || "",
@@ -75,13 +93,13 @@ export const UsersManagementPage: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmit = async (data: UserFormValues) => {
     if (!editingUser) return;
 
     try {
-      const updateData: any = { ...formData };
+      const updateData: Record<string, unknown> = { ...data };
       if (!updateData.password) delete updateData.password;
+      if (updateData.team_id === "none") updateData.team_id = null;
 
       await userApi.update(editingUser.id, updateData);
       toast.success(t("users.update_success"));
@@ -98,6 +116,17 @@ export const UsersManagementPage: React.FC = () => {
     const team = teams.find((t) => t.id === teamId);
     return team ? team.name : t("common.unknown_team");
   };
+
+  const roleOptions = [
+    { value: "sales_rep", label: t("roles.sales_rep") },
+    { value: "tenant_admin", label: t("roles.tenant_admin") },
+    { value: "super_admin", label: t("roles.super_admin") },
+  ];
+
+  const teamOptions = [
+    { value: "none", label: t("common.no_team") },
+    ...teams.map((team) => ({ value: team.id, label: team.name })),
+  ];
 
   return (
     <PageLayout title={t("users.management_title")}>
@@ -184,7 +213,7 @@ export const UsersManagementPage: React.FC = () => {
                   {users.length === 0 && (
                     <tr>
                       <td
-                        colSpan={6}
+                        colSpan={7}
                         className="px-6 py-12 text-center text-slate-500"
                       >
                         {t("users.no_users")}
@@ -198,153 +227,98 @@ export const UsersManagementPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Edit Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-2xl overflow-hidden">
-            <div className="px-6 py-4 border-b border-border-light dark:border-slate-800 flex justify-between items-center">
-              <h3 className="text-lg font-bold">{t("users.edit_user")}</h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600">
-                <span className="material-icons">close</span>
-              </button>
-            </div>
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-sm font-medium">{t("common.first_name")}</label>
-                  <input
-                    type="text"
-                    className="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
-                    value={formData.first_name}
-                    onChange={(e) => setFormData({...formData, first_name: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-sm font-medium">{t("common.last_name")}</label>
-                  <input
-                    type="text"
-                    className="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
-                    value={formData.last_name}
-                    onChange={(e) => setFormData({...formData, last_name: e.target.value})}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-sm font-medium">{t("common.email")}</label>
-                  <input
-                    type="email"
-                    className="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
-                    value={formData.email}
-                    onChange={(e) => setFormData({...formData, email: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-sm font-medium">{t("common.username")}</label>
-                  <input
-                    type="text"
-                    className="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
-                    value={formData.username}
-                    onChange={(e) => setFormData({...formData, username: e.target.value})}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-sm font-medium">{t("common.phone")}</label>
-                  <input
-                    type="text"
-                    className="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-sm font-medium">{t("common.password")} ({t("users.leave_blank_no_change")})</label>
-                  <input
-                    type="password"
-                    className="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
-                    value={formData.password}
-                    onChange={(e) => setFormData({...formData, password: e.target.value})}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-sm font-medium">Manager ID (Extension)</label>
-                  <input
-                    type="text"
-                    className="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
-                    value={formData.manager_id}
-                    onChange={(e) => setFormData({...formData, manager_id: e.target.value})}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-sm font-medium">Line ID</label>
-                  <input
-                    type="text"
-                    className="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
-                    value={formData.line_id}
-                    onChange={(e) => setFormData({...formData, line_id: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-sm font-medium">Source Number (Src Num)</label>
-                  <input
-                    type="text"
-                    className="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
-                    value={formData.src_num}
-                    onChange={(e) => setFormData({...formData, src_num: e.target.value})}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-sm font-medium">{t("common.role")}</label>
-                  <select
-                    className="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
-                    value={formData.role}
-                    onChange={(e) => setFormData({...formData, role: e.target.value})}
-                  >
-                    <option value="sales_rep">{t("roles.sales_rep")}</option>
-                    <option value="tenant_admin">{t("roles.tenant_admin")}</option>
-                    <option value="super_admin">{t("roles.super_admin")}</option>
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-sm font-medium">{t("common.team")}</label>
-                  <select
-                    className="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
-                    value={formData.team_id}
-                    onChange={(e) => setFormData({...formData, team_id: e.target.value})}
-                  >
-                    <option value="none">{t("common.no_team")}</option>
-                    {teams.map((team) => (
-                      <option key={team.id} value={team.id}>{team.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4">
-                <Button variant="ghost" type="button" onClick={() => setIsModalOpen(false)}>
-                  {t("common.cancel")}
-                </Button>
-                <Button type="submit">
-                  {t("common.save_changes")}
-                </Button>
-              </div>
-            </form>
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title={t("users.edit_user")}
+        maxWidth="lg"
+      >
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label={t("common.first_name")}
+              {...register("first_name")}
+              error={errors.first_name?.message}
+            />
+            <Input
+              label={t("common.last_name")}
+              {...register("last_name")}
+              error={errors.last_name?.message}
+            />
           </div>
-        </div>
-      )}
+
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label={t("common.email")}
+              type="email"
+              {...register("email")}
+              error={errors.email?.message}
+            />
+            <Input
+              label={t("common.username")}
+              {...register("username")}
+              error={errors.username?.message}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label={t("common.phone")}
+              {...register("phone")}
+              error={errors.phone?.message}
+            />
+            <Input
+              label={`${t("common.password")} (${t("users.leave_blank_no_change")})`}
+              type="password"
+              {...register("password")}
+              error={errors.password?.message}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Manager ID (Extension)"
+              {...register("manager_id")}
+              error={errors.manager_id?.message}
+            />
+            <Select
+              label={t("common.role")}
+              options={roleOptions}
+              {...register("role")}
+              error={errors.role?.message}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Line ID"
+              {...register("line_id")}
+              error={errors.line_id?.message}
+            />
+            <Input
+              label="Source Number (Src Num)"
+              {...register("src_num")}
+              error={errors.src_num?.message}
+            />
+          </div>
+
+          <Select
+            label={t("common.team")}
+            options={teamOptions}
+            {...register("team_id")}
+            error={errors.team_id?.message}
+          />
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+            <Button variant="ghost" type="button" onClick={() => setIsModalOpen(false)}>
+              {t("common.cancel")}
+            </Button>
+            <Button type="submit" isLoading={isSubmitting}>
+              {t("common.save_changes")}
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </PageLayout>
   );
 };

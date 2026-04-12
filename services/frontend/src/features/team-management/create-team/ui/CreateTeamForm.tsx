@@ -1,66 +1,68 @@
-import React, { useState } from "react";
+import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { teamApi } from "../../../../entities/team/api";
 import Button from "../../../../shared/ui/Button";
 import Input from "../../../../shared/ui/Input";
+import Textarea from "../../../../shared/ui/Textarea";
+import Checkbox from "../../../../shared/ui/Checkbox";
+
+const createTeamSchema = z.object({
+  teamName: z.string().min(2, { message: "Team name must be at least 2 characters" }),
+  description: z.string().optional(),
+  autoAssign: z.boolean(),
+});
+
+type CreateTeamFormValues = z.infer<typeof createTeamSchema>;
 
 export const CreateTeamForm: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    teamName: "",
-    description: "",
-    autoAssign: false,
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<CreateTeamFormValues>({
+    resolver: zodResolver(createTeamSchema),
+    defaultValues: {
+      teamName: "",
+      description: "",
+      autoAssign: false,
+    },
   });
-  const [loading, setLoading] = useState(false);
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
-  ) => {
-    const { name, value, type } = e.target;
-    const val =
-      type === "checkbox" ? (e.target as HTMLInputElement).checked : value;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: val,
-    }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+  const onSubmit = async (data: CreateTeamFormValues) => {
     try {
       await teamApi.create({
-        name: formData.teamName,
-        description: formData.description,
-        auto_assign: formData.autoAssign,
+        name: data.teamName,
+        description: data.description || "",
+        auto_assign: data.autoAssign,
       });
       navigate("/script-upload");
     } catch (err) {
       console.error("Failed to create team", err);
-    } finally {
-      setLoading(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       <Input
         label={t('setup.team_name_label')}
         id="team_name"
-        name="teamName"
         placeholder={t('setup.team_name_placeholder')}
-        required
-        value={formData.teamName}
-        onChange={handleChange}
+        {...register("teamName")}
+        error={errors.teamName?.message}
         autoFocus
       />
 
-      <div>
-        <div className="flex justify-between items-center mb-1.5">
+      <div className="space-y-1.5">
+        <div className="flex justify-between items-center">
           <label
-            className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+            className="block text-sm font-medium text-slate-700 dark:text-slate-300"
             htmlFor="description"
           >
             {t('setup.team_desc_label')}
@@ -72,45 +74,26 @@ export const CreateTeamForm: React.FC = () => {
             {t('setup.ai_context')}
           </span>
         </div>
-        <textarea
-          className="block w-full rounded-lg border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:border-primary focus:ring-primary sm:text-sm py-2.5 px-3 shadow-sm transition-colors resize-none"
+        <Textarea
           id="description"
-          name="description"
           placeholder={t('setup.team_desc_placeholder')}
           rows={4}
-          value={formData.description}
-          onChange={handleChange}
-        ></textarea>
-        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+          {...register("description")}
+          error={errors.description?.message}
+        />
+        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
           {t('setup.team_desc_hint')}
         </p>
       </div>
 
-      <div className="pt-2">
-        <div className="flex items-start">
-          <div className="flex h-5 items-center">
-            <input
-              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary dark:border-gray-700 dark:bg-gray-800"
-              id="auto_assign"
-              name="autoAssign"
-              type="checkbox"
-              checked={formData.autoAssign}
-              onChange={handleChange}
-            />
-          </div>
-          <div className="ml-3 text-sm">
-            <label
-              className="font-medium text-gray-700 dark:text-gray-300"
-              htmlFor="auto_assign"
-            >
-              {t('setup.lead_routing_label')}
-            </label>
-            <p className="text-gray-500 dark:text-gray-400 text-xs">
-              {t('setup.lead_routing_hint')}
-            </p>
-          </div>
-        </div>
-      </div>
+      <Checkbox
+        id="auto_assign"
+        label={t('setup.lead_routing_label')}
+        {...register("autoAssign")}
+      />
+      <p className="text-slate-500 dark:text-slate-400 text-xs -mt-4 ml-7">
+        {t('setup.lead_routing_hint')}
+      </p>
 
       <div className="pt-6 flex flex-col-reverse sm:flex-row items-center justify-between gap-4">
         <Button
@@ -125,7 +108,7 @@ export const CreateTeamForm: React.FC = () => {
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
           <button
             type="button"
-            className="text-sm text-gray-500 dark:text-gray-400 hover:text-primary transition-colors hidden sm:block"
+            className="text-sm text-slate-500 dark:text-slate-400 hover:text-primary transition-colors hidden sm:block"
             onClick={() => navigate("/script-upload")}
           >
             {t('common.skip')}
@@ -133,14 +116,14 @@ export const CreateTeamForm: React.FC = () => {
           <Button
             className="w-full sm:w-auto"
             type="submit"
-            isLoading={loading}
+            isLoading={isSubmitting}
           >
             {t('teams.create_team')}
           </Button>
         </div>
         <button
           type="button"
-          className="text-sm text-gray-500 dark:text-gray-400 hover:text-primary transition-colors sm:hidden mt-2"
+          className="text-sm text-slate-500 dark:text-slate-400 hover:text-primary transition-colors sm:hidden mt-2"
           onClick={() => navigate("/script-upload")}
         >
           {t('common.skip')}

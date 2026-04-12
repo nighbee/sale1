@@ -1,25 +1,93 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { useForm, type SubmitHandler } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import { PageLayout } from '../../../widgets/PageLayout';
 import { integrationApi } from '../../../entities/integration/api';
 import type { Integration } from '../../../entities/integration/types';
 import { useCompany, useBilling } from '../../../entities/company/model/hooks';
 import Button from '../../../shared/ui/Button';
 import Input from '../../../shared/ui/Input';
+import Textarea from '../../../shared/ui/Textarea';
 import { BillingInfo } from '../../../widgets/BillingInfo/ui/BillingInfo';
+
+const companySchema = z.object({
+  name: z.string().min(1, "Company name is required"),
+  description: z.string().optional(),
+  industry: z.string().optional(),
+  size: z.string().optional(),
+  managers_count: z.preprocess((val) => Number(val), z.number().min(0)),
+  stt_model_preference: z.string(),
+  llm_provider: z.string(),
+});
+
+const billingSchema = z.object({
+  card_holder_name: z.string().optional(),
+  card_number_masked: z.string().optional(),
+  expiration_date: z.string().optional(),
+  card_type: z.string().optional(),
+});
+
+type CompanyFormValues = z.infer<typeof companySchema>;
+type BillingFormValues = z.infer<typeof billingSchema>;
 
 const CompanySettingsPage: React.FC = () => {
   const { t } = useTranslation();
   type TabId = 'general' | 'ai' | 'integrations' | 'billing';
   const [activeTab, setActiveTab] = useState<TabId>('general');
 
-  const { company, loading: companyLoading, updateSettings, setCompany } = useCompany() as any;
-  const { billing, loading: billingLoading, updateBilling, setBilling } = useBilling() as any;
+  const { company, loading: companyLoading, updateSettings } = useCompany() as any;
+  const { billing, loading: billingLoading, updateBilling } = useBilling() as any;
 
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [integrationsLoading, setIntegrationsLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    reset: resetCompany,
+    formState: { errors: companyErrors, isSubmitting: isSavingCompany },
+  } = useForm<CompanyFormValues>({
+    resolver: zodResolver(companySchema) as any,
+  });
+
+  const {
+    register: registerBilling,
+    handleSubmit: handleSubmitBilling,
+    reset: resetBilling,
+    formState: { errors: billingErrors, isSubmitting: isSavingBilling },
+  } = useForm<BillingFormValues>({
+    resolver: zodResolver(billingSchema) as any,
+  });
+
+  useEffect(() => {
+    if (company) {
+      resetCompany({
+        name: company.name || '',
+        description: company.description || '',
+        industry: company.industry || '',
+        size: company.size || '',
+        managers_count: company.managers_count || 0,
+        stt_model_preference: company.stt_model_preference || 'whisperx_local',
+        llm_provider: company.llm_provider || 'openai',
+      });
+    }
+  }, [company, resetCompany]);
+
+  useEffect(() => {
+    if (billing) {
+      resetBilling({
+        card_holder_name: billing.card_holder_name || '',
+        card_number_masked: billing.card_number_masked || '',
+        expiration_date: billing.expiration_date || '',
+        card_type: billing.card_type || '',
+      });
+    }
+  }, [billing, resetBilling]);
 
   useEffect(() => {
     const fetchIntegrations = async () => {
@@ -35,22 +103,26 @@ const CompanySettingsPage: React.FC = () => {
     fetchIntegrations();
   }, []);
 
-  const handleSaveAll = async () => {
-    if (!company) return;
-    setSaving(true);
+  const onSaveCompany: SubmitHandler<CompanyFormValues> = async (data) => {
     try {
-        const promises = [updateSettings(company)];
-        if (billing) {
-            promises.push(updateBilling(billing));
-        }
-        await Promise.all(promises);
-        toast.success(t('settings.update_success'));
+      await updateSettings(data);
+      toast.success(t('settings.update_success'));
     } catch {
-        toast.error(t('settings.update_failed'));
-    } finally {
-        setSaving(false);
+      toast.error(t('settings.update_failed'));
     }
   };
+
+  const onSaveBilling: SubmitHandler<BillingFormValues> = async (data) => {
+    try {
+      await updateBilling(data);
+      toast.success(t('settings.update_success'));
+    } catch {
+      toast.error(t('settings.update_failed'));
+    }
+  };
+
+  const sttModel = watch('stt_model_preference');
+  const llmProvider = watch('llm_provider');
 
   const loading = companyLoading || billingLoading || integrationsLoading;
 
@@ -96,44 +168,41 @@ const CompanySettingsPage: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           <div className="lg:col-span-8 space-y-10">
             {activeTab === 'general' && (
-                <section className="space-y-6">
+                <form id="company-form" onSubmit={handleSubmit(onSaveCompany)} className="space-y-6">
                     <Input
                         label="Company Name"
-                        value={company.name}
-                        onChange={(e) => setCompany({ ...company, name: e.target.value })}
+                        {...register('name')}
+                        error={companyErrors.name?.message}
                     />
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Description</label>
-                        <textarea
-                            className="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-sm text-slate-900 dark:text-white"
-                            rows={4}
-                            value={company.description || ''}
-                            onChange={(e) => setCompany({ ...company, description: e.target.value })}
-                        />
-                    </div>
+                    <Textarea
+                        label="Description"
+                        rows={4}
+                        {...register('description')}
+                        error={companyErrors.description?.message}
+                    />
                     <div className="grid grid-cols-2 gap-4">
                         <Input
                             label="Industry"
-                            value={company.industry}
-                            onChange={(e) => setCompany({ ...company, industry: e.target.value })}
+                            {...register('industry')}
+                            error={companyErrors.industry?.message}
                         />
                         <Input
                             label="Company Size"
-                            value={company.size}
-                            onChange={(e) => setCompany({ ...company, size: e.target.value })}
+                            {...register('size')}
+                            error={companyErrors.size?.message}
                         />
                         <Input
                             label={t('settings.managers_count')}
                             type="number"
-                            value={company.managers_count}
-                            onChange={(e) => setCompany({ ...company, managers_count: parseInt(e.target.value) || 0 })}
+                            {...register('managers_count')}
+                            error={companyErrors.managers_count?.message}
                         />
                     </div>
-                </section>
+                </form>
             )}
 
             {activeTab === 'ai' && (
-                <>
+                <form id="ai-form" onSubmit={handleSubmit(onSaveCompany)} className="space-y-10">
             <section>
               <div className="flex items-center justify-between mb-4">
                 <div>
@@ -149,11 +218,11 @@ const CompanySettingsPage: React.FC = () => {
                 ].map((p) => (
                   <div
                     key={p.id}
-                    onClick={() => setCompany({ ...company, stt_model_preference: p.id })}
-                    className={`relative flex cursor-pointer rounded-lg border p-4 shadow-sm transition-all ${company.stt_model_preference === p.id ? 'border-2 border-primary bg-blue-50/20 dark:bg-blue-900/10' : 'border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark'}`}
+                    onClick={() => setValue('stt_model_preference', p.id, { shouldDirty: true })}
+                    className={`relative flex cursor-pointer rounded-lg border p-4 shadow-sm transition-all ${sttModel === p.id ? 'border-2 border-primary bg-blue-50/20 dark:bg-blue-900/10' : 'border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark'}`}
                   >
                     <div className="flex h-5 items-center">
-                      <input type="radio" checked={company.stt_model_preference === p.id} readOnly className="h-4 w-4 text-primary" />
+                      <input type="radio" checked={sttModel === p.id} readOnly className="h-4 w-4 text-primary" />
                     </div>
                     <div className="ml-3 flex flex-col w-full">
                       <div className="flex justify-between items-start w-full">
@@ -169,7 +238,7 @@ const CompanySettingsPage: React.FC = () => {
                         </ul>
                       </div>
                     </div>
-                    {company.stt_model_preference === p.id && <div className="absolute top-4 right-4 text-primary"><span className="material-icons">check_circle</span></div>}
+                    {sttModel === p.id && <div className="absolute top-4 right-4 text-primary"><span className="material-icons">check_circle</span></div>}
                   </div>
                 ))}
               </div>
@@ -189,11 +258,11 @@ const CompanySettingsPage: React.FC = () => {
                 ].map((p) => (
                   <div
                     key={p.id}
-                    onClick={() => setCompany({ ...company, llm_provider: p.id })}
-                    className={`relative flex cursor-pointer rounded-lg border p-4 shadow-sm transition-all ${company.llm_provider === p.id ? 'border-2 border-primary bg-blue-50/20 dark:bg-blue-900/10' : 'border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark'}`}
+                    onClick={() => setValue('llm_provider', p.id, { shouldDirty: true })}
+                    className={`relative flex cursor-pointer rounded-lg border p-4 shadow-sm transition-all ${llmProvider === p.id ? 'border-2 border-primary bg-blue-50/20 dark:bg-blue-900/10' : 'border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark'}`}
                   >
                     <div className="flex h-5 items-center">
-                      <input type="radio" checked={company.llm_provider === p.id} readOnly className="h-4 w-4 text-primary" />
+                      <input type="radio" checked={llmProvider === p.id} readOnly className="h-4 w-4 text-primary" />
                     </div>
                     <div className="ml-3 flex flex-col w-full">
                       <div className="flex justify-between items-start w-full">
@@ -201,12 +270,12 @@ const CompanySettingsPage: React.FC = () => {
                         <span className="inline-flex items-center rounded-md bg-slate-50 dark:bg-slate-800 px-2 py-1 text-xs font-medium text-slate-600 dark:text-slate-400 ring-1 ring-inset ring-slate-500/10">{p.type}</span>
                       </div>
                     </div>
-                    {company.llm_provider === p.id && <div className="absolute top-4 right-4 text-primary"><span className="material-icons">check_circle</span></div>}
+                    {llmProvider === p.id && <div className="absolute top-4 right-4 text-primary"><span className="material-icons">check_circle</span></div>}
                   </div>
                 ))}
               </div>
             </section>
-                </>
+                </form>
             )}
 
             {activeTab === 'integrations' && (
@@ -239,7 +308,7 @@ const CompanySettingsPage: React.FC = () => {
             )}
 
             {activeTab === 'billing' && billing && (
-                <section className="space-y-8">
+                <form id="billing-form" onSubmit={handleSubmitBilling(onSaveBilling)} className="space-y-8">
                     <BillingInfo />
                     <div className="bg-gradient-to-br from-primary to-blue-700 p-8 rounded-2xl text-white shadow-xl shadow-primary/20">
                         <div className="flex justify-between items-start mb-12">
@@ -286,22 +355,29 @@ const CompanySettingsPage: React.FC = () => {
                     <div className="space-y-4">
                         <h3 className="font-bold text-slate-900 dark:text-white">Update Payment Method</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <Input label="Card Holder Name" value={billing.card_holder_name || ''} onChange={(e) => setBilling({...billing, card_holder_name: e.target.value})} />
-                            <Input label="Card Number" value={billing.card_number_masked || ''} onChange={(e) => setBilling({...billing, card_number_masked: e.target.value})} />
-                            <Input label="Expiration Date (MM/YY)" value={billing.expiration_date || ''} onChange={(e) => setBilling({...billing, expiration_date: e.target.value})} />
-                            <Input label="Card Type (Visa/Mastercard)" value={billing.card_type || ''} onChange={(e) => setBilling({...billing, card_type: e.target.value})} />
+                            <Input label="Card Holder Name" {...registerBilling('card_holder_name')} error={billingErrors.card_holder_name?.message} />
+                            <Input label="Card Number" {...registerBilling('card_number_masked')} error={billingErrors.card_number_masked?.message} />
+                            <Input label="Expiration Date (MM/YY)" {...registerBilling('expiration_date')} error={billingErrors.expiration_date?.message} />
+                            <Input label="Card Type (Visa/Mastercard)" {...registerBilling('card_type')} error={billingErrors.card_type?.message} />
                         </div>
                     </div>
-                </section>
+                </form>
             )}
           </div>
 
           <div className="lg:col-span-4 sticky top-24">
             <div className="rounded-xl border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark shadow-sm overflow-hidden p-6">
               <Button
-                isLoading={saving}
+                isLoading={isSavingCompany || isSavingBilling}
                 className="w-full py-4 text-base font-bold shadow-xl shadow-primary/30"
-                onClick={handleSaveAll}
+                type="button"
+                onClick={() => {
+                  if (activeTab === 'billing') {
+                    handleSubmitBilling(onSaveBilling)();
+                  } else if (activeTab === 'general' || activeTab === 'ai') {
+                    handleSubmit(onSaveCompany)();
+                  }
+                }}
               >
                 {t('settings.save_changes')}
               </Button>
