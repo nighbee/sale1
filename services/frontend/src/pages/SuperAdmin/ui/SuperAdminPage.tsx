@@ -593,7 +593,7 @@ export const SuperAdminPage: React.FC = () => {
                                 </td>
                                 <td className="px-8 py-6">
                                   <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-lg text-[10px] font-mono border border-slate-200 dark:border-slate-700">
-                                    {u.company_id.split('-')[0]}...
+                                    {u.company_id?.split('-')[0] || '—'}
                                   </span>
                                 </td>
                                 <td className="px-8 py-6 uppercase">
@@ -661,7 +661,7 @@ export const SuperAdminPage: React.FC = () => {
                                 </td>
                                 <td className="px-8 py-6">
                                   <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-lg text-[10px] font-mono border border-slate-200 dark:border-slate-700">
-                                    {c.company_id.split('-')[0]}...
+                                    {c.company_id?.split('-')[0] || '—'}
                                   </span>
                                 </td>
                                 <td className="px-8 py-6">
