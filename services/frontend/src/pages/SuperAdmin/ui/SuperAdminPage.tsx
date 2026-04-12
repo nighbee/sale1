@@ -18,6 +18,10 @@ import type { Integration } from '../../../entities/integration/types';
 import Skeleton from '../../../shared/ui/Skeleton';
 import Pagination from '../../../shared/ui/Pagination';
 import { Leaderboard } from '../../../widgets/Leaderboard';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  AreaChart, Area
+} from 'recharts';
 
 type TabType = 'companies' | 'users' | 'calls' | 'teams' | 'scripts' | 'redis' | 'system' | 'leadership' | 'subscriptions';
 
@@ -34,6 +38,8 @@ export const SuperAdminPage: React.FC = () => {
   const [scripts, setScripts] = useState<Script[]>([]);
   const [redisKeys, setRedisKeys] = useState<{ key: string; type: string }[]>([]);
   const [systemStatus, setSystemStatus] = useState<QueueStatus | null>(null);
+  const [metrics, setMetrics] = useState<any>(null);
+  const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Pagination & Filters
@@ -78,6 +84,17 @@ export const SuperAdminPage: React.FC = () => {
       setEditingRedis(null);
     } catch (err) {
       console.error('Failed to update redis', err);
+    }
+  };
+
+  const handleClearQueue = async (queue: string, all: boolean = false) => {
+    if (!window.confirm(all ? 'Clear all queues?' : `Clear queue ${queue}?`)) return;
+    try {
+      await systemApi.clearQueue(queue, all);
+      const res = await systemApi.getStatus();
+      setSystemStatus(res.data);
+    } catch (err) {
+      console.error('Failed to clear queue', err);
     }
   };
 
@@ -172,8 +189,14 @@ export const SuperAdminPage: React.FC = () => {
         } else if (activeTab === 'redis') {
           await fetchRedisKeys();
         } else if (activeTab === 'system') {
-          const res = await systemApi.getStatus();
-          setSystemStatus(res.data);
+          const [statusRes, metricsRes, logsRes] = await Promise.all([
+            systemApi.getStatus(),
+            systemApi.getMetrics(),
+            systemApi.getLogs(50)
+          ]);
+          setSystemStatus(statusRes.data);
+          setMetrics(metricsRes.data);
+          setLogs(logsRes.data?.logs?.data?.result || []);
         }
       } catch (error) {
         console.error(`Failed to fetch ${activeTab}`, error);
@@ -353,40 +376,96 @@ export const SuperAdminPage: React.FC = () => {
               )}
 
               {activeTab === 'redis' && (
-                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/50 shadow-sm overflow-hidden">
-                  <div className="p-6 border-b border-border-light dark:border-slate-800 flex justify-between items-center">
-                    <h3 className="text-xl font-bold">{t('superadmin.redis_keys')}</h3>
-                    <button onClick={fetchRedisKeys} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
-                      <span className="material-symbols-outlined">refresh</span>
-                    </button>
+                <div className="space-y-8">
+                  <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/50 shadow-sm overflow-hidden">
+                    <div className="p-6 border-b border-border-light dark:border-slate-800 flex justify-between items-center bg-slate-50/30 dark:bg-slate-800/20">
+                      <h3 className="text-xl font-bold flex items-center gap-2">
+                        <span className="material-symbols-outlined text-primary">queue</span>
+                        Active Queues (BullMQ & Streams)
+                      </h3>
+                      <button
+                        onClick={() => handleClearQueue('', true)}
+                        className="px-4 py-2 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-xl text-sm font-bold transition-all flex items-center gap-2"
+                      >
+                        <span className="material-symbols-outlined text-sm">delete_sweep</span>
+                        Clear All Queues
+                      </button>
+                    </div>
+                    <div className="p-6">
+                      {systemStatus ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {Object.entries(systemStatus.queues).map(([name, len]) => (
+                            <div key={name} className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-700/50 flex flex-col justify-between">
+                              <div className="flex justify-between items-start mb-4">
+                                <span className="font-mono text-xs font-bold text-slate-500 truncate mr-2" title={name}>{name}</span>
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${len > 0 ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}>
+                                  {len > 0 ? 'Busy' : 'Idle'}
+                                </span>
+                              </div>
+                              <div className="flex justify-between items-end">
+                                <div>
+                                  <p className="text-3xl font-black text-slate-900 dark:text-white">{len}</p>
+                                  <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Messages</p>
+                                </div>
+                                <button
+                                  onClick={() => handleClearQueue(name)}
+                                  className="p-2 text-slate-400 hover:text-red-500 transition-colors"
+                                  title="Clear this queue"
+                                >
+                                  <span className="material-symbols-outlined">delete_outline</span>
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-12 text-slate-500">
+                          <button onClick={() => navigate('/super-admin/system')} className="text-primary font-bold hover:underline">
+                            Load System Status
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left">
-                        <thead className="bg-slate-50/50 dark:bg-slate-800/30 text-slate-500 text-xs font-bold uppercase tracking-wider">
-                        <tr>
-                            <th className="px-6 py-4">Key</th>
-                            <th className="px-6 py-4">Type</th>
-                            <th className="px-6 py-4 text-right">{t('common.actions')}</th>
-                        </tr>
-                        </thead>
-                        <tbody className="divide-y divide-border-light dark:divide-slate-800">
-                        {redisKeys.map(k => (
-                            <tr key={k.key} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors font-mono text-sm">
-                            <td className="px-6 py-4 truncate max-w-xs" title={k.key}>{k.key}</td>
-                            <td className="px-6 py-4 uppercase"><span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded">{k.type}</span></td>
-                            <td className="px-6 py-4 text-right space-x-4">
-                                <button onClick={() => handleEditRedis(k.key)} className="text-primary font-bold hover:underline">{t('common.edit')}</button>
-                                <button onClick={() => handleDeleteRedis(k.key)} className="text-red-500 font-bold hover:underline">{t('common.delete')}</button>
-                            </td>
-                            </tr>
-                        ))}
-                        {redisKeys.length === 0 && (
-                            <tr>
-                                <td colSpan={3} className="px-6 py-12 text-center text-slate-500">No Redis keys found</td>
-                            </tr>
-                        )}
-                        </tbody>
-                    </table>
+
+                  <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/50 shadow-sm overflow-hidden">
+                    <div className="p-6 border-b border-border-light dark:border-slate-800 flex justify-between items-center bg-slate-50/30 dark:bg-slate-800/20">
+                      <h3 className="text-xl font-bold flex items-center gap-2">
+                        <span className="material-symbols-outlined text-primary">database</span>
+                        {t('superadmin.redis_keys')}
+                      </h3>
+                      <button onClick={fetchRedisKeys} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
+                        <span className="material-symbols-outlined">refresh</span>
+                      </button>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left">
+                          <thead className="bg-slate-50/50 dark:bg-slate-800/30 text-slate-500 text-xs font-bold uppercase tracking-wider">
+                          <tr>
+                              <th className="px-6 py-4">Key</th>
+                              <th className="px-6 py-4">Type</th>
+                              <th className="px-6 py-4 text-right">{t('common.actions')}</th>
+                          </tr>
+                          </thead>
+                          <tbody className="divide-y divide-border-light dark:divide-slate-800">
+                          {redisKeys.map(k => (
+                              <tr key={k.key} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors font-mono text-sm">
+                              <td className="px-6 py-4 truncate max-w-xs" title={k.key}>{k.key}</td>
+                              <td className="px-6 py-4 uppercase"><span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded">{k.type}</span></td>
+                              <td className="px-6 py-4 text-right space-x-4">
+                                  <button onClick={() => handleEditRedis(k.key)} className="text-primary font-bold hover:underline">{t('common.edit')}</button>
+                                  <button onClick={() => handleDeleteRedis(k.key)} className="text-red-500 font-bold hover:underline">{t('common.delete')}</button>
+                              </td>
+                              </tr>
+                          ))}
+                          {redisKeys.length === 0 && (
+                              <tr>
+                                  <td colSpan={3} className="px-6 py-12 text-center text-slate-500">No Redis keys found</td>
+                              </tr>
+                          )}
+                          </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
               )}
@@ -611,22 +690,125 @@ export const SuperAdminPage: React.FC = () => {
                 </div>
               )}
 
-              {activeTab === 'system' && systemStatus && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800/50 shadow-sm">
-                    <h3 className="text-lg font-bold mb-4">{t('superadmin.queue_metrics')}</h3>
-                    <div className="space-y-4">
-                      {Object.entries(systemStatus.queues).map(([name, len]) => (
-                        <div key={name} className="flex justify-between items-center p-4 bg-white dark:bg-slate-800/50 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700/50">
-                          <span className="font-mono text-sm">{name}</span>
-                          <span className="text-2xl font-bold text-primary">{len}</span>
+              {activeTab === 'system' && (
+                <div className="space-y-8">
+                  {/* Status & Quick Metrics */}
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800/50 shadow-sm flex flex-col items-center justify-center">
+                      <p className="text-slate-500 font-bold uppercase text-[10px] tracking-widest mb-2">{t('superadmin.overall_status')}</p>
+                      <h2 className={`text-2xl font-black uppercase ${systemStatus?.status === 'healthy' ? 'text-emerald-500' : 'text-red-500'}`}>
+                        {systemStatus?.status || 'Unknown'}
+                      </h2>
+                    </div>
+                    <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800/50 shadow-sm">
+                      <p className="text-slate-500 font-bold uppercase text-[10px] tracking-widest mb-2">Total Queues</p>
+                      <h2 className="text-2xl font-black text-primary">{systemStatus ? Object.keys(systemStatus.queues).length : 0}</h2>
+                    </div>
+                    <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800/50 shadow-sm">
+                      <p className="text-slate-500 font-bold uppercase text-[10px] tracking-widest mb-2">Pending Tasks</p>
+                      <h2 className="text-2xl font-black text-amber-500">
+                        {systemStatus ? Object.values(systemStatus.queues).reduce((a: number, b: number) => a + b, 0) : 0}
+                      </h2>
+                    </div>
+                    <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800/50 shadow-sm">
+                        <p className="text-slate-500 font-bold uppercase text-[10px] tracking-widest mb-2">Observability</p>
+                        <h2 className="text-2xl font-black text-slate-400">Loki + Prom</h2>
+                    </div>
+                  </div>
+
+                  {/* Hardware Metrics with Recharts */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800/50 shadow-sm">
+                      <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
+                        <span className="material-symbols-outlined text-primary">analytics</span>
+                        CPU Usage by Container (%)
+                      </h3>
+                      <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={metrics?.cpu?.data?.result?.map((r: any) => ({
+                            name: r.metric.container || 'host',
+                            cpu: parseFloat(r.value[1]) * 100
+                          })) || []}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                            <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} />
+                            <YAxis fontSize={10} axisLine={false} tickLine={false} />
+                            <Tooltip
+                              contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                              cursor={{ fill: 'transparent' }}
+                            />
+                            <Bar dataKey="cpu" fill="#3B82F6" radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                        {!metrics?.cpu && <p className="text-center text-slate-400 text-sm italic py-20">Fetching metrics from Prometheus...</p>}
+                      </div>
+                    </div>
+
+                    <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800/50 shadow-sm">
+                      <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
+                        <span className="material-symbols-outlined text-primary">memory</span>
+                        Memory Usage (MB)
+                      </h3>
+                      <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={metrics?.memory?.data?.result?.map((r: any) => ({
+                            name: r.metric.container || 'host',
+                            mem: parseFloat(r.value[1]) / (1024 * 1024)
+                          })) || []}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                            <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} />
+                            <YAxis fontSize={10} axisLine={false} tickLine={false} />
+                            <Tooltip
+                              contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                            />
+                            <Area type="monotone" dataKey="mem" stroke="#8B5CF6" fill="#8B5CF6" fillOpacity={0.1} />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                        {!metrics?.memory && <p className="text-center text-slate-400 text-sm italic py-20">Fetching metrics from Prometheus...</p>}
+                      </div>
+                    </div>
+
+                    <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800/50 shadow-sm">
+                      <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
+                        <span className="material-symbols-outlined text-primary">terminal</span>
+                        Live System Logs (Loki)
+                      </h3>
+                      <div className="bg-slate-950 rounded-xl p-4 font-mono text-[10px] h-64 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-800">
+                        {logs && logs.length > 0 ? logs.map((stream, i) => (
+                           <div key={i} className="mb-2">
+                              {stream.values.map((v: any, j: number) => (
+                                <p key={j} className="text-slate-300 hover:text-white transition-colors">
+                                  <span className="text-slate-500">[{new Date(parseInt(v[0])/1000000).toLocaleTimeString()}]</span> {v[1]}
+                                </p>
+                              ))}
+                           </div>
+                        )) : (
+                          <p className="text-slate-500 italic text-center py-20">Waiting for logs...</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Queue Detail List */}
+                  <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/50 shadow-sm overflow-hidden">
+                    <div className="p-6 border-b border-border-light dark:border-slate-800">
+                      <h3 className="text-lg font-bold">{t('superadmin.queue_metrics')}</h3>
+                    </div>
+                    <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {systemStatus && Object.entries(systemStatus.queues).map(([name, len]) => (
+                        <div key={name} className="flex justify-between items-center p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                          <div>
+                            <p className="font-mono text-sm font-bold">{name}</p>
+                            <p className="text-[10px] text-slate-500">BullMQ / Redis Stream</p>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <span className={`text-xl font-black ${len > 0 ? 'text-amber-500' : 'text-slate-300'}`}>{len}</span>
+                            <button onClick={() => handleClearQueue(name)} className="p-2 text-slate-400 hover:text-red-500">
+                              <span className="material-symbols-outlined text-sm">delete</span>
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>
-                  </div>
-                  <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800/50 shadow-sm flex flex-col justify-center items-center">
-                    <p className="text-slate-500 font-bold uppercase text-xs mb-2">{t('superadmin.overall_status')}</p>
-                    <h2 className="text-4xl font-black text-emerald-500 uppercase">{systemStatus.status}</h2>
                   </div>
                 </div>
               )}

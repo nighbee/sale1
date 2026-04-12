@@ -40,16 +40,34 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     if (user?.role === "super_admin") {
       return [
         {
-          id: "super-admin",
-          icon: "admin_panel_settings",
-          label: t("nav.super_admin"),
-          path: "/super-admin",
+          id: "companies",
+          icon: "corporate_fare",
+          label: t("superadmin.companies"),
+          path: "/super-admin/companies",
         },
         {
-          id: "settings",
-          icon: "settings",
-          label: t("nav.settings"),
-          path: "/settings",
+          id: "users",
+          icon: "groups",
+          label: t("superadmin.global_users"),
+          path: "/super-admin/users",
+        },
+        {
+          id: "calls",
+          icon: "call",
+          label: t("superadmin.global_calls"),
+          path: "/super-admin/calls",
+        },
+        {
+          id: "redis",
+          icon: "database",
+          label: t("superadmin.redis_queue"),
+          path: "/super-admin/redis",
+        },
+        {
+          id: "system",
+          icon: "health_and_safety",
+          label: t("superadmin.system_performance"),
+          path: "/super-admin/system",
         },
       ];
     }

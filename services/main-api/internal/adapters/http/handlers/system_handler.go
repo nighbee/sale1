@@ -2,18 +2,29 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"time"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/gofiber/fiber/v2"
 )
 
 type SystemHandler struct {
-	rdb *redis.Client
+	rdb           *redis.Client
+	prometheusURL string
+	lokiURL       string
 }
 
-func NewSystemHandler(rdb *redis.Client) *SystemHandler {
-	return &SystemHandler{rdb: rdb}
+func NewSystemHandler(rdb *redis.Client, prometheusURL, lokiURL string) *SystemHandler {
+	return &SystemHandler{
+		rdb:           rdb,
+		prometheusURL: prometheusURL,
+		lokiURL:       lokiURL,
+	}
 }
 
 // GetStatus godoc
@@ -156,6 +167,81 @@ func (h *SystemHandler) UpdateRedisValue(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(fiber.Map{"status": "ok"})
+}
+
+// GetMetrics godoc
+// @Summary Get system metrics
+// @Description Query Prometheus for hardware/system metrics
+// @Tags admin
+// @Accept json
+// @Produce json
+// @Success 200 {object} fiber.Map
+// @Security BearerAuth
+// @Router /admin/system/metrics [get]
+func (h *SystemHandler) GetMetrics(c *fiber.Ctx) error {
+	// Query CPU usage (last 5m average per container)
+	cpuQuery := `sum(rate(container_cpu_usage_seconds_total{container!=""}[5m])) by (container)`
+	// Query Memory usage
+	memQuery := `sum(container_memory_usage_bytes{container!=""}) by (container)`
+
+	// For simplicity, we'll just proxy these to Prometheus
+	// In a real scenario, we might want to parse and format them
+	return c.JSON(fiber.Map{
+		"cpu":    h.queryPrometheus(cpuQuery),
+		"memory": h.queryPrometheus(memQuery),
+	})
+}
+
+// GetLogs godoc
+// @Summary Get system logs
+// @Description Fetch recent logs from Loki
+// @Tags admin
+// @Accept json
+// @Produce json
+// @Success 200 {object} fiber.Map
+// @Security BearerAuth
+// @Router /admin/system/logs [get]
+func (h *SystemHandler) GetLogs(c *fiber.Ctx) error {
+	limit := c.Query("limit", "100")
+	query := `{job="docker"}`
+
+	// Proxy to Loki
+	return c.JSON(fiber.Map{
+		"logs": h.queryLoki(query, limit),
+	})
+}
+
+func (h *SystemHandler) queryPrometheus(query string) interface{} {
+	client := &http.Client{Timeout: 5 * time.Second}
+	u := fmt.Sprintf("%s/api/v1/query?query=%s", h.prometheusURL, url.QueryEscape(query))
+	resp, err := client.Get(u)
+	if err != nil {
+		return fiber.Map{"error": err.Error()}
+	}
+	defer resp.Body.Close()
+
+	var result interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return fiber.Map{"error": err.Error()}
+	}
+	return result
+}
+
+func (h *SystemHandler) queryLoki(query string, limit string) interface{} {
+	client := &http.Client{Timeout: 5 * time.Second}
+	u := fmt.Sprintf("%s/loki/api/v1/query_range?query=%s&limit=%s", h.lokiURL, url.QueryEscape(query), limit)
+	resp, err := client.Get(u)
+	if err != nil {
+		return fiber.Map{"error": err.Error()}
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	var result interface{}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return fiber.Map{"error": err.Error(), "raw": string(body)}
+	}
+	return result
 }
 
 // ClearQueue godoc
