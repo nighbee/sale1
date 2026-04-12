@@ -114,7 +114,22 @@
     "key_json_or_string": "Value (JSON or String)",
     "update_key": "Update Key",
     "delete_user_warning": "You are about to delete user {{email}}. This will also remove all their calls, transcripts, and personal scripts.",
-    "system_performance": "System Performance"
+    "system_performance": "System Performance",
+    "active_queues": "Active Queues (BullMQ & Streams)",
+    "clear_all_queues": "Clear All Queues",
+    "messages_pending": "{{count}} Messages Pending",
+    "view_metadata": "View Metadata",
+    "hide_metadata": "Hide Metadata",
+    "recent_payloads": "Recent Payloads (Last 5)",
+    "payload": "Payload",
+    "json_object": "JSON OBJECT",
+    "raw_string": "RAW STRING",
+    "queue_empty": "Queue is currently empty",
+    "load_system_status": "Load System Status",
+    "total_queues": "Total Queues",
+    "pending_tasks": "Pending Tasks",
+    "observability": "Observability",
+    "edit_company": "Edit Company"
   },
   "setup": {
     "company_title": "Set Up Your Company",

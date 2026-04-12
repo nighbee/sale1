@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import { PageLayout } from '../../../widgets/PageLayout';
 import { companyApi } from '../../../entities/company/api';
 import { userApi } from '../../../entities/user/api';
@@ -17,6 +20,9 @@ import type { Script } from '../../../entities/script/types';
 import type { Integration } from '../../../entities/integration/types';
 import Skeleton from '../../../shared/ui/Skeleton';
 import Pagination from '../../../shared/ui/Pagination';
+import Input from '../../../shared/ui/Input';
+import Select from '../../../shared/ui/Select';
+import Checkbox from '../../../shared/ui/Checkbox';
 import { Leaderboard } from '../../../widgets/Leaderboard';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -25,11 +31,45 @@ import {
 
 type TabType = 'companies' | 'users' | 'calls' | 'teams' | 'scripts' | 'redis' | 'system' | 'leadership' | 'subscriptions';
 
+const companySchema = z.object({
+  name: z.string().min(1, 'Company name is required'),
+  managers_count: z.number().min(0),
+  is_active: z.boolean(),
+});
+
+const userSchema = z.object({
+  first_name: z.string().optional(),
+  last_name: z.string().optional(),
+  role: z.string().min(1, 'Role is required'),
+  is_active: z.boolean(),
+});
+
+type CompanyFormValues = z.infer<typeof companySchema>;
+type UserFormValues = z.infer<typeof userSchema>;
+
 export const SuperAdminPage: React.FC = () => {
   const { t } = useTranslation();
   const { tab } = useParams<{ tab: string }>();
   const navigate = useNavigate();
   const activeTab = (tab as TabType) || 'companies';
+
+  const {
+    register: registerCompany,
+    handleSubmit: handleCompanySubmit,
+    reset: resetCompanyForm,
+    formState: { errors: companyErrors },
+  } = useForm<CompanyFormValues>({
+    resolver: zodResolver(companySchema),
+  });
+
+  const {
+    register: registerUser,
+    handleSubmit: handleUserSubmit,
+    reset: resetUserForm,
+    formState: { errors: userErrors },
+  } = useForm<UserFormValues>({
+    resolver: zodResolver(userSchema),
+  });
 
   const [companies, setCompanies] = useState<Company[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -38,6 +78,7 @@ export const SuperAdminPage: React.FC = () => {
   const [scripts, setScripts] = useState<Script[]>([]);
   const [redisKeys, setRedisKeys] = useState<{ key: string; type: string }[]>([]);
   const [systemStatus, setSystemStatus] = useState<QueueStatus | null>(null);
+  const [expandedQueue, setExpandedQueue] = useState<string | null>(null);
   const [metrics, setMetrics] = useState<any>(null);
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -120,24 +161,22 @@ export const SuperAdminPage: React.FC = () => {
     }
   };
 
-  const handleUpdateCompany = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onUpdateCompany = async (data: CompanyFormValues) => {
     if (!editingCompany) return;
     try {
-        await companyApi.updateCompanyGlobal(editingCompany.id, editingCompany);
-        setCompanies(companies.map(c => c.id === editingCompany.id ? editingCompany : c));
+        await companyApi.updateCompanyGlobal(editingCompany.id, { ...editingCompany, ...data });
+        setCompanies(companies.map(c => c.id === editingCompany.id ? { ...c, ...data } : c));
         setEditingCompany(null);
     } catch (err) {
         console.error('Failed to update company', err);
     }
   };
 
-  const handleUpdateUser = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onUpdateUser = async (data: UserFormValues) => {
     if (!editingUser) return;
     try {
-        await userApi.updateUserGlobal(editingUser.id, editingUser);
-        setUsers(users.map(u => u.id === editingUser.id ? editingUser : u));
+        await userApi.updateUserGlobal(editingUser.id, { ...editingUser, ...data });
+        setUsers(users.map(u => u.id === editingUser.id ? { ...u, ...data } : u));
         setEditingUser(null);
     } catch (err) {
         console.error('Failed to update user', err);
@@ -160,6 +199,27 @@ export const SuperAdminPage: React.FC = () => {
     setPage(1);
     setSearch('');
   }, [activeTab]);
+
+  useEffect(() => {
+    if (editingCompany) {
+      resetCompanyForm({
+        name: editingCompany.name,
+        managers_count: editingCompany.managers_count || 0,
+        is_active: editingCompany.is_active,
+      });
+    }
+  }, [editingCompany, resetCompanyForm]);
+
+  useEffect(() => {
+    if (editingUser) {
+      resetUserForm({
+        first_name: editingUser.first_name || '',
+        last_name: editingUser.last_name || '',
+        role: editingUser.role,
+        is_active: editingUser.is_active,
+      });
+    }
+  }, [editingUser, resetUserForm]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -208,39 +268,8 @@ export const SuperAdminPage: React.FC = () => {
   }, [activeTab, page, search]);
 
   return (
-    <PageLayout title={t('superadmin.title')}>
-      <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
-        {/* Horizontal Navigation */}
-        <nav className="flex space-x-8 overflow-x-auto bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-20 mb-8 border-b border-slate-200 dark:border-slate-800 scrollbar-hide">
-          {[
-            { id: 'companies', label: t('superadmin.companies'), icon: 'corporate_fare' },
-            { id: 'users', label: t('superadmin.global_users'), icon: 'groups' },
-            { id: 'calls', label: t('superadmin.global_calls'), icon: 'call' },
-            { id: 'teams', label: t('nav.teams'), icon: 'hub' },
-            { id: 'scripts', label: t('scripts.title'), icon: 'description' },
-            { id: 'redis', label: t('superadmin.redis_manager'), icon: 'database' },
-            { id: 'system', label: t('superadmin.system_health'), icon: 'health_and_safety' },
-            { id: 'leadership', label: t('superadmin.global_rating'), icon: 'leaderboard' },
-            { id: 'subscriptions', label: t('superadmin.subscriptions'), icon: 'payments' },
-          ].map(tabItem => (
-            <button
-              key={tabItem.id}
-              onClick={() => {
-                navigate(`/super-admin/${tabItem.id}`);
-                setSelectedCompany(null);
-              }}
-              className={`flex items-center gap-2 px-1 py-4 text-sm font-bold transition-all whitespace-nowrap border-b-2 ${
-                activeTab === tabItem.id
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-              }`}
-            >
-              <span className="material-symbols-outlined text-xl">{tabItem.icon}</span>
-              {tabItem.label}
-            </button>
-          ))}
-        </nav>
-
+    <PageLayout title={t('superadmin.title')} showSearch={false}>
+      <div className="max-w-[1600px] mx-auto w-full p-8 space-y-8">
         {/* Main Content */}
         <main className="min-w-0">
           {selectedCompany ? (
@@ -320,43 +349,52 @@ export const SuperAdminPage: React.FC = () => {
                   ) : (
                     <div className="overflow-x-auto">
                         <table className="w-full text-left">
-                            <thead className="bg-slate-50/50 dark:bg-slate-800/30 text-slate-500 text-xs font-bold uppercase tracking-wider">
+                            <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 text-[10px] font-black uppercase tracking-[0.2em]">
                                 <tr>
-                                    <th className="px-6 py-4">{t('superadmin.company_name')}</th>
-                                    <th className="px-6 py-4">ID</th>
-                                    <th className="px-6 py-4">{t('superadmin.created_at')}</th>
-                                    <th className="px-6 py-4">{t('common.status')}</th>
-                                    <th className="px-6 py-4 text-right">{t('common.actions')}</th>
+                                    <th className="px-8 py-5">{t('superadmin.company_name')}</th>
+                                    <th className="px-8 py-5">ID</th>
+                                    <th className="px-8 py-5">{t('superadmin.created_at')}</th>
+                                    <th className="px-8 py-5">{t('common.status')}</th>
+                                    <th className="px-8 py-5 text-right">{t('common.actions')}</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-border-light dark:divide-slate-800">
+                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
                                 {companies.map(c => (
-                                <tr key={c.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                                    <td className="px-6 py-4">
+                                <tr key={c.id} className="group hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all duration-300">
+                                    <td className="px-8 py-6">
                                       <div className="flex flex-col">
-                                        <span className="font-bold text-slate-900 dark:text-white">{c.name}</span>
-                                        <span className="text-xs text-slate-500">{c.industry || t('common.no_industry')}</span>
+                                        <span className="font-black text-slate-900 dark:text-white group-hover:text-primary transition-colors">{c.name}</span>
+                                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">{c.industry || t('common.no_industry')}</span>
                                       </div>
                                     </td>
-                                    <td className="px-6 py-4 text-xs font-mono text-slate-400">{c.id}</td>
-                                    <td className="px-6 py-4 text-sm text-slate-500">{c.created_at ? new Date(c.created_at).toLocaleDateString() : '—'}</td>
-                                    <td className="px-6 py-4">
-                                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${c.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
-                                        {c.is_active ? t('superadmin.active') : t('common.inactive')}
-                                    </span>
+                                    <td className="px-8 py-6">
+                                      <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-lg text-[10px] font-mono border border-slate-200 dark:border-slate-700">
+                                        {c.id.split('-')[0]}...
+                                      </span>
                                     </td>
-                                    <td className="px-6 py-4 text-right space-x-4">
+                                    <td className="px-8 py-6 text-sm text-slate-500 font-medium">{c.created_at ? new Date(c.created_at).toLocaleDateString() : '—'}</td>
+                                    <td className="px-8 py-6">
+                                      <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                                        c.is_active ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20'
+                                      }`}>
+                                        <span className={`w-1.5 h-1.5 rounded-full ${c.is_active ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                                        {c.is_active ? t('superadmin.active') : t('common.inactive')}
+                                      </div>
+                                    </td>
+                                    <td className="px-8 py-6 text-right space-x-2">
                                         <button
                                             onClick={() => setEditingCompany(c)}
-                                            className="text-slate-500 font-bold text-sm hover:underline"
+                                            className="p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-xl transition-all"
+                                            title={t('common.edit')}
                                         >
-                                            {t('common.edit')}
+                                            <span className="material-symbols-outlined text-xl">edit</span>
                                         </button>
                                         <button
                                             onClick={() => handleViewCompany(c.id)}
-                                            className="text-primary font-bold text-sm hover:underline"
+                                            className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-500/10 rounded-xl transition-all"
+                                            title={t('superadmin.view_details')}
                                         >
-                                            {t('superadmin.view_details')}
+                                            <span className="material-symbols-outlined text-xl">visibility</span>
                                         </button>
                                     </td>
                                 </tr>
@@ -376,52 +414,93 @@ export const SuperAdminPage: React.FC = () => {
               )}
 
               {activeTab === 'redis' && (
-                <div className="space-y-8">
-                  <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/50 shadow-sm overflow-hidden">
-                    <div className="p-6 border-b border-border-light dark:border-slate-800 flex justify-between items-center bg-slate-50/30 dark:bg-slate-800/20">
-                      <h3 className="text-xl font-bold flex items-center gap-2">
-                        <span className="material-symbols-outlined text-primary">queue</span>
-                        Active Queues (BullMQ & Streams)
+                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800/50 shadow-xl shadow-slate-200/50 dark:shadow-none overflow-hidden">
+                    <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/30 dark:bg-slate-800/10">
+                      <h3 className="text-xl font-black uppercase italic tracking-tight flex items-center gap-3">
+                        <span className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                          <span className="material-symbols-outlined">queue</span>
+                        </span>
+                        {t('superadmin.active_queues')}
                       </h3>
                       <button
                         onClick={() => handleClearQueue('', true)}
-                        className="px-4 py-2 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-xl text-sm font-bold transition-all flex items-center gap-2"
+                        className="px-6 py-2.5 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 border border-red-500/20 shadow-lg shadow-red-500/10"
                       >
                         <span className="material-symbols-outlined text-sm">delete_sweep</span>
-                        Clear All Queues
+                        {t('superadmin.clear_all_queues')}
                       </button>
                     </div>
-                    <div className="p-6">
+                    <div className="p-8">
                       {systemStatus ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="space-y-4">
                           {Object.entries(systemStatus.queues).map(([name, len]) => (
-                            <div key={name} className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-700/50 flex flex-col justify-between">
-                              <div className="flex justify-between items-start mb-4">
-                                <span className="font-mono text-xs font-bold text-slate-500 truncate mr-2" title={name}>{name}</span>
-                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${len > 0 ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}>
-                                  {len > 0 ? 'Busy' : 'Idle'}
-                                </span>
-                              </div>
-                              <div className="flex justify-between items-end">
-                                <div>
-                                  <p className="text-3xl font-black text-slate-900 dark:text-white">{len}</p>
-                                  <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Messages</p>
+                            <div key={name} className="bg-slate-50 dark:bg-slate-800/40 rounded-3xl border border-slate-100 dark:border-slate-700/50 overflow-hidden transition-all duration-300">
+                              <div className="p-6 flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${len > 0 ? 'bg-amber-500/10 text-amber-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
+                                    <span className="material-symbols-outlined">{len > 0 ? 'pending_actions' : 'check_circle'}</span>
+                                  </div>
+                                  <div>
+                                    <p className="font-mono text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">{name}</p>
+                                    <p className="text-[10px] uppercase font-bold text-slate-400 tracking-widest mt-0.5">{t('superadmin.messages_pending', { count: len })}</p>
+                                  </div>
                                 </div>
-                                <button
-                                  onClick={() => handleClearQueue(name)}
-                                  className="p-2 text-slate-400 hover:text-red-500 transition-colors"
-                                  title="Clear this queue"
-                                >
-                                  <span className="material-symbols-outlined">delete_outline</span>
-                                </button>
+
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={() => setExpandedQueue(expandedQueue === name ? null : name)}
+                                    className="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold hover:border-primary hover:text-primary transition-all flex items-center gap-2 shadow-sm"
+                                  >
+                                    <span className="material-symbols-outlined text-sm">{expandedQueue === name ? 'expand_less' : 'expand_more'}</span>
+                                    {expandedQueue === name ? t('superadmin.hide_metadata') : t('superadmin.view_metadata')}
+                                  </button>
+                                  <button
+                                    onClick={() => handleClearQueue(name)}
+                                    className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
+                                    title="Clear this queue"
+                                  >
+                                    <span className="material-symbols-outlined">delete_outline</span>
+                                  </button>
+                                </div>
                               </div>
+
+                              {expandedQueue === name && (
+                                <div className="px-8 pb-8 pt-2 border-t border-slate-100 dark:border-slate-700/50 bg-white/50 dark:bg-slate-900/30">
+                                  <div className="space-y-4">
+                                    <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                                      <span className="material-symbols-outlined text-sm">database</span>
+                                      {t('superadmin.recent_payloads')}
+                                    </h4>
+                                    <div className="space-y-3">
+                                      {(systemStatus as any).metadata?.[name]?.length > 0 ? (
+                                        (systemStatus as any).metadata[name].map((item: any, idx: number) => (
+                                          <div key={idx} className="bg-slate-950 rounded-2xl p-5 border border-white/5 font-mono text-[11px] overflow-x-auto shadow-inner">
+                                            <div className="flex justify-between items-center mb-3 opacity-50">
+                                              <span className="text-primary uppercase font-bold tracking-tighter">{t('superadmin.payload')} #{idx + 1}</span>
+                                              <span className="text-[10px]">{typeof item === 'object' ? t('superadmin.json_object') : t('superadmin.raw_string')}</span>
+                                            </div>
+                                            <pre className="text-slate-300 leading-relaxed whitespace-pre-wrap">
+                                              {JSON.stringify(item, null, 2)}
+                                            </pre>
+                                          </div>
+                                        ))
+                                      ) : (
+                                        <div className="py-8 text-center bg-slate-100/50 dark:bg-slate-800/30 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
+                                          <p className="text-xs text-slate-400 font-bold uppercase tracking-widest italic">{t('superadmin.queue_empty')}</p>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>
                       ) : (
                         <div className="text-center py-12 text-slate-500">
                           <button onClick={() => navigate('/super-admin/system')} className="text-primary font-bold hover:underline">
-                            Load System Status
+                            {t('superadmin.load_system_status')}
                           </button>
                         </div>
                       )}
@@ -489,37 +568,57 @@ export const SuperAdminPage: React.FC = () => {
                     </div>
                     <div className="overflow-x-auto">
                         <table className="w-full text-left">
-                        <thead className="bg-slate-50/50 dark:bg-slate-800/30 text-slate-500 text-xs font-bold uppercase tracking-wider">
+                        <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 text-[10px] font-black uppercase tracking-[0.2em]">
                             <tr>
-                            <th className="px-6 py-4">{t('common.email')}</th>
-                            <th className="px-6 py-4">ID</th>
-                            <th className="px-6 py-4">{t('superadmin.company_id')}</th>
-                            <th className="px-6 py-4">{t('common.role')}</th>
-                            <th className="px-6 py-4 text-right">{t('common.actions')}</th>
+                            <th className="px-8 py-5">{t('common.email')}</th>
+                            <th className="px-8 py-5">ID</th>
+                            <th className="px-8 py-5">{t('superadmin.company_id')}</th>
+                            <th className="px-8 py-5">{t('common.role')}</th>
+                            <th className="px-8 py-5 text-right">{t('common.actions')}</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-border-light dark:divide-slate-800">
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
                             {users.map(u => (
-                            <tr key={u.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                                <td className="px-6 py-4">
+                            <tr key={u.id} className="group hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all duration-300">
+                                <td className="px-8 py-6">
                                   <div className="flex flex-col">
-                                    <span className="font-bold text-slate-900 dark:text-white">{u.email}</span>
-                                    <span className="text-xs text-slate-500">{(u.first_name || u.last_name) ? `${u.first_name} ${u.last_name}` : t('common.no_name')}</span>
+                                    <span className="font-black text-slate-900 dark:text-white group-hover:text-primary transition-colors">{u.email}</span>
+                                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">{(u.first_name || u.last_name) ? `${u.first_name} ${u.last_name}` : t('common.no_name')}</span>
                                   </div>
                                 </td>
-                                <td className="px-6 py-4 text-xs font-mono text-slate-400">{u.id}</td>
-                                <td className="px-6 py-4 text-xs font-mono text-slate-400">{u.company_id}</td>
-                                <td className="px-6 py-4 uppercase">
-                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                    u.role === 'super_admin' ? 'bg-purple-100 text-purple-800' :
-                                    u.role === 'tenant_admin' ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-800'
+                                <td className="px-8 py-6">
+                                  <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-lg text-[10px] font-mono border border-slate-200 dark:border-slate-700">
+                                    {u.id.split('-')[0]}...
+                                  </span>
+                                </td>
+                                <td className="px-8 py-6">
+                                  <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-lg text-[10px] font-mono border border-slate-200 dark:border-slate-700">
+                                    {u.company_id.split('-')[0]}...
+                                  </span>
+                                </td>
+                                <td className="px-8 py-6 uppercase">
+                                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                                    u.role === 'super_admin' ? 'bg-purple-500/10 text-purple-500 border border-purple-500/20' :
+                                    u.role === 'tenant_admin' ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20' : 'bg-slate-500/10 text-slate-500 border border-slate-500/20'
                                   }`}>
                                     {u.role}
                                   </span>
                                 </td>
-                                <td className="px-6 py-4 text-right space-x-4">
-                                    <button onClick={() => setEditingUser(u)} className="text-primary font-bold text-sm hover:underline">{t('common.edit')}</button>
-                                    <button onClick={() => setDeletingUser(u)} className="text-red-500 font-bold text-sm hover:underline">{t('common.delete')}</button>
+                                <td className="px-8 py-6 text-right space-x-2">
+                                    <button
+                                      onClick={() => setEditingUser(u)}
+                                      className="p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-xl transition-all"
+                                      title={t('common.edit')}
+                                    >
+                                      <span className="material-symbols-outlined text-xl">edit</span>
+                                    </button>
+                                    <button
+                                      onClick={() => setDeletingUser(u)}
+                                      className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
+                                      title={t('common.delete')}
+                                    >
+                                      <span className="material-symbols-outlined text-xl">delete</span>
+                                    </button>
                                 </td>
                             </tr>
                             ))}
@@ -538,41 +637,49 @@ export const SuperAdminPage: React.FC = () => {
 
               {activeTab === 'calls' && (
                  <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/50 shadow-sm overflow-hidden">
-                    <div className="p-6 border-b border-border-light dark:border-slate-800">
-                      <h3 className="text-xl font-bold">{t('superadmin.global_calls')}</h3>
+                    <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/30 dark:bg-slate-800/10">
+                      <h3 className="text-xl font-black uppercase italic tracking-tight">{t('superadmin.global_calls')}</h3>
                     </div>
                     <div className="overflow-x-auto">
                         <table className="w-full text-left">
-                        <thead className="bg-slate-50/50 dark:bg-slate-800/30 text-slate-500 text-xs font-bold uppercase tracking-wider">
+                        <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 text-[10px] font-black uppercase tracking-[0.2em]">
                             <tr>
-                            <th className="px-6 py-4">ID</th>
-                            <th className="px-6 py-4">{t('superadmin.company_id')}</th>
-                                    <th className="px-6 py-4">{t('nav.calls')}</th>
-                            <th className="px-6 py-4">{t('common.status')}</th>
-                            <th className="px-6 py-4">{t('sheet_calls.table.date')}</th>
+                            <th className="px-8 py-5">ID</th>
+                            <th className="px-8 py-5">{t('superadmin.company_id')}</th>
+                                    <th className="px-8 py-5">{t('nav.calls')}</th>
+                            <th className="px-8 py-5">{t('common.status')}</th>
+                            <th className="px-8 py-5">{t('sheet_calls.table.date')}</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-border-light dark:divide-slate-800 font-mono text-xs">
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50 font-mono text-xs">
                             {allCalls.map(c => (
-                            <tr key={c.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                                <td className="px-6 py-4">{c.id}</td>
-                                <td className="px-6 py-4 text-xs font-mono text-slate-400">{c.company_id}</td>
-                                <td className="px-6 py-4">
-                                  <div className="flex flex-col">
-                                    <span className="font-bold text-slate-900 dark:text-white">{c.manager_name || t('common.no_manager')}</span>
-                                    <span className="text-[10px] text-slate-500">{c.client_phone}</span>
+                            <tr key={c.id} className="group hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all duration-300">
+                                <td className="px-8 py-6">
+                                  <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-lg text-[10px] font-mono border border-slate-200 dark:border-slate-700">
+                                    {c.id.split('-')[0]}...
+                                  </span>
+                                </td>
+                                <td className="px-8 py-6">
+                                  <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-lg text-[10px] font-mono border border-slate-200 dark:border-slate-700">
+                                    {c.company_id.split('-')[0]}...
+                                  </span>
+                                </td>
+                                <td className="px-8 py-6">
+                                  <div className="flex flex-col font-sans">
+                                    <span className="font-black text-slate-900 dark:text-white group-hover:text-primary transition-colors">{c.manager_name || t('common.no_manager')}</span>
+                                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">{c.client_phone}</span>
                                   </div>
                                 </td>
-                                <td className="px-6 py-4">
-                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                    c.status === 'completed' ? 'bg-emerald-100 text-emerald-800' :
-                                    c.status === 'processing' ? 'bg-blue-100 text-blue-800' :
-                                    c.status === 'error' ? 'bg-red-100 text-red-800' : 'bg-slate-100 text-slate-800'
+                                <td className="px-8 py-6">
+                                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                                    c.status === 'completed' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' :
+                                    c.status === 'processing' ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20' :
+                                    c.status === 'error' ? 'bg-red-500/10 text-red-500 border border-red-500/20' : 'bg-slate-500/10 text-slate-500 border border-slate-500/20'
                                   }`}>
                                     {c.status}
                                   </span>
                                 </td>
-                                <td className="px-6 py-4">{new Date(c.created_at).toLocaleString()}</td>
+                                <td className="px-8 py-6 text-slate-500 font-medium font-sans">{new Date(c.created_at).toLocaleString()}</td>
                             </tr>
                             ))}
                         </tbody>
@@ -607,21 +714,31 @@ export const SuperAdminPage: React.FC = () => {
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-left">
-                        <thead className="bg-slate-50/50 dark:bg-slate-800/30 text-slate-500 text-xs font-bold uppercase tracking-wider">
+                        <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 text-xs font-black uppercase tracking-[0.2em]">
                         <tr>
-                            <th className="px-6 py-4">{t('common.name')}</th>
-                            <th className="px-6 py-4">ID</th>
-                            <th className="px-6 py-4">{t('superadmin.company_id')}</th>
-                            <th className="px-6 py-4">{t('sheet_calls.table.date')}</th>
+                            <th className="px-8 py-5">{t('common.name')}</th>
+                            <th className="px-8 py-5">ID</th>
+                            <th className="px-8 py-5">{t('superadmin.company_id')}</th>
+                            <th className="px-8 py-5">{t('sheet_calls.table.date')}</th>
                         </tr>
                         </thead>
-                        <tbody className="divide-y divide-border-light dark:divide-slate-800">
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
                         {teams.map(team => (
-                            <tr key={team.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                            <td className="px-6 py-4 font-bold">{team.name}</td>
-                            <td className="px-6 py-4 text-xs font-mono text-slate-400">{team.id}</td>
-                            <td className="px-6 py-4 text-xs font-mono text-slate-400">{team.company_id}</td>
-                            <td className="px-6 py-4 text-sm text-slate-500">{team.created_at ? new Date(team.created_at).toLocaleDateString() : '—'}</td>
+                            <tr key={team.id} className="group hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all duration-300">
+                            <td className="px-8 py-6">
+                              <span className="font-black text-slate-900 dark:text-white group-hover:text-primary transition-colors">{team.name}</span>
+                            </td>
+                            <td className="px-8 py-6">
+                              <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-lg text-[10px] font-mono border border-slate-200 dark:border-slate-700">
+                                {team.id.split('-')[0]}...
+                              </span>
+                            </td>
+                            <td className="px-8 py-6">
+                              <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-lg text-[10px] font-mono border border-slate-200 dark:border-slate-700">
+                                {team.company_id?.split('-')[0] || '—'}
+                              </span>
+                            </td>
+                            <td className="px-8 py-6 text-sm text-slate-500 font-medium">{team.created_at ? new Date(team.created_at).toLocaleDateString() : '—'}</td>
                             </tr>
                         ))}
                         </tbody>
@@ -656,24 +773,37 @@ export const SuperAdminPage: React.FC = () => {
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-left">
-                        <thead className="bg-slate-50/50 dark:bg-slate-800/30 text-slate-500 text-xs font-bold uppercase tracking-wider">
+                        <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 text-xs font-black uppercase tracking-[0.2em]">
                         <tr>
-                            <th className="px-6 py-4">{t('common.name')}</th>
-                            <th className="px-6 py-4">ID</th>
-                            <th className="px-6 py-4">{t('superadmin.company_id')}</th>
-                            <th className="px-6 py-4">{t('common.status')}</th>
+                            <th className="px-8 py-5">{t('common.name')}</th>
+                            <th className="px-8 py-5">ID</th>
+                            <th className="px-8 py-5">{t('superadmin.company_id')}</th>
+                            <th className="px-8 py-5">{t('common.status')}</th>
                         </tr>
                         </thead>
-                        <tbody className="divide-y divide-border-light dark:divide-slate-800">
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
                         {scripts.map(script => (
-                            <tr key={script.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                            <td className="px-6 py-4 font-bold">{script.name}</td>
-                            <td className="px-6 py-4 text-xs font-mono text-slate-400">{script.id}</td>
-                            <td className="px-6 py-4 text-xs font-mono text-slate-400">{script.company_id}</td>
-                            <td className="px-6 py-4">
-                                <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${script.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-800'}`}>
-                                {script.is_active ? t('scripts.active') : t('common.inactive')}
-                                </span>
+                            <tr key={script.id} className="group hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all duration-300">
+                            <td className="px-8 py-6">
+                              <span className="font-black text-slate-900 dark:text-white group-hover:text-primary transition-colors">{script.name}</span>
+                            </td>
+                            <td className="px-8 py-6">
+                              <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-lg text-[10px] font-mono border border-slate-200 dark:border-slate-700">
+                                {script.id.split('-')[0]}...
+                              </span>
+                            </td>
+                            <td className="px-8 py-6">
+                              <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-lg text-[10px] font-mono border border-slate-200 dark:border-slate-700">
+                                {script.company_id?.split('-')[0] || '—'}
+                              </span>
+                            </td>
+                            <td className="px-8 py-6">
+                                <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${
+                                  script.is_active ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-slate-500/10 text-slate-500 border border-slate-500/20'
+                                }`}>
+                                  <span className={`w-1.5 h-1.5 rounded-full ${script.is_active ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                                  {script.is_active ? t('scripts.active') : t('common.inactive')}
+                                </div>
                             </td>
                             </tr>
                         ))}
@@ -701,17 +831,17 @@ export const SuperAdminPage: React.FC = () => {
                       </h2>
                     </div>
                     <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800/50 shadow-sm">
-                      <p className="text-slate-500 font-bold uppercase text-[10px] tracking-widest mb-2">Total Queues</p>
+                        <p className="text-slate-500 font-bold uppercase text-[10px] tracking-widest mb-2">{t('superadmin.total_queues')}</p>
                       <h2 className="text-2xl font-black text-primary">{systemStatus ? Object.keys(systemStatus.queues).length : 0}</h2>
                     </div>
                     <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800/50 shadow-sm">
-                      <p className="text-slate-500 font-bold uppercase text-[10px] tracking-widest mb-2">Pending Tasks</p>
+                      <p className="text-slate-500 font-bold uppercase text-[10px] tracking-widest mb-2">{t('superadmin.pending_tasks')}</p>
                       <h2 className="text-2xl font-black text-amber-500">
                         {systemStatus ? Object.values(systemStatus.queues).reduce((a: number, b: number) => a + b, 0) : 0}
                       </h2>
                     </div>
                     <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800/50 shadow-sm">
-                        <p className="text-slate-500 font-bold uppercase text-[10px] tracking-widest mb-2">Observability</p>
+                        <p className="text-slate-500 font-bold uppercase text-[10px] tracking-widest mb-2">{t('superadmin.observability')}</p>
                         <h2 className="text-2xl font-black text-slate-400">Loki + Prom</h2>
                     </div>
                   </div>
@@ -870,38 +1000,37 @@ export const SuperAdminPage: React.FC = () => {
       {editingCompany && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
               <div className="bg-white dark:bg-slate-900 rounded-xl p-8 w-full max-w-md shadow-2xl border border-border-light dark:border-slate-800">
-                  <h3 className="text-xl font-bold mb-6">Edit Company</h3>
-                  <form onSubmit={handleUpdateCompany} className="space-y-4">
-                      <div>
-                          <label className="block text-sm font-medium mb-1">Name</label>
-                          <input
-                            className="w-full border rounded-lg p-2 dark:bg-slate-800 dark:border-slate-700 outline-none focus:ring-2 focus:ring-primary"
-                            value={editingCompany.name}
-                            onChange={e => setEditingCompany({...editingCompany, name: e.target.value})}
-                          />
-                      </div>
-                      <div>
-                          <label className="block text-sm font-medium mb-1">Managers Count</label>
-                          <input
-                            type="number"
-                            className="w-full border rounded-lg p-2 dark:bg-slate-800 dark:border-slate-700 outline-none focus:ring-2 focus:ring-primary"
-                            value={editingCompany.managers_count || 0}
-                            onChange={e => setEditingCompany({...editingCompany, managers_count: parseInt(e.target.value)})}
-                          />
-                      </div>
-                      <div className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            id="company-active"
-                            className="w-4 h-4 text-primary rounded border-slate-300 focus:ring-primary"
-                            checked={editingCompany.is_active}
-                            onChange={e => setEditingCompany({...editingCompany, is_active: e.target.checked})}
-                          />
-                          <label htmlFor="company-active" className="text-sm font-medium">{t('superadmin.active')}</label>
-                      </div>
+                  <h3 className="text-xl font-bold mb-6">{t('superadmin.edit_company')}</h3>
+                  <form onSubmit={handleCompanySubmit(onUpdateCompany)} className="space-y-6">
+                      <Input
+                        label={t('common.name')}
+                        error={companyErrors.name?.message}
+                        {...registerCompany('name')}
+                      />
+                      <Input
+                        label={t('settings.managers_count')}
+                        type="number"
+                        error={companyErrors.managers_count?.message}
+                        {...registerCompany('managers_count', { valueAsNumber: true })}
+                      />
+                      <Checkbox
+                        label={t('superadmin.active')}
+                        {...registerCompany('is_active')}
+                      />
                       <div className="flex justify-end gap-3 mt-8">
-                          <button type="button" onClick={() => setEditingCompany(null)} className="px-4 py-2 border rounded-lg hover:bg-slate-50 transition-colors">Cancel</button>
-                          <button type="submit" className="px-6 py-2 bg-primary text-white rounded-lg font-bold">Save</button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingCompany(null)}
+                            className="px-6 py-2.5 font-bold text-slate-500 hover:text-slate-700 transition-colors"
+                          >
+                            {t('common.cancel')}
+                          </button>
+                          <button
+                            type="submit"
+                            className="px-8 py-2.5 bg-primary text-white rounded-xl font-bold shadow-lg shadow-primary/30 hover:scale-[1.02] transition-all"
+                          >
+                            {t('common.save')}
+                          </button>
                       </div>
                   </form>
               </div>
@@ -941,51 +1070,48 @@ export const SuperAdminPage: React.FC = () => {
       {editingUser && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
               <div className="bg-white dark:bg-slate-900 rounded-xl p-8 w-full max-w-md shadow-2xl border border-border-light dark:border-slate-800">
-                  <h3 className="text-xl font-bold mb-6">Edit User</h3>
-                  <form onSubmit={handleUpdateUser} className="space-y-4">
+                  <h3 className="text-xl font-bold mb-6">{t('users.edit_user')}</h3>
+                  <form onSubmit={handleUserSubmit(onUpdateUser)} className="space-y-6">
                       <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium mb-1">First Name</label>
-                            <input
-                                className="w-full border rounded-lg p-2 dark:bg-slate-800 dark:border-slate-700"
-                                value={editingUser.first_name || ''}
-                                onChange={e => setEditingUser({...editingUser, first_name: e.target.value})}
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium mb-1">Last Name</label>
-                            <input
-                                className="w-full border rounded-lg p-2 dark:bg-slate-800 dark:border-slate-700"
-                                value={editingUser.last_name || ''}
-                                onChange={e => setEditingUser({...editingUser, last_name: e.target.value})}
-                            />
-                        </div>
+                        <Input
+                          label={t('common.first_name')}
+                          error={userErrors.first_name?.message}
+                          {...registerUser('first_name')}
+                        />
+                        <Input
+                          label={t('common.last_name')}
+                          error={userErrors.last_name?.message}
+                          {...registerUser('last_name')}
+                        />
                       </div>
-                      <div>
-                          <label className="block text-sm font-medium mb-1">Role</label>
-                          <select
-                            className="w-full border rounded-lg p-2 dark:bg-slate-800 dark:border-slate-700 outline-none"
-                            value={editingUser.role}
-                            onChange={e => setEditingUser({...editingUser, role: e.target.value})}
-                          >
-                              <option value="sales_rep">Sales Rep</option>
-                              <option value="tenant_admin">Tenant Admin</option>
-                              <option value="super_admin">Super Admin</option>
-                          </select>
-                      </div>
-                      <div className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            id="user-active"
-                            className="w-4 h-4 text-primary rounded border-slate-300 focus:ring-primary"
-                            checked={editingUser.is_active}
-                            onChange={e => setEditingUser({...editingUser, is_active: e.target.checked})}
-                          />
-                          <label htmlFor="user-active" className="text-sm font-medium">{t('superadmin.active')}</label>
-                      </div>
+                      <Select
+                        label={t('common.role')}
+                        error={userErrors.role?.message}
+                        options={[
+                          { value: 'sales_rep', label: t('roles.sales_rep') },
+                          { value: 'tenant_admin', label: t('roles.tenant_admin') },
+                          { value: 'super_admin', label: t('roles.super_admin') },
+                        ]}
+                        {...registerUser('role')}
+                      />
+                      <Checkbox
+                        label={t('superadmin.active')}
+                        {...registerUser('is_active')}
+                      />
                       <div className="flex justify-end gap-3 mt-8">
-                          <button type="button" onClick={() => setEditingUser(null)} className="px-4 py-2 border rounded-lg">Cancel</button>
-                          <button type="submit" className="px-6 py-2 bg-primary text-white rounded-lg font-bold">Save</button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingUser(null)}
+                            className="px-6 py-2.5 font-bold text-slate-500 hover:text-slate-700 transition-colors"
+                          >
+                            {t('common.cancel')}
+                          </button>
+                          <button
+                            type="submit"
+                            className="px-8 py-2.5 bg-primary text-white rounded-xl font-bold shadow-lg shadow-primary/30 hover:scale-[1.02] transition-all"
+                          >
+                            {t('common.save')}
+                          </button>
                       </div>
                   </form>
               </div>

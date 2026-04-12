@@ -39,12 +39,26 @@ func NewSystemHandler(rdb *redis.Client, prometheusURL, lokiURL string) *SystemH
 func (h *SystemHandler) GetStatus(c *fiber.Ctx) error {
 	ctx := c.Context()
 	metrics := make(map[string]int64)
+	metadata := make(map[string][]interface{})
 
 	// BullMQ/List based queues
 	lists := []string{"bullmq:audio_processing", "notify_queue", "integration_sync"}
 	for _, q := range lists {
 		val, _ := h.rdb.LLen(ctx, q).Result()
 		metrics[q] = val
+
+		// Fetch last 5 items as metadata
+		items, _ := h.rdb.LRange(ctx, q, -5, -1).Result()
+		metaItems := make([]interface{}, len(items))
+		for i, item := range items {
+			var parsed interface{}
+			if err := json.Unmarshal([]byte(item), &parsed); err == nil {
+				metaItems[i] = parsed
+			} else {
+				metaItems[i] = item
+			}
+		}
+		metadata[q] = metaItems
 	}
 
 	// Stream based queues
@@ -52,11 +66,23 @@ func (h *SystemHandler) GetStatus(c *fiber.Ctx) error {
 	for _, s := range streams {
 		val, _ := h.rdb.XLen(ctx, s).Result()
 		metrics[s] = val
+
+		// Fetch last 5 entries as metadata
+		entries, _ := h.rdb.XRevRangeN(ctx, s, "+", "-", 5).Result()
+		metaEntries := make([]interface{}, len(entries))
+		for i, entry := range entries {
+			metaEntries[i] = fiber.Map{
+				"id":     entry.ID,
+				"values": entry.Values,
+			}
+		}
+		metadata[s] = metaEntries
 	}
 
 	return c.JSON(fiber.Map{
-		"status": "healthy",
-		"queues": metrics,
+		"status":   "healthy",
+		"queues":   metrics,
+		"metadata": metadata,
 	})
 }
 
