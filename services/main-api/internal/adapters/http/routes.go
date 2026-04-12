@@ -170,4 +170,5 @@ func SetupRoutes(
 	admin.Put("/system/redis", systemHandler.UpdateRedisValue)
 	admin.Delete("/system/redis", systemHandler.DeleteRedisKey)
 	admin.Post("/system/queues/clear", systemHandler.ClearQueue)
+	admin.Delete("/system/queues/item", systemHandler.RemoveQueueItem)
 }
