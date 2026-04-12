@@ -8,26 +8,21 @@ const LoginPage: React.FC = () => {
   const { t } = useTranslation();
 
   return (
-    <div className="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-white antialiased h-screen w-screen overflow-hidden flex flex-col">
-      <main className="flex-1 flex items-center justify-center p-4 relative">
-        <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-          <div className="absolute -top-[20%] -right-[10%] w-[50%] h-[50%] rounded-full bg-primary/5 blur-3xl"></div>
-          <div className="absolute -bottom-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-primary/10 blur-3xl"></div>
-        </div>
-
-        <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-xl shadow-2xl shadow-primary/10 border border-slate-200 dark:border-slate-800 z-10 overflow-hidden">
+    <div className="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-white antialiased min-h-screen w-full flex flex-col">
+      <main className="flex-1 flex items-center justify-center p-4">
+        <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
           <div className="p-8 sm:p-10">
             <div className="flex justify-center mb-6">
               <LanguageSwitcher />
             </div>
             <div className="text-center mb-8">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-primary/10 text-primary mb-4">
-                <span className="material-icons text-3xl">analytics</span>
+              <div className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-primary text-white mb-4">
+                <span className="material-icons text-2xl">insights</span>
               </div>
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+              <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white uppercase">
                 SalesAI
               </h1>
-              <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+              <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                 {t("auth.login_title")}
               </p>
             </div>
@@ -37,10 +32,10 @@ const LoginPage: React.FC = () => {
             <div className="mt-6">
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-slate-200 dark:border-slate-700"></div>
+                  <div className="w-full border-t border-slate-200 dark:border-slate-800"></div>
                 </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white dark:bg-slate-900 text-slate-500">
+                <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-widest">
+                  <span className="px-2 bg-white dark:bg-slate-900 text-slate-400">
                     {t('auth.or_continue_with')}
                   </span>
                 </div>
@@ -48,12 +43,12 @@ const LoginPage: React.FC = () => {
 
               <div className="mt-6">
                 <button
-                  className="w-full flex items-center justify-center gap-3 py-2.5 px-4 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg shadow-sm text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 transition-all duration-200"
+                  className="w-full flex items-center justify-center gap-3 py-2 px-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md shadow-sm text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-primary transition-all duration-200"
                   type="button"
                 >
                   <svg
                     aria-hidden="true"
-                    className="h-5 w-5"
+                    className="h-4 w-4"
                     viewBox="0 0 24 24"
                   >
                     <path
@@ -73,17 +68,17 @@ const LoginPage: React.FC = () => {
                       fill="#EA4335"
                     ></path>
                   </svg>
-                  {t('auth.continue_google')}
+                  <span className="text-xs uppercase tracking-wider">{t('auth.continue_google')}</span>
                 </button>
               </div>
             </div>
           </div>
 
-          <div className="px-8 py-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 text-center">
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+          <div className="px-8 py-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-800 text-center">
+            <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               {t("auth.no_account")}{" "}
               <Link
-                className="text-primary font-medium hover:underline"
+                className="text-primary hover:text-primary-hover"
                 to="/register"
               >
                 {t("auth.create_account")}
@@ -91,30 +86,15 @@ const LoginPage: React.FC = () => {
             </p>
           </div>
         </div>
-
-        <div className="absolute bottom-6 w-full text-center">
-          <div className="flex justify-center space-x-6 text-sm text-slate-400">
-            <a
-              className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
-              href="#"
-            >
-              {t('auth.privacy_policy')}
-            </a>
-            <a
-              className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
-              href="#"
-            >
-              {t('auth.terms_service')}
-            </a>
-            <a
-              className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
-              href="#"
-            >
-              {t('auth.help_center')}
-            </a>
-          </div>
-        </div>
       </main>
+
+      <footer className="p-6 text-center">
+        <div className="flex justify-center space-x-6 text-[10px] uppercase font-bold tracking-widest text-slate-400">
+            <a className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors" href="#">{t('auth.privacy_policy')}</a>
+            <a className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors" href="#">{t('auth.terms_service')}</a>
+            <a className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors" href="#">{t('auth.help_center')}</a>
+        </div>
+      </footer>
     </div>
   );
 };

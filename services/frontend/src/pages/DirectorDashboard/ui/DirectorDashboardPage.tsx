@@ -51,48 +51,67 @@ const DirectorDashboardPage: React.FC = () => {
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <PageLayout title={t('dashboard.title')}>
-      <div className="p-4 md:p-8">
-        <div className="max-w-7xl mx-auto space-y-8">
+      <div className="p-4 md:p-6 lg:p-8">
+        <div className="max-w-7xl mx-auto space-y-6">
+
+          {/* ── Header Section ────────────────────────────────────────────── */}
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+             <div>
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white">{t('dashboard.title')}</h2>
+                <p className="text-sm text-slate-500 font-medium">Performance metrics for the last 30 days</p>
+             </div>
+             <div className="flex items-center gap-2">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+                    Active Session
+                </span>
+             </div>
+          </div>
 
           {/* ── KPI cards ────────────────────────────────────────────────── */}
           {perfLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {[1, 2, 3, 4].map(i => (
-                <div key={i} className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                  <Skeleton className="h-10 w-10 mb-4" />
-                  <Skeleton className="h-4 w-24 mb-2" />
-                  <Skeleton className="h-8 w-32" />
+                <div key={i} className="bg-white dark:bg-slate-900 p-4 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm">
+                  <Skeleton className="h-4 w-20 mb-3" />
+                  <Skeleton className="h-8 w-24" />
                 </div>
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {[
-                { label: t('dashboard.total_calls'), value: totalCalls, icon: 'phone_in_talk' },
-                { label: t('dashboard.avg_quality'),  value: avgQuality,  icon: 'analytics' },
-                { label: t('dashboard.active_teams'), value: managers.length, sub: t('dashboard.managers'), icon: 'groups' },
-                { label: t('dashboard.sheet_calls_title'), value: t('dashboard.active'), sub: t('calls.sources.sheets'), icon: 'table_chart' },
+                { label: t('dashboard.total_calls'), value: totalCalls, icon: 'phone_in_talk', color: 'blue' },
+                { label: t('dashboard.avg_quality'),  value: avgQuality,  icon: 'analytics', color: 'emerald' },
+                { label: t('dashboard.active_teams'), value: managers.length, sub: t('dashboard.managers'), icon: 'groups', color: 'indigo' },
+                { label: t('dashboard.sheet_calls_title'), value: t('dashboard.active'), sub: t('calls.sources.sheets'), icon: 'table_chart', color: 'slate' },
               ].map(m => (
-                <div key={m.label} className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow">
-                  <div className="mb-4">
-                    <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-primary inline-block">
-                      <span className="material-icons text-xl">{m.icon}</span>
-                    </div>
+                <div key={m.label} className="bg-white dark:bg-slate-900 p-4 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm transition-all hover:border-slate-300 dark:hover:border-slate-700">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider">{m.label}</h3>
+                    <span className={`material-icons text-lg text-${m.color}-500/80`}>{m.icon}</span>
                   </div>
-                  <h3 className="text-slate-500 dark:text-slate-400 text-sm font-medium">{m.label}</h3>
-                  <p className="text-3xl font-bold text-slate-800 dark:text-white mt-1">
-                    {m.value}{' '}
-                    {m.sub && <span className="text-base font-normal text-slate-500">{m.sub}</span>}
-                  </p>
+                  <div className="flex items-baseline gap-2">
+                    <p className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+                        {m.value}
+                    </p>
+                    {m.sub && <span className="text-[11px] font-semibold text-slate-400 uppercase">{m.sub}</span>}
+                  </div>
                 </div>
               ))}
             </div>
           )}
 
           {/* ── Manager performance expandable list ────────────────────────── */}
-          <ManagerPerformanceList managers={managers} loading={perfLoading} />
+          <div className="space-y-4">
+             <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">{t('dashboard.managers')}</h3>
+             </div>
+             <ManagerPerformanceList managers={managers} loading={perfLoading} />
+          </div>
 
-          <SheetCalls />
+          <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
+             <SheetCalls />
+          </div>
 
         </div>
       </div>
