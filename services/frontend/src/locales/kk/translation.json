@@ -111,7 +111,22 @@
     "key_json_or_string": "Мән (JSON немесе жол)",
     "update_key": "Кілтті жаңарту",
     "view_details": "Толығырақ",
-    "system_performance": "Жүйе өнімділігі"
+    "system_performance": "Жүйе өнімділігі",
+    "active_queues": "Белсенді кезектер (BullMQ және Streams)",
+    "clear_all_queues": "Барлық кезектерді тазарту",
+    "messages_pending": "Күтудегі хабарламалар: {{count}}",
+    "view_metadata": "Метадеректерді көру",
+    "hide_metadata": "Метадеректерді жасыру",
+    "recent_payloads": "Соңғы деректер (соңғы 5)",
+    "payload": "Деректер",
+    "json_object": "JSON ОБЪЕКТІ",
+    "raw_string": "RAW ЖОЛ",
+    "queue_empty": "Кезек бос",
+    "load_system_status": "Жүйе күйін жүктеу",
+    "total_queues": "Барлық кезектер",
+    "pending_tasks": "Күтудегі тапсырмалар",
+    "observability": "Бақылау мүмкіндігі",
+    "edit_company": "Компанияны өңдеу"
   },
   "setup": {
     "company_title": "Компанияңызды реттеңіз",

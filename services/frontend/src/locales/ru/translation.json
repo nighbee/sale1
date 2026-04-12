@@ -111,7 +111,22 @@
     "key_json_or_string": "Значение (JSON или строка)",
     "update_key": "Обновить ключ",
     "view_details": "Подробнее",
-    "system_performance": "Производительность системы"
+    "system_performance": "Производительность системы",
+    "active_queues": "Активные очереди (BullMQ и Streams)",
+    "clear_all_queues": "Очистить все очереди",
+    "messages_pending": "Ожидает сообщений: {{count}}",
+    "view_metadata": "Просмотр метаданных",
+    "hide_metadata": "Скрыть метаданные",
+    "recent_payloads": "Последние сообщения (Последние 5)",
+    "payload": "Данные",
+    "json_object": "JSON ОБЪЕКТ",
+    "raw_string": "СТРОКА",
+    "queue_empty": "Очередь пуста",
+    "load_system_status": "Загрузить статус системы",
+    "total_queues": "Всего очередей",
+    "pending_tasks": "Ожидающие задачи",
+    "observability": "Наблюдаемость",
+    "edit_company": "Редактировать компанию"
   },
   "setup": {
     "company_title": "Настройте вашу компанию",
