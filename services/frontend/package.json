@@ -23,6 +23,7 @@
     "react-hook-form": "^7.72.1",
     "react-i18next": "^16.5.4",
     "react-router-dom": "^7.13.0",
+    "react-virtuoso": "^4.18.4",
     "recharts": "^3.8.1",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.1",
