@@ -64,9 +64,11 @@ class GroqSTTProvider(STTProvider):
             logger.error("Groq STT failed", extra={"error": str(e), "audio_path": audio_path})
             raise RuntimeError(f"Groq STT failed: {str(e)}") from e
 
-    async def get_models(self) -> list:
+    async def get_models(self, category: Optional[str] = None) -> list:
         try:
             models = await self.client.models.list()
+            if category == "llm":
+                return [m.id for m in models.data if "whisper" not in m.id]
             return [m.id for m in models.data if "whisper" in m.id or "stt" in m.id]
         except Exception as e:
             logger.error(f"Failed to fetch Groq models: {e}")

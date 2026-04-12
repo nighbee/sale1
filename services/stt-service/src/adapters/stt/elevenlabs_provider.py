@@ -107,14 +107,14 @@ class ElevenLabsSTTProvider(STTProvider):
             logger.error("ElevenLabs STT failed", extra={"error": msg, "audio_path": audio_path})
             raise RuntimeError(f"ElevenLabs STT failed: {msg}") from e
 
-    async def get_models(self) -> list:
+    async def get_models(self, category: Optional[str] = None) -> list:
         try:
             models = await asyncio.to_thread(self.client.models.list)
             # Filter for models that support STT (Scribe models)
             model_ids = [m.model_id for m in models if m.model_id.startswith("scribe_")]
             if "scribe_v2" not in model_ids:
                 model_ids.insert(0, "scribe_v2")
-            if "scribe_v1" not in model_ids and "scribe_v1" not in model_ids:
+            if "scribe_v1" not in model_ids:
                 model_ids.append("scribe_v1")
             return model_ids
         except Exception as e:

@@ -18,9 +18,12 @@ class STTProvider(ABC):
         pass
 
     @abstractmethod
-    async def get_models(self) -> list:
+    async def get_models(self, category: Optional[str] = None) -> list:
         """
         Get list of available models for the provider.
+
+        Args:
+            category (str, optional): Category of models to fetch (e.g., 'stt', 'llm').
 
         Returns:
             list: List of model identifiers.

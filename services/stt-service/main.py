@@ -36,7 +36,8 @@ async def check_model(
 @app.post("/api/v1/models")
 async def get_models(
     provider_name: str = Body(...),
-    credentials: dict = Body(None)
+    credentials: dict = Body(None),
+    category: str = Body(None)
 ):
     try:
         # Mock integration list for factory
@@ -49,7 +50,7 @@ async def get_models(
 
         from src.adapters.stt.factory import STTProviderFactory
         provider = STTProviderFactory.create(provider_name, integrations)
-        models = await provider.get_models()
+        models = await provider.get_models(category=category)
         return {"models": models}
     except Exception as e:
         logger.error(f"Failed to fetch models for {provider_name}: {e}")

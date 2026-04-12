@@ -64,10 +64,15 @@ class OpenAISTTProvider(STTProvider):
             logger.error("OpenAI STT failed", extra={"error": str(e), "audio_path": audio_path})
             raise RuntimeError(f"OpenAI STT failed: {str(e)}") from e
 
-    async def get_models(self) -> list:
+    async def get_models(self, category: Optional[str] = None) -> list:
         try:
             models = await self.client.models.list()
+            if category == "stt":
+                return [m.id for m in models.data if "whisper" in m.id or "stt" in m.id]
+            elif category == "llm":
+                return [m.id for m in models.data if ("gpt" in m.id or "o1" in m.id) and "instruct" not in m.id]
+
             return [m.id for m in models.data if "whisper" in m.id or "stt" in m.id]
         except Exception as e:
-            logger.error(f"Failed to fetch OpenAI models: {e}")
-            return ["whisper-1"]
+            logger.error(f"Failed to fetch OpenAI models for {category}: {e}")
+            return ["whisper-1"] if category != "llm" else ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"]

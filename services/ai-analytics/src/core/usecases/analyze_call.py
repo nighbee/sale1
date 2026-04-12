@@ -57,6 +57,7 @@ class AnalyzeCallUseCase:
             return
 
         user_prompt = get_user_prompt(transcript_text, script_text)
+        company_id = call.get('company_id')
 
         logger.info(
             "[1/4] data fetched",
@@ -72,7 +73,7 @@ class AnalyzeCallUseCase:
         )
 
         # 4. Get LLM settings
-        ai_settings = await self.api_client.get_ai_settings()
+        ai_settings = await self.api_client.get_ai_settings(company_id=company_id)
 
         # Priority: 1. integrations (DB) 2. fallback to .env
         llm_provider_name = None

@@ -65,7 +65,7 @@ func (uc *IntegrationUseCase) ListAllActive(ctx context.Context) ([]*domain.Inte
 	return uc.repo.ListAllActive(ctx)
 }
 
-func (uc *IntegrationUseCase) GetModels(ctx context.Context, companyID string, it domain.IntegrationType, credentials json.RawMessage) (map[string]interface{}, error) {
+func (uc *IntegrationUseCase) GetModels(ctx context.Context, companyID string, it domain.IntegrationType, credentials json.RawMessage, category string) (map[string]interface{}, error) {
 	sttServiceURL := os.Getenv("STT_SERVICE_URL")
 	if sttServiceURL == "" {
 		sttServiceURL = "http://stt-service:8001"
@@ -75,6 +75,7 @@ func (uc *IntegrationUseCase) GetModels(ctx context.Context, companyID string, i
 	payload := map[string]interface{}{
 		"provider_name": string(it),
 		"credentials":   nil,
+		"category":      category,
 	}
 
 	if len(credentials) == 0 || string(credentials) == "null" {

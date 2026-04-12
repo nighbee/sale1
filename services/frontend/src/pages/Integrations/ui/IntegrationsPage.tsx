@@ -40,12 +40,12 @@ const IntegrationsPage: React.FC = () => {
     models: sttModels,
     fetchModels: fetchSTTModels,
     isLoading: loadingSTTModels,
-  } = useGetModels(aiSettings?.stt_provider || "openai");
+  } = useGetModels(aiSettings?.stt_provider || "openai", "stt");
   const {
     models: llmModels,
     fetchModels: fetchLLMModels,
     isLoading: loadingLLMModels,
-  } = useGetModels(aiSettings?.llm_provider || "openai");
+  } = useGetModels(aiSettings?.llm_provider || "openai", "llm");
 
   useEffect(() => {
     if (aiSettings?.stt_provider) {
