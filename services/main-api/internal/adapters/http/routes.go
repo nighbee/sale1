@@ -22,6 +22,7 @@ func SetupRoutes(
 	scriptHandler *handlers.ScriptHandler,
 	notificationHandler *handlers.NotificationHandler,
 	aiSettingsHandler *handlers.AISettingsHandler,
+	queueHandler *handlers.QueueHandler,
 	systemHandler *handlers.SystemHandler,
 	wsHandler *handlers.WSHandler,
 	jwtService ports.JWTService,
@@ -139,7 +140,17 @@ func SetupRoutes(
 	aiSettings.Get("/", aiSettingsHandler.Get)
 	aiSettings.Put("/", aiSettingsHandler.Update)
 
-	// Admin routes
+	// Queue management (tenant admin only)
+	queue := protected.Group("/calls/queue", middleware.RequireRole("super_admin", "tenant_admin"))
+	queue.Get("/status", queueHandler.GetStatus)
+	queue.Post("/bulk-reprocess", queueHandler.BulkReprocess)
+	queue.Delete("/", queueHandler.ClearQueue)
+	queue.Post("/stop", queueHandler.StopQueue)
+	queue.Post("/resume", queueHandler.ResumeQueue)
+	queue.Get("/items", queueHandler.ListItems)
+	queue.Post("/items", queueHandler.CreateItem)
+	queue.Put("/items", queueHandler.UpdateItem)
+	queue.Delete("/items", queueHandler.DeleteItem)
 	admin := api.Group("/admin", middleware.JWTAuth(jwtService), middleware.RequireRole("super_admin"))
 
 	// Companies Admin

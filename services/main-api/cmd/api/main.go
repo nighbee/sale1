@@ -174,6 +174,8 @@ func main() {
 	refreshUC := auth.NewRefreshUseCase(userRepo, jwtService)
 	listCallsUC := calls.NewListCallsUseCase(callRepo)
 	reprocessCallUC := calls.NewReprocessCallUseCase(callRepo, bullmqPublisher)
+	bulkReprocessUC := calls.NewBulkReprocessUseCase(callRepo, bullmqPublisher)
+	clearTenantQueueUC := calls.NewClearTenantQueueUseCase(callRepo, bullmqPublisher)
 	teamPerformanceUC := analytics.NewTeamPerformanceUseCase(analysisRepo)
 	teamUC := teams.NewTeamUseCase(teamRepo, userRepo, scriptRepo)
 	integrationUC := integrations.NewIntegrationUseCase(integrationRepo)
@@ -200,6 +202,7 @@ func main() {
 	scriptHandler := handlers.NewScriptHandler(scriptRepo, cfg.ScriptServiceURL)
 	notificationHandler := handlers.NewNotificationHandler(notificationRepo)
 	aiSettingsHandler := handlers.NewAISettingsHandler(aiSettingsRepo)
+	queueHandler := handlers.NewQueueHandler(bulkReprocessUC, clearTenantQueueUC, bullmqPublisher)
 	systemHandler := handlers.NewSystemHandler(rdb, cfg.PrometheusURL, cfg.LokiURL)
 	wsHandler := handlers.NewWSHandler(hub)
 
@@ -213,7 +216,7 @@ func main() {
 	prometheus.RegisterAt(app, "/metrics")
 	app.Use(prometheus.Middleware)
 
-	httpAdapter.SetupRoutes(app, authHandler, callHandler, analyticsHandler, companyHandler, userHandler, teamHandler, integrationHandler, scriptHandler, notificationHandler, aiSettingsHandler, systemHandler, wsHandler, jwtService)
+	httpAdapter.SetupRoutes(app, authHandler, callHandler, analyticsHandler, companyHandler, userHandler, teamHandler, integrationHandler, scriptHandler, notificationHandler, aiSettingsHandler, queueHandler, systemHandler, wsHandler, jwtService)
 
 	port := os.Getenv("PORT")
 	if port == "" {
