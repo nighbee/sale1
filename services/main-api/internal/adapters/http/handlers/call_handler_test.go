@@ -74,6 +74,9 @@ func (m *mockCallRepoForDetail) ListAll(ctx context.Context, filters map[string]
 func (m *mockCallRepoForDetail) UpdateStatus(ctx context.Context, id string, s domain.CallStatus) error {
 	return nil
 }
+func (m *mockCallRepoForDetail) UpdateStatusByFilter(ctx context.Context, companyID string, filters map[string]interface{}, status domain.CallStatus) error {
+	return nil
+}
 
 // Tests
 func TestGetCall_ByExternalID(t *testing.T) {

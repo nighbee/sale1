@@ -304,7 +304,21 @@
     "agent": "Агент",
     "client": "Клиент",
     "transcript_processing": "Транскрипт өңделуде...",
-    "analysis_pending": "Талдау күтілуде..."
+    "analysis_pending": "Талдау күтілуде...",
+    "all_managers": "Барлық менеджерлер",
+    "queue_management": "Кезек басқару",
+    "bulk_reprocess": "Жаппай қайта өңдеу",
+    "clear_queue": "Кезек тазарту",
+    "stop_queue": "Өңдеуді тоқтату",
+    "pending_count": "Талдау күтілуде",
+    "add_to_queue": "Кезекке қосу",
+    "from_date": "Бастапқы күн",
+    "to_date": "Соңғы күн",
+    "queue_items": "Кезек элементтері",
+    "delete_item_confirm": "Бұл элементті кезектен жойғыңыз келетініне сенімдісіз бе?",
+    "reprocess_range_success": "Қоңыраулар кезекке сәтті қосылды",
+    "clear_queue_success": "Кезек сәтті тазартылды",
+    "stop_queue_success": "Өңдеу тоқтатылды және кезек тазартылды"
   },
   "leaderboard": {
     "title": "Командалық көшбасшылар тақтасы",
@@ -478,7 +492,6 @@
       "client_phone": "Клиент телефоны",
       "date_from": "Бастапқы күн",
       "date_to": "Соңғы күн",
-      "all_managers": "Барлық менеджерлер",
       "search_phone": "Телефонды іздеу..."
     },
     "charts": {

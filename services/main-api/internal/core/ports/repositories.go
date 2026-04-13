@@ -39,6 +39,7 @@ type CallRepository interface {
 	List(ctx context.Context, filters map[string]interface{}) ([]*domain.Call, int, map[string]int, error)
 	ListAll(ctx context.Context, filters map[string]interface{}) ([]*domain.Call, int, error)
 	UpdateStatus(ctx context.Context, id string, status domain.CallStatus) error
+	UpdateStatusByFilter(ctx context.Context, companyID string, filters map[string]interface{}, status domain.CallStatus) error
 }
 
 // TranscriptRepository defines the contract for call transcript storage.

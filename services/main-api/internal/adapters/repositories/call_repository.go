@@ -387,3 +387,31 @@ func (r *callRepository) UpdateStatus(ctx context.Context, id string, status dom
 	_, err := r.db.ExecContext(ctx, query, id, status)
 	return err
 }
+
+func (r *callRepository) UpdateStatusByFilter(ctx context.Context, companyID string, filters map[string]interface{}, status domain.CallStatus) error {
+	where := []string{"company_id = $1"}
+	args := []interface{}{companyID, status}
+	argIdx := 3
+
+	if dateFrom, ok := filters["date_from"].(string); ok && dateFrom != "" {
+		where = append(where, fmt.Sprintf("call_date >= $%d", argIdx))
+		args = append(args, dateFrom)
+		argIdx++
+	}
+
+	if dateTo, ok := filters["date_to"].(string); ok && dateTo != "" {
+		where = append(where, fmt.Sprintf("call_date <= $%d", argIdx))
+		args = append(args, dateTo)
+		argIdx++
+	}
+
+	if currentStatus, ok := filters["current_status"].(string); ok && currentStatus != "" {
+		where = append(where, fmt.Sprintf("status = $%d", argIdx))
+		args = append(args, currentStatus)
+		argIdx++
+	}
+
+	query := fmt.Sprintf("UPDATE calls_schema.calls SET status = $2, updated_at = NOW() WHERE %s", strings.Join(where, " AND "))
+	_, err := r.db.ExecContext(ctx, query, args...)
+	return err
+}

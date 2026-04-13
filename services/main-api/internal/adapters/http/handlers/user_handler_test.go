@@ -58,6 +58,9 @@ func (m *mockCallRepo) ListAll(ctx context.Context, filters map[string]interface
 func (m *mockCallRepo) UpdateStatus(ctx context.Context, id string, status domain.CallStatus) error {
 	return nil
 }
+func (m *mockCallRepo) UpdateStatusByFilter(ctx context.Context, companyID string, filters map[string]interface{}, status domain.CallStatus) error {
+	return nil
+}
 
 func TestGetUserCalls_Auth(t *testing.T) {
 	app := fiber.New()

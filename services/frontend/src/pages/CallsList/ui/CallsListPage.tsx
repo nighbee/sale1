@@ -9,6 +9,7 @@ import Pagination from "../../../shared/ui/Pagination";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useUserStore } from "../../../entities/user/model/store";
+import { QueueManagement } from "../../../features/QueueManagement";
 
 type CallSource = "sipuni" | "google_sheets";
 
@@ -154,6 +155,10 @@ const CallsListPage: React.FC = () => {
             ))}
         </div>
 
+        {(user?.role === 'super_admin' || user?.role === 'tenant_admin') && (
+          <QueueManagement />
+        )}
+
         <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
           <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col md:flex-row gap-4 items-center justify-between">
             <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
@@ -190,7 +195,7 @@ const CallsListPage: React.FC = () => {
             </div>
 
             <div className="text-xs text-slate-500 font-medium">
-                {t('common.showing')} {(page-1)*limit + 1} - {Math.min(page*limit, totalResults)} {t('common.of')} {totalResults}
+                {t('pagination.showing')} {(page-1)*limit + 1} - {Math.min(page*limit, totalResults)} {t('pagination.of')} {totalResults}
             </div>
           </div>
 

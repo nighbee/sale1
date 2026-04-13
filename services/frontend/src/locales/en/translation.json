@@ -307,7 +307,21 @@
     "agent": "Agent",
     "client": "Client",
     "transcript_processing": "Transcript being processed...",
-    "analysis_pending": "Analysis pending..."
+    "analysis_pending": "Analysis pending...",
+    "all_managers": "All Managers",
+    "queue_management": "Queue Management",
+    "bulk_reprocess": "Bulk Reprocess",
+    "clear_queue": "Clear Queue",
+    "stop_queue": "Stop Processing",
+    "pending_count": "Pending Analysis",
+    "add_to_queue": "Add to Queue",
+    "from_date": "From Date",
+    "to_date": "To Date",
+    "queue_items": "Queue Items",
+    "delete_item_confirm": "Are you sure you want to remove this item from the queue?",
+    "reprocess_range_success": "Successfully added calls to queue",
+    "clear_queue_success": "Queue cleared successfully",
+    "stop_queue_success": "Processing stopped and queue cleared"
   },
   "leaderboard": {
     "title": "Team Leaderboard",
@@ -508,7 +522,6 @@
       "client_phone": "Client phone",
       "date_from": "Date from",
       "date_to": "Date to",
-      "all_managers": "All managers",
       "search_phone": "Search phone..."
     },
     "charts": {

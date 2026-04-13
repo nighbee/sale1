@@ -304,7 +304,21 @@
     "agent": "Агент",
     "client": "Клиент",
     "transcript_processing": "Транскрипт обрабатывается...",
-    "analysis_pending": "Анализ ожидается..."
+    "analysis_pending": "Анализ ожидается...",
+    "all_managers": "Все менеджеры",
+    "queue_management": "Управление очередью",
+    "bulk_reprocess": "Массовая переобработка",
+    "clear_queue": "Очистить очередь",
+    "stop_queue": "Остановить обработку",
+    "pending_count": "Ожидают анализа",
+    "add_to_queue": "Добавить в очередь",
+    "from_date": "С даты",
+    "to_date": "По дату",
+    "queue_items": "Элементы очереди",
+    "delete_item_confirm": "Вы уверены, что хотите удалить этот элемент из очереди?",
+    "reprocess_range_success": "Звонки успешно добавлены в очередь",
+    "clear_queue_success": "Очередь успешно очищена",
+    "stop_queue_success": "Обработка остановлена, очередь очищена"
   },
   "leaderboard": {
     "title": "Лидерборд команды",
@@ -478,7 +492,6 @@
       "client_phone": "Телефон клиента",
       "date_from": "Дата с",
       "date_to": "Дата по",
-      "all_managers": "Все менеджеры",
       "search_phone": "Поиск телефона..."
     },
     "charts": {
