@@ -15,7 +15,7 @@ const RegisterPage: React.FC = () => {
             S
           </div>
           <span className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
-            SalesAI
+            Call Analyzer for Sales
           </span>
         </div>
         <div className="hidden sm:block text-sm font-medium text-slate-600 dark:text-slate-400">

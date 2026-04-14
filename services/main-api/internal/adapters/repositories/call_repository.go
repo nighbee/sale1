@@ -52,9 +52,11 @@ func (r *callRepository) Create(ctx context.Context, call *domain.Call) error {
 
 func (r *callRepository) GetByID(ctx context.Context, id string) (*domain.Call, error) {
 	query := `
-		SELECT id, company_id, manager_id, manager_name, client_phone, client_id, duration, call_link, storage_link, chat_link, call_date, call_time, status, source, external_id, created_at, updated_at
+		SELECT c.id, c.company_id, c.manager_id, c.manager_name, c.client_phone, c.client_id, c.duration, c.call_link, c.storage_link, c.chat_link, c.call_date, c.call_time, c.status, c.source, c.external_id, c.created_at, c.updated_at,
+		       EXTRACT(EPOCH FROM (ar.processed_at - c.created_at))::INT AS analysis_time
 		FROM calls_schema.calls
-		WHERE id::text = $1 OR external_id = $1
+		LEFT JOIN calls_schema.analysis_reports ar ON ar.call_id = c.id
+		WHERE c.id::text = $1 OR c.external_id = $1
 	`
 
 	call := &domain.Call{}
@@ -76,6 +78,7 @@ func (r *callRepository) GetByID(ctx context.Context, id string) (*domain.Call, 
 		&call.ExternalID,
 		&call.CreatedAt,
 		&call.UpdatedAt,
+		&call.AnalysisTime,
 	)
 
 	if err == sql.ErrNoRows {
@@ -302,7 +305,8 @@ func (r *callRepository) List(ctx context.Context, filters map[string]interface{
 		SELECT c.id, c.company_id, c.manager_id, c.manager_name, c.client_phone, c.client_id,
 		       c.duration, c.call_link, c.storage_link, c.chat_link, c.call_date, c.call_time,
 		       c.status, c.source, c.external_id, c.created_at, c.updated_at,
-		       ar.quality_score, ar.script_match, ar.errors_free
+		       ar.quality_score, ar.script_match, ar.errors_free,
+		       EXTRACT(EPOCH FROM (ar.processed_at - c.created_at))::INT AS analysis_time
 		FROM calls_schema.calls c
 		LEFT JOIN calls_schema.analysis_reports ar ON ar.call_id = c.id
 		WHERE %s
@@ -340,6 +344,7 @@ func (r *callRepository) List(ctx context.Context, filters map[string]interface{
 			&call.QualityScore,
 			&call.ScriptMatch,
 			&call.ErrorsFree,
+			&call.AnalysisTime,
 		)
 		if err != nil {
 			return nil, 0, nil, err

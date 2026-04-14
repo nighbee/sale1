@@ -14,7 +14,7 @@
     "step": "Step {{current}} of {{total}}",
     "help": "Help & Support",
     "need_help": "Need help?",
-    "all_rights_reserved": "SalesAI © 2024. All rights reserved.",
+    "all_rights_reserved": "Call Analyzer for Sales © 2024. All rights reserved.",
     "not_found": "Not found.",
     "name": "Name",
     "email": "Email",
@@ -58,7 +58,7 @@
     "signing_in": "Signing in...",
     "remember_me": "Remember me",
     "forgot_password": "Forgot password?",
-    "no_account": "New to SalesAI?",
+    "no_account": "New to Call Analyzer for Sales?",
     "create_account": "Create an account",
     "register_title": "Create your account",
     "register_subtitle": "Set up your credentials to start managing your sales team efficiently.",
@@ -245,7 +245,6 @@
     "completed": "Completed",
     "error": "Error",
     "active": "Active",
-    "sheet_calls_title": "Sheet Calls",
     "avg_errors_free": "Avg Errors Free",
     "manager_performance": "Manager Performance",
     "view_full_report": "View Full Report",
@@ -288,8 +287,7 @@
       "error": "Error"
     },
     "sources": {
-      "sipuni": "Sipuni Calls",
-      "sheets": "Google Sheets"
+      "sipuni": "Sipuni Calls"
     },
     "score": "Score",
     "status": "Status",
@@ -321,7 +319,8 @@
     "delete_item_confirm": "Are you sure you want to remove this item from the queue?",
     "reprocess_range_success": "Successfully added calls to queue",
     "clear_queue_success": "Queue cleared successfully",
-    "stop_queue_success": "Processing stopped and queue cleared"
+    "stop_queue_success": "Processing stopped and queue cleared",
+    "analysis_time": "Analysis Time"
   },
   "leaderboard": {
     "title": "Team Leaderboard",
@@ -446,14 +445,11 @@
     "connected": "Connected Integrations",
     "available": "Available Integrations",
     "active": "Active",
-    "crm_connector": "CRM Connector",
     "configure": "Configure",
     "no_active": "No active integrations found.",
     "connected_status": "Connected",
     "connect_now": "Connect Now",
     "loading": "Loading integrations...",
-    "google_sheets_name": "Google Sheets",
-    "google_sheets_desc": "Export leads and analytics directly to spreadsheets.",
     "amocrm_name": "AmoCRM",
     "amocrm_desc": "Sync leads and calls with AmoCRM",
     "telegram_name": "Telegram",
@@ -504,51 +500,6 @@
     "delete_failed": "Failed to delete team",
     "fetch_details_failed": "Failed to fetch team details"
   },
-  "sheet_calls": {
-    "title": "Google Sheets Calls",
-    "subtitle": "{{count}} calls · AI pipeline",
-    "sync_now": "Sync Now",
-    "syncing": "Syncing...",
-    "sync_success": "Sync triggered — results will appear shortly",
-    "sync_failed": "Failed to trigger sync",
-    "fetch_failed": "Failed to fetch sheet calls",
-    "no_calls": "No calls found.",
-    "no_calls_hint": "Click Sync Now to import from Google Sheets.",
-    "no_calls_filter_hint": "Try adjusting filters.",
-    "clear_filters": "Clear filters",
-    "filters": {
-      "status": "Status",
-      "manager": "Manager",
-      "client_phone": "Client phone",
-      "date_from": "Date from",
-      "date_to": "Date to",
-      "search_phone": "Search phone..."
-    },
-    "charts": {
-      "trends": "Score trends over time",
-      "manager_avg": "Average scores per manager"
-    },
-    "table": {
-      "date": "Date",
-      "manager": "Manager",
-      "client": "Client",
-      "duration": "Duration",
-      "status": "Status",
-      "quality": "Quality",
-      "script": "Script",
-      "errors_free": "Errors Free"
-    },
-    "modal": {
-      "view_full": "View Full Call",
-      "no_analysis": "Analysis not yet available — call is {{status}}",
-      "no_text_analysis": "No textual analysis fields available for this call."
-    },
-    "pagination": {
-      "prev": "Prev",
-      "next": "Next",
-      "of": "of"
-    }
-  },
   "pagination": {
     "prev": "Previous",
     "next": "Next",
@@ -596,7 +547,7 @@
       }
     },
     "how_it_works": {
-      "title": "How SalesAI Works",
+      "title": "How Call Analyzer for Sales Works",
       "subtitle": "Turn raw audio into revenue in three simple steps.",
       "step_1": {
         "title": "1. Sync",
@@ -613,14 +564,14 @@
     },
     "tech": {
       "title": "Built for Modern Engineering Teams",
-      "desc": "SalesAI isn't just a tool; it's a robust platform built on the latest stack to ensure speed, security, and scalability.",
+      "desc": "Call Analyzer for Sales isn't just a tool; it's a robust platform built on the latest stack to ensure speed, security, and scalability.",
       "feat_1": "Built on <strong>Next.js 14</strong> for superior performance",
       "feat_2": "Custom LLM Analysis pipeline optimized for sales context",
       "feat_3": "Enterprise-grade Security (SOC2 Type II Compliant)"
     },
     "cta": {
       "title": "Ready to transform your sales process?",
-      "subtitle": "Join the 500+ forward-thinking sales teams using SalesAI to drive revenue growth.",
+      "subtitle": "Join the 500+ forward-thinking sales teams using Call Analyzer for Sales to drive revenue growth.",
       "btn_free": "Get Started for Free",
       "btn_demo": "Book a Demo"
     },
@@ -638,7 +589,7 @@
       "privacy": "Privacy Policy",
       "terms": "Terms of Service",
       "cookie": "Cookie Policy",
-      "copyright": "© 2024 SalesAI Inc. All rights reserved.",
+      "copyright": "© 2024 Call Analyzer for Sales Inc. All rights reserved.",
       "status": "Systems Operational"
     }
   }

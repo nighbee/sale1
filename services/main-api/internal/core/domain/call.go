@@ -33,4 +33,5 @@ type Call struct {
 	QualityScore *int `json:"quality_score,omitempty"`
 	ScriptMatch  *int `json:"script_match,omitempty"`
 	ErrorsFree   *int `json:"errors_free,omitempty"`
+	AnalysisTime *int `json:"analysis_time,omitempty"`
 }

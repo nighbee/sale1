@@ -16,6 +16,7 @@ type UserRepository interface {
 	FindBySrcNum(ctx context.Context, srcNum string, companyID string) (*domain.User, error)
 	FindByEmail(ctx context.Context, email string) (*domain.User, error)
 	Create(ctx context.Context, user *domain.User) error
+	UpdateManagerName(ctx context.Context, userID string, managerName string) error
 }
 
 type QueuePublisher interface {

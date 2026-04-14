@@ -24,7 +24,7 @@ type InviteFormValues = z.infer<typeof inviteSchema>;
 const InviteMembersPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const password = "SalesAI2026!";
+  const password = "CallAnalyzer2026!";
 
   const {
     register,
@@ -62,7 +62,7 @@ const InviteMembersPage: React.FC = () => {
       <header className="w-full px-6 py-4 flex items-center justify-between border-b border-slate-200 dark:border-slate-800 bg-surface-light dark:bg-surface-dark relative z-10">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white font-bold">S</div>
-          <span className="font-bold text-lg tracking-tight">SalesAI</span>
+          <span className="font-bold text-lg tracking-tight">Call Analyzer for Sales</span>
         </div>
         <div className="text-sm text-slate-500 dark:text-slate-400">
           {t('setup.team_setup')} (6/7)

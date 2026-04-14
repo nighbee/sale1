@@ -61,14 +61,6 @@ const IntegrationsPage: React.FC = () => {
 
   const available = [
     {
-      id: "google_sheets",
-      name: t("integrations.google_sheets_name"),
-      type: t("integrations.reporting"),
-      icon: "table_chart",
-      color: "green",
-      desc: t("integrations.google_sheets_desc"),
-    },
-    {
       id: "sipuni",
       name: "Sipuni",
       type: "Telephony",
@@ -434,9 +426,6 @@ const IntegrationsPage: React.FC = () => {
                           title={i.status_message || "OK"}
                         ></span>
                       </div>
-                      <p className="text-slate-400 text-sm">
-                        {t("integrations.crm_connector")}
-                      </p>
                       {i.status_message && (
                         <p className="text-xs text-red-500 mt-1 truncate max-w-[150px]">
                           {i.status_message}

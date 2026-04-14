@@ -15,7 +15,7 @@ const LandingPage: React.FC = () => {
             <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-white">
               <span className="material-symbols-outlined text-xl">analytics</span>
             </div>
-            <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">SalesAI</span>
+            <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Call Analyzer for Sales</span>
           </div>
           <nav className="hidden md:flex items-center gap-8">
             <a className="text-sm font-medium text-slate-600 hover:text-primary dark:text-slate-300 dark:hover:text-white transition-colors" href="#features">{t('landing.nav.features')}</a>
@@ -257,9 +257,9 @@ const LandingPage: React.FC = () => {
                     <div className="h-3 w-3 rounded-full bg-yellow-500"></div>
                     <div className="h-3 w-3 rounded-full bg-green-500"></div>
                   </div>
-                  <code className="text-sm font-mono text-blue-300 block mb-2">// SalesAI Integration Example</code>
+                  <code className="text-sm font-mono text-blue-300 block mb-2">// Call Analyzer for Sales Integration Example</code>
                   <pre className="font-mono text-xs text-slate-300 overflow-x-auto">
-{`const salesAI = require('@salesai/sdk');
+{`const salesAI = require('@call-analyzer/sdk');
 
 const client = new salesAI.Client({
   apiKey: process.env.SALESAI_KEY,
@@ -308,7 +308,7 @@ console.log('Analysis complete. 🚀');`}
                 <div className="flex size-6 items-center justify-center rounded bg-primary text-white">
                   <span className="material-symbols-outlined text-sm">analytics</span>
                 </div>
-                <span className="text-lg font-bold text-slate-900 dark:text-white">SalesAI</span>
+                <span className="text-lg font-bold text-slate-900 dark:text-white">Call Analyzer for Sales</span>
               </div>
               <p className="text-slate-500 dark:text-slate-400 text-sm max-w-xs mb-6">
                 {t('landing.footer.desc')}
