@@ -286,7 +286,7 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ isOpen, onClose, ty
             <Button variant="outline" onClick={handleTest} isLoading={isTesting} disabled={loading || isChecking}>
               {t('integrations.test_connection')}
             </Button>
-            {['openai', 'groq', 'deepgram', 'gemini', 'elevenlabs', 'soniox'].includes(type) && (
+            {['groq', 'deepgram', 'gemini', 'elevenlabs', 'soniox'].includes(type) && (
               <Button variant="outline" onClick={handleCheckModel} isLoading={isChecking} disabled={loading || isTesting}>
                 <span className="material-symbols-outlined text-base mr-1">audio_file</span>
                 Check model
