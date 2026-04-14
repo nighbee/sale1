@@ -12,8 +12,8 @@ export const RankingsTable: React.FC<RankingsTableProps> = ({ data }) => {
   const { t } = useTranslation();
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-xl shadow border border-slate-200 dark:border-slate-800 overflow-hidden">
-      <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+      <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/30">
         <h3 className="font-semibold text-slate-800 dark:text-slate-200">
           {t("leaderboard.full_rankings")}
         </h3>
@@ -24,7 +24,7 @@ export const RankingsTable: React.FC<RankingsTableProps> = ({ data }) => {
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 text-xs uppercase font-semibold">
+            <tr className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold tracking-wider">
               <th className="px-5 py-3 w-12">#</th>
               <th className="px-5 py-3">{t("leaderboard.columns.manager")}</th>
               <th className="px-5 py-3 text-center">

@@ -29,7 +29,7 @@ export const Podium: React.FC<PodiumProps> = ({ data }) => {
       {/* 2nd */}
       {topThree[1] ? (
         <div className="order-2 md:order-1">
-          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow border border-slate-200 dark:border-slate-800 flex flex-col items-center text-center">
+          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 border border-slate-200 dark:border-slate-800 flex flex-col items-center text-center">
             <div className="relative mb-3">
               <div className="h-16 w-16 rounded-full bg-slate-400 flex items-center justify-center text-white font-bold text-xl">
                 {topThree[1].manager_name?.[0]?.toUpperCase()}
@@ -63,7 +63,7 @@ export const Podium: React.FC<PodiumProps> = ({ data }) => {
               <div className="text-2xl font-bold text-primary">
                 {topThree[1].avg_kpi.toFixed(1)}
               </div>
-              <div className="text-xs text-slate-500">{t("leaderboard.columns.kpi_score")}</div>
+              <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{t("leaderboard.columns.kpi_score")}</div>
             </div>
           </div>
         </div>
@@ -73,10 +73,10 @@ export const Podium: React.FC<PodiumProps> = ({ data }) => {
 
       {/* 1st */}
       <div className="order-1 md:order-2 md:-mt-6 relative">
-        <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-yellow-400 animate-bounce">
-          <span className="material-icons text-4xl">emoji_events</span>
+        <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-yellow-500">
+          <span className="material-symbols-outlined text-4xl font-bold">workspace_premium</span>
         </div>
-        <div className="bg-white dark:bg-slate-900 rounded-xl p-8 shadow-lg border-2 border-primary/20 flex flex-col items-center text-center">
+        <div className="bg-white dark:bg-slate-900 rounded-xl p-8 border border-slate-200 dark:border-slate-800 flex flex-col items-center text-center">
           <div className="relative mb-4">
             <div className="h-20 w-20 rounded-full ring-4 ring-yellow-400/30 bg-amber-400 flex items-center justify-center text-white font-black text-2xl">
               {topThree[0].manager_name?.[0]?.toUpperCase()}
@@ -107,11 +107,11 @@ export const Podium: React.FC<PodiumProps> = ({ data }) => {
               textClassName={TEXT_COLOR.errors}
             />
           </div>
-          <div className="mt-5 bg-primary/5 border border-primary/10 rounded-lg px-4 py-3 w-full">
+          <div className="mt-5 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-lg px-4 py-3 w-full">
             <div className="text-4xl font-black text-primary tracking-tight">
               {topThree[0].avg_kpi.toFixed(1)}
             </div>
-            <div className="text-sm text-slate-500 font-medium">{t("leaderboard.columns.kpi_score")}</div>
+            <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{t("leaderboard.columns.kpi_score")}</div>
           </div>
         </div>
       </div>
@@ -119,7 +119,7 @@ export const Podium: React.FC<PodiumProps> = ({ data }) => {
       {/* 3rd */}
       {topThree[2] ? (
         <div className="order-3 md:order-3">
-          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow border border-slate-200 dark:border-slate-800 flex flex-col items-center text-center">
+          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 border border-slate-200 dark:border-slate-800 flex flex-col items-center text-center">
             <div className="relative mb-3">
               <div className="h-16 w-16 rounded-full bg-orange-400 flex items-center justify-center text-white font-bold text-xl">
                 {topThree[2].manager_name?.[0]?.toUpperCase()}
@@ -153,7 +153,7 @@ export const Podium: React.FC<PodiumProps> = ({ data }) => {
               <div className="text-2xl font-bold text-primary">
                 {topThree[2].avg_kpi.toFixed(1)}
               </div>
-              <div className="text-xs text-slate-500">{t("leaderboard.columns.kpi_score")}</div>
+              <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{t("leaderboard.columns.kpi_score")}</div>
             </div>
           </div>
         </div>
