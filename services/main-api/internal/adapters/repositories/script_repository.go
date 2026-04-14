@@ -86,7 +86,7 @@ func (r *scriptRepository) List(ctx context.Context, companyID string) ([]*domai
 	query := `
 		SELECT id, company_id, name, file_path_minio, parsed_text, structure, version, is_active, created_at, updated_at, team_id, is_base_script, is_active_base, base_script_metrics
 		FROM scripts_schema.scripts
-		WHERE company_id = $1
+		WHERE company_id = $1 AND is_active = true
 		ORDER BY created_at DESC
 	`
 
@@ -138,7 +138,7 @@ func (r *scriptRepository) List(ctx context.Context, companyID string) ([]*domai
 }
 
 func (r *scriptRepository) ListAll(ctx context.Context, filters map[string]interface{}) ([]*domain.Script, int, error) {
-	where := []string{"1=1"}
+	where := []string{"is_active = true"}
 	args := []interface{}{}
 	argIdx := 1
 
@@ -224,7 +224,7 @@ func (r *scriptRepository) GetByID(ctx context.Context, id string, companyID str
 	query := `
 		SELECT id, company_id, name, file_path_minio, parsed_text, structure, version, is_active, created_at, updated_at, team_id, is_base_script, is_active_base, base_script_metrics
 		FROM scripts_schema.scripts
-		WHERE id = $1 AND company_id = $2
+		WHERE id = $1 AND company_id = $2 AND is_active = true
 	`
 
 	s := &domain.Script{}
@@ -272,7 +272,7 @@ func (r *scriptRepository) GetActiveBaseScript(ctx context.Context) (*domain.Scr
 	query := `
 		SELECT id, company_id, name, file_path_minio, parsed_text, structure, version, is_active, created_at, updated_at, team_id, is_base_script, is_active_base, base_script_metrics
 		FROM scripts_schema.scripts
-		WHERE is_base_script = TRUE AND is_active_base = TRUE
+		WHERE is_base_script = TRUE AND is_active_base = TRUE AND is_active = true
 		LIMIT 1
 	`
 
@@ -321,7 +321,7 @@ func (r *scriptRepository) GetAllBaseScripts(ctx context.Context) ([]*domain.Scr
 	query := `
 		SELECT id, company_id, name, file_path_minio, parsed_text, structure, version, is_active, created_at, updated_at, team_id, is_base_script, is_active_base, base_script_metrics
 		FROM scripts_schema.scripts
-		WHERE is_base_script = TRUE
+		WHERE is_base_script = TRUE AND is_active = true
 		ORDER BY is_active_base DESC, created_at DESC
 	`
 

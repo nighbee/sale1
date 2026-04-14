@@ -247,13 +247,19 @@ func (h *ScriptHandler) DeleteScript(c *fiber.Ctx) error {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Warn("failed to notify script-service for physical deletion", zap.Error(err))
-		// We don't return 500 here if metadata was deleted successfully, but log it
-	} else {
-		defer resp.Body.Close()
-		if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
-			log.Warn("script-service deletion returned non-success status", zap.Int("status", resp.StatusCode))
-		}
+		log.Error("failed to notify script-service for physical deletion", zap.Error(err))
+		return c.Status(502).JSON(fiber.Map{"error": fmt.Sprintf("failed to reach script-service: %v", err)})
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
+		respBody, _ := io.ReadAll(resp.Body)
+		log.Error("script-service deletion returned non-success status", zap.Int("status", resp.StatusCode), zap.String("body", string(respBody)))
+		return c.Status(502).JSON(fiber.Map{
+			"error":  "script-service failed to delete script",
+			"status": resp.StatusCode,
+			"detail": string(respBody),
+		})
 	}
 
 	log.Info("script deleted", zap.String("script_id", id))
