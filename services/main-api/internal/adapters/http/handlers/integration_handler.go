@@ -2,11 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
-	"io"
-	"net/http"
-	"os"
-	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/salesai/main-api/internal/core/domain"
@@ -254,37 +249,3 @@ func (h *IntegrationHandler) Delete(c *fiber.Ctx) error {
 	return c.SendStatus(204)
 }
 
-// TriggerSheetSync godoc
-// @Summary Trigger Google Sheets sync
-// @Description Trigger an immediate sync cycle on the sheets-sync service
-// @Tags integrations
-// @Produce json
-// @Success 202 {object} fiber.Map
-// @Failure 502 {object} fiber.Map
-// @Security BearerAuth
-// @Router /integrations/google-sheets/sync [post]
-func (h *IntegrationHandler) TriggerSheetSync(c *fiber.Ctx) error {
-	log := applogger.FromFiberCtx(c).With(zap.String("operation", "trigger_sheet_sync"))
-	companyID := c.Locals("company_id").(string)
-	sheetsSyncURL := os.Getenv("SHEETS_SYNC_URL")
-	if sheetsSyncURL == "" {
-		sheetsSyncURL = "http://sheets-sync:8085"
-	}
-	url := fmt.Sprintf("%s/sync?company_id=%s", sheetsSyncURL, companyID)
-	log.Info("Forwarding sync trigger to sheets-sync", zap.String("url", url), zap.String("company_id", companyID))
-	// Use an http client with a conservative timeout so the main-api
-	// doesn't hang indefinitely if the sheets-sync service is slow or
-	// unreachable.
-	client := &http.Client{Timeout: 5 * time.Second}
-	resp, err := client.Post(url, "application/json", nil) //nolint:noctx
-	if err != nil {
-		log.Error("sheets-sync unreachable", zap.Error(err))
-		return c.Status(502).JSON(fiber.Map{"error": "sheets-sync service unavailable"})
-	}
-	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
-	return c.Status(fiber.StatusAccepted).JSON(fiber.Map{
-		"status":   "accepted",
-		"upstream": string(body),
-	})
-}
