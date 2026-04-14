@@ -8,9 +8,9 @@ import (
 
 type ScriptRepository interface {
 	Create(ctx context.Context, script *domain.Script) error
-	GetByID(ctx context.Context, id string) (*domain.Script, error)
-	List(ctx context.Context) ([]*domain.Script, error)
-	Delete(ctx context.Context, id string) error
+	GetByID(ctx context.Context, id string, companyID string) (*domain.Script, error)
+	List(ctx context.Context, companyID string) ([]*domain.Script, error)
+	Delete(ctx context.Context, id string, companyID string) error
 }
 
 type Storage interface {

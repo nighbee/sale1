@@ -137,7 +137,9 @@ func (h *ScriptHandler) CreateScript(c *fiber.Ctx) error {
 	part, _ := writer.CreateFormFile("file", file.Filename)
 	f, _ := file.Open()
 	io.Copy(part, f)
+	companyID := c.Locals("company_id").(string)
 	writer.WriteField("name", name)
+	writer.WriteField("company_id", companyID)
 	if teamID := c.FormValue("team_id"); teamID != "" {
 		writer.WriteField("team_id", teamID)
 	}
@@ -145,6 +147,7 @@ func (h *ScriptHandler) CreateScript(c *fiber.Ctx) error {
 
 	req, _ := http.NewRequest("POST", h.scriptServiceURL+"/api/v1/scripts", body)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Set("X-Company-ID", companyID)
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -240,6 +243,7 @@ func (h *ScriptHandler) DeleteScript(c *fiber.Ctx) error {
 
 	// 2. Proxy physical deletion to script-service
 	req, _ := http.NewRequest("DELETE", h.scriptServiceURL+"/api/v1/scripts/"+id, nil)
+	req.Header.Set("X-Company-ID", companyID)
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -275,7 +279,11 @@ func (h *ScriptHandler) DownloadScript(c *fiber.Ctx) error {
 		return c.Status(404).JSON(fiber.Map{"error": "Script not found"})
 	}
 
-	resp, err := http.Get(h.scriptServiceURL + "/api/v1/scripts/" + id + "/download")
+	req, _ := http.NewRequest("GET", h.scriptServiceURL+"/api/v1/scripts/"+id+"/download", nil)
+	req.Header.Set("X-Company-ID", companyID)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
