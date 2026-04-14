@@ -12,6 +12,7 @@ import (
 
 type UploadScriptRequest struct {
 	Name      string
+	CompanyID string
 	TeamID    *string
 	FilePath  string
 	Extension string
@@ -67,6 +68,7 @@ func (uc *UploadScriptUseCase) Execute(ctx context.Context, req UploadScriptRequ
 
 	script := &domain.Script{
 		ID:             scriptID,
+		CompanyID:      req.CompanyID,
 		Name:           req.Name,
 		FilePathMinio: objectName,
 		ParsedText:     parsedText,

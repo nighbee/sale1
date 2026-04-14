@@ -18,23 +18,23 @@ func NewScriptRepository(db *sql.DB) ports.ScriptRepository {
 func (r *ScriptRepository) Create(ctx context.Context, script *domain.Script) error {
 	query := `
 		INSERT INTO scripts_schema.scripts
-		(id, name, file_path_minio, parsed_text, structure, version, is_active, team_id)
-		VALUES ($1, $2, $3, $4, $5, 1, true, $6)
+		(id, company_id, name, file_path_minio, parsed_text, structure, version, is_active, team_id)
+		VALUES ($1, $2, $3, $4, $5, $6, 1, true, $7)
 	`
 	// Initialize empty structure if empty
 	structure := script.Structure
 	if structure == "" {
 		structure = "{}"
 	}
-	_, err := r.db.ExecContext(ctx, query, script.ID, script.Name, script.FilePathMinio, script.ParsedText, structure, script.TeamID)
+	_, err := r.db.ExecContext(ctx, query, script.ID, script.CompanyID, script.Name, script.FilePathMinio, script.ParsedText, structure, script.TeamID)
 	return err
 }
 
-func (r *ScriptRepository) GetByID(ctx context.Context, id string) (*domain.Script, error) {
-	query := `SELECT id, name, file_path_minio FROM scripts_schema.scripts WHERE id = $1`
+func (r *ScriptRepository) GetByID(ctx context.Context, id string, companyID string) (*domain.Script, error) {
+	query := `SELECT id, company_id, name, file_path_minio FROM scripts_schema.scripts WHERE id = $1 AND company_id = $2`
 	script := &domain.Script{}
 	var minioPath sql.NullString
-	err := r.db.QueryRowContext(ctx, query, id).Scan(&script.ID, &script.Name, &minioPath)
+	err := r.db.QueryRowContext(ctx, query, id, companyID).Scan(&script.ID, &script.CompanyID, &script.Name, &minioPath)
 	if err != nil {
 		return nil, err
 	}
@@ -42,9 +42,9 @@ func (r *ScriptRepository) GetByID(ctx context.Context, id string) (*domain.Scri
 	return script, nil
 }
 
-func (r *ScriptRepository) List(ctx context.Context) ([]*domain.Script, error) {
-	query := `SELECT id, name, version, is_active, created_at FROM scripts_schema.scripts`
-	rows, err := r.db.QueryContext(ctx, query)
+func (r *ScriptRepository) List(ctx context.Context, companyID string) ([]*domain.Script, error) {
+	query := `SELECT id, company_id, name, version, is_active, created_at FROM scripts_schema.scripts WHERE company_id = $1`
+	rows, err := r.db.QueryContext(ctx, query, companyID)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +54,7 @@ func (r *ScriptRepository) List(ctx context.Context) ([]*domain.Script, error) {
 	for rows.Next() {
 		script := &domain.Script{}
 		var createdAt sql.NullString
-		if err := rows.Scan(&script.ID, &script.Name, &script.Version, &script.IsActive, &createdAt); err != nil {
+		if err := rows.Scan(&script.ID, &script.CompanyID, &script.Name, &script.Version, &script.IsActive, &createdAt); err != nil {
 			return nil, err
 		}
 		// In a real app we'd parse createdAt to time.Time
@@ -63,8 +63,8 @@ func (r *ScriptRepository) List(ctx context.Context) ([]*domain.Script, error) {
 	return scripts, nil
 }
 
-func (r *ScriptRepository) Delete(ctx context.Context, id string) error {
-	query := `UPDATE scripts_schema.scripts SET is_active = false WHERE id = $1`
-	_, err := r.db.ExecContext(ctx, query, id)
+func (r *ScriptRepository) Delete(ctx context.Context, id string, companyID string) error {
+	query := `UPDATE scripts_schema.scripts SET is_active = false WHERE id = $1 AND company_id = $2`
+	_, err := r.db.ExecContext(ctx, query, id, companyID)
 	return err
 }

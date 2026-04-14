@@ -33,6 +33,7 @@ func (h *ScriptHandler) Upload(c *fiber.Ctx) error {
 	}
 
 	name := c.FormValue("name")
+	companyID := c.FormValue("company_id")
 	teamID := c.FormValue("team_id")
 
 	ext := filepath.Ext(file.Filename)
@@ -50,6 +51,7 @@ func (h *ScriptHandler) Upload(c *fiber.Ctx) error {
 
 	req := usecases.UploadScriptRequest{
 		Name:      name,
+		CompanyID: companyID,
 		TeamID:    teamIDPtr,
 		FilePath:  tmpPath,
 		Extension: ext,
@@ -69,9 +71,10 @@ func (h *ScriptHandler) Upload(c *fiber.Ctx) error {
 
 func (h *ScriptHandler) List(c *fiber.Ctx) error {
 	log := applogger.L.With(zap.String("operation", "list_scripts"))
-	scripts, err := h.operationsUC.ListScripts(c.Context())
+	companyID := c.Get("X-Company-ID")
+	scripts, err := h.operationsUC.ListScripts(c.Context(), companyID)
 	if err != nil {
-		log.Error("list scripts failed", zap.Error(err))
+		log.Error("list scripts failed", zap.String("company_id", companyID), zap.Error(err))
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.JSON(scripts)
@@ -80,8 +83,9 @@ func (h *ScriptHandler) List(c *fiber.Ctx) error {
 func (h *ScriptHandler) Delete(c *fiber.Ctx) error {
 	log := applogger.L.With(zap.String("operation", "delete_script"))
 	id := c.Params("id")
-	if err := h.operationsUC.DeleteScript(c.Context(), id); err != nil {
-		log.Error("delete script failed", zap.String("script_id", id), zap.Error(err))
+	companyID := c.Get("X-Company-ID")
+	if err := h.operationsUC.DeleteScript(c.Context(), id, companyID); err != nil {
+		log.Error("delete script failed", zap.String("script_id", id), zap.String("company_id", companyID), zap.Error(err))
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.SendStatus(204)
@@ -90,9 +94,10 @@ func (h *ScriptHandler) Delete(c *fiber.Ctx) error {
 func (h *ScriptHandler) Download(c *fiber.Ctx) error {
 	log := applogger.L.With(zap.String("operation", "download_script"))
 	id := c.Params("id")
-	stream, name, err := h.operationsUC.DownloadScript(c.Context(), id)
+	companyID := c.Get("X-Company-ID")
+	stream, name, err := h.operationsUC.DownloadScript(c.Context(), id, companyID)
 	if err != nil {
-		log.Warn("download script failed", zap.String("script_id", id), zap.Error(err))
+		log.Warn("download script failed", zap.String("script_id", id), zap.String("company_id", companyID), zap.Error(err))
 		return c.Status(404).JSON(fiber.Map{"error": "Script not found"})
 	}
 
@@ -103,9 +108,10 @@ func (h *ScriptHandler) Download(c *fiber.Ctx) error {
 func (h *ScriptHandler) GetDetails(c *fiber.Ctx) error {
 	log := applogger.L.With(zap.String("operation", "get_script_details"))
 	id := c.Params("id")
-	script, err := h.operationsUC.GetScriptDetails(c.Context(), id)
+	companyID := c.Get("X-Company-ID")
+	script, err := h.operationsUC.GetScriptDetails(c.Context(), id, companyID)
 	if err != nil {
-		log.Warn("get script details failed", zap.String("script_id", id), zap.Error(err))
+		log.Warn("get script details failed", zap.String("script_id", id), zap.String("company_id", companyID), zap.Error(err))
 		return c.Status(404).JSON(fiber.Map{"error": "Script not found"})
 	}
 	return c.JSON(script)
