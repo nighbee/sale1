@@ -21,4 +21,4 @@ export type SortKey =
   | "total_calls";
 
 export type Period = "" | "7d" | "30d" | "90d";
-export type Source = "" | "google_sheets" | "sipuni";
+export type Source = "" | "sipuni";

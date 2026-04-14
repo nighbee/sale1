@@ -53,8 +53,8 @@ type mockCallRepoForDetail struct {
 }
 
 func (m *mockCallRepoForDetail) Create(ctx context.Context, c *domain.Call) error { return nil }
-func (m *mockCallRepoForDetail) GetByID(ctx context.Context, id string) (*domain.Call, error) {
-	if m.call != nil && (id == m.call.ID || (m.call.ExternalID != nil && id == *m.call.ExternalID)) {
+func (m *mockCallRepoForDetail) GetByID(ctx context.Context, id string, companyID string) (*domain.Call, error) {
+	if m.call != nil && (id == m.call.ID || (m.call.ExternalID != nil && id == *m.call.ExternalID)) && m.call.CompanyID == companyID {
 		return m.call, nil
 	}
 	return nil, errors.New("call not found")

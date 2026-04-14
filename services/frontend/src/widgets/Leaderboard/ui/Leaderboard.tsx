@@ -162,11 +162,6 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ teamId, showFilters = 
           <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
             {[
               { key: "" as Source, label: t("leaderboard.sources.all"), icon: "merge" },
-              {
-                key: "google_sheets" as Source,
-                label: t("leaderboard.sources.sheets"),
-                icon: "table_chart",
-              },
               { key: "sipuni" as Source, label: t("leaderboard.sources.sipuni"), icon: "call" },
             ].map((opt) => (
               <button

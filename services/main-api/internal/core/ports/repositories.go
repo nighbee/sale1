@@ -34,7 +34,7 @@ type CompanyRepository interface {
 // CallRepository defines the contract for call recording metadata operations.
 type CallRepository interface {
 	Create(ctx context.Context, call *domain.Call) error
-	GetByID(ctx context.Context, id string) (*domain.Call, error)
+	GetByID(ctx context.Context, id string, companyID string) (*domain.Call, error)
 	GetByIDInternal(ctx context.Context, id string) (*domain.Call, error)
 	List(ctx context.Context, filters map[string]interface{}) ([]*domain.Call, int, map[string]int, error)
 	ListAll(ctx context.Context, filters map[string]interface{}) ([]*domain.Call, int, error)

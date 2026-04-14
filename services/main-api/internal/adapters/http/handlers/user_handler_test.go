@@ -48,7 +48,9 @@ type mockCallRepo struct {
 }
 
 func (m *mockCallRepo) Create(ctx context.Context, c *domain.Call) error { return nil }
-func (m *mockCallRepo) GetByID(ctx context.Context, id string) (*domain.Call, error) { return nil, nil }
+func (m *mockCallRepo) GetByID(ctx context.Context, id string, companyID string) (*domain.Call, error) {
+	return nil, nil
+}
 func (m *mockCallRepo) GetByIDInternal(ctx context.Context, id string) (*domain.Call, error) {
 	return nil, nil
 }

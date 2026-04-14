@@ -105,7 +105,7 @@ func (h *IntegrationHandler) ListInternal(c *fiber.Ctx) error {
 // @Tags integrations
 // @Accept json
 // @Produce json
-// @Param type path string true "Integration Type (amocrm, google_sheets, telegram, slack)"
+// @Param type path string true "Integration Type (amocrm, telegram, slack)"
 // @Success 200 {object} domain.Integration
 // @Failure 404 {object} fiber.Map
 // @Security BearerAuth

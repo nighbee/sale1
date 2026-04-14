@@ -14,9 +14,6 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/salesai/main-api/internal/core/domain"
 	"github.com/salesai/main-api/internal/core/ports"
-	"golang.org/x/oauth2/google"
-	"google.golang.org/api/option"
-	"google.golang.org/api/sheets/v4"
 )
 
 type IntegrationUseCase struct {
@@ -208,9 +205,6 @@ func (uc *IntegrationUseCase) TestConnection(ctx context.Context, companyID stri
 	case domain.IntegrationSipuni:
 		return uc.testSipuni(ctx, credentials)
 
-	case domain.IntegrationGoogleSheets:
-		return uc.testGoogleSheets(ctx, credentials, config)
-
 	case domain.IntegrationTelegram:
 		return uc.testTelegram(ctx, credentials)
 
@@ -332,41 +326,6 @@ func (uc *IntegrationUseCase) testSipuni(ctx context.Context, credentials json.R
 			return errors.New("Sipuni authentication failed: invalid API key")
 		}
 	}
-}
-
-func (uc *IntegrationUseCase) testGoogleSheets(ctx context.Context, credentials, config json.RawMessage) error {
-	var creds map[string]interface{}
-	if err := json.Unmarshal(credentials, &creds); err != nil {
-		return errors.New("invalid service account JSON")
-	}
-
-	var cfg struct {
-		SpreadsheetID string `json:"spreadsheet_id"`
-	}
-	if err := json.Unmarshal(config, &cfg); err != nil {
-		return errors.New("invalid config format")
-	}
-	if cfg.SpreadsheetID == "" {
-		return errors.New("Spreadsheet ID is required")
-	}
-
-	conf, err := google.JWTConfigFromJSON(credentials, sheets.SpreadsheetsReadonlyScope)
-	if err != nil {
-		return fmt.Errorf("invalid service account credentials: %w", err)
-	}
-
-	client := conf.Client(ctx)
-	srv, err := sheets.NewService(ctx, option.WithHTTPClient(client))
-	if err != nil {
-		return fmt.Errorf("unable to retrieve Sheets client: %w", err)
-	}
-
-	_, err = srv.Spreadsheets.Get(cfg.SpreadsheetID).Context(ctx).Do()
-	if err != nil {
-		return fmt.Errorf("unable to access spreadsheet: %w", err)
-	}
-
-	return nil
 }
 
 func (uc *IntegrationUseCase) testTelegram(ctx context.Context, credentials json.RawMessage) error {

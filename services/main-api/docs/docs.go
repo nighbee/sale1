@@ -793,7 +793,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Integration Type (amocrm, google_sheets, telegram, slack)",
+                        "description": "Integration Type (amocrm, telegram, slack)",
                         "name": "type",
                         "in": "path",
                         "required": true
@@ -2094,7 +2094,6 @@ const docTemplate = `{
             "type": "string",
             "enum": [
                 "amocrm",
-                "google_sheets",
                 "telegram",
                 "slack"
             ],

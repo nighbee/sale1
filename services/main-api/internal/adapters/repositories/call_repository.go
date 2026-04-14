@@ -50,17 +50,17 @@ func (r *callRepository) Create(ctx context.Context, call *domain.Call) error {
 	return err
 }
 
-func (r *callRepository) GetByID(ctx context.Context, id string) (*domain.Call, error) {
+func (r *callRepository) GetByID(ctx context.Context, id string, companyID string) (*domain.Call, error) {
 	query := `
 		SELECT c.id, c.company_id, c.manager_id, c.manager_name, c.client_phone, c.client_id, c.duration, c.call_link, c.storage_link, c.chat_link, c.call_date, c.call_time, c.status, c.source, c.external_id, c.created_at, c.updated_at,
 		       EXTRACT(EPOCH FROM (ar.processed_at - c.created_at))::INT AS analysis_time
 		FROM calls_schema.calls
 		LEFT JOIN calls_schema.analysis_reports ar ON ar.call_id = c.id
-		WHERE c.id::text = $1 OR c.external_id = $1
+		WHERE (c.id::text = $1 OR c.external_id = $1) AND c.company_id = $2
 	`
 
 	call := &domain.Call{}
-	err := r.db.QueryRowContext(ctx, query, id).Scan(
+	err := r.db.QueryRowContext(ctx, query, id, companyID).Scan(
 		&call.ID,
 		&call.CompanyID,
 		&call.ManagerID,

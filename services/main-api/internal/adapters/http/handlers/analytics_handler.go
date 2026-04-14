@@ -72,7 +72,7 @@ func (h *AnalyticsHandler) GetTeamPerformance(c *fiber.Ctx) error {
 // @Produce json
 // @Param team_id query string false "Filter by team ID"
 // @Param period query string false "Time period (7d, 30d, 90d, all)"
-// @Param source query string false "Filter by call source (sipuni, google_sheets)"
+// @Param source query string false "Filter by call source (sipuni)"
 // @Param sort_by query string false "Sort by field (avg_kpi, avg_quality, etc.)"
 // @Param manager_id query string false "Filter by specific manager ID"
 // @Success 200 {object} fiber.Map

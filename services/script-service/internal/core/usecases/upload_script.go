@@ -77,6 +77,11 @@ func (uc *UploadScriptUseCase) Execute(ctx context.Context, req UploadScriptRequ
 		Version:        1,
 	}
 
+	// Deactivate existing scripts for this company to allow only one active script.
+	if err := uc.repo.DeactivateAll(ctx, req.CompanyID); err != nil {
+		return "", fmt.Errorf("failed to deactivate old scripts: %w", err)
+	}
+
 	if err := uc.repo.Create(ctx, script); err != nil {
 		return "", fmt.Errorf("failed to save to database: %w", err)
 	}
