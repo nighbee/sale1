@@ -366,6 +366,19 @@ const CallDetailPage: React.FC = () => {
                     </p>
                   </div>
                 </div>
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                    <span className="material-icons text-sm">speed</span>
+                  </div>
+                  <div>
+                    <p className="text-xs text-neutral-500">
+                      {t("calls.analysis_time")}
+                    </p>
+                    <p className="text-sm font-medium">
+                      {call.analysis_time !== undefined ? `${call.analysis_time}s` : t("common.not_available")}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

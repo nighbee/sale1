@@ -149,7 +149,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                 <span className="material-icons text-xl text-white">insights</span>
               </div>
               <div className="flex flex-col">
-                <span className="font-bold text-lg leading-none text-white tracking-tight">SalesAI</span>
+                <span className="font-bold text-lg leading-none text-white tracking-tight">Call Analyzer for Sales</span>
                 <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wider mt-0.5">CRM Platform</span>
               </div>
             </div>
@@ -227,7 +227,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           </div>
           <div className="mt-4 px-2">
              <p className="text-[10px] text-slate-600 font-medium uppercase tracking-widest text-center">
-               v1.0.4 • SalesAI
+               v1.0.4 • Call Analyzer for Sales
              </p>
           </div>
         </div>

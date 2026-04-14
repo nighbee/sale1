@@ -184,3 +184,9 @@ func (r *userRepository) Create(ctx context.Context, user *domain.User) error {
 	)
 	return err
 }
+
+func (r *userRepository) UpdateManagerName(ctx context.Context, userID string, managerName string) error {
+	query := `UPDATE auth_schema.users SET manager_name = $1, updated_at = NOW() WHERE id = $2`
+	_, err := r.db.ExecContext(ctx, query, managerName, userID)
+	return err
+}

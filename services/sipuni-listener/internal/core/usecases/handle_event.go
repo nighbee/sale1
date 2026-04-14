@@ -216,6 +216,19 @@ func (uc *HandleEventUseCase) Execute(ctx context.Context, companyID string, req
 		}
 
 		if user != nil {
+			// Update manager name if it has changed in Sipuni
+			if notify.User != "" && user.ManagerName != notify.User {
+				log.Info("updating manager name",
+					zap.String("user_id", user.ID),
+					zap.String("old_name", user.ManagerName),
+					zap.String("new_name", notify.User))
+				if err := uc.userRepo.UpdateManagerName(ctx, user.ID, notify.User); err != nil {
+					log.Error("failed to update manager name", zap.Error(err))
+				} else {
+					user.ManagerName = notify.User
+				}
+			}
+
 			managerName = user.ManagerName
 			// Use the extension from the existing user record
 			if user.ManagerID != nil {

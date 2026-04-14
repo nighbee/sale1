@@ -12,7 +12,7 @@ const TeamCreationPage: React.FC = () => {
             S
           </div>
           <span className="text-gray-900 dark:text-white font-bold text-lg tracking-tight">
-            SalesAI
+            Call Analyzer for Sales
           </span>
         </div>
         <div className="text-sm text-gray-500 dark:text-gray-400 font-medium">

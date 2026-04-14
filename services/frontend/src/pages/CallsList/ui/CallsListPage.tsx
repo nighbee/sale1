@@ -11,12 +11,12 @@ import { useTranslation } from "react-i18next";
 import { useUserStore } from "../../../entities/user/model/store";
 import { QueueManagement } from "../../../features/QueueManagement";
 
-type CallSource = "sipuni" | "google_sheets";
+type CallSource = "sipuni";
 
 const CallsListPage: React.FC = () => {
   const { t } = useTranslation();
   const { currentTeamId, user } = useUserStore();
-  const [source, setSource] = useState<CallSource>("google_sheets");
+  const [source] = useState<CallSource>("sipuni");
   const [calls, setCalls] = useState<Call[]>([]);
   const [managers, setManagers] = useState<User[]>([]);
   const [selectedManager, setSelectedManager] = useState<string>("");
@@ -110,28 +110,6 @@ const CallsListPage: React.FC = () => {
             </p>
           </div>
 
-          <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
-             <button
-              onClick={() => { setSource("sipuni"); setPage(1); }}
-              className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-all ${
-                source === "sipuni"
-                ? "bg-white dark:bg-slate-700 text-primary shadow-sm"
-                : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-              }`}
-            >
-              {t('calls.sources.sipuni')}
-            </button>
-            <button
-              onClick={() => { setSource("google_sheets"); setPage(1); }}
-              className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-all ${
-                source === "google_sheets"
-                ? "bg-white dark:bg-slate-700 text-primary shadow-sm"
-                : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-              }`}
-            >
-              {t('calls.sources.sheets')}
-            </button>
-          </div>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
@@ -209,6 +187,9 @@ const CallsListPage: React.FC = () => {
                   <th className="px-6 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                     {t("calls.representative")}
                   </th>
+                  <th className="px-6 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                    {t("calls.analysis_time")}
+                  </th>
                   <th className="px-6 py-3 text-center text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                     {t("calls.score")}
                   </th>
@@ -241,6 +222,9 @@ const CallsListPage: React.FC = () => {
                           <Link to={`/calls/${call.id}`} className="hover:text-primary transition-colors">
                             {call.manager_name}
                           </Link>
+                        </td>
+                        <td className="px-6 py-3.5 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400">
+                          {call.analysis_time !== undefined ? `${call.analysis_time}s` : '—'}
                         </td>
                         <td className="px-6 py-3.5 whitespace-nowrap text-center">
                           <span className={`inline-flex items-center justify-center min-w-[32px] px-2 py-0.5 rounded text-xs font-bold ${

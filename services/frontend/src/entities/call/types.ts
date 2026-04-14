@@ -21,6 +21,7 @@ export interface Call {
   errors_free?: number;
   company_id?: string;
   created_at: string;
+  analysis_time?: number;
 }
 
 export interface TranscriptSegment {

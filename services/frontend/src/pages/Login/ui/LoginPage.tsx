@@ -20,7 +20,7 @@ const LoginPage: React.FC = () => {
                 <span className="material-icons text-2xl">insights</span>
               </div>
               <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white uppercase">
-                SalesAI
+                Call Analyzer for Sales
               </h1>
               <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                 {t("auth.login_title")}
