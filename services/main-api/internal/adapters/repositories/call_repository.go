@@ -54,7 +54,7 @@ func (r *callRepository) GetByID(ctx context.Context, id string, companyID strin
 	query := `
 		SELECT c.id, c.company_id, c.manager_id, c.manager_name, c.client_phone, c.client_id, c.duration, c.call_link, c.storage_link, c.chat_link, c.call_date, c.call_time, c.status, c.source, c.external_id, c.created_at, c.updated_at,
 		       EXTRACT(EPOCH FROM (ar.processed_at - c.created_at))::INT AS analysis_time
-		FROM calls_schema.calls
+		FROM calls_schema.calls c
 		LEFT JOIN calls_schema.analysis_reports ar ON ar.call_id = c.id
 		WHERE (c.id::text = $1 OR c.external_id = $1) AND c.company_id = $2
 	`

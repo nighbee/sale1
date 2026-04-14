@@ -216,7 +216,7 @@ const CallsListPage: React.FC = () => {
                         className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
                       >
                         <td className="px-6 py-3.5 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400">
-                          {new Date(call.call_date).toLocaleDateString()}
+                          {new Date(call.call_date).toLocaleString()}
                         </td>
                         <td className="px-6 py-3.5 whitespace-nowrap text-sm font-semibold text-slate-900 dark:text-white">
                           <Link to={`/calls/${call.id}`} className="hover:text-primary transition-colors">

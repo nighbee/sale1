@@ -107,11 +107,11 @@ func (r *companyRepository) List(ctx context.Context, filters map[string]interfa
 func (r *companyRepository) Update(ctx context.Context, company *domain.Company) error {
 	query := `
 		UPDATE auth_schema.companies
-		SET name = $2, description = $3, industry = $4, size = $5, managers_count = $6, time_zone = $7, updated_at = NOW()
+		SET name = $2, description = $3, industry = $4, size = $5, managers_count = $6, time_zone = $7, stt_model_preference = $8, llm_provider = $9, updated_at = NOW()
 		WHERE id = $1
 	`
 	_, err := r.db.ExecContext(ctx, query,
-		company.ID, company.Name, company.Description, company.Industry, company.Size, company.ManagersCount, company.TimeZone,
+		company.ID, company.Name, company.Description, company.Industry, company.Size, company.ManagersCount, company.TimeZone, company.STTModelPreference, company.LLMProvider,
 	)
 	return err
 }

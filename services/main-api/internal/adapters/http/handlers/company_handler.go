@@ -81,7 +81,7 @@ func (h *CompanyHandler) GetCompany(c *fiber.Ctx) error {
 // @Security BearerAuth
 // @Router /settings [put]
 func (h *CompanyHandler) UpdateSettings(c *fiber.Ctx) error {
-	var update domain.Company
+	var update map[string]interface{}
 	if err := c.BodyParser(&update); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid body"})
 	}
@@ -94,15 +94,31 @@ func (h *CompanyHandler) UpdateSettings(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	// Update allowed fields
-	company.Name = update.Name
-	company.Description = update.Description
-	company.Industry = update.Industry
-	company.Size = update.Size
-	company.ManagersCount = update.ManagersCount
-	company.TimeZone = update.TimeZone
-	company.STTModelPreference = update.STTModelPreference
-	company.LLMProvider = update.LLMProvider
+	// Update allowed fields only if present in the request
+	if val, ok := update["name"].(string); ok && val != "" {
+		company.Name = val
+	}
+	if val, ok := update["description"].(string); ok {
+		company.Description = val
+	}
+	if val, ok := update["industry"].(string); ok {
+		company.Industry = val
+	}
+	if val, ok := update["size"].(string); ok {
+		company.Size = val
+	}
+	if val, ok := update["managers_count"].(float64); ok {
+		company.ManagersCount = int(val)
+	}
+	if val, ok := update["time_zone"].(string); ok {
+		company.TimeZone = val
+	}
+	if val, ok := update["stt_model_preference"].(string); ok && val != "" {
+		company.STTModelPreference = domain.STTModel(val)
+	}
+	if val, ok := update["llm_provider"].(string); ok && val != "" {
+		company.LLMProvider = domain.LLMProvider(val)
+	}
 
 	if err := h.companyRepo.Update(c.Context(), company); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
