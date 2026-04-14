@@ -145,40 +145,59 @@ func (uc *HandleEventUseCase) Execute(ctx context.Context, companyID string, req
 		if user == nil {
 			log.Info("manager not found, creating new user", zap.String("src_num", fullSrcNum), zap.String("manager_id", managerID))
 
-			// Use a safe email format
+			// Use a safe email format including companyID to avoid cross-tenant collisions
 			safeID := strings.ReplaceAll(fullSrcNum, " ", "")
-			email := fmt.Sprintf("manager_%s@salesai.local", safeID)
+			email := fmt.Sprintf("manager_%s_%s@salesai.local", companyID, safeID)
 
-			// Generate random password
-			randomPassword := generateRandomPassword(12)
-			hashedPassword, err := bcrypt.GenerateFromPassword([]byte(randomPassword), bcrypt.DefaultCost)
-			if err != nil {
-				log.Error("error hashing random password", zap.Error(err))
+			// Double check if user exists by email (to avoid race conditions)
+			existingUser, err := uc.userRepo.FindByEmail(ctx, email)
+			if err == nil && existingUser != nil {
+				log.Info("manager already exists by email (race condition handled)", zap.String("email", email))
+				user = existingUser
 			} else {
-				newUser := &domain.User{
-					ID:              uuid.New().String(),
-					CompanyID:       companyID,
-					Email:           email,
-					Username:        managerName,
-					PasswordHash:    string(hashedPassword),
-					InitialPassword: &randomPassword,
-					Role:            domain.RoleSalesRep,
-					ManagerID:       &managerID,
-					ManagerName:     managerName,
-					LineID:          &lineID,
-					SrcNum:          &fullSrcNum,
-					FirstName:       managerName,
-					IsActive:        true,
-				}
-
-				if err := uc.userRepo.Create(ctx, newUser); err != nil {
-					log.Error("error creating new manager user", zap.String("src_num", fullSrcNum), zap.Error(err))
+				// Generate random password
+				randomPassword := generateRandomPassword(12)
+				hashedPassword, err := bcrypt.GenerateFromPassword([]byte(randomPassword), bcrypt.DefaultCost)
+				if err != nil {
+					log.Error("error hashing random password", zap.Error(err))
 				} else {
-					log.Info("new manager user created", zap.String("user_id", newUser.ID), zap.String("src_num", fullSrcNum), zap.String("manager_id", managerID))
-					user = newUser
+					newUser := &domain.User{
+						ID:              uuid.New().String(),
+						CompanyID:       companyID,
+						Email:           email,
+						Username:        managerName,
+						PasswordHash:    string(hashedPassword),
+						InitialPassword: &randomPassword,
+						Role:            domain.RoleSalesRep,
+						ManagerID:       &managerID,
+						ManagerName:     managerName,
+						LineID:          &lineID,
+						SrcNum:          &fullSrcNum,
+						FirstName:       managerName,
+						IsActive:        true,
+					}
+
+					if err := uc.userRepo.Create(ctx, newUser); err != nil {
+						// Final attempt to handle race condition if Create fails due to duplicate key
+						if strings.Contains(err.Error(), "23505") || strings.Contains(strings.ToLower(err.Error()), "duplicate key") {
+							log.Info("manager creation conflict (23505), attempting final fetch by email", zap.String("email", email))
+							if existingUser, err := uc.userRepo.FindByEmail(ctx, email); err == nil && existingUser != nil {
+								user = existingUser
+							} else {
+								log.Error("error creating new manager user and failed to fetch after conflict", zap.String("src_num", fullSrcNum), zap.Error(err))
+							}
+						} else {
+							log.Error("error creating new manager user", zap.String("src_num", fullSrcNum), zap.Error(err))
+						}
+					} else {
+						log.Info("new manager user created", zap.String("user_id", newUser.ID), zap.String("src_num", fullSrcNum), zap.String("manager_id", managerID))
+						user = newUser
+					}
 				}
 			}
-		} else {
+		}
+
+		if user != nil {
 			managerName = user.ManagerName
 			// Use the extension from the existing user record
 			if user.ManagerID != nil {
