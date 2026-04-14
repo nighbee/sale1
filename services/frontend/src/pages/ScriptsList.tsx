@@ -2,7 +2,6 @@ import React, { useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { useScripts } from "../entities/script/model/hooks";
-import { BaseScripts } from "../widgets/BaseScripts/ui/BaseScripts";
 import { PageLayout } from "../widgets/PageLayout";
 import Button from "../shared/ui/Button";
 import { toast } from "sonner";
@@ -133,8 +132,8 @@ const ScriptsList: React.FC = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          <div className="lg:col-span-3 space-y-6">
+        <div className="grid grid-cols-1 gap-8">
+          <div className="space-y-6">
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
               <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
                 <div className="relative">
@@ -248,27 +247,6 @@ const ScriptsList: React.FC = () => {
             </div>
           </div>
 
-          <aside className="space-y-6">
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
-              <BaseScripts />
-            </div>
-
-            <div className="bg-gradient-to-br from-primary to-blue-600 rounded-2xl p-6 text-white shadow-lg shadow-primary/20">
-              <div className="flex items-start gap-4">
-                <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
-                  <span className="material-icons text-white">lightbulb</span>
-                </div>
-                <div>
-                  <h4 className="font-bold text-lg mb-2">
-                    {t("setup.why_scripts_title")}
-                  </h4>
-                  <p className="text-sm text-white/80 leading-relaxed">
-                    {t("setup.why_scripts_desc")}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </aside>
         </div>
       </div>
     </PageLayout>
