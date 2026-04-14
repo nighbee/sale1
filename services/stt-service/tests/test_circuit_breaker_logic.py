@@ -125,3 +125,23 @@ async def test_recovery_timeout(cb):
 
     assert await cb.get_state() == CircuitState.HALF_OPEN
     assert not await cb.is_blocked() # HALF_OPEN is not blocked
+
+@pytest.mark.asyncio
+async def test_circuit_breaker_bypass_when_disabled(cb):
+    company_id = "test-company"
+    cb.failure_threshold = 1
+
+    # Transition to OPEN
+    await cb.record_failure("error", company_id=company_id)
+    assert await cb.get_state(company_id=company_id) == CircuitState.OPEN
+
+    # Should be blocked if enabled (default)
+    assert await cb.is_blocked(company_id=company_id) is True
+
+    # Should NOT be blocked if disabled
+    assert await cb.is_blocked(company_id=company_id, enabled=False) is False
+
+    # Manual KILLED should ALWAYS block
+    await cb.set_manual_status(True, company_id=company_id)
+    assert await cb.get_state(company_id=company_id) == CircuitState.KILLED
+    assert await cb.is_blocked(company_id=company_id, enabled=False) is True

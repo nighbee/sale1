@@ -48,7 +48,7 @@ class ProcessAudioUseCase:
             cb_enabled = ai_settings.get("circuit_breaker_enabled", True)
 
         # check if we are blocked (OPEN or KILLED)
-        if await self.circuit_breaker.is_blocked(company_id=company_id):
+        if await self.circuit_breaker.is_blocked(company_id=company_id, enabled=cb_enabled):
             state = await self.circuit_breaker.get_state(company_id=company_id)
             logger.warning(
                 f"STT workflow is HALTED by Circuit Breaker for company {company_id} (state={state.value})",

@@ -22,7 +22,7 @@ class CircuitBreakerError(Exception):
         super().__init__(self.message)
 
 class CircuitBreaker:
-    def __init__(self, service_name="stt_workflow"):
+    def __init__(self, service_name="analytics_workflow"):
         self.service_name = service_name
         self.redis_url = os.getenv("REDIS_URL")
         if not self.redis_url:
