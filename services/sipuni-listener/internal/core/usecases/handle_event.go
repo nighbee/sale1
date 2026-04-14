@@ -4,12 +4,14 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"github.com/salesai/sipuni-listener/internal/core/domain"
 	"github.com/salesai/sipuni-listener/internal/core/ports"
 	applogger "github.com/salesai/sipuni-listener/internal/infrastructure/logger"
@@ -124,6 +126,21 @@ func (uc *HandleEventUseCase) Execute(ctx context.Context, companyID string, req
 		zap.String("manager_id", managerID),
 		zap.Bool("has_recording", notify.CallRecordLink != ""))
 
+	// Only process answered calls — NOANSWER/BUSY/FAILED/CANCEL have no actual audio
+	if notify.Status != "ANSWER" {
+		log.Info("skipping notify — call not answered",
+			zap.String("sipuni_call_id", notify.CallID),
+			zap.String("status", notify.Status))
+		return
+	}
+
+	// We only care about calls with a record link
+	if notify.CallRecordLink == "" {
+		log.Info("skipping notify — no recording link despite ANSWER status",
+			zap.String("sipuni_call_id", notify.CallID))
+		return
+	}
+
 	// Ensure manager exists in auth_schema.users
 	var user *domain.User
 	if fullSrcNum != "" {
@@ -179,7 +196,8 @@ func (uc *HandleEventUseCase) Execute(ctx context.Context, companyID string, req
 
 					if err := uc.userRepo.Create(ctx, newUser); err != nil {
 						// Final attempt to handle race condition if Create fails due to duplicate key
-						if strings.Contains(err.Error(), "23505") || strings.Contains(strings.ToLower(err.Error()), "duplicate key") {
+						var pqErr *pq.Error
+						if errors.As(err, &pqErr) && pqErr.Code == "23505" {
 							log.Info("manager creation conflict (23505), attempting final fetch by email", zap.String("email", email))
 							if existingUser, err := uc.userRepo.FindByEmail(ctx, email); err == nil && existingUser != nil {
 								user = existingUser
@@ -204,21 +222,6 @@ func (uc *HandleEventUseCase) Execute(ctx context.Context, companyID string, req
 				managerID = *user.ManagerID
 			}
 		}
-	}
-
-	// Only process answered calls — NOANSWER/BUSY/FAILED/CANCEL have no actual audio
-	if notify.Status != "ANSWER" {
-		log.Info("skipping notify — call not answered",
-			zap.String("sipuni_call_id", notify.CallID),
-			zap.String("status", notify.Status))
-		return
-	}
-
-	// We only care about calls with a record link
-	if notify.CallRecordLink == "" {
-		log.Info("skipping notify — no recording link despite ANSWER status",
-			zap.String("sipuni_call_id", notify.CallID))
-		return
 	}
 
 	// Generate deterministic UUID for the call based on Sipuni CallID
