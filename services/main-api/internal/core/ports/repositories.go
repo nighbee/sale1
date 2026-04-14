@@ -94,6 +94,7 @@ type IntegrationRepository interface {
 	GetByType(ctx context.Context, integrationType domain.IntegrationType, companyID string) (*domain.Integration, error)
 	List(ctx context.Context, companyID string) ([]*domain.Integration, error)
 	ListAllActive(ctx context.Context) ([]*domain.Integration, error)
+	ListActiveByCompany(ctx context.Context, companyID string) ([]*domain.Integration, error)
 	Update(ctx context.Context, integration *domain.Integration) error
 	Delete(ctx context.Context, integrationType domain.IntegrationType, companyID string) error
 }

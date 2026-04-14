@@ -38,6 +38,11 @@ func (m *MockIntegrationRepository) ListAllActive(ctx context.Context) ([]*domai
 	return args.Get(0).([]*domain.Integration), args.Error(1)
 }
 
+func (m *MockIntegrationRepository) ListActiveByCompany(ctx context.Context, companyID string) ([]*domain.Integration, error) {
+	args := m.Called(ctx, companyID)
+	return args.Get(0).([]*domain.Integration), args.Error(1)
+}
+
 func (m *MockIntegrationRepository) Update(ctx context.Context, integration *domain.Integration) error {
 	args := m.Called(ctx, integration)
 	return args.Error(0)

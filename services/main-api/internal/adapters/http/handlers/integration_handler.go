@@ -83,11 +83,21 @@ func (h *IntegrationHandler) List(c *fiber.Ctx) error {
 // @Tags integrations
 // @Accept json
 // @Produce json
+// @Param company_id query string false "Filter by company ID"
 // @Success 200 {object} fiber.Map
 // @Failure 500 {object} fiber.Map
 // @Router /internal/integrations [get]
 func (h *IntegrationHandler) ListInternal(c *fiber.Ctx) error {
-	integrations, err := h.integrationUC.ListAllActive(c.Context())
+	companyID := c.Query("company_id")
+	var integrations []*domain.Integration
+	var err error
+
+	if companyID != "" {
+		integrations, err = h.integrationUC.ListActiveByCompany(c.Context(), companyID)
+	} else {
+		integrations, err = h.integrationUC.ListAllActive(c.Context())
+	}
+
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}

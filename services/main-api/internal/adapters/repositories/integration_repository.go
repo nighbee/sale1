@@ -68,6 +68,29 @@ func (r *integrationRepository) List(ctx context.Context, companyID string) ([]*
 	return integrations, nil
 }
 
+func (r *integrationRepository) ListActiveByCompany(ctx context.Context, companyID string) ([]*domain.Integration, error) {
+	query := `
+		SELECT id, company_id, integration_type, credentials, config, is_active, last_sync, created_at, updated_at
+		FROM integrations_schema.integrations
+		WHERE is_active = TRUE AND company_id = $1
+	`
+	rows, err := r.db.QueryContext(ctx, query, companyID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	integrations := []*domain.Integration{}
+	for rows.Next() {
+		i := &domain.Integration{}
+		if err := rows.Scan(&i.ID, &i.CompanyID, &i.IntegrationType, &i.Credentials, &i.Config, &i.IsActive, &i.LastSync, &i.CreatedAt, &i.UpdatedAt); err != nil {
+			return nil, err
+		}
+		integrations = append(integrations, i)
+	}
+	return integrations, nil
+}
+
 func (r *integrationRepository) ListAllActive(ctx context.Context) ([]*domain.Integration, error) {
 	query := `
 		SELECT id, company_id, integration_type, credentials, config, is_active, last_sync, created_at, updated_at
