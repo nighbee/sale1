@@ -235,13 +235,9 @@ func (h *ScriptHandler) DeleteScript(c *fiber.Ctx) error {
 	id := c.Params("id")
 	companyID := c.Locals("company_id").(string)
 
-	// 1. Delete record in main-api DB (soft or metadata)
-	if err := h.scriptRepo.Delete(c.Context(), id, companyID); err != nil {
-		log.Error("delete script metadata failed", zap.String("script_id", id), zap.Error(err))
-		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
-	}
-
-	// 2. Proxy physical deletion to script-service
+	// Proxy physical deletion to script-service.
+	// Since both services share the same database, script-service will handle
+	// both the database update (is_active=false) and the physical file deletion.
 	req, _ := http.NewRequest("DELETE", h.scriptServiceURL+"/api/v1/scripts/"+id, nil)
 	req.Header.Set("X-Company-ID", companyID)
 	client := &http.Client{}

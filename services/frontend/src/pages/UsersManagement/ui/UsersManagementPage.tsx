@@ -135,7 +135,7 @@ export const UsersManagementPage: React.FC = () => {
           <p className="text-slate-500">{t("users.management_subtitle")}</p>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-border-light dark:border-slate-800 shadow-sm overflow-hidden">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
           {loading ? (
             <div className="p-8 space-y-4">
               <Skeleton className="h-10 w-full" />
@@ -145,67 +145,68 @@ export const UsersManagementPage: React.FC = () => {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left">
-                <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 text-xs font-bold uppercase tracking-wider">
+                <thead className="bg-slate-50/50 dark:bg-slate-800/50 text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em]">
                   <tr>
-                    <th className="px-6 py-4">{t("common.name")}</th>
-                    <th className="px-6 py-4">{t("common.username")} / {t("common.email")}</th>
-                    <th className="px-6 py-4">{t("common.phone")}</th>
-                    <th className="px-6 py-4">Line ID / Src Num</th>
-                    <th className="px-6 py-4">{t("common.role")}</th>
-                    <th className="px-6 py-4">{t("common.team")}</th>
-                    <th className="px-6 py-4 text-right">{t("common.actions")}</th>
+                    <th className="px-6 py-5 border-b border-slate-100 dark:border-slate-800">{t("common.name")}</th>
+                    <th className="px-6 py-5 border-b border-slate-100 dark:border-slate-800">{t("common.username")} / {t("common.email")}</th>
+                    <th className="px-6 py-5 border-b border-slate-100 dark:border-slate-800">{t("common.phone")}</th>
+                    <th className="px-6 py-5 border-b border-slate-100 dark:border-slate-800">Line / Src</th>
+                    <th className="px-6 py-5 border-b border-slate-100 dark:border-slate-800">{t("common.role")}</th>
+                    <th className="px-6 py-5 border-b border-slate-100 dark:border-slate-800">{t("common.team")}</th>
+                    <th className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 text-right">{t("common.actions")}</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border-light dark:divide-slate-800">
+                <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
                   {users.map((user) => (
                     <tr
                       key={user.id}
-                      className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                      className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-all"
                     >
-                      <td className="px-6 py-4">
-                        <div className="font-semibold text-slate-900 dark:text-white">
+                      <td className="px-6 py-5">
+                        <div className="font-bold text-slate-900 dark:text-white">
                           {user.first_name} {user.last_name}
                         </div>
-                        <div className="text-xs text-slate-400">ID: {user.manager_id || "N/A"}</div>
+                        <div className="text-[10px] text-slate-400 mt-0.5 font-medium">ID: {user.manager_id || "N/A"}</div>
                         {user.initial_password && (
-                          <div className="text-xs text-amber-600 font-medium">
-                            Initial: {user.initial_password}
+                          <div className="text-[10px] text-amber-600 font-bold mt-1 bg-amber-50 dark:bg-amber-900/20 px-1.5 py-0.5 rounded inline-block">
+                            INITIAL: {user.initial_password}
                           </div>
                         )}
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                      <td className="px-6 py-5">
+                        <div className="text-sm font-bold text-slate-700 dark:text-slate-300">
                           {user.username || user.email}
                         </div>
-                        <div className="text-xs text-slate-500">{user.email}</div>
+                        <div className="text-xs text-slate-400 font-medium">{user.email}</div>
                       </td>
-                      <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">
+                      <td className="px-6 py-5 text-sm text-slate-600 dark:text-slate-400 font-medium">
                         {user.phone || "-"}
                       </td>
-                      <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">
-                        <div className="font-medium">{user.line_id || "-"}</div>
-                        <div className="text-xs text-slate-500">{user.src_num || "-"}</div>
+                      <td className="px-6 py-5 text-sm text-slate-600 dark:text-slate-400">
+                        <div className="font-bold text-slate-700 dark:text-slate-300">{user.line_id || "-"}</div>
+                        <div className="text-[10px] text-slate-400 font-medium">{user.src_num || "-"}</div>
                       </td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase ${
+                      <td className="px-6 py-5">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
                           user.role === "super_admin"
-                            ? "bg-purple-100 text-purple-800 dark:bg-purple-500/20 dark:text-purple-400"
+                            ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400"
                             : user.role === "tenant_admin"
-                            ? "bg-blue-100 text-blue-800 dark:bg-blue-500/20 dark:text-blue-400"
-                            : "bg-slate-100 text-slate-800 dark:bg-slate-500/20 dark:text-slate-400"
+                            ? "bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400"
+                            : "bg-slate-50 text-slate-600 dark:bg-slate-400/10 dark:text-slate-400"
                         }`}>
                           {user.role}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">
+                      <td className="px-6 py-5 text-sm text-slate-500 dark:text-slate-400 font-bold">
                         {getTeamName(user.team_id)}
                       </td>
-                      <td className="px-6 py-4 text-right">
+                      <td className="px-6 py-5 text-right">
                         <button
                           onClick={() => handleEdit(user)}
-                          className="text-primary font-bold text-sm hover:underline"
+                          className="p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                          title={t("common.edit")}
                         >
-                          {t("common.edit")}
+                          <span className="material-icons text-xl">edit</span>
                         </button>
                       </td>
                     </tr>

@@ -321,50 +321,6 @@ services:
     networks:
       - sale1-network
 
-  sheets-sync:
-    build: ./services/sheets-sync
-    environment:
-      DATABASE_URL: "host=postgres port=5432 user=salesai_user password=strong_password dbname=salesai sslmode=disable"
-      REDIS_URL: "redis://:${REDIS_PASSWORD:-strong_redis_password}@redis:6379"
-      GOOGLE_SHEETS_ID: ${GOOGLE_SHEETS_ID}
-      SYNC_INTERVAL: ${SHEETS_SYNC_INTERVAL:-5m}
-      SHEET_NAME: ${SHEET_NAME:-Sheet1}
-      COMPANY_ID: ${COMPANY_ID:-}
-      RUN_MODE: "api"
-      PORT: "8085"
-      LOG_LEVEL: ${LOG_LEVEL:-info}
-      TEAM_NAME: ${TEAM_NAME:-callteam1}
-      MAIN_API_URL: "http://main-api:8080"
-      INTERNAL_SECRET: ${INTERNAL_SECRET:-internal-secret-key}
-    ports:
-      - "8085:8085"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      main-api:
-        condition: service_healthy
-    networks:
-      - sale1-network
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "50m"
-        max-file: "5"
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "python",
-          "-c",
-          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8085/health')",
-        ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-
   nginx:
     image: nginx:1.25-alpine
     restart: unless-stopped
@@ -380,8 +336,6 @@ services:
       script-service:
         condition: service_healthy
       frontend:
-        condition: service_healthy
-      sheets-sync:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1/health"]

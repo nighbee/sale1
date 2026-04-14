@@ -43,17 +43,21 @@ const TeamsOverviewPage: React.FC = () => {
       <div className="p-4 md:p-8">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div>
-            <p className="text-slate-500">{t('teams.management_subtitle')}</p>
+            <h1 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">{t('teams.management_title')}</h1>
+            <p className="text-sm text-slate-500 font-medium mt-1">{t('teams.management_subtitle')}</p>
           </div>
-          <Button onClick={handleCreateClick} className="w-full sm:w-auto">{t('teams.create_team')}</Button>
+          <Button onClick={handleCreateClick} className="w-full sm:w-auto shadow-lg shadow-primary/20 font-bold px-6">
+            <span className="material-icons text-sm mr-2">add</span>
+            {t('teams.create_team')}
+          </Button>
         </div>
 
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse">
-            {[1, 2, 3].map(i => <div key={i} className="h-40 bg-slate-200 dark:bg-slate-700 rounded-xl"></div>)}
+            {[1, 2, 3].map(i => <div key={i} className="h-48 bg-slate-100 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800"></div>)}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {teams.map((team) => (
               <TeamCard key={team.id} team={team} />
             ))}

@@ -5,8 +5,6 @@ import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { PageLayout } from '../../../widgets/PageLayout';
-import { integrationApi } from '../../../entities/integration/api';
-import type { Integration } from '../../../entities/integration/types';
 import { useCompany, useBilling } from '../../../entities/company/model/hooks';
 import Button from '../../../shared/ui/Button';
 import Input from '../../../shared/ui/Input';
@@ -35,20 +33,15 @@ type BillingFormValues = z.infer<typeof billingSchema>;
 
 const CompanySettingsPage: React.FC = () => {
   const { t } = useTranslation();
-  type TabId = 'general' | 'ai' | 'integrations' | 'billing';
+  type TabId = 'general' | 'billing';
   const [activeTab, setActiveTab] = useState<TabId>('general');
 
   const { company, loading: companyLoading, updateSettings } = useCompany() as any;
   const { billing, loading: billingLoading, updateBilling } = useBilling() as any;
 
-  const [integrations, setIntegrations] = useState<Integration[]>([]);
-  const [integrationsLoading, setIntegrationsLoading] = useState(true);
-
   const {
     register,
     handleSubmit,
-    setValue,
-    watch,
     reset: resetCompany,
     formState: { errors: companyErrors, isSubmitting: isSavingCompany },
   } = useForm<CompanyFormValues>({
@@ -89,20 +82,6 @@ const CompanySettingsPage: React.FC = () => {
     }
   }, [billing, resetBilling]);
 
-  useEffect(() => {
-    const fetchIntegrations = async () => {
-      try {
-        const res = await integrationApi.list();
-        setIntegrations(res.data.integrations || []);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setIntegrationsLoading(false);
-      }
-    };
-    fetchIntegrations();
-  }, []);
-
   const onSaveCompany: SubmitHandler<CompanyFormValues> = async (data) => {
     try {
       await updateSettings(data);
@@ -121,10 +100,7 @@ const CompanySettingsPage: React.FC = () => {
     }
   };
 
-  const sttModel = watch('stt_model_preference');
-  const llmProvider = watch('llm_provider');
-
-  const loading = companyLoading || billingLoading || integrationsLoading;
+  const loading = companyLoading || billingLoading;
 
   if (loading) return (
     <PageLayout title={t('settings.title')}>
@@ -150,8 +126,6 @@ const CompanySettingsPage: React.FC = () => {
           <nav className="-mb-px flex space-x-8">
             {[
                 { id: 'general', label: t('settings.general') },
-                { id: 'ai', label: t('settings.ai_providers') },
-                { id: 'integrations', label: t('settings.integrations') },
                 { id: 'billing', label: t('settings.billing') },
             ].map(tab => (
                 <button
@@ -201,111 +175,6 @@ const CompanySettingsPage: React.FC = () => {
                 </form>
             )}
 
-            {activeTab === 'ai' && (
-                <form id="ai-form" onSubmit={handleSubmit(onSaveCompany)} className="space-y-10">
-            <section>
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{t('settings.stt_title')}</h2>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">{t('settings.stt_subtitle')}</p>
-                </div>
-              </div>
-              <div className="space-y-4">
-                {[
-                  { id: 'whisperx_local', name: t('settings.stt_whisperx'), type: t('settings.free'), details: [t('settings.zero_data_egress'), t('settings.lowest_latency')], warning: [t('settings.requires_gpu'), t('settings.higher_maintenance')] },
-                  { id: 'openai', name: t('settings.stt_openai'), type: t('settings.price_per_min', { price: '$0.006' }), details: [t('settings.highest_accuracy'), t('settings.managed_infra')], warning: [t('settings.data_leaves_region')] },
-                  { id: 'gemini', name: t('settings.stt_gemini'), type: t('settings.price_per_min', { price: '$0.004' }), details: [t('settings.strong_multilingual'), t('settings.native_gcp')], warning: [t('settings.lower_jargon_accuracy')] },
-                ].map((p) => (
-                  <div
-                    key={p.id}
-                    onClick={() => setValue('stt_model_preference', p.id, { shouldDirty: true })}
-                    className={`relative flex cursor-pointer rounded-lg border p-4 shadow-sm transition-all ${sttModel === p.id ? 'border-2 border-primary bg-blue-50/20 dark:bg-blue-900/10' : 'border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark'}`}
-                  >
-                    <div className="flex h-5 items-center">
-                      <input type="radio" checked={sttModel === p.id} readOnly className="h-4 w-4 text-primary" />
-                    </div>
-                    <div className="ml-3 flex flex-col w-full">
-                      <div className="flex justify-between items-start w-full">
-                        <span className="block text-sm font-medium text-slate-900 dark:text-white">{p.name}</span>
-                        <span className="inline-flex items-center rounded-md bg-slate-50 dark:bg-slate-800 px-2 py-1 text-xs font-medium text-slate-600 dark:text-slate-400 ring-1 ring-inset ring-slate-500/10">{p.type}</span>
-                      </div>
-                      <div className="mt-2 grid sm:grid-cols-2 gap-4 text-xs">
-                        <ul className="list-disc pl-4 space-y-1 text-emerald-600 dark:text-emerald-400">
-                          {p.details.map(d => <li key={d}>{d}</li>)}
-                        </ul>
-                        <ul className="list-disc pl-4 space-y-1 text-amber-600 dark:text-amber-500">
-                          {p.warning.map(w => <li key={w}>{w}</li>)}
-                        </ul>
-                      </div>
-                    </div>
-                    {sttModel === p.id && <div className="absolute top-4 right-4 text-primary"><span className="material-icons">check_circle</span></div>}
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            <section>
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{t('settings.llm_title')}</h2>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">{t('settings.llm_subtitle')}</p>
-                </div>
-              </div>
-              <div className="space-y-4">
-                {[
-                  { id: 'openai', name: t('settings.llm_openai'), type: t('settings.price_per_m_tokens', { price: '$10' }), details: [t('settings.sota_reasoning'), t('settings.excellent_nuance')], warning: [t('settings.highest_cost'), t('settings.latency_3s')] },
-                  { id: 'gemini', name: t('settings.llm_gemini'), type: t('settings.price_per_m_tokens', { price: '$7' }), details: [t('settings.context_window_1m'), t('settings.cost_effective')], warning: [t('settings.strict_safety_filters')] },
-                ].map((p) => (
-                  <div
-                    key={p.id}
-                    onClick={() => setValue('llm_provider', p.id, { shouldDirty: true })}
-                    className={`relative flex cursor-pointer rounded-lg border p-4 shadow-sm transition-all ${llmProvider === p.id ? 'border-2 border-primary bg-blue-50/20 dark:bg-blue-900/10' : 'border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark'}`}
-                  >
-                    <div className="flex h-5 items-center">
-                      <input type="radio" checked={llmProvider === p.id} readOnly className="h-4 w-4 text-primary" />
-                    </div>
-                    <div className="ml-3 flex flex-col w-full">
-                      <div className="flex justify-between items-start w-full">
-                        <span className="block text-sm font-medium text-slate-900 dark:text-white">{p.name}</span>
-                        <span className="inline-flex items-center rounded-md bg-slate-50 dark:bg-slate-800 px-2 py-1 text-xs font-medium text-slate-600 dark:text-slate-400 ring-1 ring-inset ring-slate-500/10">{p.type}</span>
-                      </div>
-                    </div>
-                    {llmProvider === p.id && <div className="absolute top-4 right-4 text-primary"><span className="material-icons">check_circle</span></div>}
-                  </div>
-                ))}
-              </div>
-            </section>
-                </form>
-            )}
-
-            {activeTab === 'integrations' && (
-                <section className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {[
-                            { id: 'slack', name: 'Slack', icon: 'chat', desc: 'Sync activities to Slack channels' },
-                            { id: 'amocrm', name: 'AmoCRM', icon: 'hub', desc: 'Sync leads and calls with AmoCRM' },
-                            { id: 'telegram', name: 'Telegram', icon: 'send', desc: 'Get notifications via Telegram bot' },
-                        ].map(int => {
-                            const isConnected = integrations.some((i: Integration) => i.integration_type === int.id && i.is_active);
-                            return (
-                                <div key={int.id} className="p-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                                    <div className="flex justify-between items-start mb-4">
-                                        <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded-lg text-primary">
-                                            <span className="material-icons">{int.icon}</span>
-                                        </div>
-                                        <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded ${isConnected ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
-                                            {isConnected ? 'Connected' : 'Disconnected'}
-                                        </span>
-                                    </div>
-                                    <h3 className="font-bold">{int.name}</h3>
-                                    <p className="text-xs text-slate-500 mt-1 mb-4">{int.desc}</p>
-                                    <Button variant="outline" className="w-full text-xs">Configure</Button>
-                                </div>
-                            )
-                        })}
-                    </div>
-                </section>
-            )}
 
             {activeTab === 'billing' && billing && (
                 <form id="billing-form" onSubmit={handleSubmitBilling(onSaveBilling)} className="space-y-8">
@@ -374,7 +243,7 @@ const CompanySettingsPage: React.FC = () => {
                 onClick={() => {
                   if (activeTab === 'billing') {
                     handleSubmitBilling(onSaveBilling)();
-                  } else if (activeTab === 'general' || activeTab === 'ai') {
+                  } else if (activeTab === 'general') {
                     handleSubmit(onSaveCompany)();
                   }
                 }}
