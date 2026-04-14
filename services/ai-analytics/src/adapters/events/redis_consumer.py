@@ -3,6 +3,7 @@ import os
 import logging
 import redis.asyncio as redis
 from src.core.usecases.analyze_call import AnalyzeCallUseCase
+from src.infrastructure.monitoring.circuit_breaker import CircuitBreakerError
 from src.adapters.storage.postgres_repo import log_processing_event, update_call_status
 from src.infrastructure.monitoring.metrics import EVENTS_PROCESSED
 
@@ -68,6 +69,15 @@ async def start_consumer():
                             await r.xack(stream_name, group_name, msg_id)
                             logger.info("AI analysis completed successfully",
                                         extra={"call_id": call_id})
+                        except CircuitBreakerError as e:
+                            logger.error(f"AI analysis HALTED by Circuit Breaker: {e}",
+                                         extra={"call_id": call_id, "state": e.state.value})
+                            log_processing_event(call_id, "ai-analytics", "halted", error_message=str(e))
+                            update_call_status(call_id, "halted")
+                            EVENTS_PROCESSED.labels(status='halted').inc()
+                            # Acknowledge to prevent retry loops for halted workflows
+                            await r.xack(stream_name, group_name, msg_id)
+
                         except Exception as e:
                             logger.error("AI analysis failed",
                                          extra={"call_id": call_id,

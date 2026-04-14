@@ -10,6 +10,7 @@ from src.infrastructure.prompts.system_prompts import SYSTEM_PROMPT, get_user_pr
 from src.adapters.events.redis_publisher import publish_analysis_completed, publish_critical_error
 from src.adapters.crm.amocrm_client import AmoCRMClient
 from src.infrastructure.api.main_api_client import MainAPIClient
+from src.infrastructure.monitoring.circuit_breaker import CircuitBreaker, CircuitBreakerError
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +18,7 @@ class AnalyzeCallUseCase:
     def __init__(self):
         self.crm_client = AmoCRMClient()
         self.api_client = MainAPIClient()
+        self.circuit_breaker = CircuitBreaker("analytics_workflow")
 
     async def execute(self, call_id: str):
         logger.info("analyzing call", extra={"call_id": call_id})
@@ -74,6 +76,18 @@ class AnalyzeCallUseCase:
 
         # 4. Get LLM settings
         ai_settings = await self.api_client.get_ai_settings(company_id=company_id)
+        cb_enabled = True
+        if ai_settings:
+            cb_enabled = ai_settings.get("circuit_breaker_enabled", True)
+
+        # 4.1 Circuit Breaker Check
+        if await self.circuit_breaker.is_blocked(company_id=company_id, enabled=cb_enabled):
+            state = await self.circuit_breaker.get_state(company_id=company_id)
+            logger.warning(
+                f"AI Analytics workflow is HALTED by Circuit Breaker for company {company_id} (state={state.value})",
+                extra={"call_id": call_id, "company_id": company_id, "state": state.value}
+            )
+            raise CircuitBreakerError("analytics_workflow", state)
 
         # Priority: 1. integrations (DB) 2. fallback to .env
         llm_provider_name = None
@@ -103,7 +117,20 @@ class AnalyzeCallUseCase:
         )
 
         llm_provider = LLMProviderFactory.create(llm_provider_name, integrations, default_model=llm_model_name)
-        analysis = await llm_provider.analyze(SYSTEM_PROMPT, user_prompt)
+        try:
+            analysis = await llm_provider.analyze(SYSTEM_PROMPT, user_prompt)
+            await self.circuit_breaker.record_success(company_id=company_id)
+        except Exception as e:
+            logger.error(
+                "LLM provider analysis failed",
+                extra={
+                    "call_id": call_id,
+                    "llm_provider": llm_provider_name,
+                    "error": str(e)
+                }
+            )
+            await self.circuit_breaker.record_failure(str(e), enabled=cb_enabled, company_id=company_id)
+            raise
 
         logger.info(
             "[2/4] LLM response received",
