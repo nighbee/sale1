@@ -22,7 +22,10 @@ func (m *mockUserRepo) GetByID(ctx context.Context, id string) (*domain.User, er
 }
 func (m *mockUserRepo) GetByEmail(ctx context.Context, email string) (*domain.User, error) { return nil, nil }
 func (m *mockUserRepo) GetByPhone(ctx context.Context, phone string) (*domain.User, error) { return nil, nil }
-func (m *mockUserRepo) Update(ctx context.Context, u *domain.User) error                { return nil }
+func (m *mockUserRepo) Update(ctx context.Context, u *domain.User) error                {
+    m.user = u
+    return nil
+}
 func (m *mockUserRepo) Delete(ctx context.Context, id string) error                    { return nil }
 func (m *mockUserRepo) DeleteGlobal(ctx context.Context, id string) error              { return nil }
 func (m *mockUserRepo) List(ctx context.Context, companyID string) ([]*domain.User, error) {

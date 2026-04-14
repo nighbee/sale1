@@ -232,11 +232,15 @@ func (h *UserHandler) UpdateUser(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid body"})
 	}
 
-	if update.FirstName != "" {
+	firstNameChanged := false
+	if update.FirstName != "" && update.FirstName != user.FirstName {
 		user.FirstName = update.FirstName
+		firstNameChanged = true
 	}
-	if update.LastName != "" {
+	lastNameChanged := false
+	if update.LastName != "" && update.LastName != user.LastName {
 		user.LastName = update.LastName
+		lastNameChanged = true
 	}
 	if update.Email != "" {
 		user.Email = update.Email
@@ -252,6 +256,8 @@ func (h *UserHandler) UpdateUser(c *fiber.Ctx) error {
 	}
 	if update.ManagerName != "" {
 		user.ManagerName = update.ManagerName
+	} else if firstNameChanged || lastNameChanged {
+		user.ManagerName = user.FirstName + " " + user.LastName
 	}
 	if update.ManagerID != "" {
 		user.ManagerID = &update.ManagerID
@@ -489,11 +495,15 @@ func (h *UserHandler) UpdateUserGlobal(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	if val, ok := update["first_name"].(string); ok {
+	firstNameChanged := false
+	if val, ok := update["first_name"].(string); ok && val != user.FirstName {
 		user.FirstName = val
+		firstNameChanged = true
 	}
-	if val, ok := update["last_name"].(string); ok {
+	lastNameChanged := false
+	if val, ok := update["last_name"].(string); ok && val != user.LastName {
 		user.LastName = val
+		lastNameChanged = true
 	}
 	if val, ok := update["role"].(string); ok && val != "" {
 		user.Role = domain.UserRole(val)
@@ -509,6 +519,12 @@ func (h *UserHandler) UpdateUserGlobal(c *fiber.Ctx) error {
 	}
 	if val, ok := update["manager_id"].(string); ok {
 		user.ManagerID = &val
+	}
+
+	if mName, ok := update["manager_name"].(string); ok && mName != "" {
+		user.ManagerName = mName
+	} else if firstNameChanged || lastNameChanged {
+		user.ManagerName = user.FirstName + " " + user.LastName
 	}
 
 	if err := h.userRepo.Update(c.Context(), user); err != nil {
