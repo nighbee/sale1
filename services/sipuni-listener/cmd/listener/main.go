@@ -12,10 +12,12 @@ import (
 
 	"github.com/ansrivas/fiberprometheus/v2"
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	_ "github.com/lib/pq"
 	"github.com/salesai/sipuni-listener/internal/adapters/queue"
 	"github.com/salesai/sipuni-listener/internal/adapters/repositories"
+	"github.com/salesai/sipuni-listener/internal/core/ports"
 	"github.com/salesai/sipuni-listener/internal/core/usecases"
 	"github.com/salesai/sipuni-listener/internal/infrastructure/api"
 	applogger "github.com/salesai/sipuni-listener/internal/infrastructure/logger"
@@ -41,12 +43,17 @@ var (
 	handleEventUC *usecases.HandleEventUseCase
 	connections   = make(map[string]chan struct{}) // companyID -> stop channel
 	mu            sync.Mutex
+	instanceID    string
 )
 
 func main() {
 	applogger.Init("sipuni-listener")
 	defer applogger.Sync()
 	log := applogger.L
+
+	hostname, _ := os.Hostname()
+	instanceID = hostname + "-" + uuid.New().String()
+	log.Info("Sipuni Listener starting", zap.String("instance_id", instanceID))
 
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
@@ -106,6 +113,23 @@ func main() {
 
 	handleEventUC = usecases.NewHandleEventUseCase(callRepo, userRepo, publisher)
 
+	// Start worker loop to consume events from notify_queue
+	for i := 0; i < 5; i++ {
+		go func(workerID int) {
+			log.Info("Starting event worker", zap.Int("worker_id", workerID))
+			for {
+				companyID, payload, err := publisher.DequeueSipuniEvent(context.Background())
+				if err != nil {
+					log.Error("Failed to dequeue Sipuni event", zap.Error(err))
+					time.Sleep(1 * time.Second)
+					continue
+				}
+				log.Info("Processing event from queue", zap.String("company_id", companyID))
+				handleEventUC.Execute(context.Background(), companyID, payload)
+			}
+		}(i)
+	}
+
 	// Start a simple HTTP server for metrics
 	go func() {
 		app := fiber.New()
@@ -131,7 +155,7 @@ func main() {
 
 	go func() {
 		for {
-			log.Info("Checking for active Sipuni integrations")
+			log.Debug("Checking for active Sipuni integrations")
 			integrations, err := apiClient.GetActiveIntegrations()
 			if err != nil {
 				log.Error("Failed to fetch integrations", zap.Error(err))
@@ -146,10 +170,22 @@ func main() {
 							activeCompanyIDs[i.CompanyID] = true
 							mu.Lock()
 							if _, exists := connections[i.CompanyID]; !exists {
-								stopChan := make(chan struct{})
-								connections[i.CompanyID] = stopChan
-								go manageSipuniConnection(i.CompanyID, creds.APIKey, stopChan)
-								log.Info("Started Sipuni connection for company", zap.String("company_id", i.CompanyID))
+								// Try to acquire distributed lock
+								locked, err := publisher.TryLockCompany(context.Background(), i.CompanyID, instanceID, 30*time.Second)
+								if err == nil && locked {
+									stopChan := make(chan struct{})
+									connections[i.CompanyID] = stopChan
+									go manageSipuniConnection(i.CompanyID, creds.APIKey, stopChan, publisher)
+									log.Info("Started Sipuni connection for company", zap.String("company_id", i.CompanyID))
+								}
+							} else {
+								// Refresh lock
+								refreshed, err := publisher.RefreshLockCompany(context.Background(), i.CompanyID, instanceID, 30*time.Second)
+								if err != nil || !refreshed {
+									log.Warn("Failed to refresh lock, stopping connection", zap.String("company_id", i.CompanyID), zap.Error(err))
+									close(connections[i.CompanyID])
+									delete(connections, i.CompanyID)
+								}
 							}
 							mu.Unlock()
 						}
@@ -161,13 +197,14 @@ func main() {
 				for companyID, stopChan := range connections {
 					if !activeCompanyIDs[companyID] {
 						close(stopChan)
+						publisher.ReleaseLockCompany(context.Background(), companyID, instanceID)
 						delete(connections, companyID)
 						log.Info("Stopped Sipuni connection for company", zap.String("company_id", companyID))
 					}
 				}
 				mu.Unlock()
 			}
-			time.Sleep(1 * time.Minute)
+			time.Sleep(10 * time.Second)
 		}
 	}()
 
@@ -175,7 +212,7 @@ func main() {
 	log.Info("Interrupt received, shutting down")
 }
 
-func manageSipuniConnection(companyID string, apiKey string, stopChan chan struct{}) {
+func manageSipuniConnection(companyID string, apiKey string, stopChan chan struct{}, publisher ports.QueuePublisher) {
 	log := applogger.L.With(zap.String("company_id", companyID))
 	u := url.URL{Scheme: "wss", Host: "wss.sipuni.com", Path: "/api"}
 
@@ -232,6 +269,7 @@ func manageSipuniConnection(companyID string, apiKey string, stopChan chan struc
 				for {
 					select {
 					case <-ticker.C:
+						c.SetWriteDeadline(time.Now().Add(5 * time.Second))
 						if err := c.WriteJSON(map[string]string{"type": "keepalive"}); err != nil {
 							return
 						}
@@ -245,6 +283,7 @@ func manageSipuniConnection(companyID string, apiKey string, stopChan chan struc
 				defer close(done)
 				defer close(keepaliveStop)
 				for {
+					c.SetReadDeadline(time.Now().Add(65 * time.Second)) // Slightly more than 2x keepalive
 					_, message, err := c.ReadMessage()
 					if err != nil {
 						return
@@ -253,7 +292,8 @@ func manageSipuniConnection(companyID string, apiKey string, stopChan chan struc
 					var event SipuniEvent
 					if err := json.Unmarshal(message, &event); err == nil {
 						if event.Action == "notify" {
-							handleEventUC.Execute(context.Background(), companyID, event.Request)
+							log.Info("Received notify event, enqueuing", zap.String("company_id", companyID))
+							publisher.EnqueueSipuniEvent(context.Background(), companyID, event.Request)
 						} else if event.Action == "auth" && event.Status != 1 {
 							log.Error("Sipuni authentication failed", zap.Int("status", event.Status))
 							return
@@ -262,8 +302,9 @@ func manageSipuniConnection(companyID string, apiKey string, stopChan chan struc
 						// Try unwrapped
 						var directNotify usecases.SipuniNotifyRequest
 						if err := json.Unmarshal(message, &directNotify); err == nil && directNotify.CallID != "" {
+							log.Info("Received unwrapped notify event, enqueuing", zap.String("company_id", companyID))
 							rawRequest, _ := json.Marshal(directNotify)
-							handleEventUC.Execute(context.Background(), companyID, rawRequest)
+							publisher.EnqueueSipuniEvent(context.Background(), companyID, rawRequest)
 						}
 					}
 				}
