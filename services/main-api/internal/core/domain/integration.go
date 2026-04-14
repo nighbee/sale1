@@ -9,7 +9,6 @@ type IntegrationType string
 
 const (
 	IntegrationAmoCRM       IntegrationType = "amocrm"
-	IntegrationGoogleSheets IntegrationType = "google_sheets"
 	IntegrationTelegram     IntegrationType = "telegram"
 	IntegrationSlack        IntegrationType = "slack"
 	IntegrationSipuni       IntegrationType = "sipuni"

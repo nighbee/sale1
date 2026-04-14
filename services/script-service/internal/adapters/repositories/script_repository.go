@@ -68,3 +68,9 @@ func (r *ScriptRepository) Delete(ctx context.Context, id string, companyID stri
 	_, err := r.db.ExecContext(ctx, query, id, companyID)
 	return err
 }
+
+func (r *ScriptRepository) DeactivateAll(ctx context.Context, companyID string) error {
+	query := `UPDATE scripts_schema.scripts SET is_active = false WHERE company_id = $1`
+	_, err := r.db.ExecContext(ctx, query, companyID)
+	return err
+}

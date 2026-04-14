@@ -20,8 +20,8 @@ func NewReprocessCallUseCase(callRepo ports.CallRepository, publisher ports.Queu
 	}
 }
 
-func (uc *ReprocessCallUseCase) Execute(ctx context.Context, callID string) error {
-	call, err := uc.callRepo.GetByID(ctx, callID)
+func (uc *ReprocessCallUseCase) Execute(ctx context.Context, callID string, companyID string) error {
+	call, err := uc.callRepo.GetByID(ctx, callID, companyID)
 	if err != nil {
 		return fmt.Errorf("failed to get call: %w", err)
 	}

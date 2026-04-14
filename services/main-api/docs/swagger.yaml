@@ -153,7 +153,6 @@ definitions:
   github_com_salesai_main-api_internal_core_domain.IntegrationType:
     enum:
     - amocrm
-    - google_sheets
     - telegram
     - slack
     type: string
@@ -866,7 +865,7 @@ paths:
       - application/json
       description: Get details of a specific integration by type
       parameters:
-      - description: Integration Type (amocrm, google_sheets, telegram, slack)
+      - description: Integration Type (amocrm, telegram, slack)
         in: path
         name: type
         required: true

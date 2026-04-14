@@ -106,30 +106,6 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ isOpen, onClose, ty
 
   const renderFields = () => {
       switch (type) {
-          case 'google_sheets':
-              return (
-                  <div className="space-y-4">
-                      <Input label="Spreadsheet ID" value={config.spreadsheet_id || ''} onChange={e => setConfig({...config, spreadsheet_id: e.target.value})} />
-                      <div>
-                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Service Account JSON</label>
-                          <textarea
-                              className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-sm text-slate-900 dark:text-white"
-                              rows={8}
-                              value={typeof credentials === 'string' ? credentials : JSON.stringify(credentials, null, 2)}
-                              onChange={e => {
-                                  try {
-                                      const parsed = JSON.parse(e.target.value);
-                                      setCredentials(parsed);
-                                  } catch {
-                                      // Allow typing invalid JSON temporarily
-                                      setCredentials(e.target.value as any);
-                                  }
-                              }}
-                              placeholder='{ "type": "service_account", ... }'
-                          />
-                      </div>
-                  </div>
-              );
           case 'sipuni':
               return (
                   <div className="space-y-4">

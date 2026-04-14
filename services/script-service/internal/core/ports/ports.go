@@ -11,6 +11,7 @@ type ScriptRepository interface {
 	GetByID(ctx context.Context, id string, companyID string) (*domain.Script, error)
 	List(ctx context.Context, companyID string) ([]*domain.Script, error)
 	Delete(ctx context.Context, id string, companyID string) error
+	DeactivateAll(ctx context.Context, companyID string) error
 }
 
 type Storage interface {

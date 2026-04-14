@@ -6,7 +6,6 @@ import { ManagerPerformanceList } from '../../../widgets/ManagerPerformanceList'
 import type { ManagerPerformance } from '../../../widgets/ManagerPerformanceList';
 import Skeleton from '../../../shared/ui/Skeleton';
 import { useUserStore } from '../../../entities/user/model/store';
-import { SheetCalls } from '../../../widgets/SheetCalls';
 
 const DirectorDashboardPage: React.FC = () => {
   const { t } = useTranslation();
@@ -69,8 +68,8 @@ const DirectorDashboardPage: React.FC = () => {
 
           {/* ── KPI cards ────────────────────────────────────────────────── */}
           {perfLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {[1, 2, 3, 4].map(i => (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {[1, 2, 3].map(i => (
                 <div key={i} className="bg-white dark:bg-slate-900 p-4 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm">
                   <Skeleton className="h-4 w-20 mb-3" />
                   <Skeleton className="h-8 w-24" />
@@ -78,12 +77,11 @@ const DirectorDashboardPage: React.FC = () => {
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {[
                 { label: t('dashboard.total_calls'), value: totalCalls, icon: 'phone_in_talk', color: 'blue' },
                 { label: t('dashboard.avg_quality'),  value: avgQuality,  icon: 'analytics', color: 'emerald' },
                 { label: t('dashboard.active_teams'), value: managers.length, sub: t('dashboard.managers'), icon: 'groups', color: 'indigo' },
-                { label: t('dashboard.sheet_calls_title'), value: t('dashboard.active'), sub: t('calls.sources.sheets'), icon: 'table_chart', color: 'slate' },
               ].map(m => (
                 <div key={m.label} className="bg-white dark:bg-slate-900 p-4 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm transition-all hover:border-slate-300 dark:hover:border-slate-700">
                   <div className="flex items-center justify-between mb-2">
@@ -107,10 +105,6 @@ const DirectorDashboardPage: React.FC = () => {
                 <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">{t('dashboard.managers')}</h3>
              </div>
              <ManagerPerformanceList managers={managers} loading={perfLoading} />
-          </div>
-
-          <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
-             <SheetCalls />
           </div>
 
         </div>
