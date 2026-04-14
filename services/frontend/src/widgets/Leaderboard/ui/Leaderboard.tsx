@@ -100,11 +100,11 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ teamId, showFilters = 
           </p>
         </div>
         <div className="relative group">
-          <button className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold shadow hover:opacity-90 transition-all">
+          <button className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold hover:opacity-90 transition-all">
             <span className="material-icons text-sm">download</span> {t("leaderboard.export")}
             <span className="material-icons text-sm">expand_more</span>
           </button>
-          <div className="absolute right-0 mt-2 w-44 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-100 dark:border-slate-700 overflow-hidden hidden group-hover:block z-50">
+          <div className="absolute right-0 mt-2 w-44 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden hidden group-hover:block z-50">
             {["csv", "excel", "pdf"].map((fmt) => (
               <button
                 key={fmt}
