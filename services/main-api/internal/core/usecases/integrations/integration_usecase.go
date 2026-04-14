@@ -65,6 +65,10 @@ func (uc *IntegrationUseCase) ListAllActive(ctx context.Context) ([]*domain.Inte
 	return uc.repo.ListAllActive(ctx)
 }
 
+func (uc *IntegrationUseCase) ListActiveByCompany(ctx context.Context, companyID string) ([]*domain.Integration, error) {
+	return uc.repo.ListActiveByCompany(ctx, companyID)
+}
+
 func (uc *IntegrationUseCase) GetModels(ctx context.Context, companyID string, it domain.IntegrationType, credentials json.RawMessage, category string) (map[string]interface{}, error) {
 	sttServiceURL := os.Getenv("STT_SERVICE_URL")
 	if sttServiceURL == "" {

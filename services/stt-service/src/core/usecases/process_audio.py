@@ -77,7 +77,7 @@ class ProcessAudioUseCase:
                 stt_language = stt_language or ai_settings.get("stt_language")
 
             stt_provider_name = stt_provider_name or self.stt_provider_name
-            integrations = await self.api_client.get_active_integrations()
+            integrations = await self.api_client.get_active_integrations(company_id=company_id)
             stt_provider = STTProviderFactory.create(stt_provider_name, integrations, default_model=stt_model_name)
 
             # Check for existing links in DB to see if we should override the job's URL

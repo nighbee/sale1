@@ -9,12 +9,15 @@ class MainAPIClient:
         self.base_url = base_url or os.getenv("MAIN_API_URL", "http://main-api:8080")
         self.internal_secret = os.getenv("INTERNAL_SECRET", "internal-secret-key")
 
-    async def get_active_integrations(self):
+    async def get_active_integrations(self, company_id: str = None):
         url = f"{self.base_url}/api/v1/internal/integrations"
+        params = {}
+        if company_id:
+            params["company_id"] = company_id
         try:
             headers = {"X-Internal-Secret": self.internal_secret}
             async with httpx.AsyncClient() as client:
-                response = await client.get(url, headers=headers, timeout=10.0)
+                response = await client.get(url, headers=headers, params=params, timeout=10.0)
                 response.raise_for_status()
                 integrations = response.json().get("integrations", [])
                 logger.info(
