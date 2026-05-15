@@ -60,7 +60,7 @@ Frontend (React) ─► Nginx ─► main-api/script-service/sipuni-listener
 
 | Component | Status | Notes | Path |
 |---|---|---|---|
-| sheets-sync | Documented/planned | Service docs exist, service directory is not present in `services/` in this snapshot | `docs/services/sheets-sync.md` |
+| sheets-sync | Documented/planned | Service docs exist, but a runnable service directory is not yet present under `services/` | `docs/services/sheets-sync.md` |
 | sipuni-downloader | Utility/experimental | TypeScript scripts for reliable Sipuni record download testing | `services/sipuni-downloader` |
 | stt-local | Auxiliary | Standalone local FastAPI Whisper-based STT app | `ai-services/stt-local` |
 
@@ -112,6 +112,8 @@ docker-compose up -d
 # 4) Check status
 docker-compose ps
 ```
+
+> Windows note: when writing multi-command sequences as a single line in this project, use `;` as the separator.
 
 Useful endpoints:
 
