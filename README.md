@@ -97,7 +97,7 @@ See:
 
 From repo root:
 
-> Windows note: these examples are shown as separate lines; if you rewrite them as a single line, use PowerShell with `;` (project convention).
+> Windows note: these examples are shown as separate lines; if you rewrite them as a single line, use PowerShell with `;` for sequential execution (project convention).
 
 ```bash
 # 1) Start infra
@@ -189,7 +189,6 @@ Key variables used across services:
 - `GOOGLE_API_KEY` (stt-service provider mode)
 - `GROQ_API_KEY` (stt-service provider mode)
 - `DEEPGRAM_API_KEY` (stt-service provider mode)
-- `ELEVENLABS_API_KEY` (stt-service; see `services/stt-service/README.md` for provider details)
 - `STT_PROVIDER` (stt-service provider selection)
 - `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`, `LLM_PROVIDER`, `GEMINI_API_KEY` (ai-analytics)
 - `MINIO_*` variables (main-api/script-service/stt-service + MinIO)
