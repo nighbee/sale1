@@ -97,7 +97,7 @@ See:
 
 From repo root:
 
-> Windows note: these examples are shown as separate lines; if you rewrite them as a single line, use `;` in PowerShell (project convention) and `&` in CMD.
+> Windows note: these examples are shown as separate lines; if you rewrite them as a single line, use PowerShell with `;` (project convention).
 
 ```bash
 # 1) Start infra
@@ -185,14 +185,14 @@ Key variables used across services:
 - `INTERNAL_SECRET`
 - `JWT_SECRET` (main-api)
 - `SIPUNI_API_KEY` (sipuni-listener)
-- `OPENAI_API_KEY`, `GOOGLE_API_KEY`, `GROQ_API_KEY`, `DEEPGRAM_API_KEY`, `ELEVENLABS_API_KEY` (stt-service, including ElevenLabs Scribe STT mode)
+- `OPENAI_API_KEY`, `GOOGLE_API_KEY`, `GROQ_API_KEY`, `DEEPGRAM_API_KEY`, `ELEVENLABS_API_KEY` (stt-service, including ElevenLabs Scribe STT mode; see `services/stt-service/README.md` for provider context)
 - `STT_PROVIDER` (stt-service provider selection)
 - `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`, `LLM_PROVIDER`, `GEMINI_API_KEY` (ai-analytics)
 - `MINIO_*` variables (main-api/script-service/stt-service + MinIO)
 
 See detailed matrix: `docs/api_keys_requirement.md`
 
-Port note: `stt-service` and `ai-analytics` both listen on internal container port `8001`; this does not conflict because each container has its own isolated network namespace, and these ports are not host-published in `docker-compose.yml`.
+Port note: `stt-service` and `ai-analytics` both listen on internal container port `8001` in Docker Compose; this does not conflict because each container has its own isolated network namespace, and these ports are not host-published in `docker-compose.yml`. If you run both services directly on the host at the same time, use different host ports or run one service at a time.
 
 ---
 
