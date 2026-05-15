@@ -52,8 +52,8 @@ Frontend (React) ─► Nginx ─► main-api/script-service/sipuni-listener
 | main-api | Go + Fiber | 8080 | Auth, RBAC, CRUD, analytics aggregation, realtime hub | `services/main-api` |
 | sipuni-listener | Go | 8081 | Persistent Sipuni WS ingest, call creation, queue producer | `services/sipuni-listener` |
 | script-service | Go + Fiber | 8083 | Script upload/list/download/delete, MinIO-backed storage | `services/script-service` |
-| stt-service | Python + FastAPI | 8001 (container) | Audio download, STT processing, transcript persistence | `services/stt-service` |
-| ai-analytics | Python + FastAPI | 8001 (container) | LLM analysis and KPI/report generation | `services/ai-analytics` |
+| stt-service | Python + FastAPI | internal `:8001` (not host-published) | Audio download, STT processing, transcript persistence | `services/stt-service` |
+| ai-analytics | Python + FastAPI | internal `:8001` (not host-published) | LLM analysis and KPI/report generation | `services/ai-analytics` |
 | frontend | React + Vite + TS | 80 (via nginx) / 5173 (dev) | Web dashboard and workflows | `services/frontend` |
 
 ### Additional components
@@ -97,6 +97,8 @@ See:
 
 From repo root:
 
+> Windows note: if you combine multiple commands into one line, use `;` in PowerShell and `&` in CMD.
+
 ```bash
 # 1) Start infra
 docker-compose up -d postgres redis minio
@@ -112,8 +114,6 @@ docker-compose up -d
 # 4) Check status
 docker-compose ps
 ```
-
-> Windows note: when writing multi-command sequences as a single line in this project, use `;` as the separator.
 
 Useful endpoints:
 
