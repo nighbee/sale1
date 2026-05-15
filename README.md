@@ -53,7 +53,7 @@ Frontend (React) ─► Nginx ─► main-api/script-service/sipuni-listener
 | sipuni-listener | Go | 8081 | Persistent Sipuni WS ingest, call creation, queue producer | `services/sipuni-listener` |
 | script-service | Go + Fiber | 8083 | Script upload/list/download/delete, MinIO-backed storage | `services/script-service` |
 | stt-service | Python + FastAPI | internal `:8001` (not host-published) | Audio download, STT processing, transcript persistence | `services/stt-service` |
-| ai-analytics | Python + FastAPI | internal `:8001` (not host-published) | LLM analysis and KPI/report generation | `services/ai-analytics` |
+| ai-analytics | Python + FastAPI | internal `:8001` (not host-published) | LLM analysis and KPI report generation | `services/ai-analytics` |
 | frontend | React + Vite + TS | 80 (via nginx) / 5173 (dev) | Web dashboard and workflows | `services/frontend` |
 
 ### Additional components
@@ -195,7 +195,7 @@ Key variables used across services:
 
 See detailed matrix: `docs/api_keys_requirement.md`
 
-Port note: `stt-service` and `ai-analytics` both listen on internal container port `8001` in Docker Compose; this does not conflict because each container has its own isolated network namespace, and these ports are not host-published in `docker-compose.yml`. If you run both services directly on the host at the same time, use different host ports or run one service at a time.
+Port note: `stt-service` and `ai-analytics` both listen on internal container port `8001` in Docker Compose. This does not conflict because each container has its own isolated network namespace, and these ports are not host-published in `docker-compose.yml`. If you run both services directly on the host at the same time, use different host ports or run one service at a time.
 
 ---
 
