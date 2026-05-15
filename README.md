@@ -185,7 +185,11 @@ Key variables used across services:
 - `INTERNAL_SECRET`
 - `JWT_SECRET` (main-api)
 - `SIPUNI_API_KEY` (sipuni-listener)
-- `OPENAI_API_KEY`, `GOOGLE_API_KEY`, `GROQ_API_KEY`, `DEEPGRAM_API_KEY`, `ELEVENLABS_API_KEY` (stt-service, including ElevenLabs Scribe STT mode; see `services/stt-service/README.md` for provider context)
+- `OPENAI_API_KEY` (stt-service provider mode)
+- `GOOGLE_API_KEY` (stt-service provider mode)
+- `GROQ_API_KEY` (stt-service provider mode)
+- `DEEPGRAM_API_KEY` (stt-service provider mode)
+- `ELEVENLABS_API_KEY` (stt-service, including ElevenLabs Scribe STT mode; see `services/stt-service/README.md`)
 - `STT_PROVIDER` (stt-service provider selection)
 - `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`, `LLM_PROVIDER`, `GEMINI_API_KEY` (ai-analytics)
 - `MINIO_*` variables (main-api/script-service/stt-service + MinIO)
