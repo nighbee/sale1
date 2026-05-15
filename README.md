@@ -1,4 +1,4 @@
-# SalesAI (`sale1`)
+# SalesAI
 
 SalesAI is a polyglot microservices B2B SaaS platform for automated sales call QA.  
 It ingests call events, transcribes audio, analyzes transcript quality with LLMs, and exposes analytics to a web dashboard.
@@ -189,7 +189,7 @@ Key variables used across services:
 - `GOOGLE_API_KEY` (stt-service provider mode)
 - `GROQ_API_KEY` (stt-service provider mode)
 - `DEEPGRAM_API_KEY` (stt-service provider mode)
-- `ELEVENLABS_API_KEY` (stt-service, including ElevenLabs Scribe STT mode; see `services/stt-service/README.md`)
+- `ELEVENLABS_API_KEY` (stt-service; see `services/stt-service/README.md` for provider details)
 - `STT_PROVIDER` (stt-service provider selection)
 - `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`, `LLM_PROVIDER`, `GEMINI_API_KEY` (ai-analytics)
 - `MINIO_*` variables (main-api/script-service/stt-service + MinIO)
