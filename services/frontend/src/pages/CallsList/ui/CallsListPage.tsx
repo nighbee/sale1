@@ -10,8 +10,60 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useUserStore } from "../../../entities/user/model/store";
 import { QueueManagement } from "../../../features/QueueManagement";
+import { CallFilters } from "../../../features/CallFilters";
 
 type CallSource = "sipuni";
+
+const CallMobileCard: React.FC<{ call: Call }> = ({ call }) => {
+  const { t } = useTranslation();
+  return (
+    <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm space-y-3">
+      <div className="flex justify-between items-start">
+      <div className="space-y-1">
+        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+          {new Date(call.call_date).toLocaleString()}
+        </p>
+        <Link
+          to={`/calls/${call.id}`}
+          className="text-base font-bold text-slate-900 dark:text-white hover:text-primary transition-colors block"
+        >
+          {call.manager_name}
+        </Link>
+      </div>
+      <span className={`inline-flex items-center justify-center min-w-[32px] px-2 py-1 rounded-lg text-xs font-bold ${
+        call.quality_score && call.quality_score >= 80 ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
+        call.quality_score && call.quality_score >= 60 ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' :
+        'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+      }`}>
+        {call.quality_score !== undefined ? call.quality_score : '—'}
+      </span>
+    </div>
+
+    <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
+      <div className="flex items-center">
+        <span className={`h-2 w-2 rounded-full mr-2 ${
+            call.status === "completed" ? "bg-green-500" :
+            call.status === "error" ? "bg-red-500" :
+            "bg-yellow-500"
+          }`} />
+        <span className={`text-[10px] font-bold uppercase tracking-wider ${
+            call.status === "completed" ? "text-green-600 dark:text-green-400" :
+            call.status === "error" ? "text-red-600 dark:text-red-400" :
+            "text-yellow-600 dark:text-yellow-400"
+        }`}>
+          {call.status}
+        </span>
+      </div>
+        <Link
+          to={`/calls/${call.id}`}
+          className="text-primary hover:text-primary-hover font-bold text-xs uppercase tracking-widest"
+        >
+          {t("calls.view")}
+        </Link>
+      </div>
+    </div>
+  );
+};
 
 const CallsListPage: React.FC = () => {
   const { t } = useTranslation();
@@ -20,6 +72,9 @@ const CallsListPage: React.FC = () => {
   const [calls, setCalls] = useState<Call[]>([]);
   const [managers, setManagers] = useState<User[]>([]);
   const [selectedManager, setSelectedManager] = useState<string>("");
+  const [status, setStatus] = useState<string>("completed");
+  const [search, setSearch] = useState<string>("");
+  const [debouncedSearch, setDebouncedSearch] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [limit] = useState(20);
@@ -33,6 +88,13 @@ const CallsListPage: React.FC = () => {
     processing: 0,
     error: 0
   });
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   useEffect(() => {
     const fetchManagers = async () => {
@@ -60,6 +122,12 @@ const CallsListPage: React.FC = () => {
         }
         if (selectedManager) {
           params.manager_id = selectedManager;
+        }
+        if (status) {
+          params.status = status;
+        }
+        if (debouncedSearch) {
+          params.search = debouncedSearch;
         }
 
         let res;
@@ -95,7 +163,7 @@ const CallsListPage: React.FC = () => {
       }
     };
     fetchData();
-  }, [currentTeamId, user, source, page, limit, selectedManager]);
+  }, [currentTeamId, user, source, page, limit, selectedManager, status, debouncedSearch]);
 
   return (
     <PageLayout title={t("calls.list_title")}>
@@ -114,21 +182,23 @@ const CallsListPage: React.FC = () => {
 
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             {[
-                { label: t("dashboard.total_calls"), value: stats.total, icon: 'call', color: 'blue' },
-                { label: t("calls.stats.completed"), value: stats.completed, icon: 'check_circle', color: 'green' },
-                { label: t("calls.stats.pending"), value: stats.pending, icon: 'pending', color: 'yellow' },
-                { label: t("calls.stats.processing"), value: stats.processing, icon: 'sync', color: 'indigo' },
-                { label: t("calls.stats.error"), value: stats.error, icon: 'error_outline', color: 'red' },
-                { label: t("dashboard.avg_quality"), value: stats.avgScore, icon: 'analytics', color: 'emerald' },
+                { label: t("dashboard.total_calls"), value: stats.total, icon: 'call', color: 'blue', bg: 'bg-blue-50 dark:bg-blue-900/10' },
+                { label: t("calls.stats.completed"), value: stats.completed, icon: 'check_circle', color: 'green', bg: 'bg-green-50 dark:bg-green-900/10' },
+                { label: t("calls.stats.pending"), value: stats.pending, icon: 'pending', color: 'yellow', bg: 'bg-yellow-50 dark:bg-yellow-900/10' },
+                { label: t("calls.stats.processing"), value: stats.processing, icon: 'sync', color: 'indigo', bg: 'bg-indigo-50 dark:bg-indigo-900/10' },
+                { label: t("calls.stats.error"), value: stats.error, icon: 'error_outline', color: 'red', bg: 'bg-red-50 dark:bg-red-900/10' },
+                { label: t("dashboard.avg_quality"), value: stats.avgScore, icon: 'analytics', color: 'emerald', bg: 'bg-emerald-50 dark:bg-emerald-900/10' },
             ].map((s) => (
-                <div key={s.label} className="bg-white dark:bg-slate-900 p-3.5 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm">
-                    <div className="flex items-center gap-2.5 mb-2">
-                        <span className={`material-icons text-lg text-${s.color}-500`}>{s.icon}</span>
-                        <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider truncate">
+                <div key={s.label} className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all duration-300 group">
+                    <div className="flex items-center gap-3 mb-3">
+                        <div className={`p-2 rounded-xl ${s.bg} text-${s.color}-600 dark:text-${s.color}-400 group-hover:scale-110 transition-transform duration-300`}>
+                          <span className="material-icons text-xl block">{s.icon}</span>
+                        </div>
+                        <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest leading-tight">
                             {s.label}
                         </p>
                     </div>
-                    <p className="text-xl font-bold text-slate-900 dark:text-white leading-none">{s.value}</p>
+                    <p className="text-2xl font-black text-slate-900 dark:text-white leading-none tracking-tight">{s.value}</p>
                 </div>
             ))}
         </div>
@@ -137,66 +207,53 @@ const CallsListPage: React.FC = () => {
           <QueueManagement />
         )}
 
-        <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-          <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col md:flex-row gap-4 items-center justify-between">
-            <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
-              <div className="relative w-full md:w-64">
-                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-                  <span className="material-icons text-sm">search</span>
-                </span>
-                <input
-                  className="block w-full pl-9 pr-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-800 text-sm focus:ring-1 focus:ring-primary focus:border-primary transition-all"
-                  placeholder={t("calls.search")}
-                  type="text"
-                />
-              </div>
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md overflow-hidden">
+          <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex flex-col lg:flex-row gap-6 lg:items-end justify-between">
+            <CallFilters
+              search={search}
+              onSearchChange={(val) => {
+                setSearch(val);
+                setPage(1);
+              }}
+              managerId={selectedManager}
+              onManagerChange={(val) => {
+                setSelectedManager(val);
+                setPage(1);
+              }}
+              status={status}
+              onStatusChange={(val) => {
+                setStatus(val);
+                setPage(1);
+              }}
+              managers={managers}
+              showManagerFilter={user?.role !== 'sales_rep'}
+            />
 
-              {user?.role !== 'sales_rep' && (
-                <div className="w-full md:w-64">
-                  <select
-                    value={selectedManager}
-                    onChange={(e) => {
-                      setSelectedManager(e.target.value);
-                      setPage(1);
-                    }}
-                    className="block w-full px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-800 text-sm focus:ring-1 focus:ring-primary focus:border-primary transition-all cursor-pointer"
-                  >
-                    <option value="">{t("calls.all_managers") || "All Managers"}</option>
-                    {managers.map((m) => (
-                      <option key={m.id} value={m.manager_id}>
-                        {m.first_name || m.username || m.email} {m.last_name || ""}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-            </div>
-
-            <div className="text-xs text-slate-500 font-medium">
+            <div className="text-xs text-slate-500 font-bold uppercase tracking-widest bg-slate-50 dark:bg-slate-800/50 px-3 py-1.5 rounded-full border border-slate-100 dark:border-slate-700 w-fit">
                 {t('pagination.showing')} {(page-1)*limit + 1} - {Math.min(page*limit, totalResults)} {t('pagination.of')} {totalResults}
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="hidden md:block overflow-x-auto">
             <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
               <thead className="bg-slate-50 dark:bg-slate-800/50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                     {t("calls.datetime")}
                   </th>
-                  <th className="px-6 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                     {t("calls.representative")}
                   </th>
-                  <th className="px-6 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                     {t("calls.analysis_time")}
                   </th>
-                  <th className="px-6 py-3 text-center text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                  <th className="px-6 py-4 text-center text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                     {t("calls.score")}
                   </th>
-                  <th className="px-6 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                     {t("calls.status")}
                   </th>
-                  <th className="relative px-6 py-3 w-20"></th>
+                  <th className="relative px-6 py-4 w-24"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
@@ -208,26 +265,27 @@ const CallsListPage: React.FC = () => {
                         <td className="px-6 py-4"><Skeleton className="h-4 w-12 mx-auto" /></td>
                         <td className="px-6 py-4"><Skeleton className="h-4 w-20" /></td>
                         <td className="px-6 py-4"><Skeleton className="h-4 w-12" /></td>
+                        <td className="px-6 py-4"></td>
                       </tr>
                     ))
                   : calls.map((call) => (
                       <tr
                         key={call.id}
-                        className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                        className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
                       >
-                        <td className="px-6 py-3.5 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400">
                           {new Date(call.call_date).toLocaleString()}
                         </td>
-                        <td className="px-6 py-3.5 whitespace-nowrap text-sm font-semibold text-slate-900 dark:text-white">
-                          <Link to={`/calls/${call.id}`} className="hover:text-primary transition-colors">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <Link to={`/calls/${call.id}`} className="text-sm font-bold text-slate-900 dark:text-white hover:text-primary transition-colors">
                             {call.manager_name}
                           </Link>
                         </td>
-                        <td className="px-6 py-3.5 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400">
                           {call.analysis_time !== undefined ? `${call.analysis_time}s` : '—'}
                         </td>
-                        <td className="px-6 py-3.5 whitespace-nowrap text-center">
-                          <span className={`inline-flex items-center justify-center min-w-[32px] px-2 py-0.5 rounded text-xs font-bold ${
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <span className={`inline-flex items-center justify-center min-w-[32px] px-2.5 py-1 rounded-lg text-xs font-black shadow-sm ${
                             call.quality_score && call.quality_score >= 80 ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
                             call.quality_score && call.quality_score >= 60 ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' :
                             'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
@@ -235,14 +293,14 @@ const CallsListPage: React.FC = () => {
                             {call.quality_score !== undefined ? call.quality_score : '—'}
                           </span>
                         </td>
-                        <td className="px-6 py-3.5 whitespace-nowrap">
+                        <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
-                            <span className={`h-1.5 w-1.5 rounded-full mr-2 ${
-                                call.status === "completed" ? "bg-green-500" :
-                                call.status === "error" ? "bg-red-500" :
-                                "bg-yellow-500"
+                            <span className={`h-2 w-2 rounded-full mr-2 shadow-sm ${
+                                call.status === "completed" ? "bg-green-500 shadow-green-500/20" :
+                                call.status === "error" ? "bg-red-500 shadow-red-500/20" :
+                                "bg-yellow-500 shadow-yellow-500/20"
                               }`} />
-                            <span className={`text-xs font-medium uppercase tracking-tight ${
+                            <span className={`text-[10px] font-bold uppercase tracking-wider ${
                                 call.status === "completed" ? "text-green-600 dark:text-green-400" :
                                 call.status === "error" ? "text-red-600 dark:text-red-400" :
                                 "text-yellow-600 dark:text-yellow-400"
@@ -251,10 +309,10 @@ const CallsListPage: React.FC = () => {
                             </span>
                           </div>
                         </td>
-                        <td className="px-6 py-3.5 whitespace-nowrap text-right">
+                        <td className="px-6 py-4 whitespace-nowrap text-right">
                           <Link
                             to={`/calls/${call.id}`}
-                            className="text-primary hover:text-primary-hover font-bold text-xs uppercase tracking-wider"
+                            className="inline-flex items-center text-primary hover:text-primary-hover font-bold text-[10px] uppercase tracking-widest border border-primary/20 hover:border-primary/50 px-3 py-1.5 rounded-lg transition-all"
                           >
                             {t("calls.view")}
                           </Link>
@@ -263,13 +321,36 @@ const CallsListPage: React.FC = () => {
                     ))}
                 {!loading && calls.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="text-center py-12 text-slate-500 text-sm font-medium">
+                    <td colSpan={6} className="text-center py-20 text-slate-500 text-sm font-bold uppercase tracking-widest bg-slate-50/50 dark:bg-slate-800/20">
                       {t("calls.no_calls")}
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
+          </div>
+
+          <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-800 p-4 space-y-4">
+            {loading
+              ? [1, 2, 3].map(i => (
+                  <div key={i} className="space-y-3 p-4 border border-slate-100 dark:border-slate-800 rounded-2xl">
+                    <Skeleton className="h-3 w-24" />
+                    <Skeleton className="h-5 w-48" />
+                    <div className="flex justify-between pt-2">
+                      <Skeleton className="h-4 w-16" />
+                      <Skeleton className="h-4 w-12" />
+                    </div>
+                  </div>
+                ))
+              : calls.map(call => (
+                  <CallMobileCard key={call.id} call={call} />
+                ))
+            }
+            {!loading && calls.length === 0 && (
+               <div className="text-center py-12 text-slate-500 text-sm font-bold uppercase tracking-widest">
+                  {t("calls.no_calls")}
+               </div>
+            )}
           </div>
 
           <div className="bg-slate-50 dark:bg-slate-800/30 border-t border-slate-200 dark:border-slate-800">
