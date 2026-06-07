@@ -101,6 +101,7 @@ export const SuperAdminPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState('');
+  const [status, setStatus] = useState('');
   const limit = 20;
 
   const [selectedCompany, setSelectedCompany] = useState<{
@@ -225,6 +226,7 @@ export const SuperAdminPage: React.FC = () => {
   useEffect(() => {
     setPage(1);
     setSearch('');
+    setStatus('');
   }, [activeTab]);
 
   useEffect(() => {
@@ -252,7 +254,9 @@ export const SuperAdminPage: React.FC = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const params = { page, limit, search };
+        const params: any = { page, limit, search };
+        if (status) params.status = status;
+
         if (activeTab === 'companies') {
           const res = await companyApi.listAllCompanies(params);
           setCompanies(res.data.companies || []);
@@ -708,8 +712,39 @@ export const SuperAdminPage: React.FC = () => {
 
               {activeTab === 'calls' && (
                  <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/50 shadow-sm overflow-hidden">
-                    <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/30 dark:bg-slate-800/10">
+                    <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row justify-between md:items-center gap-4 bg-slate-50/30 dark:bg-slate-800/10">
                       <h3 className="text-xl font-black uppercase italic tracking-tight">{t('superadmin.global_calls')}</h3>
+                      <div className="flex items-center gap-4">
+                        <div className="relative">
+                          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
+                          <input
+                            type="text"
+                            placeholder={t('common.search')}
+                            className="pl-9 pr-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-primary w-64"
+                            value={search}
+                            onChange={(e) => {
+                              setSearch(e.target.value);
+                              setPage(1);
+                            }}
+                          />
+                        </div>
+                        <div className="w-48">
+                          <Select
+                            options={[
+                              { value: '', label: t('common.all') },
+                              { value: 'completed', label: t('calls.stats.completed') },
+                              { value: 'pending', label: t('calls.stats.pending') },
+                              { value: 'processing', label: t('calls.stats.processing') },
+                              { value: 'error', label: t('calls.stats.error') },
+                            ]}
+                            value={status}
+                            onChange={(e) => {
+                              setStatus(e.target.value);
+                              setPage(1);
+                            }}
+                          />
+                        </div>
+                      </div>
                     </div>
                     <div className="h-[600px] overflow-hidden">
                       <TableVirtuoso

@@ -293,7 +293,7 @@ const CallsListPage: React.FC = () => {
                     {t("calls.score")}
                   </th>
                   <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                    {t("calls.status")}
+                    {t("calls.processing_stage")}
                   </th>
                   <th className="relative px-6 py-4 w-24"></th>
                 </tr>
