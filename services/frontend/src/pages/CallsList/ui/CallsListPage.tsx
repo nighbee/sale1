@@ -11,6 +11,7 @@ import { useTranslation } from "react-i18next";
 import { useUserStore } from "../../../entities/user/model/store";
 import { QueueManagement } from "../../../features/QueueManagement";
 import { CallFilters } from "../../../features/CallFilters";
+import { cn } from "../../../shared/utils/cn";
 
 type CallSource = "sipuni";
 
@@ -182,16 +183,38 @@ const CallsListPage: React.FC = () => {
 
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             {[
-                { label: t("dashboard.total_calls"), value: stats.total, icon: 'call', color: 'blue', bg: 'bg-blue-50 dark:bg-blue-900/10' },
-                { label: t("calls.stats.completed"), value: stats.completed, icon: 'check_circle', color: 'green', bg: 'bg-green-50 dark:bg-green-900/10' },
-                { label: t("calls.stats.pending"), value: stats.pending, icon: 'pending', color: 'yellow', bg: 'bg-yellow-50 dark:bg-yellow-900/10' },
-                { label: t("calls.stats.processing"), value: stats.processing, icon: 'sync', color: 'indigo', bg: 'bg-indigo-50 dark:bg-indigo-900/10' },
-                { label: t("calls.stats.error"), value: stats.error, icon: 'error_outline', color: 'red', bg: 'bg-red-50 dark:bg-red-900/10' },
+                { label: t("dashboard.total_calls"), value: stats.total, icon: 'call', color: 'blue', bg: 'bg-blue-50 dark:bg-blue-900/10', statusValue: "" },
+                { label: t("calls.stats.completed"), value: stats.completed, icon: 'check_circle', color: 'green', bg: 'bg-green-50 dark:bg-green-900/10', statusValue: "completed" },
+                { label: t("calls.stats.pending"), value: stats.pending, icon: 'pending', color: 'yellow', bg: 'bg-yellow-50 dark:bg-yellow-900/10', statusValue: "pending" },
+                { label: t("calls.stats.processing"), value: stats.processing, icon: 'sync', color: 'indigo', bg: 'bg-indigo-50 dark:bg-indigo-900/10', statusValue: "processing" },
+                { label: t("calls.stats.error"), value: stats.error, icon: 'error_outline', color: 'red', bg: 'bg-red-50 dark:bg-red-900/10', statusValue: "error" },
                 { label: t("dashboard.avg_quality"), value: stats.avgScore, icon: 'analytics', color: 'emerald', bg: 'bg-emerald-50 dark:bg-emerald-900/10' },
-            ].map((s) => (
-                <div key={s.label} className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all duration-300 group">
+            ].map((s) => {
+                const isSelected = s.statusValue !== undefined && status === s.statusValue;
+                return (
+                  <button
+                    key={s.label}
+                    onClick={() => {
+                      if (s.statusValue !== undefined) {
+                        setStatus(s.statusValue);
+                        setPage(1);
+                      }
+                    }}
+                    disabled={s.statusValue === undefined}
+                    className={cn(
+                      "text-left p-4 rounded-2xl border shadow-sm transition-all duration-300 group w-full",
+                      isSelected
+                        ? "border-primary ring-2 ring-primary/20 bg-primary/5 dark:bg-primary/10"
+                        : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700",
+                      s.statusValue !== undefined ? "cursor-pointer" : "cursor-default"
+                    )}
+                  >
                     <div className="flex items-center gap-3 mb-3">
-                        <div className={`p-2 rounded-xl ${s.bg} text-${s.color}-600 dark:text-${s.color}-400 group-hover:scale-110 transition-transform duration-300`}>
+                        <div className={cn(
+                          "p-2 rounded-xl transition-transform duration-300 group-hover:scale-110",
+                          s.bg,
+                          `text-${s.color}-600 dark:text-${s.color}-400`
+                        )}>
                           <span className="material-icons text-xl block">{s.icon}</span>
                         </div>
                         <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest leading-tight">
@@ -199,8 +222,9 @@ const CallsListPage: React.FC = () => {
                         </p>
                     </div>
                     <p className="text-2xl font-black text-slate-900 dark:text-white leading-none tracking-tight">{s.value}</p>
-                </div>
-            ))}
+                  </button>
+                );
+            })}
         </div>
 
         {(user?.role === 'super_admin' || user?.role === 'tenant_admin') && (

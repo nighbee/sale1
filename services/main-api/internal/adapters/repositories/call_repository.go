@@ -215,73 +215,91 @@ func (r *callRepository) List(ctx context.Context, filters map[string]interface{
 	where := []string{"1=1"}
 	countsWhere := []string{"1=1"}
 	args := []interface{}{}
+	countsArgs := []interface{}{}
 	argIdx := 1
+	countsArgIdx := 1
 
 	if companyID, ok := filters["company_id"].(string); ok && companyID != "" {
-		condition := fmt.Sprintf("c.company_id = $%d", argIdx)
-		where = append(where, condition)
-		countsWhere = append(countsWhere, condition)
+		where = append(where, fmt.Sprintf("c.company_id = $%d", argIdx))
 		args = append(args, companyID)
 		argIdx++
+
+		countsWhere = append(countsWhere, fmt.Sprintf("c.company_id = $%d", countsArgIdx))
+		countsArgs = append(countsArgs, companyID)
+		countsArgIdx++
 	} else {
 		// Enforce multi-tenancy: company_id must be provided
 		return nil, 0, nil, errors.New("company_id filter is required")
 	}
 
 	if managerID, ok := filters["manager_id"].(string); ok && managerID != "" {
-		condition := fmt.Sprintf("c.manager_id = $%d", argIdx)
-		where = append(where, condition)
-		countsWhere = append(countsWhere, condition)
+		where = append(where, fmt.Sprintf("c.manager_id = $%d", argIdx))
 		args = append(args, managerID)
 		argIdx++
+
+		countsWhere = append(countsWhere, fmt.Sprintf("c.manager_id = $%d", countsArgIdx))
+		countsArgs = append(countsArgs, managerID)
+		countsArgIdx++
 	}
 
 	if teamID, ok := filters["team_id"].(string); ok && teamID != "" {
-		condition := fmt.Sprintf("c.manager_id IN (SELECT manager_id FROM auth_schema.users WHERE team_id = $%d AND company_id = c.company_id)", argIdx)
-		where = append(where, condition)
-		countsWhere = append(countsWhere, condition)
+		where = append(where, fmt.Sprintf("c.manager_id IN (SELECT manager_id FROM auth_schema.users WHERE team_id = $%d AND company_id = c.company_id)", argIdx))
 		args = append(args, teamID)
 		argIdx++
+
+		countsWhere = append(countsWhere, fmt.Sprintf("c.manager_id IN (SELECT manager_id FROM auth_schema.users WHERE team_id = $%d AND company_id = c.company_id)", countsArgIdx))
+		countsArgs = append(countsArgs, teamID)
+		countsArgIdx++
 	}
 
 	if source, ok := filters["source"].(string); ok && source != "" {
-		condition := fmt.Sprintf("c.source = $%d", argIdx)
-		where = append(where, condition)
-		countsWhere = append(countsWhere, condition)
+		where = append(where, fmt.Sprintf("c.source = $%d", argIdx))
 		args = append(args, source)
 		argIdx++
+
+		countsWhere = append(countsWhere, fmt.Sprintf("c.source = $%d", countsArgIdx))
+		countsArgs = append(countsArgs, source)
+		countsArgIdx++
 	}
 
 	if managerName, ok := filters["manager_name"].(string); ok && managerName != "" {
-		condition := fmt.Sprintf("c.manager_name ILIKE $%d", argIdx)
-		where = append(where, condition)
-		countsWhere = append(countsWhere, condition)
+		where = append(where, fmt.Sprintf("c.manager_name ILIKE $%d", argIdx))
 		args = append(args, "%"+managerName+"%")
 		argIdx++
+
+		countsWhere = append(countsWhere, fmt.Sprintf("c.manager_name ILIKE $%d", countsArgIdx))
+		countsArgs = append(countsArgs, "%"+managerName+"%")
+		countsArgIdx++
 	}
 
 	if clientPhone, ok := filters["client_phone"].(string); ok && clientPhone != "" {
-		condition := fmt.Sprintf("c.client_phone ILIKE $%d", argIdx)
-		where = append(where, condition)
-		countsWhere = append(countsWhere, condition)
+		where = append(where, fmt.Sprintf("c.client_phone ILIKE $%d", argIdx))
 		args = append(args, "%"+clientPhone+"%")
 		argIdx++
+
+		countsWhere = append(countsWhere, fmt.Sprintf("c.client_phone ILIKE $%d", countsArgIdx))
+		countsArgs = append(countsArgs, "%"+clientPhone+"%")
+		countsArgIdx++
 	}
 
 	if dateFrom, ok := filters["date_from"].(string); ok && dateFrom != "" {
-		condition := fmt.Sprintf("c.call_date >= $%d", argIdx)
-		where = append(where, condition)
-		countsWhere = append(countsWhere, condition)
+		where = append(where, fmt.Sprintf("c.call_date >= $%d", argIdx))
 		args = append(args, dateFrom)
 		argIdx++
+
+		countsWhere = append(countsWhere, fmt.Sprintf("c.call_date >= $%d", countsArgIdx))
+		countsArgs = append(countsArgs, dateFrom)
+		countsArgIdx++
 	}
 
 	if dateTo, ok := filters["date_to"].(string); ok && dateTo != "" {
-		condition := fmt.Sprintf("c.call_date <= $%d", argIdx)
-		where = append(where, condition)
-		countsWhere = append(countsWhere, condition)
+		where = append(where, fmt.Sprintf("c.call_date <= $%d", argIdx))
 		args = append(args, dateTo)
 		argIdx++
+
+		countsWhere = append(countsWhere, fmt.Sprintf("c.call_date <= $%d", countsArgIdx))
+		countsArgs = append(countsArgs, dateTo)
+		countsArgIdx++
 	}
 
 	if status, ok := filters["status"].(string); ok && status != "" {
@@ -368,7 +386,7 @@ func (r *callRepository) List(ctx context.Context, filters map[string]interface{
 		GROUP BY status
 	`, strings.Join(countsWhere, " AND "))
 
-	statusRows, err := r.db.QueryContext(ctx, statusCountsQuery, args...)
+	statusRows, err := r.db.QueryContext(ctx, statusCountsQuery, countsArgs...)
 	if err != nil {
 		return nil, 0, nil, err
 	}
