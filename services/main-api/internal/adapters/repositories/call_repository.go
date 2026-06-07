@@ -244,12 +244,6 @@ func (r *callRepository) List(ctx context.Context, filters map[string]interface{
 		argIdx++
 	}
 
-	if status, ok := filters["status"].(string); ok && status != "" {
-		where = append(where, fmt.Sprintf("c.status = $%d", argIdx))
-		args = append(args, status)
-		argIdx++
-	}
-
 	if source, ok := filters["source"].(string); ok && source != "" {
 		condition := fmt.Sprintf("c.source = $%d", argIdx)
 		where = append(where, condition)
@@ -287,6 +281,12 @@ func (r *callRepository) List(ctx context.Context, filters map[string]interface{
 		where = append(where, condition)
 		countsWhere = append(countsWhere, condition)
 		args = append(args, dateTo)
+		argIdx++
+	}
+
+	if status, ok := filters["status"].(string); ok && status != "" {
+		where = append(where, fmt.Sprintf("c.status = $%d", argIdx))
+		args = append(args, status)
 		argIdx++
 	}
 

@@ -242,7 +242,7 @@
     "pending_analysis": "Pending Analysis",
     "pending": "Pending",
     "processing": "Processing",
-    "completed": "Completed",
+    "completed": "Success",
     "error": "Error",
     "active": "Active",
     "avg_errors_free": "Avg Errors Free",
@@ -281,7 +281,7 @@
     "id": "Call ID",
     "datetime": "Date/Time",
     "stats": {
-      "completed": "Completed",
+      "completed": "Success",
       "pending": "Pending",
       "processing": "Processing",
       "error": "Error"

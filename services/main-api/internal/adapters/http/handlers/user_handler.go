@@ -403,10 +403,17 @@ func (h *UserHandler) GetUserCalls(c *fiber.Ctx) error {
 		zap.Int("limit", limit))
 
 	resp, err := h.listCallsUC.Execute(c.Context(), calls.ListCallsRequest{
-		CompanyID: user.CompanyID,
-		ManagerID: *user.ManagerID,
-		Page:      page,
-		Limit:     limit,
+		CompanyID:   user.CompanyID,
+		ManagerID:   *user.ManagerID,
+		ManagerName: c.Query("manager_name"),
+		ClientPhone: c.Query("client_phone"),
+		TeamID:      c.Query("team_id"),
+		Status:      c.Query("status"),
+		Source:      c.Query("source"),
+		DateFrom:    c.Query("date_from"),
+		DateTo:      c.Query("date_to"),
+		Page:        page,
+		Limit:       limit,
 	})
 
 	if err != nil {

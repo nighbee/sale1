@@ -239,7 +239,7 @@
     "pending_analysis": "Күтудегі талдау",
     "pending": "Күтуде",
     "processing": "Өңделуде",
-    "completed": "Аяқталды",
+    "completed": "Сәтті",
     "error": "Қате",
     "active": "Белсенді",
     "avg_errors_free": "Орташа қатесіздік",
@@ -278,7 +278,7 @@
     "id": "Қоңырау ID",
     "datetime": "Күні/Уақыты",
     "stats": {
-      "completed": "Аяқталды",
+      "completed": "Сәтті",
       "pending": "Күтуде",
       "processing": "Өңделуде",
       "error": "Қате"
