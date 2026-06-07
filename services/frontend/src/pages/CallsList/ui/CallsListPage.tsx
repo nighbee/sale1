@@ -74,6 +74,8 @@ const CallsListPage: React.FC = () => {
   const [managers, setManagers] = useState<User[]>([]);
   const [selectedManager, setSelectedManager] = useState<string>("");
   const [status, setStatus] = useState<string>("completed");
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
   const [search, setSearch] = useState<string>("");
   const [debouncedSearch, setDebouncedSearch] = useState<string>("");
   const [loading, setLoading] = useState(true);
@@ -130,6 +132,12 @@ const CallsListPage: React.FC = () => {
         if (debouncedSearch) {
           params.search = debouncedSearch;
         }
+        if (dateFrom) {
+          params.date_from = dateFrom;
+        }
+        if (dateTo) {
+          params.date_to = dateTo;
+        }
 
         let res;
         if (user?.role === 'sales_rep' && user.id) {
@@ -164,7 +172,7 @@ const CallsListPage: React.FC = () => {
       }
     };
     fetchData();
-  }, [currentTeamId, user, source, page, limit, selectedManager, status, debouncedSearch]);
+  }, [currentTeamId, user, source, page, limit, selectedManager, status, debouncedSearch, dateFrom, dateTo]);
 
   return (
     <PageLayout title={t("calls.list_title")}>
@@ -247,6 +255,16 @@ const CallsListPage: React.FC = () => {
               status={status}
               onStatusChange={(val) => {
                 setStatus(val);
+                setPage(1);
+              }}
+              dateFrom={dateFrom}
+              onDateFromChange={(val) => {
+                setDateFrom(val);
+                setPage(1);
+              }}
+              dateTo={dateTo}
+              onDateToChange={(val) => {
+                setDateTo(val);
                 setPage(1);
               }}
               managers={managers}
