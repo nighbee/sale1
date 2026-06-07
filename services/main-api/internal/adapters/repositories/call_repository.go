@@ -145,8 +145,6 @@ func (r *callRepository) ListAll(ctx context.Context, filters map[string]interfa
 		args = append(args, status)
 		argIdx++
 	}
-
-	// Pagination
 	limit := 20
 	if l, ok := filters["limit"].(int); ok && l > 0 {
 		limit = l
@@ -306,6 +304,16 @@ func (r *callRepository) List(ctx context.Context, filters map[string]interface{
 		where = append(where, fmt.Sprintf("c.status = $%d", argIdx))
 		args = append(args, status)
 		argIdx++
+	}
+
+	if search, ok := filters["search"].(string); ok && search != "" {
+		where = append(where, fmt.Sprintf("(c.manager_name ILIKE $%d OR c.client_phone ILIKE $%d)", argIdx, argIdx))
+		args = append(args, "%"+search+"%")
+		argIdx++
+
+		countsWhere = append(countsWhere, fmt.Sprintf("(c.manager_name ILIKE $%d OR c.client_phone ILIKE $%d)", countsArgIdx, countsArgIdx))
+		countsArgs = append(countsArgs, "%"+search+"%")
+		countsArgIdx++
 	}
 
 	// Pagination

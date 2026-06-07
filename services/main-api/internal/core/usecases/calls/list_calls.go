@@ -15,6 +15,7 @@ type ListCallsRequest struct {
 	TeamID      string `json:"team_id"`
 	Status      string `json:"status"`
 	Source      string `json:"source"`
+	Search      string `json:"search"`
 	DateFrom    string `json:"date_from"`
 	DateTo      string `json:"date_to"`
 	Page        int    `json:"page"`
@@ -46,6 +47,7 @@ func (uc *ListCallsUseCase) Execute(ctx context.Context, req ListCallsRequest) (
 		"team_id":      req.TeamID,
 		"status":       req.Status,
 		"source":       req.Source,
+		"search":       req.Search,
 		"date_from":    req.DateFrom,
 		"date_to":      req.DateTo,
 		"page":         req.Page,

@@ -93,6 +93,7 @@ func (h *CallHandler) ListCalls(c *fiber.Ctx) error {
 		TeamID:      c.Query("team_id"),
 		Status:      c.Query("status"),
 		Source:      c.Query("source"),
+		Search:      c.Query("search"),
 		DateFrom:    c.Query("date_from"),
 		DateTo:      c.Query("date_to"),
 		Page:        page,
