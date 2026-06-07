@@ -72,7 +72,7 @@ export const CallFilters: React.FC<CallFiltersProps> = ({
 
       <div className="w-full md:w-48">
         <Select
-          label={t('common.status') || 'Status'}
+          label={t('calls.processing_stage') || 'Processing Stage'}
           value={status}
           onChange={(e) => onStatusChange(e.target.value)}
           options={statusOptions}

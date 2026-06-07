@@ -304,6 +304,7 @@
     "transcript_processing": "Транскрипт өңделуде...",
     "analysis_pending": "Талдау күтілуде...",
     "all_managers": "Барлық менеджерлер",
+    "processing_stage": "Өңдеу кезеңі",
     "queue_management": "Кезек басқару",
     "bulk_reprocess": "Жаппай қайта өңдеу",
     "clear_queue": "Кезек тазарту",

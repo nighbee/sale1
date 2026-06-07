@@ -307,6 +307,7 @@
     "transcript_processing": "Transcript being processed...",
     "analysis_pending": "Analysis pending...",
     "all_managers": "All Managers",
+    "processing_stage": "Processing Stage",
     "queue_management": "Queue Management",
     "bulk_reprocess": "Bulk Reprocess",
     "clear_queue": "Clear Queue",

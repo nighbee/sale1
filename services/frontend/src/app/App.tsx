@@ -26,9 +26,44 @@ import ScriptsList from "../pages/ScriptsList";
 import { ScriptDetailPage } from "../pages/ScriptDetail";
 import { LandingPage } from "../pages/LandingPage";
 import ProtectedRoute from "./providers/ProtectedRoute";
+import { useUserStore } from "../entities/user/model/store";
+import { userApi } from "../entities/user/api";
+import { useEffect, useState } from "react";
 import "./styles/App.css";
 
 function App() {
+  const { user, setUser, _hasHydrated } = useUserStore();
+  const [isInitializing, setIsInitializing] = useState(false);
+
+  useEffect(() => {
+    const initAuth = async () => {
+      const token = localStorage.getItem('token');
+      if (token && !user) {
+        setIsInitializing(true);
+        try {
+          const res = await userApi.getMe();
+          setUser(res.data);
+        } catch (err) {
+          console.error("Failed to restore session", err);
+        } finally {
+          setIsInitializing(false);
+        }
+      }
+    };
+
+    if (_hasHydrated) {
+      initAuth();
+    }
+  }, [_hasHydrated, user, setUser]);
+
+  if (!_hasHydrated || isInitializing) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-slate-50 dark:bg-slate-900">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
   return (
     <Router>
       <Toaster position="top-right" richColors />

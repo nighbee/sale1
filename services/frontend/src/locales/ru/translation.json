@@ -304,6 +304,7 @@
     "transcript_processing": "Транскрипт обрабатывается...",
     "analysis_pending": "Анализ ожидается...",
     "all_managers": "Все менеджеры",
+    "processing_stage": "Этап обработки",
     "queue_management": "Управление очередью",
     "bulk_reprocess": "Массовая переобработка",
     "clear_queue": "Очистить очередь",
