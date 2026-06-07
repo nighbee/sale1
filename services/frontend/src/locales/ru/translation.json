@@ -239,7 +239,7 @@
     "pending_analysis": "Ожидают анализа",
     "pending": "Ожидание",
     "processing": "Обработка",
-    "completed": "Завершено",
+    "completed": "Успешно",
     "error": "Ошибка",
     "active": "Активно",
     "avg_errors_free": "Среднее без ошибок",
@@ -278,7 +278,7 @@
     "id": "ID звонка",
     "datetime": "Дата/Время",
     "stats": {
-      "completed": "Завершено",
+      "completed": "Успешно",
       "pending": "Ожидание",
       "processing": "Обработка",
       "error": "Ошибка"

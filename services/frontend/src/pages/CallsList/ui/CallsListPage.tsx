@@ -51,7 +51,7 @@ const CallMobileCard: React.FC<{ call: Call }> = ({ call }) => {
             call.status === "error" ? "text-red-600 dark:text-red-400" :
             "text-yellow-600 dark:text-yellow-400"
         }`}>
-          {call.status}
+          {t(`calls.stats.${call.status}`)}
         </span>
       </div>
         <Link
@@ -305,7 +305,7 @@ const CallsListPage: React.FC = () => {
                                 call.status === "error" ? "text-red-600 dark:text-red-400" :
                                 "text-yellow-600 dark:text-yellow-400"
                             }`}>
-                              {call.status}
+                              {t(`calls.stats.${call.status}`)}
                             </span>
                           </div>
                         </td>
