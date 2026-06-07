@@ -28,7 +28,7 @@ export const CallFilters: React.FC<CallFiltersProps> = ({
 
   const statusOptions = [
     { value: '', label: t('common.all') || 'All Statuses' },
-    { value: 'completed', label: t('calls.stats.completed') },
+    { value: 'completed', label: t('calls.stats.completed') || 'Success' },
     { value: 'pending', label: t('calls.stats.pending') },
     { value: 'processing', label: t('calls.stats.processing') },
     { value: 'error', label: t('calls.stats.error') },
